@@ -1,0 +1,67 @@
+# Light — dark text on white.
+name = "Light"
+
+[core]
+normal = "black on white"
+border = "darkgray on white"
+title = "black on white"
+title_focused = "white on blue"
+selected = "white on blue"
+selected_unfocused = "white on darkgray"
+hint = "darkgray on white"
+
+[menu]
+normal = "black on cyan"
+hotkey = "black on cyan underlined"
+selected = "white on blue"
+selected_hotkey = "lightyellow on blue underlined"
+disabled = "blue on cyan"
+
+[dialog]
+normal = "black on lightgray"
+focus = "white on blue"
+hotkey = "red on lightgray underlined"
+focus_hotkey = "lightyellow on blue underlined"
+title = "blue on lightgray bold"
+disabled = "darkgray on lightgray"
+input = "black on cyan"
+input_focus = "white on blue"
+shadow = "lightgray on darkgray"
+
+[error]
+normal = "white on red"
+title = "lightyellow on red"
+
+[tabs]
+bar = "black on white"
+active = "white on blue"
+inactive = "black on lightgray"
+
+[status]
+normal = "black on cyan"
+
+[fkeybar]
+number = "black on white"
+label = "white on blue"
+
+[editor]
+text = "black on white"
+keyword = "blue on white bold"
+string = "magenta on white"
+number = "red on white"
+comment = "darkgray on white italic"
+quoted_ident = "black on white bold"
+operator = "darkgray on white"
+selection = "white on blue"
+line_number = "darkgray on white"
+
+[grid]
+header = "white on blue"
+null = "darkgray on white"
+cursor = "black on lightcyan"
+row_number = "darkgray on white"
+
+[messages]
+error = "red on white"
+notice = "blue on white"
+info = "black on white"

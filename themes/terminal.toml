@@ -1,0 +1,68 @@
+# Terminal default — the terminal's own foreground/background plus reverse video, for
+# limited terminals (D-002, D-014).
+name = "Terminal default"
+
+[core]
+normal = "default on default"
+border = "default on default"
+title = "default on default"
+title_focused = "default on default reversed"
+selected = "default on default reversed"
+selected_unfocused = "white on darkgray"
+hint = "default on default dim"
+
+[menu]
+normal = "default on default reversed"
+hotkey = "default on default reversed underlined"
+selected = "default on default"
+selected_hotkey = "default on default underlined"
+disabled = "default on default reversed dim"
+
+[dialog]
+normal = "default on default"
+focus = "default on default reversed"
+hotkey = "default on default underlined"
+focus_hotkey = "default on default reversed underlined"
+title = "default on default bold"
+disabled = "default on default dim"
+input = "black on cyan"
+input_focus = "default on default reversed"
+shadow = "default on default"
+
+[error]
+normal = "default on default reversed"
+title = "default on default reversed bold"
+
+[tabs]
+bar = "default on default"
+active = "default on default reversed"
+inactive = "default on default"
+
+[status]
+normal = "default on default reversed"
+
+[fkeybar]
+number = "default on default"
+label = "default on default reversed"
+
+[editor]
+text = "default on default"
+keyword = "default on default bold"
+string = "default on default"
+number = "default on default"
+comment = "default on default dim"
+quoted_ident = "default on default bold"
+operator = "default on default"
+selection = "default on default reversed"
+line_number = "default on default dim"
+
+[grid]
+header = "black on cyan"
+null = "default on default dim"
+cursor = "default on default reversed"
+row_number = "default on default dim"
+
+[messages]
+error = "lightred on default"
+notice = "default on default bold"
+info = "default on default"

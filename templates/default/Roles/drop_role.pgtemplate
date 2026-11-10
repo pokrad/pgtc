@@ -1,0 +1,30 @@
++++
+name        = "Drop role"
+description = "DROP ROLE, optionally after handing over what it owns"
+
+[[param]]
+name     = "role"
+label    = "Role"
+type     = "choice"
+source   = "roles"
+required = true
+
+[[param]]
+name  = "if_exists"
+label = "IF EXISTS"
+type  = "bool"
+
+[[param]]
+name   = "reassign_to"
+label  = "Reassign owned objects to"
+type   = "choice"
+source = "roles"
+help   = "Empty: the role must not own objects or have privileges any more"
++++
+{% if reassign_to %}
+-- REASSIGN OWNED and DROP OWNED act on the current database only (and on shared
+-- objects): run both in every database where the role owns objects or has privileges.
+REASSIGN OWNED BY {{ role|ident }} TO {{ reassign_to|ident }};
+DROP OWNED BY {{ role|ident }};
+{% endif %}
+DROP ROLE{% if if_exists %} IF EXISTS{% endif %} {{ role|ident }};

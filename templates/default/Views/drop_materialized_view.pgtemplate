@@ -1,0 +1,25 @@
++++
+name        = "Drop materialized view"
+description = "DROP MATERIALIZED VIEW"
+
+[[param]]
+name     = "object"
+label    = "Materialized view"
+type     = "choice"
+source   = "materialized_views"
+required = true
+
+[[param]]
+name  = "if_exists"
+label = "IF EXISTS"
+type  = "bool"
+
+[[param]]
+name    = "behavior"
+label   = "Dependent objects"
+type    = "choice"
+options = ["RESTRICT", "CASCADE"]
+default = "RESTRICT"
+help    = "CASCADE also drops the objects that depend on it"
++++
+DROP MATERIALIZED VIEW{% if if_exists %} IF EXISTS{% endif %} {{ object|ident }} {{ behavior }};

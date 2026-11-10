@@ -1,0 +1,25 @@
++++
+name        = "Drop view"
+description = "DROP VIEW"
+
+[[param]]
+name     = "object"
+label    = "View"
+type     = "choice"
+source   = "views"
+required = true
+
+[[param]]
+name  = "if_exists"
+label = "IF EXISTS"
+type  = "bool"
+
+[[param]]
+name    = "behavior"
+label   = "Dependent objects"
+type    = "choice"
+options = ["RESTRICT", "CASCADE"]
+default = "RESTRICT"
+help    = "CASCADE also drops the objects that depend on it"
++++
+DROP VIEW{% if if_exists %} IF EXISTS{% endif %} {{ object|ident }} {{ behavior }};

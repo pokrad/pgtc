@@ -1,0 +1,69 @@
+# Dracula — colours from the Dracula theme palette (https://draculatheme.com, MIT).
+# 24-bit colours: needs a terminal with true colour support (Windows Terminal, iTerm2,
+# kitty, WezTerm, ...).
+name = "Dracula"
+
+[core]
+normal = "#f8f8f2 on #282a36"
+border = "#6272a4 on #282a36"
+title = "#f8f8f2 on #282a36"
+title_focused = "#282a36 on #bd93f9"
+selected = "#282a36 on #bd93f9"
+selected_unfocused = "#f8f8f2 on #44475a"
+hint = "#6272a4 on #282a36"
+
+[menu]
+normal = "#f8f8f2 on #44475a"
+hotkey = "#ffb86c on #44475a underlined"
+selected = "#282a36 on #bd93f9"
+selected_hotkey = "#282a36 on #bd93f9 underlined"
+disabled = "#8a94bd on #44475a"
+
+[dialog]
+normal = "#f8f8f2 on #44475a"
+focus = "#282a36 on #8be9fd"
+hotkey = "#ffb86c on #44475a underlined"
+focus_hotkey = "#282a36 on #8be9fd underlined"
+title = "#bd93f9 on #44475a bold"
+disabled = "#8a94bd on #44475a"
+input = "#f8f8f2 on #282a36"
+input_focus = "#f1fa8c on #282a36"
+shadow = "#6272a4 on #191a21"
+
+[error]
+normal = "#f8f8f2 on #d63c3c"
+title = "#f1fa8c on #d63c3c bold"
+
+[tabs]
+bar = "#f8f8f2 on #21222c"
+active = "#282a36 on #bd93f9"
+inactive = "#f8f8f2 on #44475a"
+
+[status]
+normal = "#f8f8f2 on #44475a"
+
+[fkeybar]
+number = "#f8f8f2 on #21222c"
+label = "#282a36 on #bd93f9"
+
+[editor]
+text = "#f8f8f2 on #282a36"
+keyword = "#ff79c6 on #282a36"
+string = "#f1fa8c on #282a36"
+number = "#bd93f9 on #282a36"
+comment = "#6272a4 on #282a36"
+quoted_ident = "#8be9fd on #282a36"
+operator = "#ff79c6 on #282a36"
+selection = "#f8f8f2 on #44475a"
+line_number = "#6272a4 on #282a36"
+
+[grid]
+header = "#282a36 on #bd93f9"
+null = "#6272a4 on #282a36 italic"
+cursor = "#f8f8f2 on #44475a"
+row_number = "#6272a4 on #282a36"
+
+[messages]
+error = "#ff5555 on #282a36"
+notice = "#8be9fd on #282a36"
+info = "#f8f8f2 on #282a36"

@@ -1,0 +1,27 @@
++++
+name        = "Create view"
+description = "CREATE OR REPLACE VIEW"
+
+[[param]]
+name     = "schema"
+label    = "Schema"
+type     = "choice"
+source   = "schemas"
+default  = "public"
+required = true
+
+[[param]]
+name     = "name"
+label    = "View name"
+type     = "identifier"
+required = true
+
+[[param]]
+name     = "query"
+label    = "Query"
+type     = "sql"
+default  = "SELECT 1"
+required = true
++++
+CREATE OR REPLACE VIEW {{ schema|ident }}.{{ name|ident }} AS
+{{ query }};

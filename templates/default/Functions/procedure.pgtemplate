@@ -1,0 +1,55 @@
++++
+name        = "Create procedure"
+description = "CREATE PROCEDURE (PL/pgSQL)"
+
+[[param]]
+name     = "schema"
+label    = "Schema"
+type     = "choice"
+source   = "schemas"
+default  = "public"
+required = true
+
+[[param]]
+name     = "name"
+label    = "Procedure name"
+type     = "identifier"
+required = true
+
+[[param]]
+name  = "args"
+label = "Arguments"
+type  = "list"
+  [[param.fields]]
+  name     = "arg_name"
+  label    = "Name"
+  type     = "identifier"
+  required = true
+  [[param.fields]]
+  name     = "arg_type"
+  label    = "Type"
+  type     = "text"
+  default  = "integer"
+  required = true
+
+[[param]]
+name  = "body"
+label = "Body"
+type  = "sql"
++++
+CREATE OR REPLACE PROCEDURE {{ schema|ident }}.{{ name|ident }}(
+{% for a in args %}
+    {{ a.arg_name|ident }} {{ a.arg_type }}{% if not loop.last %},{% endif %}
+
+{% endfor %}
+)
+LANGUAGE plpgsql
+AS $procedure$
+BEGIN
+{% if body %}
+{{ body|indent(4, true) }}
+{% else %}
+    -- TODO
+{% endif %}
+END;
+$procedure$;

@@ -1,0 +1,40 @@
++++
+name        = "Create sequence"
+description = "CREATE SEQUENCE"
+
+[[param]]
+name     = "schema"
+label    = "Schema"
+type     = "choice"
+source   = "schemas"
+default  = "public"
+required = true
+
+[[param]]
+name     = "name"
+label    = "Sequence name"
+type     = "identifier"
+required = true
+
+[[param]]
+name    = "start"
+label   = "Start"
+type    = "number"
+default = 1
+
+[[param]]
+name    = "increment"
+label   = "Increment"
+type    = "number"
+default = 1
+
+[[param]]
+name  = "owned_by"
+label = "Owned by (table.column)"
+type  = "text"
++++
+CREATE SEQUENCE {{ schema|ident }}.{{ name|ident }}
+    START WITH {{ start or 1 }}
+    INCREMENT BY {{ increment or 1 }}{% if owned_by %}
+
+    OWNED BY {{ owned_by }}{% endif %};

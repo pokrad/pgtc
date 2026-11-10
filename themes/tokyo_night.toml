@@ -1,0 +1,69 @@
+# Tokyo Night — the "Night" palette of the Tokyo Night theme by enkia
+# (https://github.com/enkia/tokyo-night-vscode-theme, MIT). 24-bit colours: needs a
+# terminal with true colour support (Windows Terminal, iTerm2, kitty, WezTerm, ...).
+name = "Tokyo Night"
+
+[core]
+normal = "#c0caf5 on #1a1b26"
+border = "#545c7e on #1a1b26"
+title = "#a9b1d6 on #1a1b26"
+title_focused = "#1a1b26 on #7aa2f7"
+selected = "#1a1b26 on #7aa2f7"
+selected_unfocused = "#1a1b26 on #737aa2"
+hint = "#565f89 on #1a1b26"
+
+[menu]
+normal = "#a9b1d6 on #3b4261"
+hotkey = "#ff9e64 on #3b4261 underlined"
+selected = "#1a1b26 on #7aa2f7"
+selected_hotkey = "#1a1b26 on #7aa2f7 underlined"
+disabled = "#737aa2 on #3b4261"
+
+[dialog]
+normal = "#c0caf5 on #1f2335"
+focus = "#1a1b26 on #7dcfff"
+hotkey = "#ff9e64 on #1f2335 underlined"
+focus_hotkey = "#1a1b26 on #7dcfff underlined"
+title = "#bb9af7 on #1f2335 bold"
+disabled = "#737aa2 on #1f2335"
+input = "#c0caf5 on #414868"
+input_focus = "#c0caf5 on #545c7e"
+shadow = "#414868 on #16161e"
+
+[error]
+normal = "#1a1b26 on #f7768e"
+title = "#1a1b26 on #f7768e bold"
+
+[tabs]
+bar = "#a9b1d6 on #16161e"
+active = "#1a1b26 on #7aa2f7"
+inactive = "#a9b1d6 on #292e42"
+
+[status]
+normal = "#c0caf5 on #3b4261"
+
+[fkeybar]
+number = "#a9b1d6 on #16161e"
+label = "#c0caf5 on #3b4261"
+
+[editor]
+text = "#c0caf5 on #1a1b26"
+keyword = "#bb9af7 on #1a1b26"
+string = "#9ece6a on #1a1b26"
+number = "#ff9e64 on #1a1b26"
+comment = "#565f89 on #1a1b26 italic"
+quoted_ident = "#7dcfff on #1a1b26"
+operator = "#89ddff on #1a1b26"
+selection = "#c0caf5 on #33467c"
+line_number = "#545c7e on #1a1b26"
+
+[grid]
+header = "#1a1b26 on #7aa2f7"
+null = "#565f89 on #1a1b26 italic"
+cursor = "#c0caf5 on #33467c"
+row_number = "#545c7e on #1a1b26"
+
+[messages]
+error = "#f7768e on #1a1b26"
+notice = "#7dcfff on #1a1b26"
+info = "#a9b1d6 on #1a1b26"

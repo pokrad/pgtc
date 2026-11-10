@@ -1,0 +1,25 @@
++++
+name        = "Drop index"
+description = "DROP INDEX"
+
+[[param]]
+name     = "object"
+label    = "Index"
+type     = "choice"
+source   = "indexes"
+required = true
+
+[[param]]
+name  = "if_exists"
+label = "IF EXISTS"
+type  = "bool"
+
+[[param]]
+name    = "behavior"
+label   = "Dependent objects"
+type    = "choice"
+options = ["RESTRICT", "CASCADE"]
+default = "RESTRICT"
+help    = "CASCADE also drops the objects that depend on it"
++++
+DROP INDEX{% if if_exists %} IF EXISTS{% endif %} {{ object|ident }} {{ behavior }};

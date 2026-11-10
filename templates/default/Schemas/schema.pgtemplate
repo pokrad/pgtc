@@ -1,0 +1,22 @@
++++
+name        = "Create schema"
+description = "CREATE SCHEMA"
+
+[[param]]
+name     = "name"
+label    = "Schema name"
+type     = "identifier"
+required = true
+
+[[param]]
+name   = "owner"
+label  = "Owner"
+type   = "choice"
+source = "roles"
+
+[[param]]
+name  = "if_not_exists"
+label = "IF NOT EXISTS"
+type  = "bool"
++++
+CREATE SCHEMA {% if if_not_exists %}IF NOT EXISTS {% endif %}{{ name|ident }}{% if owner %} AUTHORIZATION {{ owner|ident }}{% endif %};

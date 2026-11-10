@@ -1,0 +1,25 @@
++++
+name        = "Drop type"
+description = "DROP TYPE (enum, composite, range)"
+
+[[param]]
+name     = "object"
+label    = "Type"
+type     = "choice"
+source   = "user_types"
+required = true
+
+[[param]]
+name  = "if_exists"
+label = "IF EXISTS"
+type  = "bool"
+
+[[param]]
+name    = "behavior"
+label   = "Dependent objects"
+type    = "choice"
+options = ["RESTRICT", "CASCADE"]
+default = "RESTRICT"
+help    = "CASCADE also drops the objects that depend on it"
++++
+DROP TYPE{% if if_exists %} IF EXISTS{% endif %} {{ object|ident }} {{ behavior }};

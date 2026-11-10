@@ -1,0 +1,65 @@
++++
+name        = "Create index"
+description = "CREATE INDEX on a table"
+
+[[param]]
+name     = "table"
+label    = "Table"
+type     = "choice"
+source   = "tables"
+required = true
+
+[[param]]
+name  = "name"
+label = "Index name"
+type  = "identifier"
+help  = "Empty: PostgreSQL chooses a name"
+
+[[param]]
+name  = "unique"
+label = "UNIQUE"
+type  = "bool"
+
+[[param]]
+name  = "concurrently"
+label = "CONCURRENTLY"
+type  = "bool"
+
+[[param]]
+name    = "method"
+label   = "Method"
+type    = "choice"
+options = ["btree", "hash", "gin", "gist", "brin", "spgist"]
+default = "btree"
+
+[[param]]
+name     = "columns"
+label    = "Columns"
+type     = "list"
+required = true
+  [[param.fields]]
+  name     = "col_name"
+  label    = "Column or expression"
+  type     = "text"
+  required = true
+  [[param.fields]]
+  name    = "order"
+  label   = "Order"
+  type    = "choice"
+  options = ["", "ASC", "DESC"]
+
+[[param]]
+name  = "nulls_not_distinct"
+label = "NULLS NOT DISTINCT (PostgreSQL 15+)"
+type  = "bool"
+
+[[param]]
+name  = "where"
+label = "WHERE (partial index)"
+type  = "sql"
++++
+CREATE {% if unique %}UNIQUE {% endif %}INDEX {% if concurrently %}CONCURRENTLY {% endif %}{% if name %}{{ name|ident }} {% endif %}ON {{ table|ident }}{% if method != "btree" %} USING {{ method }}{% endif %} (
+{%- for c in columns %}{{ c.col_name }}{% if c.order %} {{ c.order }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor -%}
+){% if unique and nulls_not_distinct and has("NullsNotDistinct") %} NULLS NOT DISTINCT{% endif %}{% if where %}
+
+WHERE {{ where }}{% endif %};

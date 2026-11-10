@@ -1,0 +1,62 @@
++++
+name        = "Create table"
+description = "CREATE TABLE with columns and a primary key"
+
+[[param]]
+name     = "schema"
+label    = "Schema"
+type     = "choice"
+source   = "schemas"
+default  = "public"
+required = true
+
+[[param]]
+name     = "name"
+label    = "Table name"
+type     = "identifier"
+required = true
+
+[[param]]
+name  = "if_not_exists"
+label = "IF NOT EXISTS"
+type  = "bool"
+
+[[param]]
+name     = "columns"
+label    = "Columns"
+type     = "list"
+required = true
+  [[param.fields]]
+  name     = "col_name"
+  label    = "Name"
+  type     = "identifier"
+  required = true
+  [[param.fields]]
+  name     = "col_type"
+  label    = "Type"
+  type     = "text"
+  default  = "text"
+  required = true
+  [[param.fields]]
+  name  = "not_null"
+  label = "NOT NULL"
+  type  = "bool"
+  [[param.fields]]
+  name  = "primary_key"
+  label = "Primary key"
+  type  = "bool"
+  [[param.fields]]
+  name  = "col_default"
+  label = "Default"
+  type  = "text"
++++
+{% set pk = columns|selectattr("primary_key")|list %}
+CREATE TABLE {% if if_not_exists %}IF NOT EXISTS {% endif %}{{ schema|ident }}.{{ name|ident }} (
+{% for c in columns %}
+    {{ c.col_name|ident }} {{ c.col_type }}{% if c.not_null or c.primary_key %} NOT NULL{% endif %}{% if c.col_default %} DEFAULT {{ c.col_default }}{% endif %}{% if not loop.last or pk %},{% endif %}
+
+{% endfor %}
+{% if pk %}
+    CONSTRAINT {{ (name ~ "_pkey")|ident }} PRIMARY KEY ({% for c in pk %}{{ c.col_name|ident }}{% if not loop.last %}, {% endif %}{% endfor %})
+{% endif %}
+);

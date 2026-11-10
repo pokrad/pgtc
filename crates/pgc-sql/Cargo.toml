@@ -1,0 +1,20 @@
+[package]
+name = "pgc-sql"
+description = "Versioned SQL template resolver, minijinja, embedded SQL, .pgtemplate (D-010, D-013)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[dependencies]
+include_dir.workspace = true
+minijinja.workspace = true
+pgc-core.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

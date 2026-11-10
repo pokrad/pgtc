@@ -1,0 +1,25 @@
++++
+name        = "Drop trigger"
+description = "DROP TRIGGER … ON table"
+
+[[param]]
+name     = "object"
+label    = "Trigger"
+type     = "choice"
+source   = "triggers"
+required = true
+
+[[param]]
+name  = "if_exists"
+label = "IF EXISTS"
+type  = "bool"
+
+[[param]]
+name    = "behavior"
+label   = "Dependent objects"
+type    = "choice"
+options = ["RESTRICT", "CASCADE"]
+default = "RESTRICT"
+help    = "CASCADE also drops the objects that depend on it"
++++
+DROP TRIGGER{% if if_exists %} IF EXISTS{% endif %} {{ object|ident }} {{ behavior }};

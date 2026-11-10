@@ -1,0 +1,31 @@
++++
+name        = "Create role"
+description = "CREATE ROLE (user or group)"
+
+[[param]]
+name     = "name"
+label    = "Role name"
+type     = "identifier"
+required = true
+
+[[param]]
+name    = "login"
+label   = "LOGIN"
+type    = "bool"
+default = true
+
+[[param]]
+name  = "createdb"
+label = "CREATEDB"
+type  = "bool"
+
+[[param]]
+name  = "member_of"
+label = "Member of"
+type  = "choice"
+source = "roles"
++++
+CREATE ROLE {{ name|ident }}{% if login %} LOGIN{% endif %}{% if createdb %} CREATEDB{% endif %};
+{% if member_of %}
+GRANT {{ member_of|ident }} TO {{ name|ident }};
+{% endif %}

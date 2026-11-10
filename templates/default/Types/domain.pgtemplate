@@ -1,0 +1,40 @@
++++
+name        = "Create domain"
+description = "CREATE DOMAIN with an optional CHECK"
+
+[[param]]
+name     = "schema"
+label    = "Schema"
+type     = "choice"
+source   = "schemas"
+default  = "public"
+required = true
+
+[[param]]
+name     = "name"
+label    = "Domain name"
+type     = "identifier"
+required = true
+
+[[param]]
+name     = "base_type"
+label    = "Base type"
+type     = "choice"
+source   = "types"
+required = true
+
+[[param]]
+name  = "not_null"
+label = "NOT NULL"
+type  = "bool"
+
+[[param]]
+name  = "check"
+label = "CHECK (use VALUE)"
+type  = "sql"
++++
+CREATE DOMAIN {{ schema|ident }}.{{ name|ident }} AS {{ base_type }}{% if not_null %}
+
+    NOT NULL{% endif %}{% if check %}
+
+    CHECK ({{ check }}){% endif %};

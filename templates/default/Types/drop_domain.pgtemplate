@@ -1,0 +1,25 @@
++++
+name        = "Drop domain"
+description = "DROP DOMAIN"
+
+[[param]]
+name     = "object"
+label    = "Domain"
+type     = "choice"
+source   = "domains"
+required = true
+
+[[param]]
+name  = "if_exists"
+label = "IF EXISTS"
+type  = "bool"
+
+[[param]]
+name    = "behavior"
+label   = "Dependent objects"
+type    = "choice"
+options = ["RESTRICT", "CASCADE"]
+default = "RESTRICT"
+help    = "CASCADE also drops the objects that depend on it"
++++
+DROP DOMAIN{% if if_exists %} IF EXISTS{% endif %} {{ object|ident }} {{ behavior }};

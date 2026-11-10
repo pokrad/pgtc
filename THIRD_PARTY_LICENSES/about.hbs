@@ -1,0 +1,16 @@
+## Rust crates
+
+pgtc is built from these Rust crates. Their licence texts follow, each with the
+crates it applies to. Generated with cargo-about (THIRD_PARTY_LICENSES/about.toml).
+
+{{#each licenses}}
+## {{{name}}}
+
+Used by:
+{{#each used_by}}
+  {{crate.name}} {{crate.version}}
+{{/each}}
+
+{{{text}}}
+
+{{/each}}

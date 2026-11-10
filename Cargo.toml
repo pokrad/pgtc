@@ -1,0 +1,72 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+# vendored third-party code is not part of the workspace (D-040)
+exclude = ["vendor"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.86"
+license = "PostgreSQL"
+authors = ["Darko Prenosil"]
+publish = false
+
+[workspace.dependencies]
+# Internal crates (D-018)
+pgc-core = { path = "crates/pgc-core" }
+pgc-sql = { path = "crates/pgc-sql" }
+pgc-model = { path = "crates/pgc-model" }
+pgc-db = { path = "crates/pgc-db" }
+pgc-editor = { path = "crates/pgc-editor" }
+pgc-ui = { path = "crates/pgc-ui" }
+
+# Core supporting crates (D-007, D-029)
+anyhow = "1.0.104"
+clap = { version = "4.6.7", features = ["derive"] }
+serde = { version = "1.0.229", features = ["derive"] }
+thiserror = "2.0.21"
+toml = "1.2.1"
+tracing = "0.1.44"
+tracing-appender = "0.2.5"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+# Terminal UI (D-004) and async runtime (D-006)
+crossterm = { version = "0.29.0", features = ["event-stream", "osc52"] }
+futures = "0.3.34"
+ratatui = "0.30.2"
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+
+# SQL editor (D-015) and clipboard (D-023)
+arboard = { version = "3.7.0", default-features = false, features = ["wayland-data-control"] }
+regex = "1.13.1"
+ropey = "1.6"
+unicode-width = "0.2.3"
+
+# SQL templates (D-010)
+include_dir = "0.7.4"
+minijinja = "3.1.0"
+
+# Database (D-006, D-033)
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+rustls-native-certs = "0.8.5"
+rustls-pemfile = "2"
+tokio-postgres = "0.7.18"
+tokio-postgres-rustls = "0.14.0"
+
+# Result export (D-021)
+base64 = "0.22.1"
+csv = "1.4.0"
+quick-xml = "0.41.0"
+serde_json = "1.0.154"
+
+# Dev-only
+tempfile = "3.27.0"
+
+[profile.release]
+lto = true
+codegen-units = 1
+
+# D-040: tokio-postgres with the pgtc patch (command tag, transaction status, type OIDs)
+[patch.crates-io]
+tokio-postgres = { path = "vendor/tokio-postgres" }

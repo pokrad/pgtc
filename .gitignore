@@ -1,0 +1,20 @@
+# Build output
+**/target/
+**/*.rs.bk
+*.pdb
+
+# Claude Code: local settings and session files (personal, not part of the project)
+.claude/
+CLAUDE.local.md
+
+# Cargo's unpack marker in the vendored crate (D-040); the rest of the crate is kept
+vendor/**/.cargo-ok
+
+# Editors and operating systems
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

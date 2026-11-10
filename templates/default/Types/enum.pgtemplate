@@ -1,0 +1,32 @@
++++
+name        = "Create enum type"
+description = "CREATE TYPE ... AS ENUM"
+
+[[param]]
+name     = "schema"
+label    = "Schema"
+type     = "choice"
+source   = "schemas"
+default  = "public"
+required = true
+
+[[param]]
+name     = "name"
+label    = "Type name"
+type     = "identifier"
+required = true
+
+[[param]]
+name     = "labels"
+label    = "Labels"
+type     = "list"
+required = true
+  [[param.fields]]
+  name     = "label"
+  label    = "Label"
+  type     = "text"
+  required = true
++++
+CREATE TYPE {{ schema|ident }}.{{ name|ident }} AS ENUM (
+{%- for l in labels %}{{ l.label|qtLiteral }}{% if not loop.last %}, {% endif %}{% endfor -%}
+);

@@ -1,0 +1,67 @@
+# Dark — light text on black.
+name = "Dark"
+
+[core]
+normal = "lightgray on black"
+border = "darkgray on black"
+title = "lightgray on black"
+title_focused = "black on lightgray"
+selected = "black on cyan"
+selected_unfocused = "white on darkgray"
+hint = "darkgray on black"
+
+[menu]
+normal = "white on darkgray"
+hotkey = "lightyellow on darkgray underlined"
+selected = "black on cyan"
+selected_hotkey = "black on cyan underlined"
+disabled = "black on darkgray"
+
+[dialog]
+normal = "white on darkgray"
+focus = "black on cyan"
+hotkey = "lightyellow on darkgray underlined"
+focus_hotkey = "black on cyan underlined"
+title = "white on darkgray bold"
+disabled = "black on darkgray"
+input = "white on black"
+input_focus = "white on blue"
+shadow = "darkgray on black"
+
+[error]
+normal = "white on red"
+title = "lightyellow on red"
+
+[tabs]
+bar = "lightgray on black"
+active = "black on lightgray"
+inactive = "lightgray on black"
+
+[status]
+normal = "white on darkgray"
+
+[fkeybar]
+number = "lightgray on black"
+label = "black on cyan"
+
+[editor]
+text = "lightgray on black"
+keyword = "lightyellow on black"
+string = "lightgreen on black"
+number = "lightcyan on black"
+comment = "darkgray on black"
+quoted_ident = "white on black"
+operator = "lightmagenta on black"
+selection = "black on lightgray"
+line_number = "darkgray on black"
+
+[grid]
+header = "black on lightgray"
+null = "darkgray on black"
+cursor = "black on cyan"
+row_number = "darkgray on black"
+
+[messages]
+error = "lightred on black"
+notice = "lightcyan on black"
+info = "lightgray on black"

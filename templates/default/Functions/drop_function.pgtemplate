@@ -1,0 +1,25 @@
++++
+name        = "Drop function"
+description = "DROP FUNCTION (with its argument types)"
+
+[[param]]
+name     = "object"
+label    = "Function"
+type     = "choice"
+source   = "functions"
+required = true
+
+[[param]]
+name  = "if_exists"
+label = "IF EXISTS"
+type  = "bool"
+
+[[param]]
+name    = "behavior"
+label   = "Dependent objects"
+type    = "choice"
+options = ["RESTRICT", "CASCADE"]
+default = "RESTRICT"
+help    = "CASCADE also drops the objects that depend on it"
++++
+DROP FUNCTION{% if if_exists %} IF EXISTS{% endif %} {{ object|ident }} {{ behavior }};

@@ -1,0 +1,25 @@
++++
+name        = "Drop table"
+description = "DROP TABLE"
+
+[[param]]
+name     = "object"
+label    = "Table"
+type     = "choice"
+source   = "tables"
+required = true
+
+[[param]]
+name  = "if_exists"
+label = "IF EXISTS"
+type  = "bool"
+
+[[param]]
+name    = "behavior"
+label   = "Dependent objects"
+type    = "choice"
+options = ["RESTRICT", "CASCADE"]
+default = "RESTRICT"
+help    = "CASCADE also drops the objects that depend on it"
++++
+DROP TABLE{% if if_exists %} IF EXISTS{% endif %} {{ object|ident }} {{ behavior }};

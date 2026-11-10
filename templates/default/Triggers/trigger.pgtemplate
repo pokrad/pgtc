@@ -1,0 +1,78 @@
++++
+name        = "Create trigger with function"
+description = "A trigger function and a trigger on a table"
+
+[[param]]
+name     = "table"
+label    = "Table"
+type     = "choice"
+source   = "tables"
+required = true
+
+[[param]]
+name     = "name"
+label    = "Trigger name"
+type     = "identifier"
+required = true
+
+[[param]]
+name    = "timing"
+label   = "Timing"
+type    = "choice"
+options = ["BEFORE", "AFTER", "INSTEAD OF"]
+default = "BEFORE"
+
+[[param]]
+name    = "on_insert"
+label   = "INSERT"
+type    = "bool"
+default = true
+
+[[param]]
+name  = "on_update"
+label = "UPDATE"
+type  = "bool"
+
+[[param]]
+name  = "on_delete"
+label = "DELETE"
+type  = "bool"
+
+[[param]]
+name    = "level"
+label   = "Level"
+type    = "choice"
+options = ["ROW", "STATEMENT"]
+default = "ROW"
+
+[[param]]
+name  = "body"
+label = "Function body"
+type  = "sql"
++++
+{% set events = [] %}
+{% if on_insert %}{% set events = events + ["INSERT"] %}{% endif %}
+{% if on_update %}{% set events = events + ["UPDATE"] %}{% endif %}
+{% if on_delete %}{% set events = events + ["DELETE"] %}{% endif %}
+CREATE OR REPLACE FUNCTION {{ table.schema|ident }}.{{ (name ~ "_fn")|ident }}()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $function$
+BEGIN
+{% if body %}
+{{ body|indent(4, true) }}
+{% else %}
+    -- TODO
+{% endif %}
+{% if level == "ROW" %}
+    RETURN {% if on_delete and not on_insert and not on_update %}OLD{% else %}NEW{% endif %};
+{% else %}
+    RETURN NULL;
+{% endif %}
+END;
+$function$;
+
+CREATE TRIGGER {{ name|ident }}
+{{ timing }} {{ (events or ["INSERT"])|join(" OR ") }} ON {{ table|ident }}
+FOR EACH {{ level }}
+EXECUTE PROCEDURE {{ table.schema|ident }}.{{ (name ~ "_fn")|ident }}();

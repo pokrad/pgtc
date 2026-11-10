@@ -1,0 +1,68 @@
+# Classic — Midnight Commander look (D-014, D-016). Uses only the 16 basic colours.
+# Every role is defined here; other schemes fall back to these values.
+name = "Classic"
+
+[core]
+normal = "lightgray on blue"
+border = "lightgray on blue"
+title = "lightgray on blue"
+title_focused = "black on cyan"
+selected = "black on cyan"
+selected_unfocused = "black on lightgray"
+hint = "cyan on blue"
+
+[menu]
+normal = "black on cyan"
+hotkey = "black on cyan underlined"
+selected = "white on black"
+selected_hotkey = "lightyellow on black underlined"
+disabled = "blue on cyan"
+
+[dialog]
+normal = "black on lightgray"
+focus = "white on blue"
+hotkey = "blue on lightgray underlined"
+focus_hotkey = "lightyellow on blue underlined"
+title = "blue on lightgray"
+disabled = "darkgray on lightgray"
+input = "black on cyan"
+input_focus = "black on cyan bold"
+shadow = "darkgray on black"
+
+[error]
+normal = "white on red"
+title = "white on red bold"
+
+[tabs]
+bar = "lightgray on blue"
+active = "black on cyan"
+inactive = "lightgray on blue"
+
+[status]
+normal = "black on cyan"
+
+[fkeybar]
+number = "white on black"
+label = "black on cyan"
+
+[editor]
+text = "lightgray on blue"
+keyword = "lightyellow on blue"
+string = "lightgreen on blue"
+number = "lightcyan on blue"
+comment = "brown on blue"
+quoted_ident = "white on blue"
+operator = "white on blue"
+selection = "black on cyan"
+line_number = "cyan on blue"
+
+[grid]
+header = "black on cyan"
+null = "cyan on blue"
+cursor = "black on lightgray"
+row_number = "brown on blue"
+
+[messages]
+error = "white on red"
+notice = "lightcyan on blue"
+info = "lightgray on blue"

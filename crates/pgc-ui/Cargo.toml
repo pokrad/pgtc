@@ -1,0 +1,34 @@
+[package]
+name = "pgc-ui"
+description = "ratatui application: layout, tree, tabs, menus, dialogs, themes, keymap"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+arboard.workspace = true
+base64.workspace = true
+csv.workspace = true
+crossterm.workspace = true
+futures.workspace = true
+pgc-core.workspace = true
+pgc-db.workspace = true
+pgc-editor.workspace = true
+pgc-model.workspace = true
+pgc-sql.workspace = true
+quick-xml.workspace = true
+ratatui.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+toml.workspace = true
+tracing.workspace = true
+unicode-width.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio-postgres.workspace = true

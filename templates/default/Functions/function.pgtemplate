@@ -1,0 +1,95 @@
++++
+name        = "Create function"
+description = "CREATE FUNCTION with arguments, return type and language"
+
+[[param]]
+name     = "schema"
+label    = "Schema"
+type     = "choice"
+source   = "schemas"
+default  = "public"
+required = true
+
+[[param]]
+name     = "name"
+label    = "Function name"
+type     = "identifier"
+required = true
+
+[[param]]
+name  = "args"
+label = "Arguments"
+type  = "list"
+  [[param.fields]]
+  name     = "arg_name"
+  label    = "Name"
+  type     = "identifier"
+  required = true
+  [[param.fields]]
+  name     = "arg_type"
+  label    = "Type"
+  type     = "text"
+  default  = "integer"
+  required = true
+  [[param.fields]]
+  name  = "arg_default"
+  label = "Default"
+  type  = "text"
+
+[[param]]
+name     = "returns"
+label    = "Return type"
+type     = "text"
+default  = "void"
+required = true
+
+[[param]]
+name    = "language"
+label   = "Language"
+type    = "choice"
+options = ["plpgsql", "sql"]
+default = "plpgsql"
+
+[[param]]
+name    = "volatility"
+label   = "Volatility"
+type    = "choice"
+options = ["VOLATILE", "STABLE", "IMMUTABLE"]
+default = "VOLATILE"
+
+[[param]]
+name  = "security_definer"
+label = "Security definer"
+type  = "bool"
+
+[[param]]
+name  = "body"
+label = "Body"
+type  = "sql"
+help  = "Statements between BEGIN and END (plpgsql) or the SQL statement (sql)"
++++
+CREATE OR REPLACE FUNCTION {{ schema|ident }}.{{ name|ident }}(
+{% for a in args %}
+    {{ a.arg_name|ident }} {{ a.arg_type }}{% if a.arg_default %} DEFAULT {{ a.arg_default }}{% endif %}{% if not loop.last %},{% endif %}
+
+{% endfor %}
+)
+RETURNS {{ returns }}
+LANGUAGE {{ language }}
+{{ volatility }}
+{% if security_definer %}
+SECURITY DEFINER
+{% endif %}
+AS $function$
+{% if language == "plpgsql" %}
+BEGIN
+{% if body %}
+{{ body|indent(4, true) }}
+{% else %}
+    -- TODO
+{% endif %}
+END;
+{% else %}
+{{ body or "SELECT NULL;" }}
+{% endif %}
+$function$;
