@@ -78,7 +78,7 @@
 <rect x="918" y="38" width="153.5" height="19.5" fill="#21222c"/>
 <rect x="1071" y="38" width="9.5" height="19.5" fill="#282a36"/>
 <text x="0" y="52.25" fill="#6272a4">║</text>
-<text x="18" y="52.25" fill="#f8f8f2">v</text>
+<text x="18" y="52.25" fill="#f8f8f2">▼</text>
 <text x="54" y="52.25" fill="#f8f8f2">p</text>
 <text x="63" y="52.25" fill="#f8f8f2">r</text>
 <text x="72" y="52.25" fill="#f8f8f2">o</text>
@@ -177,7 +177,7 @@
 <rect x="900" y="57" width="18.5" height="19.5" fill="#191a21"/>
 <rect x="918" y="57" width="162.5" height="19.5" fill="#282a36"/>
 <text x="0" y="71.25" fill="#6272a4">║</text>
-<text x="36" y="71.25" fill="#f8f8f2">v</text>
+<text x="36" y="71.25" fill="#f8f8f2">▼</text>
 <text x="72" y="71.25" fill="#f8f8f2">D</text>
 <text x="81" y="71.25" fill="#f8f8f2">a</text>
 <text x="90" y="71.25" fill="#f8f8f2">t</text>
@@ -227,7 +227,7 @@
 <rect x="900" y="76" width="18.5" height="19.5" fill="#191a21"/>
 <rect x="918" y="76" width="162.5" height="19.5" fill="#282a36"/>
 <text x="0" y="90.25" fill="#6272a4">║</text>
-<text x="54" y="90.25" fill="#f8f8f2">&gt;</text>
+<text x="54" y="90.25" fill="#f8f8f2">►</text>
 <text x="90" y="90.25" fill="#f8f8f2">b</text>
 <text x="99" y="90.25" fill="#f8f8f2">i</text>
 <text x="108" y="90.25" fill="#f8f8f2">l</text>
@@ -245,7 +245,7 @@
 <rect x="900" y="95" width="18.5" height="19.5" fill="#191a21"/>
 <rect x="918" y="95" width="162.5" height="19.5" fill="#282a36"/>
 <text x="0" y="109.25" fill="#6272a4">║</text>
-<text x="54" y="109.25" fill="#f8f8f2">&gt;</text>
+<text x="54" y="109.25" fill="#f8f8f2">►</text>
 <text x="90" y="109.25" fill="#f8f8f2">p</text>
 <text x="99" y="109.25" fill="#f8f8f2">o</text>
 <text x="108" y="109.25" fill="#f8f8f2">s</text>
@@ -319,7 +319,7 @@
 <rect x="900" y="114" width="18.5" height="19.5" fill="#191a21"/>
 <rect x="918" y="114" width="162.5" height="19.5" fill="#282a36"/>
 <text x="0" y="128.25" fill="#6272a4">║</text>
-<text x="54" y="128.25" fill="#f8f8f2">&gt;</text>
+<text x="54" y="128.25" fill="#f8f8f2">►</text>
 <text x="90" y="128.25" fill="#f8f8f2">s</text>
 <text x="99" y="128.25" fill="#f8f8f2">h</text>
 <text x="108" y="128.25" fill="#f8f8f2">o</text>
@@ -358,7 +358,7 @@
 <rect x="900" y="133" width="18.5" height="19.5" fill="#191a21"/>
 <rect x="918" y="133" width="162.5" height="19.5" fill="#282a36"/>
 <text x="0" y="147.25" fill="#6272a4">║</text>
-<text x="36" y="147.25" fill="#f8f8f2">&gt;</text>
+<text x="36" y="147.25" fill="#f8f8f2">►</text>
 <text x="72" y="147.25" fill="#f8f8f2">L</text>
 <text x="81" y="147.25" fill="#f8f8f2">o</text>
 <text x="90" y="147.25" fill="#f8f8f2">g</text>
@@ -401,7 +401,7 @@
 <rect x="900" y="152" width="18.5" height="19.5" fill="#191a21"/>
 <rect x="918" y="152" width="162.5" height="19.5" fill="#282a36"/>
 <text x="0" y="166.25" fill="#6272a4">║</text>
-<text x="36" y="166.25" fill="#f8f8f2">&gt;</text>
+<text x="36" y="166.25" fill="#f8f8f2">►</text>
 <text x="72" y="166.25" fill="#f8f8f2">T</text>
 <text x="81" y="166.25" fill="#f8f8f2">a</text>
 <text x="90" y="166.25" fill="#f8f8f2">b</text>
@@ -447,7 +447,7 @@
 <rect x="900" y="171" width="18.5" height="19.5" fill="#191a21"/>
 <rect x="918" y="171" width="162.5" height="19.5" fill="#282a36"/>
 <text x="0" y="185.25" fill="#6272a4">║</text>
-<text x="18" y="185.25" fill="#f8f8f2">&gt;</text>
+<text x="18" y="185.25" fill="#f8f8f2">►</text>
 <text x="54" y="185.25" fill="#f8f8f2">s</text>
 <text x="63" y="185.25" fill="#f8f8f2">t</text>
 <text x="72" y="185.25" fill="#f8f8f2">a</text>

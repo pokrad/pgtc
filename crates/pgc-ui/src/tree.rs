@@ -591,7 +591,7 @@ impl Tree {
     }
 
     pub fn row_text(&self, row: Row) -> RowText {
-        let expand = |e: bool| if e { 'v' } else { '>' };
+        let expand = |e: bool| if e { '▼' } else { '►' };
         let state_suffix = |state: ConnState| match state {
             ConnState::Disconnected => "",
             ConnState::Connecting => " (connecting…)",

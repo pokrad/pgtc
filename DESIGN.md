@@ -189,7 +189,7 @@ desktop dependency.
 ```
 
 - **Left pane — Connections and object tree:**
-  - Tree view.
+  - Tree view. Expandable nodes are marked `►` (collapsed) and `▼` (expanded).
   - Top level lists the configured server connections.
   - Each connected server expands into its tree of SQL objects (databases, schemas,
     tables, columns, indexes, functions, triggers, ...).
@@ -1471,7 +1471,7 @@ pgtc (binary)
   without box-drawing characters. Window (double) frames use `+` corners, `=`
   horizontal and `|` vertical lines; single frames (dialogs, menus, combo lists) and
   inner separators use `+`, `-`, `|` (`+---+`); grid and results-bar column lines
-  `|`. Other symbols (`…`, `×`, `▼`, `↵`,
+  `|`. Other symbols (`…`, `×`, `▼`, `►`, `↵`,
   arrows) are not box drawing and stay.
 - **LISTEN / NOTIFY** (D-006): a notification received on a query tab's connection
   is added to that tab's Messages tab, like a notice:
@@ -1708,3 +1708,4 @@ pgtc (binary)
 | 2026-11-10 | D-052 accepted: autocomplete in the SQL editor (own completion, no language server; `Ctrl+Space` / `Alt+/` and automatic after `.` and 3 letters; keywords in upper case; names from the query tab's connection). |
 | 2026-11-10 | D-053 accepted: keys terminals may keep — enhanced keyboard mode (kitty protocol) where supported, second keys (`Alt+Shift+Home/End`, `Alt+PgUp/PgDn`, `Alt+F3`), next / previous result set in the Query menu, Help note. D-014, D-041 updated. |
 | 2026-11-10 | D-054 accepted: psql-style commands on `F4` (lists, `\d`, `\conninfo`, `\?`; own simpler queries) and pgtc's generate commands `\gts` / `\gti` / `\gtu` / `\gtd` with `[column]` placeholders and primary-key `WHERE`. |
+| 2026-11-10 | Object tree expand markers changed from `>` / `v` to `►` / `▼` (D-009). |
