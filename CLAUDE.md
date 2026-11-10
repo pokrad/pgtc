@@ -75,6 +75,10 @@ dependencies.
   an `update(state, action)` function, and a `render(state)` function (Elm-style, common
   ratatui pattern). Input events, DB responses and timers all arrive as messages on one
   channel; the UI loop is the only place that mutates state.
+  `pgc-ui/src/app.rs` has the state, the message loop and the command dispatch; the
+  rest of `impl App` is split by area into `app/*.rs` (tree pane, query tabs, closing,
+  templates, ...). New handlers go into the module of their area; tests are in
+  `app/tests.rs` (`tests/real_server.rs`, `tests/screenshots.rs`).
 - **Terminal safety:** always restore the terminal (raw mode, alternate screen) on exit
   *and* on panic (install a panic hook first thing).
 - **Logging:** `tracing` to a file only (D-007); never print to stdout/stderr while the
