@@ -248,7 +248,8 @@ pub struct App {
     /// The tree / tabs border is being dragged with the mouse (D-045).
     pane_drag: bool,
     /// Developer templates (D-046): the open form, the picker's state, lookups on
-    /// their way (key → what they fill) and the row being edited (list field, row).
+    /// their way (key → what they fill; also the lookups of autocomplete, D-052, and
+    /// of the generate commands, D-054) and the row being edited (list field, row).
     pub template: Option<TemplateForm>,
     picker: Option<Picker>,
     template_lookups: HashMap<u64, LookupTarget>,
@@ -541,7 +542,9 @@ impl App {
             Command::NextResult | Command::PrevResult => {
                 self.query().is_some_and(|q| q.results.len() > 1)
             }
-            Command::Psql => self.query().is_some_and(|q| q.connected() && !q.busy()),
+            Command::Psql => self
+                .query()
+                .is_some_and(|q| q.connected() && !q.busy() && q.export.is_none()),
             _ => false,
         }
     }
@@ -944,6 +947,15 @@ impl App {
                 }
             }
             Cmd::Generate { what, table } => {
+                // reading the table would end a paused result (or the stream an
+                // export reads from): refused, as for templates (D-019, D-046)
+                if self
+                    .query()
+                    .is_some_and(|q| q.running.is_some() || q.export.is_some())
+                {
+                    self.error(CONNECTION_BUSY);
+                    return;
+                }
                 let sql = match self.sql.render("psql", "generate.sql", ctx) {
                     Ok(s) => s,
                     Err(e) => {
@@ -1122,7 +1134,7 @@ impl App {
 
     /// `Ctrl+Space` / `Alt+/` (`manual`) or automatic: opens the list at the cursor.
     fn open_completion(&mut self, manual: bool) {
-        use crate::completion::{AUTO_LETTERS, Popup, build};
+        use crate::completion::{AUTO_LETTERS, Popup};
         use pgc_editor::complete::Want;
         let tab = self.tabs[self.active_tab].id;
         let Some(q) = self.query() else {
@@ -1146,10 +1158,13 @@ impl App {
                 return;
             }
         }
-        let built = build(&a, &q.names, pgc_editor::lexer::keywords());
+        let (built, held) = completion_list(&a, q);
         let needs = built.needs.clone();
+        if manual && held {
+            self.status = NAMES_HELD.to_owned();
+        }
         if built.items.is_empty() && !built.loading {
-            if manual {
+            if manual && !held {
                 self.status = "No suggestions".to_owned();
             }
             self.request_names(&needs);
@@ -1172,7 +1187,6 @@ impl App {
     /// The text changed or names arrived: new entries for the open list; it closes
     /// when the cursor left the name or nothing fits any more.
     fn refresh_completion(&mut self) {
-        use crate::completion::build;
         use pgc_editor::complete::Want;
         let Some(popup) = self.completion.as_ref() else {
             return;
@@ -1198,7 +1212,7 @@ impl App {
             self.completion = None;
             return;
         }
-        let built = build(&a, &q.names, pgc_editor::lexer::keywords());
+        let (built, _) = completion_list(&a, q);
         let needs = built.needs.clone();
         if built.items.is_empty() && !built.loading {
             self.completion = None;
@@ -1251,6 +1265,10 @@ impl App {
         let Some(handle) = q.conn.as_ref().map(|c| c.handle.clone()) else {
             return;
         };
+        // a request now would end the running or paused result (see `completion_list`)
+        if q.running.is_some() {
+            return;
+        }
         let generation = q.names.generation;
         for need in needs {
             let (sql, params) = match need {
@@ -2224,6 +2242,7 @@ impl App {
                     Some(e) => format!("Connection lost: {e}"),
                     None => "Connection closed".to_owned(),
                 });
+                self.drop_tab_lookups(tab);
             }
             DbEvent::Lookup { key, result, .. } => self.lookup_loaded(key, result),
             DbEvent::Nodes { .. } | DbEvent::Definition { .. } | DbEvent::Model { .. } => {}
@@ -2434,6 +2453,7 @@ impl App {
             q.tx = TxStatus::Idle;
             q.info("Connection closed (the server did not react to the cancel request)");
         }
+        self.drop_tab_lookups(tab);
     }
 
     fn fetch_all(&mut self) {
@@ -2643,6 +2663,7 @@ impl App {
         }
         let tab = self.tabs.remove(i);
         self.pending_defs.retain(|_, t| *t != tab.id);
+        self.template_lookups.retain(|_, t| t.tab() != Some(tab.id));
         if let Some(conn) = tab.query.and_then(|q| q.conn) {
             // dropping the connection rolls back an open transaction (D-019)
             conn.handle.abort();
@@ -2675,7 +2696,7 @@ impl App {
     fn in_bulk(b: Bulk, t: &Tab) -> bool {
         match b {
             Bulk::Quit => true,
-            Bulk::Disconnect(uid) => {
+            Bulk::Disconnect(uid) | Bulk::Delete(uid) => {
                 t.server == Some(uid)
                     || t.query
                         .as_ref()
@@ -2696,6 +2717,7 @@ impl App {
         let title = match b {
             Bulk::Quit => "Quit",
             Bulk::Disconnect(_) => "Disconnect",
+            Bulk::Delete(_) => "Delete connection",
         };
         if self.settings.query.ask_save
             && let Some(i) = self.tabs.iter().position(|t| {
@@ -2754,11 +2776,12 @@ impl App {
             .collect()
     }
 
-    /// Quits, or closes every tab of the server and its connections (D-043).
+    /// Quits, or closes every tab of the server and its connections (D-043); a
+    /// deleted server then leaves the tree.
     fn finish_bulk(&mut self, b: Bulk) {
         match b {
             Bulk::Quit => self.quit = true,
-            Bulk::Disconnect(uid) => {
+            Bulk::Disconnect(uid) | Bulk::Delete(uid) => {
                 let ids: Vec<u64> = self
                     .tabs
                     .iter()
@@ -2771,6 +2794,9 @@ impl App {
                 }
                 self.disconnect_server(uid);
                 self.status = "Disconnected".to_owned();
+                if b == Bulk::Delete(uid) {
+                    self.delete_server(uid);
+                }
             }
         }
     }
@@ -3167,7 +3193,7 @@ impl App {
             return;
         }
         if q.busy() || q.paused() || q.export.is_some() {
-            self.error("The query tab's connection is busy.\nWait for the query (or close its result) first.");
+            self.error(CONNECTION_BUSY);
             return;
         }
         let Some(version) = self.tab_server_version() else {
@@ -3451,12 +3477,27 @@ impl App {
         }
     }
 
+    /// The template form closed: answers for its choice lists are no longer wanted.
+    /// Lookups of query tabs (autocomplete, generate commands) stay.
+    fn drop_form_lookups(&mut self) {
+        self.template_lookups.retain(|_, t| t.tab().is_some());
+    }
+
+    /// The connection of query tab `tab` is gone: answers to its lookups will not
+    /// come, and autocomplete reads its names again on the next connection (D-052).
+    fn drop_tab_lookups(&mut self, tab: u64) {
+        self.template_lookups.retain(|_, t| t.tab() != Some(tab));
+        if let Some(q) = self.tab_mut(tab).and_then(|t| t.query.as_mut()) {
+            q.names.clear();
+        }
+    }
+
     fn form_event(&mut self, event: FormEvent) {
         match event {
             FormEvent::None => {}
             FormEvent::Cancel => {
                 self.template = None;
-                self.template_lookups.clear();
+                self.drop_form_lookups();
             }
             FormEvent::Ok => {
                 let Some(form) = &self.template else {
@@ -3466,7 +3507,7 @@ impl App {
                     Ok(sql) => {
                         let tab = form.tab;
                         self.template = None;
-                        self.template_lookups.clear();
+                        self.drop_form_lookups();
                         if let Some(i) = self.tab_index(tab) {
                             self.active_tab = i;
                             self.focus = Focus::Tabs;
@@ -4425,7 +4466,10 @@ The incomplete file was deleted."
                     }
                     (DialogKind::Connection, "ok") => self.apply_connection(dialog),
                     (DialogKind::Login, "ok") => self.apply_login(&dialog),
-                    (DialogKind::ConfirmDelete, "yes") => self.delete_server(dialog.tag),
+                    // as disconnecting: questions first, then the server's tabs close
+                    (DialogKind::ConfirmDelete, "yes") => {
+                        self.request_bulk(Bulk::Delete(dialog.tag));
+                    }
                     (DialogKind::Find, "cancel") => {}
                     (DialogKind::Find, button) => self.find_dialog_done(dialog, button),
                     (DialogKind::ReplaceConfirm, button) => self.replace_confirm_done(button),
@@ -4840,8 +4884,9 @@ The incomplete file was deleted."
         );
     }
 
+    /// Removes a server from the tree and the settings; its tabs and connections are
+    /// closed before ([`Self::finish_bulk`]).
     fn delete_server(&mut self, uid: u64) {
-        self.disconnect_server(uid);
         if let Some(node) = self.tree.remove(uid) {
             self.status = format!("Connection \"{}\" deleted", node.conn.name);
         }
@@ -5120,6 +5165,30 @@ The incomplete file was deleted."
     }
 }
 
+/// Status line: autocomplete could not read names it misses (D-052).
+const NAMES_HELD: &str = "Autocomplete: new names are read after the running or paused result ends";
+
+/// A request on the query tab's connection would end its result (D-019, D-046, D-054).
+const CONNECTION_BUSY: &str =
+    "The query tab's connection is busy.\nWait for the query (or close its result) first.";
+
+/// The autocomplete entries for `a` in a query tab. While the tab's connection is held
+/// by a running or paused result, another request on it would end that result (D-019):
+/// names that are not read yet are then not asked for, and the list offers what is
+/// known. Returns the list and whether names were held back.
+fn completion_list(
+    a: &pgc_editor::complete::Analysis,
+    q: &QueryState,
+) -> (crate::completion::Built, bool) {
+    let mut built = crate::completion::build(a, &q.names, pgc_editor::lexer::keywords());
+    let held = q.running.is_some() && !built.needs.is_empty();
+    if held {
+        built.needs.clear();
+        built.loading = false;
+    }
+    (built, held)
+}
+
 fn on_off(on: bool) -> &'static str {
     if on { "on" } else { "off" }
 }
@@ -5153,6 +5222,16 @@ enum LookupTarget {
         generation: u64,
         need: crate::completion::Need,
     },
+}
+
+impl LookupTarget {
+    /// The query tab a lookup was made for; `None` for the template form's lists.
+    fn tab(&self) -> Option<u64> {
+        match self {
+            LookupTarget::Generate { tab, .. } | LookupTarget::Names { tab, .. } => Some(*tab),
+            LookupTarget::Field(..) | LookupTarget::Row(..) => None,
+        }
+    }
 }
 
 fn shape(p: &devtemplate::Param) -> devtemplate::Shape {
@@ -5349,6 +5428,8 @@ enum Bulk {
     Quit,
     /// Disconnect the server with this uid.
     Disconnect(u64),
+    /// Delete the connection with this uid: as disconnecting, then it leaves the tree.
+    Delete(u64),
 }
 
 #[cfg(test)]
@@ -8162,6 +8243,160 @@ client",
         assert_eq!(a.tree.servers[0].conn.name, "a");
         let saved = Settings::load(&a.paths.settings_file()).unwrap();
         assert_eq!(saved.servers.len(), 1);
+    }
+
+    #[test]
+    fn deleting_a_connection_closes_its_tabs_like_disconnect() {
+        let (mut a, _d) = app();
+        let a_uid = add_server(&mut a, "a");
+        let b_uid = add_server(&mut a, "b");
+        let unsaved = bound_tab(&mut a, a_uid, "shop", "select 1;");
+        let other = bound_tab(&mut a, b_uid, "shop", "");
+        a.tree.select_server(a_uid);
+        a.run(Command::ShowInNewTab);
+        assert_eq!(a.tabs.len(), 4);
+
+        // the questions of disconnecting come first; Cancel keeps everything
+        a.tree.select_server(a_uid);
+        a.run(Command::DeleteConnection);
+        assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::ConfirmDelete);
+        key(&mut a, "Enter");
+        let d = a.dialogs.last().unwrap();
+        assert_eq!(d.kind, DialogKind::QuitSaveChanges);
+        assert_eq!(d.title, "Delete connection");
+        assert_eq!(a.tabs[a.active_tab].id, unsaved);
+        esc(&mut a);
+        assert!(a.dialogs.is_empty());
+        assert_eq!(a.tabs.len(), 4);
+        assert_eq!(a.tree.servers.len(), 2);
+        assert_eq!(a.bulk, None);
+
+        // No (do not save): the server's tabs close, then it leaves the tree
+        a.tree.select_server(a_uid);
+        a.run(Command::DeleteConnection);
+        key(&mut a, "Enter");
+        key(&mut a, "n");
+        assert!(a.dialogs.is_empty());
+        let ids: Vec<u64> = a.tabs.iter().map(|t| t.id).collect();
+        assert_eq!(ids, vec![0, other]);
+        assert_eq!(a.tree.servers.len(), 1);
+        assert_eq!(a.tree.servers[0].uid, b_uid);
+        assert_eq!(a.status, "Connection \"a\" deleted");
+        let saved = Settings::load(&a.paths.settings_file()).unwrap();
+        assert_eq!(saved.servers.len(), 1);
+    }
+
+    #[test]
+    fn query_tab_lookups_outlive_the_template_form_and_end_with_the_connection() {
+        use crate::completion::Need;
+        let (mut a, _d) = app();
+        a.new_query_tab(None);
+        let tab = a.tabs[a.active_tab].id;
+        let conn = 77;
+        a.connections.insert(conn, Target::Query(tab));
+        let names = |tab, generation, need| LookupTarget::Names {
+            tab,
+            generation,
+            need,
+        };
+        // the tab waits for its names while a template form closes
+        a.query_mut().unwrap().names.objects_pending = true;
+        a.template_lookups.insert(1, names(tab, 0, Need::Objects));
+        a.template_lookups.insert(
+            2,
+            LookupTarget::Field("schema".into(), devtemplate::Shape::Name),
+        );
+        a.form_event(FormEvent::Cancel);
+        let keys: Vec<u64> = a.template_lookups.keys().copied().collect();
+        assert_eq!(keys, vec![1], "only the form's own lookup is dropped");
+        let row = ["", "public", "schema", "t"].map(str::to_owned).to_vec();
+        a.update(
+            Msg::Db(DbEvent::Lookup {
+                id: conn,
+                key: 1,
+                result: Ok(vec![row]),
+            }),
+            &Hits::default(),
+        );
+        let q = a.query().unwrap();
+        assert!(!q.names.objects_pending);
+        assert_eq!(q.names.objects.as_ref().map(Vec::len), Some(1));
+
+        // a lost connection: nothing stays "pending", the names are read again
+        let orders = (None, "orders".to_owned());
+        let q = a.query_mut().unwrap();
+        q.names.columns_pending.insert(orders.clone());
+        let generation = q.names.generation;
+        a.template_lookups
+            .insert(3, names(tab, generation, Need::Columns(orders)));
+        a.update(
+            Msg::Db(DbEvent::Closed {
+                id: conn,
+                error: Some(DbError::Other("gone".into())),
+            }),
+            &Hits::default(),
+        );
+        let q = a.query().unwrap();
+        assert!(q.names.columns_pending.is_empty());
+        assert!(q.names.objects.is_none());
+        assert!(q.names.generation > generation);
+        assert!(a.template_lookups.is_empty());
+    }
+
+    #[tokio::test]
+    async fn no_lookups_while_a_result_is_running_or_paused() {
+        let (mut a, _d) = app();
+        let uid = add_server(&mut a, "a");
+        fake_connecting(&mut a, uid);
+        a.server_connected(uid, pgc_core::ServerVersion(170002));
+        // a connected query tab (no real connection behind it) with a running query
+        a.new_query_tab(None);
+        let q = a.query_mut().unwrap();
+        q.binding = Some((uid, "shop".into()));
+        q.conn = Some(QueryConn {
+            id: 99,
+            database: "shop".into(),
+            handle: pgc_db::ConnectionHandle::detached(99),
+            cancel: None,
+            state: QueryConnState::Connected,
+            ssl_mode: SslMode::default(),
+            ssl_root_cert: None,
+        });
+        q.start_run(
+            1,
+            Sent {
+                offset: 0,
+                plpgsql_lines: None,
+            },
+        );
+        let gts = |a: &mut App| {
+            let d = a.psql_dialog("\\gts orders");
+            a.run_psql(d, "\\gts orders");
+        };
+
+        // typing (the list opens by itself) and Ctrl+Space read no names
+        typing(&mut a, "select * from ord");
+        a.run(Command::Complete);
+        assert!(a.template_lookups.is_empty());
+        assert!(!a.query().unwrap().names.objects_pending);
+        assert_eq!(a.status, NAMES_HELD);
+
+        // the same while the result is paused; a generate command is refused
+        a.query_mut().unwrap().running.as_mut().unwrap().paused = true;
+        a.run(Command::Complete);
+        gts(&mut a);
+        assert!(a.template_lookups.is_empty());
+        let d = a.dialogs.pop().unwrap();
+        assert!(d.error, "{}", d.title);
+
+        // the result has ended: names and the table are read
+        a.query_mut().unwrap().running = None;
+        a.run(Command::Complete);
+        assert!(a.query().unwrap().names.objects_pending);
+        assert_eq!(a.template_lookups.len(), 1);
+        gts(&mut a);
+        assert!(a.dialogs.is_empty());
+        assert_eq!(a.template_lookups.len(), 2);
     }
 
     #[test]

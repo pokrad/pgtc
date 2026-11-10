@@ -1275,6 +1275,9 @@ pgtc (binary)
     unsaved query tab of the server (if `query.ask_save` is on), then the
     open-transaction question (*Commit all* / *Rollback all* / *Cancel*). *Cancel*
     at any point stops the disconnect and nothing is closed.
+- **Delete connection** on a server does the same after its own confirmation: the
+  same questions, then the server's tabs and connections close and the server leaves
+  the tree and the settings. *Cancel* at any point keeps the server and its tabs.
 - **Setting `query.ask_save`** (Settings dialog checkbox, default **on**): whether
   pgtc asks to save unsaved query text when a query tab is closed — by `Ctrl+W`, by
   quitting or by disconnecting its server. Off: unsaved text is discarded without a
@@ -1364,7 +1367,10 @@ pgtc (binary)
     partitioning changed. The script first copies it with its data into
     `_TableCopy_<name>` (same schema), drops it, creates it as in the file (plus
     columns and parts that exist only in the database), loads the rows back
-    (identity values continue after them) and re-attaches owned sequences. At the end
+    (identity values continue after them) and re-attaches owned sequences. Its
+    partitions are dropped with it and created again (with their parts that exist
+    only in the database) — also a partition whose own partitioning changed; their
+    rows are in the parent's copy and come back through the parent. At the end
     of the script a commented-out `DROP TABLE _TableCopy_<name>` line lists each copy,
     so the user drops the copies once sure the migration went well.
   - **No `CREATE DATABASE`:** the target is always an existing database.
@@ -1522,6 +1528,10 @@ pgtc (binary)
   do. The cache is dropped after the tab runs DDL (a `CREATE` / `ALTER` / `DROP`
   command tag) and on *Refresh* in the tree. System schemas (`pg_toast`, temp
   schemas) are left out; `pg_catalog` objects are offered like others.
+  - **Not while a result is running or paused** (D-019): another request on the tab's
+    connection would end that result, so no names are read then. The list offers what
+    is already cached (and keywords); opened by key with names missing, the status
+    line says that new names are read after the result ends.
 - **Colours:** theme roles of the menu (popup) and the editor (D-014).
 
 ### D-053 — Keys that terminals may keep for themselves
@@ -1591,6 +1601,10 @@ pgtc (binary)
 - **pgtc's generate commands** (listed separately by `\?`):
   `\gts`, `\gti`, `\gtu`, `\gtd` *table* — SELECT / INSERT / UPDATE / DELETE for a
   table (view, foreign table), **inserted at the cursor** of the editor, never run.
+  - Reading the table uses the tab's connection: while a result is paused (D-019) or
+    an export runs, the command is refused with the same message as developer
+    templates (D-046) — finish or close the result first. `F4` is not available
+    while an export runs.
   - *Table:* `orders`, `sales.orders`, `"Order Items"`; without a schema the table on
     the search path (normally `public`). The statement always names it schema-qualified.
   - *Placeholders:* `[column]` (the plain column name) for every value — not valid
@@ -1709,3 +1723,5 @@ pgtc (binary)
 | 2026-11-10 | D-053 accepted: keys terminals may keep — enhanced keyboard mode (kitty protocol) where supported, second keys (`Alt+Shift+Home/End`, `Alt+PgUp/PgDn`, `Alt+F3`), next / previous result set in the Query menu, Help note. D-014, D-041 updated. |
 | 2026-11-10 | D-054 accepted: psql-style commands on `F4` (lists, `\d`, `\conninfo`, `\?`; own simpler queries) and pgtc's generate commands `\gts` / `\gti` / `\gtu` / `\gtd` with `[column]` placeholders and primary-key `WHERE`. |
 | 2026-11-10 | Object tree expand markers changed from `>` / `v` to `►` / `▼` (D-009). |
+| 2026-11-10 | D-043 updated: *Delete connection* closes the server's tabs like *Disconnect* (same questions first). D-048 updated: partitions of a re-created table are created again and get their rows back through the parent, also when their own partitioning changed. |
+| 2026-11-10 | D-052, D-054 updated: nothing is looked up on a query tab's connection while its result is running or paused — autocomplete offers cached names only, `\gts` / `\gti` / `\gtu` / `\gtd` are refused (as developer templates are); `F4` is off while an export runs. |

@@ -12,7 +12,9 @@
 //!
 //! A table is re-created only when its partitioning changed (it cannot be altered).
 //! Its rows are first copied into `_TableCopy_<name>` and loaded back after the new
-//! table exists; parts that exist only in the database are re-created too.
+//! table exists; parts that exist only in the database are re-created too. Its
+//! partitions go with it (`DROP TABLE` removes them): they are created again — also
+//! those whose own partitioning changed — and get their rows back through the parent.
 //!
 //! Properties of an existing object follow the file (a default or comment missing in
 //! the file is removed); parts that exist only in the database (columns, constraints,
@@ -179,19 +181,19 @@ pub fn sync_script(want: &Database, live: &Database) -> Option<String> {
         for t in &ws.tables {
             let l = ls.tables.iter().find(|l| l.name == t.name);
             let key = (ws.name.clone(), t.name.clone());
-            let mode = match l {
+            match l {
                 Some(l) if rebuilt.contains(&key) => {
                     let merged = merge(t, l);
                     let plan = rebuild_plan(want, live, &ws.name, &merged, l, &dropped);
                     reown.extend(plan.disown.iter().cloned());
                     out_rebuild(&mut out, &ws.name, &merged, plan);
-                    continue;
                 }
-                // dropped together with its re-created parent
-                Some(_) if dropped.contains(&key) => None,
-                l => l,
-            };
-            table(&mut out, &ws.name, t, mode);
+                // dropped together with its re-created parent: created again, with
+                // what exists only in the database; its rows come back through the
+                // parent
+                Some(l) if dropped.contains(&key) => table(&mut out, &ws.name, &merge(t, l), None),
+                l => table(&mut out, &ws.name, t, l),
+            }
         }
         // partitions only in the database, dropped with a re-created parent
         for l in &ls.tables {
@@ -245,9 +247,11 @@ pub fn sync_script(want: &Database, live: &Database) -> Option<String> {
 type TableKey = (String, String);
 
 /// Tables that must be re-created (partitioning changed) and every table their
-/// `DROP TABLE` removes (the partitions below them).
+/// `DROP TABLE` removes (the partitions below them). A partition whose partitioning
+/// changed together with its parent's is not re-created on its own: the parent's
+/// `DROP TABLE` removes it and the parent's copy has its rows.
 fn rebuilt_tables(want: &Database, live: &Database) -> (BTreeSet<TableKey>, BTreeSet<TableKey>) {
-    let mut rebuilt = BTreeSet::new();
+    let mut changed = BTreeSet::new();
     for ws in &want.schemas {
         let Some(ls) = live.schema(&ws.name) else {
             continue;
@@ -256,11 +260,11 @@ fn rebuilt_tables(want: &Database, live: &Database) -> (BTreeSet<TableKey>, BTre
             if let Some(l) = ls.tables.iter().find(|l| l.name == t.name)
                 && (t.partition_by != l.partition_by || t.partition_of != l.partition_of)
             {
-                rebuilt.insert((ws.name.clone(), t.name.clone()));
+                changed.insert((ws.name.clone(), t.name.clone()));
             }
         }
     }
-    let mut dropped = rebuilt.clone();
+    let mut dropped = changed.clone();
     loop {
         let more: Vec<TableKey> = live
             .schemas
@@ -279,6 +283,21 @@ fn rebuilt_tables(want: &Database, live: &Database) -> (BTreeSet<TableKey>, BTre
         }
         dropped.extend(more);
     }
+    // only the topmost: not the partitions of a table that is dropped anyway
+    let live_parent = |(schema, name): &TableKey| {
+        let t = live
+            .schema(schema)?
+            .tables
+            .iter()
+            .find(|t| t.name == *name)?;
+        let p = &t.partition_of.as_ref()?.parent;
+        Some((p.schema.clone(), p.name.clone()))
+    };
+    let rebuilt = changed
+        .iter()
+        .filter(|&key| live_parent(key).is_none_or(|p| !dropped.contains(&p)))
+        .cloned()
+        .collect();
     (rebuilt, dropped)
 }
 
@@ -1558,6 +1577,63 @@ mod tests {
             text.trim_end()
                 .ends_with("-- DROP TABLE app.\"_TableCopy_log\";")
         );
+    }
+
+    #[test]
+    fn partitions_changed_with_their_parent_go_through_the_parent() {
+        let tables = |by: &str, bound: &str| {
+            let mut s = schema("app");
+            s.tables.push(Table {
+                name: "log".into(),
+                columns: vec![col("id", "integer"), col("at", "date")],
+                partition_by: Some(by.into()),
+                ..Default::default()
+            });
+            s.tables.push(Table {
+                name: "log_2024".into(),
+                partition_of: Some(PartitionOf {
+                    parent: QualName {
+                        schema: "app".into(),
+                        name: "log".into(),
+                    },
+                    bound: bound.into(),
+                }),
+                ..Default::default()
+            });
+            s
+        };
+        let mut live = tables(
+            "RANGE (at)",
+            "FOR VALUES FROM ('2024-01-01') TO ('2025-01-01')",
+        );
+        // an index that exists only in the database is kept
+        live.tables[1].indexes.push(Index {
+            name: "log_2024_mine".into(),
+            definition: "CREATE INDEX log_2024_mine ON app.log_2024 USING btree (id)".into(),
+            comment: None,
+        });
+        let want = tables("RANGE (id)", "FOR VALUES FROM (1) TO (1000)");
+        let text = sync_script(&db(vec![want]), &db(vec![live])).unwrap();
+        let at = |needle: &str| {
+            text.find(needle)
+                .unwrap_or_else(|| panic!("{needle}\n{text}"))
+        };
+        let order = [
+            "CREATE TABLE app.\"_TableCopy_log\" AS TABLE app.log;",
+            "DROP TABLE app.log;",
+            "PARTITION BY RANGE (id);",
+            "CREATE TABLE app.log_2024 PARTITION OF app.log\n    FOR VALUES FROM (1) TO (1000);",
+            "INSERT INTO app.log (id, at) OVERRIDING SYSTEM VALUE",
+            "CREATE INDEX log_2024_mine ON app.log_2024 USING btree (id);",
+        ];
+        for w in order.windows(2) {
+            assert!(at(w[0]) < at(w[1]), "{} before {}\n{text}", w[0], w[1]);
+        }
+        // the partition is gone with its parent: no copy, no drop, no load of its own
+        assert_eq!(text.matches(" AS TABLE ").count(), 1, "{text}");
+        assert_eq!(text.matches("INSERT INTO").count(), 1, "{text}");
+        assert!(!text.contains("_TableCopy_log_2024"), "{text}");
+        assert!(!text.contains("DROP TABLE app.log_2024"), "{text}");
     }
 
     #[test]

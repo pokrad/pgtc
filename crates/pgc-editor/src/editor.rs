@@ -598,6 +598,10 @@ impl Editor {
 
     /// Replaces chars `start..end` with `text`; records the edit in the open group.
     fn replace(&mut self, start: usize, end: usize, text: &str) {
+        // nothing to remove and nothing to insert: no edit, no undo step, not modified
+        if start == end && text.is_empty() {
+            return;
+        }
         let removed = self.rope.slice(start..end).to_string();
         self.rope.remove(start..end);
         self.rope.insert(start, text);
@@ -622,12 +626,13 @@ impl Editor {
             after: (0, None),
             typing: false,
         });
-        self.redo.clear();
         let cursor_before = self.cursor;
         f(self);
         // Cursor after the last edit's inserted text.
         if let Some(e) = self.undo.last().and_then(|g| g.edits.last()).cloned() {
             self.cursor = e.at + e.inserted.chars().count();
+            // a real edit starts a new history branch (one that changed nothing does not)
+            self.redo.clear();
         } else {
             self.cursor = cursor_before;
         }
@@ -1018,6 +1023,28 @@ mod tests {
         e.apply(Action::Redo);
         e.apply(Action::Redo);
         assert_eq!(e.text(), "select 1");
+    }
+
+    #[test]
+    fn edits_that_change_nothing_leave_no_trace() {
+        let mut e = ed("abc");
+        // nothing to delete at the start / end of the text
+        e.apply(Action::DeleteWordLeft);
+        e.apply(Action::Move(Motion::DocEnd, false));
+        e.apply(Action::DeleteWordRight);
+        e.apply(Action::Unindent);
+        e.apply(Action::Insert(String::new()));
+        assert!(!e.modified());
+        assert_eq!(e.text(), "abc");
+        e.apply(Action::Undo);
+        assert_eq!(e.text(), "abc", "no empty undo step");
+        // ... and they do not throw away what can be redone
+        type_str(&mut e, "d");
+        e.apply(Action::Undo);
+        e.apply(Action::Move(Motion::DocStart, false));
+        e.apply(Action::DeleteWordLeft);
+        e.apply(Action::Redo);
+        assert_eq!(e.text(), "abcd");
     }
 
     #[test]

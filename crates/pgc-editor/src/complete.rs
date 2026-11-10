@@ -206,7 +206,9 @@ pub fn analyze_lines(lines: &[(String, Vec<Token>)], line: usize, byte: usize) -
     }
     // tokens before the prefix, and the statement (between `;`) around the cursor
     let n_before = toks.iter().take_while(|t| before(t)).count();
-    let prefix_tokens = usize::from(!prefix.is_empty());
+    // the prefix's own token is among them only when the cursor is at its end (inside
+    // a word the token ends after the cursor)
+    let prefix_tokens = usize::from(!prefix.is_empty() && at.is_some_and(|i| i < n_before));
     let stmt_start = toks[..n_before]
         .iter()
         .rposition(|t| t.is(";"))
@@ -403,6 +405,22 @@ mod tests {
         // subqueries and functions are not tables
         let a = at("select | from (select 1) s, generate_series(1, 3) g").unwrap();
         assert!(a.tables.is_empty(), "{:?}", a.tables);
+    }
+
+    #[test]
+    fn cursor_inside_a_word() {
+        // the first word of the text and of a later statement
+        let a = at("sel|ect 1").unwrap();
+        assert_eq!((a.prefix.as_str(), &a.want), ("sel", &Want::Any));
+        let a = at("select 1; sel|ect 2").unwrap();
+        assert_eq!((a.prefix.as_str(), &a.want), ("sel", &Want::Any));
+        // the context is the one before the word, as at its end
+        let a = at("select * from us|ers").unwrap();
+        assert_eq!((a.prefix.as_str(), &a.want), ("us", &Want::Relations));
+        let a = at("select o.na|me from orders o").unwrap();
+        assert_eq!(a.prefix, "na");
+        assert_eq!(a.want, Want::Qualified("o".into()));
+        assert_eq!(a.tables, vec![t(None, "orders", Some("o"))]);
     }
 
     #[test]
