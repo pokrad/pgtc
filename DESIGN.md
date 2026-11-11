@@ -1611,8 +1611,11 @@ pgtc (binary)
     SQL, so the statement cannot run until every value is filled in; each value line
     has a comment with the type and `NOT NULL`.
   - *SELECT:* every column, no `WHERE`.
-  - *INSERT:* leaves out generated columns, identity `ALWAYS` columns and columns with
-    a default (e.g. `serial`).
+  - *INSERT:* leaves out only the columns the database fills by itself: generated
+    columns, identity columns and columns whose default takes a value from a sequence
+    (`nextval(...)`, e.g. `serial`). Columns with any other default are listed; their
+    comment also shows the default (`-- integer, NOT NULL, default 0`), so the user
+    sees which lines can be deleted.
   - *UPDATE / DELETE:* `WHERE` on the **primary key** columns (`AND` for several);
     without one, on a unique constraint whose columns are all `NOT NULL` (comment says
     so); without either, `WHERE [condition]  -- no primary key: write a condition`.
@@ -1725,3 +1728,4 @@ pgtc (binary)
 | 2026-11-10 | Object tree expand markers changed from `>` / `v` to `►` / `▼` (D-009). |
 | 2026-11-10 | D-043 updated: *Delete connection* closes the server's tabs like *Disconnect* (same questions first). D-048 updated: partitions of a re-created table are created again and get their rows back through the parent, also when their own partitioning changed. |
 | 2026-11-10 | D-052, D-054 updated: nothing is looked up on a query tab's connection while its result is running or paused — autocomplete offers cached names only, `\gts` / `\gti` / `\gtu` / `\gtd` are refused (as developer templates are); `F4` is off while an export runs. |
+| 2026-11-11 | D-054 updated: the generated INSERT leaves out only generated, identity and sequence-filled (`nextval`) columns; columns with another default are listed, with the default in their comment. |

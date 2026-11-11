@@ -154,6 +154,20 @@ async fn psql_commands_against_a_real_server() {
     );
     assert!(text.contains("WHERE id = [id];"), "{text}");
     assert!(text.contains("-- primary key: integer"), "{text}");
+    // INSERT: the serial key (default nextval) is left out, the other columns listed
+    a.status.clear();
+    run(&mut a, "\\gti pgtc_psql");
+    pump(&mut a, &mut rx, &hits, |a| {
+        a.status.starts_with("Generated")
+    })
+    .await;
+    let text = a.editor().text();
+    assert!(
+        text.contains(
+            ".pgtc_psql (\n    name,  -- text, NOT NULL\n    note   -- text\n) VALUES (\n    [name],\n    [note]\n);"
+        ),
+        "{text}"
+    );
     // unknown command: an error, the command line stays open
     run(&mut a, "\\xyz");
     assert_eq!(a.dialogs.len(), 2);

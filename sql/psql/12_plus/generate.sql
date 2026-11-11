@@ -1,8 +1,9 @@
 -- \gts / \gti / \gtu / \gtd (D-054): the columns of one table, view or foreign table.
 -- $1 schema or NULL (search path), $2 name. One row per column, all text:
--- schema, table, column, type, not_null, has_default, identity ('a' / 'd' / ''),
--- generated ('s' / ''), pk_pos (position in the primary key or ''), uk_pos
--- (position in the first unique constraint whose columns are all NOT NULL), uk_name.
+-- schema, table, column, type, not_null, default (its expression or ''), identity
+-- ('a' / 'd' / ''), generated ('s' / ''), pk_pos (position in the primary key or ''),
+-- uk_pos (position in the first unique constraint whose columns are all NOT NULL),
+-- uk_name.
 WITH t AS (
     SELECT c.oid, n.nspname, c.relname
     FROM pg_catalog.pg_class c
@@ -25,7 +26,9 @@ WITH t AS (
 SELECT t.nspname::text, t.relname::text, a.attname::text,
     pg_catalog.format_type(a.atttypid, a.atttypmod)::text,
     a.attnotnull::text,
-    a.atthasdef::text,
+    COALESCE((SELECT pg_catalog.pg_get_expr(d.adbin, d.adrelid)
+        FROM pg_catalog.pg_attrdef d
+        WHERE d.adrelid = a.attrelid AND d.adnum = a.attnum AND a.attgenerated = ''), '')::text,
     a.attidentity::text,
     a.attgenerated::text,
     COALESCE(pg_catalog.array_position((SELECT conkey FROM pk), a.attnum)::text, ''),

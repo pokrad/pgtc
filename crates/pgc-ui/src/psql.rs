@@ -415,7 +415,8 @@ pub struct GenColumn {
     pub name: String,
     pub type_name: String,
     pub not_null: bool,
-    pub has_default: bool,
+    /// The default expression (`0`, `nextval('orders_id_seq'::regclass)`, ...).
+    pub default: Option<String>,
     /// `a` (ALWAYS), `d` (BY DEFAULT) or empty.
     pub identity: String,
     pub generated: bool,
@@ -442,7 +443,7 @@ pub fn gen_table(rows: Vec<Vec<String>>) -> Option<GenTable> {
             col,
             type_name,
             not_null,
-            has_def,
+            default,
             identity,
             generated,
             pk,
@@ -459,7 +460,7 @@ pub fn gen_table(rows: Vec<Vec<String>>) -> Option<GenTable> {
             name: col,
             type_name,
             not_null: not_null == "true",
-            has_default: has_def == "true",
+            default: (!default.is_empty()).then_some(default),
             identity,
             generated: !generated.is_empty(),
             pk_pos: pk.parse().ok(),
@@ -467,6 +468,28 @@ pub fn gen_table(rows: Vec<Vec<String>>) -> Option<GenTable> {
         });
     }
     table
+}
+
+impl GenColumn {
+    /// The database fills the column from a sequence (`serial` and the like): INSERT
+    /// leaves it out.
+    fn filled_by_sequence(&self) -> bool {
+        self.default
+            .as_deref()
+            .is_some_and(|d| d.contains("nextval("))
+    }
+}
+
+/// Comment of an INSERT column: type, NOT NULL and the default, if it has one (the
+/// column can then be left out).
+fn insert_comment(c: &GenColumn) -> String {
+    let mut comment = type_comment(c);
+    if let Some(d) = &c.default {
+        // one line: the expression may hold a line break inside a string
+        let d = d.replace(['\r', '\n'], " ");
+        comment.push_str(&format!(", default {d}"));
+    }
+    comment
 }
 
 /// Comment of a value line: the type and NOT NULL.
@@ -557,14 +580,14 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
                 .columns
                 .iter()
                 .filter(writable)
-                .filter(|c| !c.has_default && c.identity.is_empty())
+                .filter(|c| c.identity.is_empty() && !c.filled_by_sequence())
                 .collect();
             lines.push((format!("INSERT INTO {table} ("), String::new()));
             for (i, c) in cols.iter().enumerate() {
                 let comma = if i + 1 < cols.len() { "," } else { "" };
                 lines.push((
                     format!("    {}{comma}", quote_ident(&c.name)),
-                    type_comment(c),
+                    insert_comment(c),
                 ));
             }
             lines.push((") VALUES (".to_owned(), String::new()));
@@ -612,7 +635,7 @@ mod tests {
             name: name.into(),
             type_name: ty.into(),
             not_null,
-            has_default: false,
+            default: None,
             identity: String::new(),
             generated: false,
             pk_pos: None,
@@ -626,7 +649,7 @@ mod tests {
             name: "orders".into(),
             columns: vec![
                 GenColumn {
-                    has_default: true,
+                    default: Some("nextval('orders_id_seq'::regclass)".into()),
                     pk_pos: Some(1),
                     ..col("id", "integer", true)
                 },
@@ -741,6 +764,54 @@ mod tests {
     }
 
     #[test]
+    fn insert_lists_columns_with_defaults_but_not_what_the_database_fills() {
+        let with_default = |name: &str, ty: &str, def: &str| GenColumn {
+            default: Some(def.into()),
+            ..col(name, ty, true)
+        };
+        let t = GenTable {
+            schema: "public".into(),
+            name: "bugs".into(),
+            columns: vec![
+                GenColumn {
+                    pk_pos: Some(1),
+                    ..with_default("id", "integer", "nextval('bugs_id_seq'::regclass)")
+                },
+                with_default("status", "smallint", "10"),
+                with_default("summary", "character varying(128)", "''::character varying"),
+                with_default("note", "text", "'two\nlines'::text"),
+                GenColumn {
+                    identity: "d".into(),
+                    ..col("seq", "bigint", true)
+                },
+                GenColumn {
+                    generated: true,
+                    ..col("total", "numeric", false)
+                },
+            ],
+            unique: None,
+        };
+        // every column has a default: only what the database fills itself is left out
+        // (the sequence key, the identity and the generated column)
+        let expected = [
+            "INSERT INTO public.bugs (",
+            "    status,   -- smallint, NOT NULL, default 10",
+            "    summary,  -- character varying(128), NOT NULL, default ''::character varying",
+            "    note      -- text, NOT NULL, default 'two lines'::text",
+            ") VALUES (",
+            "    [status],",
+            "    [summary],",
+            "    [note]",
+            ");",
+        ];
+        assert_eq!(generate(Gen::Insert, &t), expected.join("\n"));
+        // UPDATE comments stay as they were: type and NOT NULL
+        let u = generate(Gen::Update, &t);
+        assert!(u.contains("status = [status],"), "{u}");
+        assert!(!u.contains("default"), "{u}");
+    }
+
+    #[test]
     fn generate_keys_unique_and_none() {
         let mut t = GenTable {
             schema: "s".into(),
@@ -788,15 +859,18 @@ mod tests {
 
     #[test]
     fn generate_rows_to_table() {
-        let row = |c: &str, pk: &str| -> Vec<String> {
+        let row = |c: &str, pk: &str, def: &str| -> Vec<String> {
             [
-                "public", "orders", c, "integer", "true", "false", "", "", pk, "", "",
+                "public", "orders", c, "integer", "true", def, "", "", pk, "", "",
             ]
             .map(str::to_owned)
             .to_vec()
         };
-        let t = gen_table(vec![row("id", "1"), row("x", "")]).unwrap();
+        let serial = "nextval('orders_id_seq'::regclass)";
+        let t = gen_table(vec![row("id", "1", serial), row("x", "", "")]).unwrap();
         assert_eq!(t.name, "orders");
+        assert_eq!(t.columns[0].default.as_deref(), Some(serial));
+        assert_eq!(t.columns[1].default, None);
         assert_eq!(t.columns[0].pk_pos, Some(1));
         assert_eq!(t.columns[1].pk_pos, None);
         assert!(t.unique.is_none());
