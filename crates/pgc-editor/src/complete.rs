@@ -209,13 +209,12 @@ pub fn analyze_lines(lines: &[(String, Vec<Token>)], line: usize, byte: usize) -
     // the prefix's own token is among them only when the cursor is at its end (inside
     // a word the token ends after the cursor)
     let prefix_tokens = usize::from(!prefix.is_empty() && at.is_some_and(|i| i < n_before));
-    let stmt_start = toks[..n_before]
-        .iter()
-        .rposition(|t| t.is(";"))
-        .map_or(0, |i| i + 1);
+    // the `$tag$` of a function / DO body ends a statement too (D-052)
+    let ends = |t: &Tok| t.is(";") || t.kind == TokenKind::BodyQuote;
+    let stmt_start = toks[..n_before].iter().rposition(ends).map_or(0, |i| i + 1);
     let stmt_end = toks[n_before..]
         .iter()
-        .position(|t| t.is(";"))
+        .position(ends)
         .map_or(toks.len(), |i| n_before + i);
     let stmt = &toks[stmt_start..stmt_end];
     let prev = &toks[stmt_start..n_before - prefix_tokens];
@@ -432,5 +431,27 @@ mod tests {
         assert!(at("select /* x| */ 1").is_none());
         // right after a closed string: fine
         assert!(at("select 'a' |").is_some());
+        // a dollar quote that is not a body is a string
+        assert!(at("select $$ from ord|").is_none());
+    }
+
+    /// Inside a function / DO body the text is SQL; the body's `$tag$` ends a statement.
+    #[test]
+    fn inside_function_bodies() {
+        let a = at("CREATE FUNCTION f() RETURNS int AS $fn$
+BEGIN
+  RETURN (SELECT count(*) FROM ord|")
+        .unwrap();
+        assert_eq!(a.prefix, "ord");
+        assert_eq!(a.want, Want::Relations);
+        // the statement starts after the `$fn$`: the header's words are not in it
+        let a =
+            at("CREATE FUNCTION f() RETURNS int AS $fn$ SELECT o.| FROM orders o $fn$").unwrap();
+        assert_eq!(a.want, Want::Qualified("o".into()));
+        assert_eq!(a.tables, vec![t(None, "orders", Some("o"))]);
+        let a = at("DO $$ BEGIN UPDATE | $$").unwrap();
+        assert_eq!(a.want, Want::Relations);
+        // strings inside the body are still strings
+        assert!(at("DO $$ BEGIN RAISE NOTICE 'ab|'; END $$").is_none());
     }
 }

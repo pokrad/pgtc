@@ -1,6 +1,11 @@
 //! PostgreSQL SQL lexer (D-015) for highlighting. Works line by line; the state at the
-//! end of a line (inside a block comment, string, quoted identifier or dollar quote)
-//! is carried to the next line.
+//! end of a line (inside a block comment, string, quoted identifier, dollar quote or a
+//! function / `DO` body) is carried to the next line.
+//!
+//! A dollar quote right after `AS` or `DO` (`AS $$`, `DO $body$`) is a **body** and
+//! its text is lexed as SQL (keywords, strings, comments); its closing tag always ends
+//! it, also inside an unclosed string or comment of the body, as in PostgreSQL. Every
+//! other dollar quote is a string.
 
 use std::sync::OnceLock;
 
@@ -15,8 +20,16 @@ pub enum LexState {
     String { escape: bool },
     /// Inside `"..."`.
     QuotedIdent,
-    /// Inside `$tag$ ... $tag$` (tag may be empty).
+    /// Inside a dollar-quoted string `$tag$ ... $tag$` (tag may be empty).
     Dollar(String),
+    /// Normal text whose last word was `AS` or `DO`: a dollar quote next is a body.
+    AfterAs,
+    /// Inside function / `DO` bodies: their tags (outermost first) and the state in
+    /// the innermost one.
+    Body {
+        tags: Vec<String>,
+        inner: Box<LexState>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,6 +41,9 @@ pub enum TokenKind {
     Comment,
     QuotedIdent,
     Operator,
+    /// The `$tag$` that opens or closes a body (drawn like a string; ends a statement
+    /// for autocomplete).
+    BodyQuote,
 }
 
 /// A token as a byte range of the line.
@@ -41,21 +57,83 @@ pub struct Token {
 /// Lexes one line (without its line break) starting in `state`. Tokens are pushed to
 /// `out` if given (the background scan only needs the end state).
 pub fn lex_line(state: &LexState, line: &str, mut out: Option<&mut Vec<Token>>) -> LexState {
-    let bytes = line.as_bytes();
-    let len = bytes.len();
+    let len = line.len();
+    let (mut tags, mut inner) = match state {
+        LexState::Body { tags, inner } => (tags.clone(), (**inner).clone()),
+        s => (Vec::new(), s.clone()),
+    };
+    let mut i = 0;
+    loop {
+        // The first closing tag of any open body ends it and the bodies inside it (an
+        // outer body is a string to PostgreSQL: it ends at the first `$tag$` of its own).
+        let close = tags
+            .iter()
+            .enumerate()
+            .filter_map(|(k, t)| {
+                let c = format!("${t}$");
+                line[i..].find(&c).map(|p| (i + p, k, c.len()))
+            })
+            .min();
+        let limit = close.map_or(len, |c| c.0);
+        let (state, at, opened) = lex_range(&inner, line, i, limit, &mut out);
+        inner = state;
+        i = at;
+        if let Some(tag) = opened {
+            // `AS $tag$`: a body starts (`i` is after its tag)
+            tags.push(tag);
+            inner = LexState::Normal;
+            continue;
+        }
+        if let Some((at, k, n)) = close {
+            push(&mut out, at, at + n, TokenKind::BodyQuote);
+            i = at + n;
+            tags.truncate(k);
+            // a body is opened from normal text
+            inner = LexState::Normal;
+            continue;
+        }
+        break;
+    }
+    if tags.is_empty() {
+        inner
+    } else {
+        LexState::Body {
+            tags,
+            inner: Box::new(inner),
+        }
+    }
+}
+
+fn push(out: &mut Option<&mut Vec<Token>>, start: usize, end: usize, kind: TokenKind) {
+    if let Some(out) = out.as_deref_mut()
+        && end > start
+    {
+        out.push(Token { start, end, kind });
+    }
+}
+
+/// Lexes `line[from..end]` starting in `state` (never a [`LexState::Body`]). Stops at
+/// `end`, or right after the `$tag$` of a body that opens (then returns its tag).
+/// Returns the state, the position reached and the opened body's tag.
+fn lex_range(
+    state: &LexState,
+    line: &str,
+    from: usize,
+    end: usize,
+    out: &mut Option<&mut Vec<Token>>,
+) -> (LexState, usize, Option<String>) {
+    let bytes = &line.as_bytes()[..end];
+    let len = end;
     // The background scan only needs the end state: no keyword lookups.
     let want_tokens = out.is_some();
-    let mut i = 0;
+    let mut i = from;
     // Start of an opening quote / `/*` / `$tag$`, so that it becomes part of the token
     // produced by the branch for the construct it opens.
     let mut opened: Option<usize> = None;
-    let mut state = state.clone();
-    let mut push = |start: usize, end: usize, kind: TokenKind| {
-        if let Some(out) = out.as_deref_mut()
-            && end > start
-        {
-            out.push(Token { start, end, kind });
-        }
+    let mut after_as = matches!(state, LexState::AfterAs);
+    let mut state = match state {
+        LexState::AfterAs => LexState::Normal,
+        s => s.clone(),
     };
 
     while i < len {
@@ -76,7 +154,9 @@ pub fn lex_line(state: &LexState, line: &str, mut out: Option<&mut Vec<Token>>) 
                         i += 1;
                     }
                 }
-                push(start, i, TokenKind::Comment);
+                let i2 = i.min(len);
+                push(out, start, i2, TokenKind::Comment);
+                i = i2;
                 if matches!(state, LexState::BlockComment(0)) {
                     state = LexState::Normal;
                 }
@@ -101,7 +181,7 @@ pub fn lex_line(state: &LexState, line: &str, mut out: Option<&mut Vec<Token>>) 
                     }
                 }
                 let i2 = i.min(len);
-                push(start, i2, TokenKind::String);
+                push(out, start, i2, TokenKind::String);
                 i = i2;
                 if closed {
                     state = LexState::Normal;
@@ -124,7 +204,7 @@ pub fn lex_line(state: &LexState, line: &str, mut out: Option<&mut Vec<Token>>) 
                     }
                 }
                 let i2 = i.min(len);
-                push(start, i2, TokenKind::QuotedIdent);
+                push(out, start, i2, TokenKind::QuotedIdent);
                 i = i2;
                 if closed {
                     state = LexState::Normal;
@@ -133,33 +213,38 @@ pub fn lex_line(state: &LexState, line: &str, mut out: Option<&mut Vec<Token>>) 
             LexState::Dollar(tag) => {
                 let close = format!("${tag}$");
                 let start = opened.take().unwrap_or(i);
-                match line[i..].find(&close) {
+                match line[i..len].find(&close) {
                     Some(pos) => {
                         i += pos + close.len();
-                        push(start, i, TokenKind::String);
+                        push(out, start, i, TokenKind::String);
                         state = LexState::Normal;
                     }
                     None => {
                         i = len;
-                        push(start, i, TokenKind::String);
+                        push(out, start, i, TokenKind::String);
                     }
                 }
             }
-            LexState::Normal => {
+            LexState::Normal | LexState::AfterAs | LexState::Body { .. } => {
                 let start = i;
                 let b = bytes[i];
+                // whitespace and comments keep `after_as`; everything else sets it
+                let mut word_as = false;
                 if b.is_ascii_whitespace() {
                     while i < len && bytes[i].is_ascii_whitespace() {
                         i += 1;
                     }
-                    push(start, i, TokenKind::Text);
+                    push(out, start, i, TokenKind::Text);
+                    continue;
                 } else if b == b'-' && bytes.get(i + 1) == Some(&b'-') {
-                    push(start, len, TokenKind::Comment);
+                    push(out, start, len, TokenKind::Comment);
                     i = len;
+                    continue;
                 } else if b == b'/' && bytes.get(i + 1) == Some(&b'*') {
                     state = LexState::BlockComment(1);
                     i += 2;
                     opened = Some(start);
+                    continue;
                 } else if b == b'\'' {
                     state = LexState::String { escape: false };
                     i += 1;
@@ -175,15 +260,19 @@ pub fn lex_line(state: &LexState, line: &str, mut out: Option<&mut Vec<Token>>) 
                         while i < len && bytes[i].is_ascii_digit() {
                             i += 1;
                         }
-                        push(start, i, TokenKind::Operator);
+                        push(out, start, i, TokenKind::Operator);
                     } else if let Some(tag_len) = dollar_tag(&bytes[i + 1..]) {
                         let tag = line[i + 1..i + 1 + tag_len].to_owned();
                         i += tag_len + 2;
+                        if after_as {
+                            push(out, start, i, TokenKind::BodyQuote);
+                            return (LexState::Normal, i, Some(tag));
+                        }
                         opened = Some(start);
                         state = LexState::Dollar(tag);
                     } else {
                         i += 1;
-                        push(start, i, TokenKind::Operator);
+                        push(out, start, i, TokenKind::Operator);
                     }
                 } else if b.is_ascii_digit()
                     || (b == b'.' && bytes.get(i + 1).is_some_and(u8::is_ascii_digit))
@@ -202,7 +291,8 @@ pub fn lex_line(state: &LexState, line: &str, mut out: Option<&mut Vec<Token>>) 
                         }
                         i += 1;
                     }
-                    push(start, i, TokenKind::Number);
+                    push(out, start, i.min(len), TokenKind::Number);
+                    i = i.min(len);
                 } else if b == b'_' || b.is_ascii_alphabetic() || b >= 0x80 {
                     while i < len
                         && (bytes[i] == b'_'
@@ -220,12 +310,14 @@ pub fn lex_line(state: &LexState, line: &str, mut out: Option<&mut Vec<Token>>) 
                         opened = Some(start);
                         state = LexState::String { escape: true };
                     } else {
+                        word_as =
+                            word.eq_ignore_ascii_case("as") || word.eq_ignore_ascii_case("do");
                         let kind = if want_tokens && is_keyword(word) {
                             TokenKind::Keyword
                         } else {
                             TokenKind::Text
                         };
-                        push(start, i, kind);
+                        push(out, start, i, kind);
                     }
                 } else {
                     // operators and punctuation; keep UTF-8 boundaries
@@ -233,8 +325,9 @@ pub fn lex_line(state: &LexState, line: &str, mut out: Option<&mut Vec<Token>>) 
                     while i < len && !line.is_char_boundary(i) {
                         i += 1;
                     }
-                    push(start, i, TokenKind::Operator);
+                    push(out, start, i, TokenKind::Operator);
                 }
+                after_as = word_as;
             }
         }
     }
@@ -244,9 +337,16 @@ pub fn lex_line(state: &LexState, line: &str, mut out: Option<&mut Vec<Token>>) 
             LexState::QuotedIdent => TokenKind::QuotedIdent,
             _ => TokenKind::String,
         };
-        push(start, len, kind);
+        push(out, start, len, kind);
     }
-    state
+    if end < line.len() {
+        // a body's closing tag follows: what was open in the body ends here
+        return (LexState::Normal, end, None);
+    }
+    if after_as && state == LexState::Normal {
+        state = LexState::AfterAs;
+    }
+    (state, end, None)
 }
 
 /// Length of the tag if `rest` (after the first `$`) starts with `tag$`.
@@ -394,6 +494,7 @@ const KEYWORDS: &[&str] = &[
     "drop",
     "each",
     "else",
+    "elseif",
     "elsif",
     "enable",
     "encoding",
@@ -428,6 +529,7 @@ const KEYWORDS: &[&str] = &[
     "foreign",
     "format",
     "forward",
+    "found",
     "freeze",
     "from",
     "full",
@@ -552,6 +654,7 @@ const KEYWORDS: &[&str] = &[
     "old",
     "on",
     "only",
+    "open",
     "operator",
     "option",
     "options",
@@ -653,12 +756,16 @@ const KEYWORDS: &[&str] = &[
     "similar",
     "simple",
     "skip",
+    "slice",
     "smallint",
     "smallserial",
     "snapshot",
     "some",
     "sql",
+    "sqlerrm",
+    "sqlstate",
     "stable",
+    "stacked",
     "standalone",
     "start",
     "statement",
@@ -813,9 +920,10 @@ mod tests {
         assert_eq!(t[0], ("still */".into(), K::Comment));
         assert_eq!(t[1].1, K::Keyword);
 
-        let (_, s) = kinds(&LexState::Normal, "AS $fn$ BEGIN");
+        // a dollar quote that is not a body stays a string
+        let (_, s) = kinds(&LexState::Normal, "select $fn$ text");
         assert_eq!(s, LexState::Dollar("fn".into()));
-        let (t, s) = kinds(&s, "  RETURN 1; END $fn$; select");
+        let (t, s) = kinds(&s, "  more; $fn$; select");
         assert_eq!(s, LexState::Normal);
         assert_eq!(t[0].1, K::String);
         assert_eq!(t.last().unwrap().1, K::Keyword);
@@ -833,6 +941,81 @@ mod tests {
         let (t, s) = kinds(&LexState::Normal, "x /*");
         assert_eq!(s, LexState::BlockComment(1));
         assert_eq!(t.last().unwrap(), &("/*".into(), K::Comment));
+    }
+
+    fn body(tags: &[&str], inner: LexState) -> LexState {
+        LexState::Body {
+            tags: tags.iter().map(|t| (*t).to_owned()).collect(),
+            inner: Box::new(inner),
+        }
+    }
+
+    /// `AS $tag$` / `DO $$` open a body lexed as SQL (D-015).
+    #[test]
+    fn function_and_do_bodies_are_code() {
+        let (t, s) = kinds(&LexState::Normal, "CREATE FUNCTION f() RETURNS int AS $fn$");
+        assert_eq!(s, body(&["fn"], LexState::Normal));
+        assert_eq!(t.last().unwrap(), &("$fn$".into(), K::BodyQuote));
+        let (t, s) = kinds(
+            &s,
+            "BEGIN RETURN (SELECT count(*) FROM t WHERE x = 'a;b'); END",
+        );
+        assert_eq!(s, body(&["fn"], LexState::Normal));
+        assert_eq!(t[0], ("BEGIN".into(), K::Keyword));
+        assert!(t.contains(&("SELECT".into(), K::Keyword)));
+        assert!(t.contains(&("'a;b'".into(), K::String)));
+        let (t, s) = kinds(&s, "$fn$ LANGUAGE plpgsql;");
+        assert_eq!(s, LexState::Normal);
+        assert_eq!(t[0], ("$fn$".into(), K::BodyQuote));
+        assert!(t.contains(&("LANGUAGE".into(), K::Keyword)));
+
+        // DO, and AS at the end of the previous line
+        let (_, s) = kinds(&LexState::Normal, "do $$ begin raise notice 'x'; end $$;");
+        assert_eq!(s, LexState::Normal);
+        let (_, s) = kinds(&LexState::Normal, "CREATE FUNCTION f() RETURNS int AS");
+        assert_eq!(s, LexState::AfterAs);
+        let (_, s) = kinds(&s, "  -- the body:");
+        assert_eq!(s, LexState::AfterAs, "a comment keeps it");
+        let (_, s) = kinds(&s, "$$ select 1 $$");
+        assert_eq!(s, LexState::Normal);
+        // ON CONFLICT DO NOTHING: the next word ends it
+        let (_, s) = kinds(&LexState::Normal, "on conflict do nothing");
+        assert_eq!(s, LexState::Normal);
+    }
+
+    /// The closing tag ends a body also inside an unclosed string or comment; a nested
+    /// dollar quote with another tag is inside it.
+    #[test]
+    fn body_closing_and_nesting() {
+        let (t, s) = kinds(&LexState::Normal, "DO $$ x := 'unclosed $$; select");
+        assert_eq!(s, LexState::Normal);
+        assert!(t.contains(&("'unclosed ".into(), K::String)));
+        assert!(t.contains(&("$$".into(), K::BodyQuote)));
+        assert_eq!(t.last().unwrap(), &("select".into(), K::Keyword));
+        let (_, s) = kinds(&LexState::Normal, "DO $$ /* comment");
+        assert_eq!(s, body(&[""], LexState::BlockComment(1)));
+        let (t, s) = kinds(&s, "still */ select $$");
+        assert_eq!(s, LexState::Normal);
+        assert_eq!(t[0], ("still */".into(), K::Comment));
+        // a string dollar quote inside a body
+        let (t, s) = kinds(
+            &LexState::Normal,
+            "DO $$ BEGIN EXECUTE $q$ select 1 $q$; END $$",
+        );
+        assert_eq!(s, LexState::Normal);
+        assert!(t.contains(&("$q$ select 1 $q$".into(), K::String)));
+        // a body inside a body (CREATE FUNCTION in a DO block)
+        let (_, s) = kinds(
+            &LexState::Normal,
+            "DO $$ BEGIN CREATE FUNCTION g() RETURNS int AS $g$",
+        );
+        assert_eq!(s, body(&["", "g"], LexState::Normal));
+        let (t, s) = kinds(&s, "SELECT 1 $g$ LANGUAGE sql; END");
+        assert_eq!(s, body(&[""], LexState::Normal));
+        assert!(t.contains(&("SELECT".into(), K::Keyword)));
+        // the outer body's tag ends both (PostgreSQL reads the outer body as a string)
+        let (_, s) = kinds(&s, "AS $g$ SELECT $$ select");
+        assert_eq!(s, LexState::Normal);
     }
 
     #[test]

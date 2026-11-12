@@ -28,7 +28,7 @@ impl EditorStyles {
         match kind {
             TokenKind::Text => self.text,
             TokenKind::Keyword => self.keyword,
-            TokenKind::String => self.string,
+            TokenKind::String | TokenKind::BodyQuote => self.string,
             TokenKind::Number => self.number,
             TokenKind::Comment => self.comment,
             TokenKind::QuotedIdent => self.quoted_ident,

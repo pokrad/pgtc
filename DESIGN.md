@@ -586,6 +586,16 @@ desktop dependency.
     PostgreSQL SQL. No general multi-language highlighting.
     - Tokens: keywords, identifiers (incl. quoted), strings (incl. `E''`), numbers,
       comments (`--`, `/* */`), PostgreSQL dollar quoting (`$$ ... $$`, `$tag$`).
+    - **Function and `DO` bodies are code:** a dollar quote whose previous word is
+      `AS` or `DO` (also on the line before, comments between) is a body — its text
+      is lexed as SQL (keywords incl. PL/pgSQL ones such as `DECLARE`, `ELSIF`,
+      `LOOP`, `RAISE`, `PERFORM`, strings, comments, numbers), its `$tag$` drawn like
+      a string. The first closing `$tag$` of an open body always ends it (also inside
+      an unclosed string or comment of the body, and the bodies inside it — as
+      PostgreSQL reads it); a body inside a body (`CREATE FUNCTION … AS $g$` in a
+      `DO` block) and dollar-quoted strings with another tag work inside. Every other
+      dollar quote (`SELECT $$text$$`) stays a string. The language is not known at
+      the `$$`, so a body in another language (`plpython3u`) is also drawn as SQL.
     - Only the **visible lines** are lexed on each screen refresh.
     - Lexer state at the start of lines (inside block comment / dollar quote / string)
       is cached at checkpoints, built by a background scan when a file is opened; after an
@@ -1528,7 +1538,10 @@ pgtc (binary)
   possible later addition.
 - **Only in query tabs** (not the read-only object view) and in the `sql` boxes of the
   developer template form of a query tab (D-046) — only on a connected tab, never
-  inside strings, comments or quoted identifiers. In the form the list uses the query
+  inside strings, comments or quoted identifiers — but inside a function or `DO` body
+  (D-015), which is SQL: there a statement is the text between `;` inside the body,
+  and the body's `$tag$` ends a statement too (in PL/pgSQL `SELECT … INTO v` it still
+  offers tables after `INTO`; a heuristic). In the form the list uses the query
   tab's connection and names, analyses the text of the box itself, is drawn over the
   form at the cursor, and `Esc` closes only the list (the form stays open).
 - **Trigger:** `Ctrl+Space` and `Alt+/` (`complete` in `[editor]`; some terminals do
@@ -1771,3 +1784,4 @@ pgtc (binary)
 | 2026-11-12 | D-020 updated: `Ctrl+P` (`toggle_plpgsql`, editor and results) switches PL/pgSQL mode of the active query tab. |
 | 2026-11-12 | D-014, D-054 updated: *psql command…* (`F4`) moved from the Query menu to Tools, under *Generate SQL from developer template…* (`F7`). |
 | 2026-11-12 | D-013, D-046 updated: `fill = true` on `sql` parameters — the editor box takes the free rows of the form (several share them; at least 5 rows); used by the built-in function, procedure, trigger and view templates. D-052 updated: autocomplete also in the template form's `sql` boxes, with the query tab's connection and names; `Esc` closes only the list. |
+| 2026-11-12 | D-015 updated: function and `DO` bodies (a dollar quote after `AS` / `DO`) are lexed as SQL — highlighted, the first closing tag of an open body ends it, nested bodies and other-tag dollar strings inside; other dollar quotes stay strings; more PL/pgSQL keywords. D-052 updated: autocomplete works inside such bodies (statements between `;` and the body tags). |
