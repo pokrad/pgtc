@@ -386,6 +386,50 @@ impl Tree {
         Some((server, database, objects))
     }
 
+    /// The table, view, materialized view, foreign table or partition that `nid` is or
+    /// is below (D-056): server index, database, schema and name.
+    pub fn relation_of(&self, nid: u64) -> Option<(usize, String, String, String)> {
+        let (server, path) = self.ancestry(nid)?;
+        let database = path.iter().find(|n| n.is_database())?.name.clone();
+        let at = path.iter().rposition(|n| {
+            matches!(
+                n.kind,
+                NodeKind::Object(
+                    ObjType::Table
+                        | ObjType::View
+                        | ObjType::MatView
+                        | ObjType::ForeignTable
+                        | ObjType::Partition
+                )
+            )
+        })?;
+        let name = path[at].name.clone();
+        // A partition in another schema than its parent table has the label
+        // `schema.name`; otherwise it is in its parent's schema.
+        let mut schema = None;
+        for n in path[..=at].iter().rev() {
+            match n.kind {
+                NodeKind::Object(ObjType::Partition) => {
+                    if let Some(s) = n
+                        .label
+                        .strip_suffix(n.name.as_str())
+                        .and_then(|s| s.strip_suffix('.'))
+                        .filter(|s| !s.is_empty())
+                    {
+                        schema = Some(s.to_owned());
+                        break;
+                    }
+                }
+                NodeKind::Object(ObjType::Schema | ObjType::Catalog) => {
+                    schema = Some(n.name.clone());
+                    break;
+                }
+                _ => {}
+            }
+        }
+        Some((server, database, schema?, name))
+    }
+
     /// Name of the database node `nid` is in (or is).
     pub fn database_name_of(&self, nid: u64) -> Option<String> {
         let (_, path) = self.ancestry(nid)?;

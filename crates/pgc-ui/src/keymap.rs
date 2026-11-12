@@ -143,6 +143,7 @@ commands! {
     TogglePlpgsql = "toggle_plpgsql", "PL/pgSQL mode on / off";
     EditInQueryTab = "edit_in_query_tab", "Edit the shown definition in a new query tab";
     FindObject = "find_object", "Find an object below the selected tree row";
+    SelectTopRows = "select_top_rows", "Select the top 100 rows of the table or view in a new query tab";
     ShowMessages = "show_messages", "Switch between results and messages";
     NextResult = "next_result", "Next result set";
     PrevResult = "prev_result", "Previous result set";
@@ -210,6 +211,7 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::Tree, Command::QuickSearch, &["Alt+S", "Ctrl+S"]),
     (Context::Tree, Command::EditInQueryTab, &["Ctrl+E"]),
     (Context::Tree, Command::FindObject, &["Ctrl+F"]),
+    (Context::Tree, Command::SelectTopRows, &["Ctrl+B"]),
     (Context::Editor, Command::EditInQueryTab, &["Ctrl+E"]),
     (Context::Editor, Command::Execute, &["F5"]),
     (Context::Editor, Command::NewFromTemplate, &["F7"]),

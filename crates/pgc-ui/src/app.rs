@@ -23,6 +23,7 @@ mod settings_dialog;
 mod templates;
 #[cfg(test)]
 mod tests;
+mod top_rows;
 mod tree_pane;
 
 use std::collections::HashMap;
@@ -498,6 +499,7 @@ impl App {
             Command::ShowInNewTab => self.tree.selected().is_some(),
             Command::FindObject => self.find_scope().is_ok(),
             Command::EditInQueryTab => self.edit_source().is_ok(),
+            Command::SelectTopRows => self.top_rows_source().is_ok(),
             Command::ToggleSystemObjects => true,
             Command::Execute => self
                 .query()
@@ -1010,6 +1012,7 @@ impl App {
             Command::RefreshTree => self.refresh(),
             Command::ShowInNewTab => self.show_in_new_tab(),
             Command::EditInQueryTab => self.edit_in_query_tab(),
+            Command::SelectTopRows => self.select_top_rows(),
             Command::Complete if in_view => self.open_completion(true),
             Command::Psql => self.open_psql_dialog(""),
             c if in_view && editor_action(c).is_some() => {

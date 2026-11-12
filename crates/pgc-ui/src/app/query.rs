@@ -106,6 +106,7 @@ impl App {
                     let db = c.database.clone();
                     q.info(format!("Connected to {db} (PostgreSQL {version})"));
                 }
+                self.run_queued(tab);
             }
             DbEvent::ConnectFailed { error, .. } => {
                 self.connections.remove(&conn);
@@ -229,6 +230,32 @@ impl App {
             },
             true,
         );
+    }
+
+    /// The tab's connection is open: runs what waited for it (D-056).
+    pub(super) fn run_queued(&mut self, tab: u64) {
+        let queued = self
+            .tab_index(tab)
+            .and_then(|i| self.tabs[i].query.as_mut())
+            .is_some_and(|q| std::mem::take(&mut q.run_on_connect));
+        if queued {
+            self.execute_tab(tab);
+        }
+    }
+
+    /// F5 in tab `tab`, also when it is not the active one.
+    pub(super) fn execute_tab(&mut self, tab: u64) {
+        let Some(i) = self.tab_index(tab) else {
+            return;
+        };
+        let previous = self.active_tab;
+        let status = self.status.clone();
+        self.active_tab = i;
+        self.execute();
+        self.active_tab = previous.min(self.tabs.len() - 1);
+        if previous != i {
+            self.status = status;
+        }
     }
 
     /// Sends `sql` for the active query tab.

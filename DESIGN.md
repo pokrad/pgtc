@@ -501,6 +501,7 @@ desktop dependency.
 - **View**
   - Refresh object tree
   - Edit in new query tab (`Ctrl+E`, D-049)
+  - Select top 100 rows (`Ctrl+B` in the tree, D-056)
   - Find object… (`Ctrl+F` in the tree, D-055)
   - Next tab / Previous tab / Close tab
 - **Tools**
@@ -674,6 +675,7 @@ desktop dependency.
   | `Ctrl+N` | — | New query tab (global) |
   | `Alt+S` / `Ctrl+S` | Quick search | Quick search in the tree |
   | `Ctrl+F` | Find object | Find an object below the selected tree row (D-055) |
+  | `Ctrl+B` | — | Object tree: select the top 100 rows of the table / view in a new query tab (D-056) |
   | `Esc` + digit | F-key substitute | Same — for SSH sessions and macOS where F-keys often do not reach the program |
 
 - **Text editing keys:** standard keys + mc/Windows `Ctrl+Insert` / `Shift+Insert` /
@@ -1467,7 +1469,7 @@ pgtc (binary)
   | Server | Connect, Disconnect │ Refresh │ Edit connection…, Delete connection |
   | Server-level groups and objects | Refresh |
   | Database | New query, Edit in new query tab, Open SQL file… │ Refresh │ Export / Load database definition… |
-  | Objects below a database | New query, Edit in new query tab, Open SQL file… │ Refresh |
+  | Objects below a database | New query, Edit in new query tab, Select top 100 rows (tables, views and rows below them, D-056), Open SQL file… │ Refresh |
 - **Show in new tab** is not in any context menu; `F3` opens the selected object in a
   new tab.
 - The File menu keeps its layout; its items are disabled by the same rules.
@@ -1746,6 +1748,24 @@ pgtc (binary)
   by attnum, partitions below their parent table) and the type order (to merge the
   answers of several databases); the scope is a path prefix (bind parameter).
 
+### D-056 — Select top 100 rows (`Ctrl+B`)
+- **Status:** Accepted (refines D-009, D-019, D-049)
+- **Key:** `Ctrl+B` in `[tree]` (`select_top_rows`); *View → Select top 100 rows*;
+  context menu of the rows it applies to.
+- **Rows:** a table, view, materialized view, foreign table or partition, **or any row
+  below it** — its groups (*Columns*, *Indexes*, *Constraints*, *Triggers*, *Rules*,
+  *Policies*, *Partitions*) and their objects. The nearest such relation at or above
+  the row is used (a column → its table, a partition → the partition itself). Other
+  rows: refused with a status-line hint; the menu item is disabled and left out of the
+  context menu (D-049).
+- **Query:** `SELECT * FROM schema.name LIMIT 100;` — names quoted with the `pgc-core`
+  quoting. A partition in another schema than its parent table uses its own schema.
+- **Tab:** a **new query tab bound to the same server and database** with its own
+  connection (D-011), the query as unsaved text (closing asks to save, D-019), focus on
+  the tab. The query is **executed as soon as the tab's connection is open** (as `F5`,
+  with the tab's auto commit / auto rollback); a failed connection is reported in the
+  tab as usual and nothing runs. Refused when the server is not connected.
+
 ### D-026 — Scope of the first alpha
 - **Status:** Accepted
 - **All features described in this document go into the first alpha.**
@@ -1866,3 +1886,4 @@ pgtc (binary)
 | 2026-11-12 | D-019 updated: a run that ends without any result set switches to the Messages tab (an empty `SELECT` is a result set and stays on Results). |
 | 2026-11-12 | D-055 accepted: Find object (`Ctrl+F` in the tree) — searches everything below the selected row through the tree connection (server rows: databases, roles, tablespaces), *Match* combo (Contains — default, Starts with, Ends with), "Show columns" checkbox (default off), matches with name and type, OK opens the tree level by level down to exactly that object. D-014, D-016 updated. |
 | 2026-11-12 | D-055 updated: a server row (and the Databases group) also searches everything in every database of the server — databases not connected are opened (8 at a time) and closed with the dialog, failures listed without a login dialog; the list has the columns Database, Schema, Name, Type. |
+| 2026-11-12 | D-056 accepted: Select top 100 rows (`Ctrl+B` in the tree, View menu, context menu) on a table, view, materialized view, foreign table or partition or any row below it — `SELECT * … LIMIT 100` in a new query tab on the same server and database, executed once the tab is connected. D-014, D-016, D-049 updated. |

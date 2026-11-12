@@ -153,6 +153,8 @@ pub struct QueryState {
     pub export: Option<ExportRun>,
     /// A batch asked for by an export that has ended is still on its way: drop it.
     pub drop_rows: bool,
+    /// Execute the text as soon as the tab's connection is open (D-056).
+    pub run_on_connect: bool,
 }
 
 impl QueryState {
@@ -180,6 +182,7 @@ impl QueryState {
             binding: None,
             export: None,
             drop_rows: false,
+            run_on_connect: false,
         }
     }
 

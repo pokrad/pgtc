@@ -54,6 +54,7 @@ pub fn menu_bar() -> Vec<MenuDef> {
             entries: vec![
                 item("&Refresh object tree", C::RefreshTree),
                 item("&Edit in new query tab", C::EditInQueryTab),
+                item("&Select top 100 rows", C::SelectTopRows),
                 item("&Find object…", C::FindObject),
                 Separator,
                 item("&Next tab", C::NextTab),

@@ -1811,6 +1811,149 @@ async fn ctrl_e_edits_the_definition_in_a_new_query_tab() {
     assert_eq!(a.tabs.len(), 3);
 }
 
+/// Ctrl+B (D-056): the top 100 rows of the table, view or partition that the selected
+/// row is or is below, in a new query tab run once its connection is open; refused
+/// elsewhere.
+#[tokio::test]
+async fn ctrl_b_selects_the_top_rows_of_the_relation() {
+    use crate::objects::ObjType;
+    use crate::tree::{DbConn, NodeKind, RowKind};
+    use pgc_db::NodeRow;
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "srv");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    let row = |oid: u32, name: &str, label: Option<&str>, partitioned: bool| NodeRow {
+        oid,
+        name: name.into(),
+        label: label.map(str::to_owned),
+        partitioned,
+    };
+    let child = |a: &App, parent: Option<u64>, kind: NodeKind, oid: u32| -> u64 {
+        let kids = match parent {
+            None => &a.tree.servers[0].children,
+            Some(p) => a.tree.node(p).unwrap().children.as_ref().unwrap(),
+        };
+        kids.iter()
+            .find(|n| n.kind == kind && (oid == 0 || n.oid == oid))
+            .unwrap()
+            .nid
+    };
+    let dbs = child(&a, None, NodeKind::Group(ObjType::Database), 0);
+    a.tree.set_children(dbs, vec![row(5, "shop", None, false)]);
+    let db = child(&a, Some(dbs), NodeKind::Object(ObjType::Database), 5);
+    let groups = a.tree.groups(&ObjType::Database.children(false));
+    {
+        let n = a.tree.node_mut(db).unwrap();
+        n.conn = Some(DbConn {
+            state: ConnState::Connected,
+            handle: Some(pgc_db::ConnectionHandle::detached(51)),
+        });
+        n.children = Some(groups);
+    }
+    let schemas = child(&a, Some(db), NodeKind::Group(ObjType::Schema), 0);
+    a.tree
+        .set_children(schemas, vec![row(2200, "My Schema", None, false)]);
+    let schema = child(&a, Some(schemas), NodeKind::Object(ObjType::Schema), 2200);
+    let tables = child(&a, Some(schema), NodeKind::Group(ObjType::Table), 0);
+    a.tree
+        .set_children(tables, vec![row(10, "orders", None, true)]);
+    let orders = child(&a, Some(tables), NodeKind::Object(ObjType::Table), 10);
+    let columns = child(&a, Some(orders), NodeKind::Group(ObjType::Column), 0);
+    a.tree
+        .set_children(columns, vec![row(1, "id", None, false)]);
+    let id = child(&a, Some(columns), NodeKind::Object(ObjType::Column), 1);
+    let parts = child(&a, Some(orders), NodeKind::Group(ObjType::Partition), 0);
+    a.tree.set_children(
+        parts,
+        vec![
+            row(11, "orders_2025", None, false),
+            row(12, "orders_2026", Some("archive.orders_2026"), false),
+        ],
+    );
+    let p25 = child(&a, Some(parts), NodeKind::Object(ObjType::Partition), 11);
+    let p26 = child(&a, Some(parts), NodeKind::Object(ObjType::Partition), 12);
+    let views = child(&a, Some(schema), NodeKind::Group(ObjType::View), 0);
+    a.tree.set_children(views, vec![row(20, "v", None, false)]);
+    let v = child(&a, Some(views), NodeKind::Object(ObjType::View), 20);
+    let roles = child(&a, None, NodeKind::Group(ObjType::Role), 0);
+    for nid in [
+        dbs, db, schemas, schema, tables, orders, columns, parts, views,
+    ] {
+        a.tree.node_mut(nid).unwrap().expanded = true;
+    }
+
+    // the query of the nearest relation above (or at) the row
+    let sql = |a: &mut App, nid: u64| {
+        a.tree.select_kind(RowKind::Node(nid));
+        a.top_rows_source().map(|(_, db, sql)| (db, sql))
+    };
+    let orders_sql = "SELECT * FROM \"My Schema\".orders LIMIT 100;\n";
+    for nid in [orders, columns, id, parts] {
+        assert_eq!(
+            sql(&mut a, nid),
+            Ok(("shop".to_owned(), orders_sql.to_owned()))
+        );
+    }
+    assert_eq!(
+        sql(&mut a, p25).unwrap().1,
+        "SELECT * FROM \"My Schema\".orders_2025 LIMIT 100;\n"
+    );
+    assert_eq!(
+        sql(&mut a, p26).unwrap().1,
+        "SELECT * FROM archive.orders_2026 LIMIT 100;\n"
+    );
+    assert_eq!(
+        sql(&mut a, v).unwrap().1,
+        "SELECT * FROM \"My Schema\".v LIMIT 100;\n"
+    );
+    // refused: groups above tables, schemas, server-level rows
+    for nid in [tables, schema, db, roles] {
+        a.tree.select_kind(RowKind::Node(nid));
+        assert!(!a.is_enabled(Command::SelectTopRows));
+    }
+    a.focus = Focus::Tree;
+    key(&mut a, "Ctrl+B");
+    assert!(a.status.starts_with("Select a table"), "{}", a.status);
+    assert_eq!(a.tabs.len(), 1);
+
+    // Ctrl+B on a column: a new query tab with the query, run once connected
+    a.tree.select_kind(RowKind::Node(id));
+    a.focus = Focus::Tree;
+    key(&mut a, "Ctrl+B");
+    assert_eq!(a.tabs.len(), 2);
+    assert_eq!(a.focus, Focus::Tabs);
+    let tab = &a.tabs[a.active_tab];
+    let tab_id = tab.id;
+    assert_eq!(tab.view.editor.text(), orders_sql);
+    assert!(tab.view.editor.modified(), "unsaved text");
+    let q = tab.query.as_ref().unwrap();
+    assert_eq!(q.binding, Some((uid, "shop".to_owned())));
+    assert!(
+        q.run_on_connect && q.running.is_none(),
+        "waits for the connection"
+    );
+    // the connection opens (no real one behind it) while another tab is active
+    let q = a.tabs[1].query.as_mut().unwrap();
+    q.conn = Some(QueryConn {
+        id: 99,
+        database: "shop".into(),
+        handle: pgc_db::ConnectionHandle::detached(99),
+        cancel: None,
+        state: QueryConnState::Connected,
+        ssl_mode: SslMode::default(),
+        ssl_root_cert: None,
+    });
+    a.active_tab = 0;
+    a.run_queued(tab_id);
+    assert_eq!(a.active_tab, 0, "the active tab stays");
+    let q = a.tabs[1].query.as_ref().unwrap();
+    assert!(!q.run_on_connect && q.running.is_some(), "executed");
+    // only once
+    a.run_queued(tab_id);
+    assert!(!a.tabs[1].query.as_ref().unwrap().run_on_connect);
+}
+
 /// Find object (D-055): scopes of tree rows, the dialog's search, and opening the tree
 /// level by level down to the chosen object (waiting for unloaded groups).
 #[tokio::test]

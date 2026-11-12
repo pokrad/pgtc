@@ -267,9 +267,18 @@ impl App {
                     menu::item("New &query", Command::NewQuery),
                     menu::item("Ed&it in new query tab", Command::EditInQueryTab),
                     menu::item("&Open SQL file…", Command::OpenFile),
+                ];
+                // tables, views and the rows below them (D-056)
+                if self.top_rows_source().is_ok() {
+                    entries.insert(
+                        2,
+                        menu::item("Select &top 100 rows", Command::SelectTopRows),
+                    );
+                }
+                entries.extend([
                     MenuEntry::Separator,
                     menu::item("&Refresh", Command::RefreshTree),
-                ];
+                ]);
                 // database definition export / load (D-048)
                 if self.selected_database().is_some() {
                     entries.extend([
