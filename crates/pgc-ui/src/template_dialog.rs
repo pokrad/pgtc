@@ -324,6 +324,14 @@ impl TemplateForm {
         editor: Option<Action>,
         ev: &KeyEvent,
     ) -> FormEvent {
+        // Ctrl+Enter: OK from any field, also the sql box and lists; an open choice
+        // list first takes its highlighted item (D-016)
+        if cmd == Some(Command::DialogOk) {
+            if self.popup.is_some() {
+                self.popup_key(Some(Command::Accept), ev);
+            }
+            return FormEvent::Ok;
+        }
         if self.popup.is_some() {
             self.popup_key(cmd, ev);
             return FormEvent::None;
@@ -1334,6 +1342,43 @@ CREATE {{ schema|ident }}.{{ name|ident }}({% for c in cols %}{{ c.c }}{% endfor
 
     fn key(f: &mut TemplateForm, cmd: Option<Command>, code: KeyCode) -> FormEvent {
         f.handle_key(cmd, None, &KeyEvent::new(code, KeyModifiers::NONE))
+    }
+
+    /// Ctrl+Enter is OK from any field; an open choice list takes its item first.
+    #[test]
+    fn ctrl_enter_is_ok_from_any_field() {
+        let mut f = form();
+        let ok = |f: &mut TemplateForm| {
+            f.handle_key(
+                Some(Command::DialogOk),
+                None,
+                &KeyEvent::new(KeyCode::Enter, KeyModifiers::CONTROL),
+            )
+        };
+        // the sql box (Enter would be a new line) and the list (Enter edits a row)
+        for i in [2, 3] {
+            f.focus = Stop::Field(i);
+            assert_eq!(ok(&mut f), FormEvent::Ok, "field {i}");
+        }
+        f.set_choices(
+            "schema",
+            Ok(choices_from_rows(
+                vec![vec!["public".into()], vec!["sales".into()]],
+                Shape::Name,
+            )),
+        );
+        f.focus = Stop::Field(0);
+        key(&mut f, Some(Command::Accept), KeyCode::Enter);
+        key(&mut f, Some(Command::Down), KeyCode::Down);
+        assert_eq!(ok(&mut f), FormEvent::Ok);
+        assert!(f.popup.is_none());
+        assert!(matches!(
+            f.fields[0].value,
+            FieldValue::Choice {
+                selected: Some(1),
+                ..
+            }
+        ));
     }
 
     #[test]

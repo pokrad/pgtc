@@ -519,6 +519,21 @@ impl Dialog {
     // ---- keys ---------------------------------------------------------------------
 
     pub fn handle_key(&mut self, cmd: Option<Command>, ev: &KeyEvent) -> DialogEvent {
+        // Ctrl+Enter: the default button from any field; an open combo list first
+        // takes its highlighted item (D-016)
+        if cmd == Some(Command::DialogOk) {
+            if self.combo_open() {
+                self.combo_key(Some(Command::Accept), ev);
+            }
+            return match self
+                .widgets
+                .iter()
+                .find(|w| matches!(w.kind, WidgetKind::Button { default: true }))
+            {
+                Some(w) => DialogEvent::Button(w.id),
+                None => DialogEvent::None,
+            };
+        }
         if self.combo_open() {
             self.combo_key(cmd, ev);
             return DialogEvent::None;
@@ -1467,6 +1482,15 @@ mod tests {
         assert_eq!(press(&mut d, "Enter"), DialogEvent::Button("ok"));
         assert_eq!(press(&mut d, "c"), DialogEvent::Button("cancel"));
         assert_eq!(press(&mut d, "Esc"), DialogEvent::Cancelled);
+        // Ctrl+Enter: the default button from anywhere, also with a combo list open
+        d.focus = d.widgets.iter().position(|w| w.id == "cancel").unwrap();
+        assert_eq!(press(&mut d, "Ctrl+Enter"), DialogEvent::Button("ok"));
+        d.focus = d.widgets.iter().position(|w| w.id == "mode").unwrap();
+        press(&mut d, "Space");
+        press(&mut d, "Down");
+        assert_eq!(press(&mut d, "Ctrl+Enter"), DialogEvent::Button("ok"));
+        assert!(!d.combo_open());
+        assert_eq!(d.selected("mode"), Some(1));
     }
 
     #[test]

@@ -658,6 +658,13 @@ desktop dependency.
 - **Colours and dialogs:** the default colour scheme **Classic** reproduces the mc look —
   blue panels, cyan selection, grey dialogs with cyan focus, yellow hotkey letters,
   `[< OK >]`-style buttons; uses only the 16 basic colours, so it works on any terminal.
+- **OK from any field:** `Ctrl+Enter` (`dialog_ok` in `[dialog]`) presses the default
+  button of a dialog (*OK*, *Run*, …) whatever has the focus — also a focused other
+  button, the template form's `sql` box and lists; an open combo list first takes its
+  highlighted item. Dialogs without a default button ignore it. It works only where
+  the terminal reports Ctrl+Enter (Windows natively, terminals with the kitty
+  keyboard protocol, D-053); elsewhere it arrives as plain `Enter`. No second key by
+  default; another one can be bound in `keymap.toml`.
 - **Context-dependent keys (as in mc's keymap sections):**
   - **Global keys** — same everywhere, never redefined by a context: `F1` Help,
     `F9` Menu, `F10` Quit/Close, `Ctrl+Tab` / `F6` switch panel, `Esc` + digit F-key
@@ -1744,3 +1751,4 @@ pgtc (binary)
 | 2026-11-11 | D-054 updated: the generated INSERT leaves out only generated, identity and sequence-filled (`nextval`) columns; columns with another default are listed, with the default in their comment. |
 | 2026-11-12 | D-054 updated: `F4` commands are typed and shown without psql's backslash (`dt`, `d name`, `?`, `gts`, …) — the list, `?`, result labels and messages never show it; a typed backslash is ignored. |
 | 2026-11-12 | D-046 updated: the developer template window is drawn like the other dialogs (margin, single frame, shadow) with lines joined to the frame between form and preview and above the help / button rows; the `sql` box has its own frame. D-051: junctions of inner lines with single frames (`├ ┤ ┬ ┴`) follow ASCII frames. |
+| 2026-11-12 | D-016 updated: `Ctrl+Enter` (`dialog_ok`) presses the default button of a dialog from any field, also in the template form; only where the terminal reports it (Windows, kitty keyboard protocol), no second key by default. |

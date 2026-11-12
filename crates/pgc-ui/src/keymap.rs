@@ -150,6 +150,7 @@ commands! {
     NextField = "next_field", "Next field";
     PrevField = "prev_field", "Previous field";
     Accept = "accept", "Open / choose / OK";
+    DialogOk = "dialog_ok", "OK from any field (where the terminal reports Ctrl+Enter)";
     Cancel = "cancel", "Cancel / close";
     Toggle = "toggle", "Toggle the checkbox";
     Backspace = "backspace", "Delete left";
@@ -339,6 +340,7 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::Dialog, Command::Home, &["Home"]),
     (Context::Dialog, Command::End, &["End"]),
     (Context::Dialog, Command::Accept, &["Enter"]),
+    (Context::Dialog, Command::DialogOk, &["Ctrl+Enter"]),
     (Context::Dialog, Command::Cancel, &["Esc", "F10"]),
     (Context::Dialog, Command::Toggle, &["Space"]),
     (Context::Dialog, Command::Backspace, &["Backspace"]),
