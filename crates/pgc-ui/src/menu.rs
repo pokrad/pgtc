@@ -78,16 +78,14 @@ pub fn menu_bar() -> Vec<MenuDef> {
                 item("Results / Messa&ges", C::ShowMessages),
                 item("&Next result set", C::NextResult),
                 item("Pre&vious result set", C::PrevResult),
-                Separator,
-                item("ps&ql command…", C::Psql),
             ],
         },
         MenuDef {
             title: HotText::new("&Tools"),
-            entries: vec![item(
-                "&Generate SQL from developer template…",
-                C::NewFromTemplate,
-            )],
+            entries: vec![
+                item("&Generate SQL from developer template…", C::NewFromTemplate),
+                item("ps&ql command…", C::Psql),
+            ],
         },
         MenuDef {
             title: HotText::new("&Settings"),
