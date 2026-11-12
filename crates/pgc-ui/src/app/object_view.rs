@@ -168,6 +168,7 @@ impl App {
         if tab == 0 && key != self.default_key {
             return; // the cursor has moved on
         }
+        let ok = result.is_ok();
         let text = match result {
             Ok(text) => text,
             Err(e) => e
@@ -178,7 +179,64 @@ impl App {
         };
         if let Some(t) = self.tab_mut(tab) {
             t.view.load(text);
+            t.view.definition = ok;
         }
+    }
+
+    /// The read-only view whose definition `Ctrl+E` edits (D-049): from the tree the
+    /// default tab (it shows the selected object), else the active tab when it is the
+    /// default or an object tab. `Err` says why not.
+    pub(super) fn edit_source(&self) -> Result<usize, &'static str> {
+        let i = if self.focus == super::Focus::Tree {
+            0
+        } else {
+            self.active_tab
+        };
+        let tab = &self.tabs[i];
+        if matches!(tab.kind, TabKind::Query(_)) {
+            return Err("");
+        }
+        if tab.view.loading {
+            return Err("The definition is still loading");
+        }
+        if !tab.view.definition {
+            return Err("Select an object: its definition can be edited in a new query tab");
+        }
+        if tab.database.is_none() {
+            return Err("This object has no database — open a query tab on a database instead");
+        }
+        let connected = tab
+            .server
+            .and_then(|uid| self.tree.servers.iter().find(|s| s.uid == uid))
+            .is_some_and(|s| s.state == ConnState::Connected);
+        if !connected {
+            return Err("Connect the server first");
+        }
+        Ok(i)
+    }
+
+    /// Ctrl+E: the definition of the read-only view in a new query tab on the same
+    /// server and database, as unsaved text (D-049).
+    pub(super) fn edit_in_query_tab(&mut self) {
+        let i = match self.edit_source() {
+            Ok(i) => i,
+            Err(why) => {
+                if !why.is_empty() {
+                    self.status = why.to_owned();
+                }
+                return;
+            }
+        };
+        let tab = &self.tabs[i];
+        let text = tab.view.editor.text();
+        let (Some(uid), Some(db)) = (tab.server, tab.database.clone()) else {
+            return;
+        };
+        self.new_query_tab(Some((uid, db)));
+        let editor = &mut self.tabs[self.active_tab].view.editor;
+        editor.set_text(&text);
+        editor.set_modified(true);
+        self.focus = super::Focus::Tabs;
     }
 
     /// F3: the selected row in a new object tab (D-009).

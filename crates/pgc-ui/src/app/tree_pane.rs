@@ -265,6 +265,7 @@ impl App {
                 // "Show in new tab" is F3 only, not in context menus (D-049)
                 let mut entries = vec![
                     menu::item("New &query", Command::NewQuery),
+                    menu::item("Ed&it in new query tab", Command::EditInQueryTab),
                     menu::item("&Open SQL file…", Command::OpenFile),
                     MenuEntry::Separator,
                     menu::item("&Refresh", Command::RefreshTree),

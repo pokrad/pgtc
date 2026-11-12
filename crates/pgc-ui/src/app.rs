@@ -111,6 +111,9 @@ pub struct TextView {
     pub title: String,
     pub editor: Editor,
     pub loading: bool,
+    /// The text is an object's definition (not an info text or an error), so it can
+    /// be edited in a new query tab (D-049).
+    pub definition: bool,
     /// Last text loaded with `set_text` (identical text is not reloaded).
     shown: String,
 }
@@ -121,6 +124,7 @@ impl TextView {
             title: String::new(),
             editor: Editor::new("", read_only, tab_width),
             loading: false,
+            definition: false,
             shown: String::new(),
         }
     }
@@ -133,6 +137,7 @@ impl TextView {
         }
         self.title = title;
         self.loading = false;
+        self.definition = false;
     }
 
     /// Replaces the text, keeping the title.
@@ -478,6 +483,7 @@ impl App {
             Command::EditConnection | Command::DeleteConnection => server.is_some(),
             Command::RefreshTree => server.is_some_and(|s| s.state == ConnState::Connected),
             Command::ShowInNewTab => self.tree.selected().is_some(),
+            Command::EditInQueryTab => self.edit_source().is_ok(),
             Command::ToggleSystemObjects => true,
             Command::Execute => self
                 .query()
@@ -965,6 +971,7 @@ impl App {
             Command::About => self.open_about(),
             Command::RefreshTree => self.refresh(),
             Command::ShowInNewTab => self.show_in_new_tab(),
+            Command::EditInQueryTab => self.edit_in_query_tab(),
             Command::Complete if in_view => self.open_completion(true),
             Command::Psql => self.open_psql_dialog(""),
             c if in_view && editor_action(c).is_some() => {

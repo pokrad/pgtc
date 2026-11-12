@@ -53,6 +53,7 @@ pub fn menu_bar() -> Vec<MenuDef> {
             title: HotText::new("&View"),
             entries: vec![
                 item("&Refresh object tree", C::RefreshTree),
+                item("&Edit in new query tab", C::EditInQueryTab),
                 Separator,
                 item("&Next tab", C::NextTab),
                 item("&Previous tab", C::PrevTab),

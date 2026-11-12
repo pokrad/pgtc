@@ -1746,3 +1746,67 @@ async fn autocomplete_in_the_template_sql_box() {
     assert!(a.completion.is_none());
     assert!(a.template.is_some(), "the form stays open");
 }
+
+/// Ctrl+E (D-049): the definition of the read-only view in a new query tab on the same
+/// server and database, as unsaved text; refused without a definition, a database or
+/// a connected server; nothing in a query tab.
+#[tokio::test]
+async fn ctrl_e_edits_the_definition_in_a_new_query_tab() {
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    let show = |a: &mut App, text: &str, database: Option<&str>| {
+        a.tabs[0].server = Some(uid);
+        a.tabs[0].database = database.map(str::to_owned);
+        a.next_key += 1;
+        a.pending_defs.insert(a.next_key, 0);
+        a.default_key = a.next_key;
+        a.definition_loaded(a.next_key, Ok(text.to_owned()));
+        a.active_tab = 0;
+        a.focus = Focus::Tabs;
+    };
+    let def = "CREATE OR REPLACE FUNCTION public.f() RETURNS int AS $$ SELECT 1 $$ LANGUAGE sql;\n";
+    show(&mut a, def, Some("shop"));
+    assert!(a.is_enabled(Command::EditInQueryTab));
+    key(&mut a, "Ctrl+E");
+    assert_eq!(a.tabs.len(), 2);
+    let tab = &a.tabs[a.active_tab];
+    assert!(matches!(tab.kind, TabKind::Query(_)));
+    assert_eq!(tab.view.editor.text(), def);
+    assert!(tab.view.editor.modified(), "unsaved text");
+    assert!(!tab.view.editor.read_only());
+    assert_eq!(
+        tab.query.as_ref().unwrap().binding,
+        Some((uid, "shop".to_owned()))
+    );
+    // in a query tab Ctrl+E does nothing
+    a.run(Command::EditInQueryTab);
+    assert_eq!(a.tabs.len(), 2);
+
+    // from the tree: the default tab's definition
+    show(&mut a, def, Some("shop"));
+    a.focus = Focus::Tree;
+    a.run(Command::EditInQueryTab);
+    assert_eq!(a.tabs.len(), 3);
+
+    // refused: still loading, an info text, no database, server not connected
+    show(&mut a, def, Some("shop"));
+    a.tabs[0].view.loading = true;
+    a.run(Command::EditInQueryTab);
+    assert_eq!(a.status, "The definition is still loading");
+    a.tabs[0]
+        .view
+        .set_text("Tables".into(), "-- Tables (2)\n".into());
+    a.run(Command::EditInQueryTab);
+    assert!(a.status.starts_with("Select an object"), "{}", a.status);
+    show(&mut a, "CREATE ROLE r;\n", None);
+    a.run(Command::EditInQueryTab);
+    assert!(a.status.contains("no database"), "{}", a.status);
+    show(&mut a, def, Some("shop"));
+    a.tree.servers[0].state = ConnState::Disconnected;
+    assert!(!a.is_enabled(Command::EditInQueryTab));
+    a.run(Command::EditInQueryTab);
+    assert_eq!(a.status, "Connect the server first");
+    assert_eq!(a.tabs.len(), 3);
+}

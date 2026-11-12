@@ -141,6 +141,7 @@ commands! {
     ToggleAutoCommit = "toggle_auto_commit", "Auto commit on / off";
     ToggleAutoRollback = "toggle_auto_rollback", "Auto rollback on error on / off";
     TogglePlpgsql = "toggle_plpgsql", "PL/pgSQL mode on / off";
+    EditInQueryTab = "edit_in_query_tab", "Edit the shown definition in a new query tab";
     ShowMessages = "show_messages", "Switch between results and messages";
     NextResult = "next_result", "Next result set";
     PrevResult = "prev_result", "Previous result set";
@@ -206,6 +207,8 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::Tree, Command::DropObject, &["F8"]),
     (Context::Tree, Command::RefreshTree, &["Ctrl+R"]),
     (Context::Tree, Command::QuickSearch, &["Alt+S", "Ctrl+S"]),
+    (Context::Tree, Command::EditInQueryTab, &["Ctrl+E"]),
+    (Context::Editor, Command::EditInQueryTab, &["Ctrl+E"]),
     (Context::Editor, Command::Execute, &["F5"]),
     (Context::Editor, Command::NewFromTemplate, &["F7"]),
     (Context::Editor, Command::CancelQuery, &["Alt+Shift+C"]),

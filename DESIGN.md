@@ -500,6 +500,7 @@ desktop dependency.
   - Quit
 - **View**
   - Refresh object tree
+  - Edit in new query tab (`Ctrl+E`, D-049)
   - Next tab / Previous tab / Close tab
 - **Tools**
   - Generate SQL from developer template… (D-013)
@@ -1442,8 +1443,16 @@ pgtc (binary)
   tablespaces, …) and without a selection. A key for a disabled command only shows a
   hint in the status line.
 - **Save SQL file…:** only when the active tab is a query tab (not the object view).
-- **Open in query tab is removed** (with its `F4` key): to edit a definition, open a new
-  query and copy the text from the object view.
+- **Edit in new query tab** (`Ctrl+E`, `edit_in_query_tab` in `[editor]` and `[tree]`;
+  View menu; context menu): the whole definition shown in the read-only view (the
+  default tab — from the tree, the one of the selected object — or an `F3` object tab)
+  goes into a **new query tab bound to the same server and database**, with its own
+  connection (D-011), as unsaved text (closing asks to save, D-019); SQL mode, cursor
+  at the start. In a query tab the key does nothing. Refused with a status-line hint
+  (same rules as *New query*): while the definition loads, on info texts and errors
+  (no definition), on server-level objects (roles, tablespaces — no database, no
+  maintenance-database fallback), on a server that is not connected. (It replaces the
+  earlier *Open in query tab* on `F4`, removed on 2026-11-09.)
 - **Context menus (`F2` / right click), by row kind** (items that do not apply are left
   out; `│` = separator):
 
@@ -1451,8 +1460,8 @@ pgtc (binary)
   |-----|-------|
   | Server | Connect, Disconnect │ Refresh │ Edit connection…, Delete connection |
   | Server-level groups and objects | Refresh |
-  | Database | New query, Open SQL file… │ Refresh │ Export / Load database definition… |
-  | Objects below a database | New query, Open SQL file… │ Refresh |
+  | Database | New query, Edit in new query tab, Open SQL file… │ Refresh │ Export / Load database definition… |
+  | Objects below a database | New query, Edit in new query tab, Open SQL file… │ Refresh |
 - **Show in new tab** is not in any context menu; `F3` opens the selected object in a
   new tab.
 - The File menu keeps its layout; its items are disabled by the same rules.
@@ -1785,3 +1794,4 @@ pgtc (binary)
 | 2026-11-12 | D-014, D-054 updated: *psql command…* (`F4`) moved from the Query menu to Tools, under *Generate SQL from developer template…* (`F7`). |
 | 2026-11-12 | D-013, D-046 updated: `fill = true` on `sql` parameters — the editor box takes the free rows of the form (several share them; at least 5 rows); used by the built-in function, procedure, trigger and view templates. D-052 updated: autocomplete also in the template form's `sql` boxes, with the query tab's connection and names; `Esc` closes only the list. |
 | 2026-11-12 | D-015 updated: function and `DO` bodies (a dollar quote after `AS` / `DO`) are lexed as SQL — highlighted, the first closing tag of an open body ends it, nested bodies and other-tag dollar strings inside; other dollar quotes stay strings; more PL/pgSQL keywords. D-052 updated: autocomplete works inside such bodies (statements between `;` and the body tags). |
+| 2026-11-12 | D-049 updated: *Edit in new query tab* (`Ctrl+E` in the editor and tree, View menu, context menu) puts the definition of the read-only view into a new query tab bound to the same server and database, as unsaved text; refused while loading, without a definition or database, or when the server is not connected. D-014 updated (View menu). |
