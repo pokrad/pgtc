@@ -136,6 +136,13 @@ async fn event_loop(
                         tracing::warn!("OSC 52 copy failed: {e}");
                     }
                 }
+                Effect::StartFindTimer(seq) => {
+                    let tx = tx.clone();
+                    tokio::spawn(async move {
+                        tokio::time::sleep(DEFINITION_DELAY).await;
+                        let _ = tx.send(Msg::FindTimer(seq));
+                    });
+                }
                 Effect::StartDefinitionTimer(seq) => {
                     let tx = tx.clone();
                     tokio::spawn(async move {

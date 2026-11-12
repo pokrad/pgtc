@@ -96,6 +96,51 @@ const TABLE_GROUPS: &[ObjType] = &[
 ];
 
 impl ObjType {
+    /// Every object type.
+    pub const ALL: &[ObjType] = &[
+        T::Database,
+        T::Role,
+        T::Tablespace,
+        T::Schema,
+        T::Catalog,
+        T::Extension,
+        T::EventTrigger,
+        T::Publication,
+        T::Subscription,
+        T::Cast,
+        T::Language,
+        T::ForeignDataWrapper,
+        T::Table,
+        T::View,
+        T::MatView,
+        T::Function,
+        T::Procedure,
+        T::TriggerFunction,
+        T::Sequence,
+        T::Type,
+        T::Domain,
+        T::Aggregate,
+        T::Collation,
+        T::Operator,
+        T::FtsConfiguration,
+        T::FtsDictionary,
+        T::FtsParser,
+        T::FtsTemplate,
+        T::ForeignTable,
+        T::Column,
+        T::Constraint,
+        T::Index,
+        T::Trigger,
+        T::Rule,
+        T::Policy,
+        T::Partition,
+    ];
+
+    /// The type whose [`Self::folder`] is `folder` (paths of Find object, D-055).
+    pub fn from_folder(folder: &str) -> Option<ObjType> {
+        Self::ALL.iter().copied().find(|t| t.folder() == folder)
+    }
+
     /// Folder under `sql/` (pgAdmin's names).
     pub fn folder(self) -> &'static str {
         match self {
@@ -261,44 +306,7 @@ impl ObjType {
 mod tests {
     use super::*;
 
-    const ALL: &[ObjType] = &[
-        T::Database,
-        T::Role,
-        T::Tablespace,
-        T::Schema,
-        T::Catalog,
-        T::Extension,
-        T::EventTrigger,
-        T::Publication,
-        T::Subscription,
-        T::Cast,
-        T::Language,
-        T::ForeignDataWrapper,
-        T::Table,
-        T::View,
-        T::MatView,
-        T::Function,
-        T::Procedure,
-        T::TriggerFunction,
-        T::Sequence,
-        T::Type,
-        T::Domain,
-        T::Aggregate,
-        T::Collation,
-        T::Operator,
-        T::FtsConfiguration,
-        T::FtsDictionary,
-        T::FtsParser,
-        T::FtsTemplate,
-        T::ForeignTable,
-        T::Column,
-        T::Constraint,
-        T::Index,
-        T::Trigger,
-        T::Rule,
-        T::Policy,
-        T::Partition,
-    ];
+    const ALL: &[ObjType] = ObjType::ALL;
 
     #[test]
     fn every_type_has_a_nodes_query_with_matching_parameters() {

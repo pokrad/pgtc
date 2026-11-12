@@ -161,7 +161,7 @@ impl App {
     }
 
     /// Starts loading the children of group `nid` (D-036).
-    fn load_group(&mut self, nid: u64) {
+    pub(super) fn load_group(&mut self, nid: u64) {
         let Some(ctx) = self.tree.load_context(nid) else {
             return;
         };

@@ -12,6 +12,7 @@ mod connections;
 mod definition;
 mod editing;
 mod files;
+mod find_object;
 mod lookups;
 mod mouse;
 mod object_view;
@@ -60,6 +61,8 @@ pub enum Msg {
     EscTimeout(u64),
     /// The tree cursor rested long enough: load the default tab (D-037).
     DefinitionTimer(u64),
+    /// Typing in Find object paused: search (D-055).
+    FindTimer(u64),
     /// Time for another slice of the editors' background lexer scan (D-038).
     ScanTick,
     /// Periodic tick while a query runs (elapsed time, cancel wait, D-041).
@@ -76,6 +79,8 @@ pub enum Effect {
     StartEscTimer(u64),
     /// Send `Msg::DefinitionTimer(seq)` after the definition delay.
     StartDefinitionTimer(u64),
+    /// Send `Msg::FindTimer(seq)` after the same delay (D-055).
+    StartFindTimer(u64),
     /// Send `Msg::ScanTick` soon.
     ScanTick,
     /// Send `Msg::Tick` after the tick interval.
@@ -219,6 +224,11 @@ pub struct App {
     pub search: Option<String>,
     /// The open autocomplete list (D-052).
     pub(crate) completion: Option<crate::completion::Popup>,
+    /// The open Find object dialog (D-055).
+    find: Option<find_object::FindState>,
+    find_seq: u64,
+    /// The tree opening down to a found object (D-055).
+    reveal: Option<find_object::Reveal>,
     /// F4 list: input text and selected row last seen, to tell typing from choosing
     /// (D-054).
     psql_seen: (String, usize),
@@ -375,6 +385,9 @@ impl App {
             status,
             search: None,
             completion: None,
+            find: None,
+            find_seq: 0,
+            reveal: None,
             psql_seen: (String::new(), 0),
             sql: SqlCatalog::new(),
             pending: HashMap::new(),
@@ -483,6 +496,7 @@ impl App {
             Command::EditConnection | Command::DeleteConnection => server.is_some(),
             Command::RefreshTree => server.is_some_and(|s| s.state == ConnState::Connected),
             Command::ShowInNewTab => self.tree.selected().is_some(),
+            Command::FindObject => self.find_scope().is_ok(),
             Command::EditInQueryTab => self.edit_source().is_ok(),
             Command::ToggleSystemObjects => true,
             Command::Execute => self
@@ -612,6 +626,12 @@ impl App {
                 self.check_cancel_wait();
                 Vec::new()
             }
+            Msg::FindTimer(seq) => {
+                if seq == self.find_seq {
+                    self.find_search();
+                }
+                Vec::new()
+            }
             Msg::DefinitionTimer(seq) => {
                 if seq == self.def_seq
                     && let Some(RowKind::Node(nid)) = self.followed
@@ -626,6 +646,8 @@ impl App {
                 if let Some(row) = selected {
                     self.tree.select_kind(row.kind);
                 }
+                // a waiting search, the tree opening to a found object (D-055)
+                self.after_tree_event();
                 Vec::new()
             }
             Msg::Export(event) => {
@@ -636,6 +658,7 @@ impl App {
         self.sync_export_dialog();
         self.sync_picker();
         self.sync_psql_dialog();
+        self.sync_find_dialog();
         if let Some(form) = self.template.as_mut() {
             form.set_screen(hits.screen);
         }
@@ -716,6 +739,21 @@ impl App {
                 return;
             }
             // F4 list: arrows and pages move in the list while typing in the input
+            // Find object: arrows and pages move in the list while typing (D-055)
+            if dialog.kind == DialogKind::FindObject {
+                let page = dialog.list_rows_of("list").max(1) as isize;
+                let step = match cmd {
+                    Some(Command::Up) => Some(-1),
+                    Some(Command::Down) => Some(1),
+                    Some(Command::PageUp) => Some(-page),
+                    Some(Command::PageDown) => Some(page),
+                    _ => None,
+                };
+                if let Some(step) = step {
+                    dialog.list_step("list", step);
+                    return;
+                }
+            }
             if dialog.kind == DialogKind::PsqlCommand {
                 let page = dialog.list_rows_of("list").max(1) as isize;
                 let step = match cmd {
@@ -991,6 +1029,7 @@ impl App {
             Command::FindNext if in_view => self.find_again(true),
             Command::FindPrev if in_view => self.find_again(false),
             Command::ToggleSystemObjects => self.toggle_system_objects(),
+            Command::FindObject if in_tree => self.open_find_object(),
             Command::QuickSearch if in_tree && !self.tree.servers.is_empty() => {
                 self.search = Some(String::new());
                 self.status = "Quick search: ".to_owned();
@@ -1099,6 +1138,7 @@ impl App {
                 };
                 match (dialog.kind, id) {
                     (DialogKind::Settings, "ok") => self.apply_settings(dialog),
+                    (DialogKind::FindObject, "ok") => self.find_chosen(dialog),
                     (DialogKind::PsqlCommand, "ok") => {
                         let text = dialog.text("cmd").unwrap_or("").to_owned();
                         self.run_psql(dialog, &text);

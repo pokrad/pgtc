@@ -33,6 +33,9 @@ pub struct DbConn {
 /// (server, database, objects as (type, name, label)).
 pub type ObjectPath = (usize, Option<String>, Vec<(ObjType, String, String)>);
 
+/// A node on the way down from the server: (kind, oid, nid), see [`Tree::chain`].
+pub type ChainNode = (NodeKind, u32, u64);
+
 #[derive(Debug)]
 pub struct Node {
     /// Unique id for the session.
@@ -311,6 +314,16 @@ impl Tree {
             }
         }
         None
+    }
+
+    /// Server index and the nodes from the top down to `nid` (itself last) as
+    /// (kind, oid, nid) — for Find object (D-055).
+    pub fn chain(&self, nid: u64) -> Option<(usize, Vec<ChainNode>)> {
+        let (server, path) = self.ancestry(nid)?;
+        Some((
+            server,
+            path.iter().map(|n| (n.kind, n.oid, n.nid)).collect(),
+        ))
     }
 
     /// What is needed to load the children of group `nid`.

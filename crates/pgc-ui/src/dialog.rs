@@ -57,6 +57,8 @@ pub enum DialogKind {
     Viewer,
     /// psql-style command line (D-054).
     PsqlCommand,
+    /// Find object in the tree (D-055).
+    FindObject,
 }
 
 /// A `&'static str` for a dynamic widget id (template parameter names). Each distinct

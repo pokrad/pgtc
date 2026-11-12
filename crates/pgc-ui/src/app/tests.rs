@@ -1810,3 +1810,310 @@ async fn ctrl_e_edits_the_definition_in_a_new_query_tab() {
     assert_eq!(a.status, "Connect the server first");
     assert_eq!(a.tabs.len(), 3);
 }
+
+/// Find object (D-055): scopes of tree rows, the dialog's search, and opening the tree
+/// level by level down to the chosen object (waiting for unloaded groups).
+#[tokio::test]
+async fn find_object_searches_and_opens_the_tree_to_the_object() {
+    use crate::objects::ObjType;
+    use crate::tree::{DbConn, NodeKind, RowKind};
+    use pgc_db::NodeRow;
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "srv");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    a.tree.by_uid(uid).unwrap().handle = Some(pgc_db::ConnectionHandle::detached(50));
+    let row = |oid: u32, name: &str| NodeRow {
+        oid,
+        name: name.into(),
+        label: None,
+        partitioned: false,
+    };
+    let child = |a: &App, parent: Option<u64>, kind: NodeKind, oid: u32| -> u64 {
+        let kids = match parent {
+            None => &a.tree.servers[0].children,
+            Some(p) => a.tree.node(p).unwrap().children.as_ref().unwrap(),
+        };
+        kids.iter()
+            .find(|n| n.kind == kind && (oid == 0 || n.oid == oid))
+            .unwrap()
+            .nid
+    };
+    // a loaded Databases group and a connected database "shop" with its groups
+    let dbs = child(&a, None, NodeKind::Group(ObjType::Database), 0);
+    a.tree.set_children(dbs, vec![row(5, "shop")]);
+    a.tree.node_mut(dbs).unwrap().expanded = true;
+    let db = child(&a, Some(dbs), NodeKind::Object(ObjType::Database), 5);
+    let groups = a.tree.groups(&ObjType::Database.children(false));
+    {
+        let n = a.tree.node_mut(db).unwrap();
+        n.conn = Some(DbConn {
+            state: ConnState::Connected,
+            handle: Some(pgc_db::ConnectionHandle::detached(51)),
+        });
+        n.children = Some(groups);
+    }
+    let schemas = child(&a, Some(db), NodeKind::Group(ObjType::Schema), 0);
+    a.tree.set_children(schemas, vec![row(2200, "public")]);
+    let public = child(&a, Some(schemas), NodeKind::Object(ObjType::Schema), 2200);
+    let tables = child(&a, Some(public), NodeKind::Group(ObjType::Table), 0);
+
+    // scopes: server row, Databases group, database, group below it
+    a.focus = Focus::Tree;
+    a.tree.select_server(uid);
+    let scope = a.find_scope().unwrap();
+    assert!(scope.database.is_none() && scope.all_databases);
+    a.tree.select_kind(RowKind::Node(dbs));
+    let scope = a.find_scope().unwrap();
+    assert_eq!(scope.prefix, "databases:");
+    assert!(
+        scope.all_databases,
+        "the Databases group searches in them too"
+    );
+    a.tree.select_kind(RowKind::Node(db));
+    let scope = a.find_scope().unwrap();
+    assert_eq!((scope.database, scope.prefix.as_str()), (Some((db, 5)), ""));
+
+    // the dialog: typing starts the pause, the timer searches, the answer fills the list
+    key(&mut a, "Ctrl+F");
+    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::FindObject);
+    assert!(
+        !a.dialogs[0].checked("columns"),
+        "Show columns is off by default"
+    );
+    assert_eq!(
+        a.dialogs[0].selected("match"),
+        Some(0),
+        "Contains by default"
+    );
+    typing(&mut a, "cust");
+    let seq = a.find_seq;
+    assert!(seq > 0);
+    // another match mode is another search
+    key(&mut a, "Alt+M");
+    key(&mut a, "Right");
+    assert!(a.find_seq > seq, "a changed mode starts a new search");
+    assert_eq!(
+        a.find.as_ref().unwrap().seen.1,
+        super::find_object::Match::StartsWith
+    );
+    let seq = a.find_seq;
+    a.update(Msg::FindTimer(seq), &Hits::default());
+    let pending = &a.find.as_ref().unwrap().pending;
+    assert_eq!(pending.len(), 1, "the search was sent to the database");
+    let key_sent = *pending.keys().next().unwrap();
+    let r = |v: [&str; 5]| v.iter().map(|s| (*s).to_owned()).collect::<Vec<String>>();
+    a.find_loaded(
+        key_sent,
+        Ok(vec![
+            r([
+                "table",
+                "public",
+                "customers",
+                "schemas:2200/tables:101",
+                "2",
+            ]),
+            r([
+                "column",
+                "public",
+                "orders.customer",
+                "schemas:2200/tables:100/columns:2",
+                "25",
+            ]),
+        ]),
+    );
+    let f = a.find.as_ref().unwrap();
+    assert_eq!(f.hits.len(), 2);
+    assert_eq!(
+        (f.hits[1].database.as_str(), f.hits[1].schema.as_str()),
+        ("shop", "public"),
+        "database and schema columns"
+    );
+    let screen = screen_text(&a);
+    assert!(
+        screen.contains("Database") && screen.contains("Schema"),
+        "{screen}"
+    );
+    assert!(screen.contains("orders.customer"), "{screen}");
+    a.dialogs[0].list_select("list", 1);
+    // the focus is on the Match combo (Enter would open it): Ctrl+Enter is OK
+    key(&mut a, "Ctrl+Enter");
+    assert!(a.dialogs.is_empty() && a.find.is_none());
+
+    // Tables is not loaded: the tree waits for it, then for the table's Columns
+    assert!(a.reveal.is_some());
+    assert!(
+        a.tree.node(tables).unwrap().loading,
+        "Tables is being loaded"
+    );
+    a.tree
+        .set_children(tables, vec![row(100, "orders"), row(101, "customers")]);
+    a.after_tree_event();
+    let orders = child(&a, Some(tables), NodeKind::Object(ObjType::Table), 100);
+    let columns = child(&a, Some(orders), NodeKind::Group(ObjType::Column), 0);
+    assert!(a.reveal.is_some());
+    a.tree
+        .set_children(columns, vec![row(1, "id"), row(2, "customer")]);
+    a.after_tree_event();
+    assert!(a.reveal.is_none());
+    let customer = child(&a, Some(columns), NodeKind::Object(ObjType::Column), 2);
+    assert_eq!(a.tree.selected().unwrap().kind, RowKind::Node(customer));
+    assert_eq!(a.focus, Focus::Tree);
+
+    // scopes below the database; a column has nothing below it
+    a.tree.select_kind(RowKind::Node(tables));
+    assert_eq!(a.find_scope().unwrap().prefix, "schemas:2200/tables:");
+    a.tree.select_kind(RowKind::Node(orders));
+    assert_eq!(a.find_scope().unwrap().prefix, "schemas:2200/tables:100/");
+    a.tree.select_kind(RowKind::Node(customer));
+    assert!(a.find_scope().is_err());
+
+    // an object that is gone: the cursor stays on the deepest level reached
+    a.reveal = Some(super::find_object::Reveal {
+        uid,
+        steps: vec![
+            (ObjType::Database, 5),
+            (ObjType::Schema, 2200),
+            (ObjType::Table, 999),
+        ],
+        tried: Default::default(),
+    });
+    a.continue_reveal();
+    assert!(a.reveal.is_none());
+    assert!(a.status.contains("not there"), "{}", a.status);
+    assert_eq!(a.tree.selected().unwrap().kind, RowKind::Node(tables));
+}
+
+/// Find object from a server row (D-055): the server's objects and every database —
+/// databases that are not connected are opened (and closed again with the dialog),
+/// failures are listed, results of all sources are merged with the database shown.
+#[tokio::test]
+async fn find_object_searches_all_databases_of_the_server() {
+    use super::find_object::Source;
+    use crate::objects::ObjType;
+    use crate::tree::{DbConn, NodeKind};
+    use pgc_db::NodeRow;
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "srv");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    a.tree.by_uid(uid).unwrap().handle = Some(pgc_db::ConnectionHandle::detached(50));
+    let row = |oid: u32, name: &str| NodeRow {
+        oid,
+        name: name.into(),
+        label: None,
+        partitioned: false,
+    };
+    let dbs = a.tree.servers[0]
+        .children
+        .iter()
+        .find(|n| n.kind == NodeKind::Group(ObjType::Database))
+        .unwrap()
+        .nid;
+    a.tree
+        .set_children(dbs, vec![row(5, "mantis"), row(6, "shop")]);
+    let db_nid = |a: &App, oid: u32| {
+        a.tree
+            .node(dbs)
+            .unwrap()
+            .children
+            .as_ref()
+            .unwrap()
+            .iter()
+            .find(|n| n.oid == oid)
+            .unwrap()
+            .nid
+    };
+    let (mantis, shop) = (db_nid(&a, 5), db_nid(&a, 6));
+    // both databases look connected (no real connections in tests)
+    for nid in [mantis, shop] {
+        let groups = a.tree.groups(&ObjType::Database.children(false));
+        let n = a.tree.node_mut(nid).unwrap();
+        n.conn = Some(DbConn {
+            state: ConnState::Connected,
+            handle: Some(pgc_db::ConnectionHandle::detached(60 + nid)),
+        });
+        n.children = Some(groups);
+    }
+    a.focus = Focus::Tree;
+    a.tree.select_server(uid);
+    key(&mut a, "Ctrl+F");
+    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::FindObject);
+    // pretend the search opened "mantis" itself
+    a.find.as_mut().unwrap().opened.insert(mantis);
+    typing(&mut a, "mantis");
+    let seq = a.find_seq;
+    a.update(Msg::FindTimer(seq), &Hits::default());
+    let pending: Vec<(u64, Source)> = a
+        .find
+        .as_ref()
+        .unwrap()
+        .pending
+        .iter()
+        .map(|(k, s)| (*k, *s))
+        .collect();
+    assert_eq!(pending.len(), 3, "server and both databases: {pending:?}");
+    let key_of = |s: Source| pending.iter().find(|(_, x)| *x == s).unwrap().0;
+    let r = |v: [&str; 5]| v.iter().map(|s| (*s).to_owned()).collect::<Vec<String>>();
+    a.find_loaded(
+        key_of(Source::Server),
+        Ok(vec![r(["database", "", "mantis", "databases:5", "-3"])]),
+    );
+    a.find_loaded(
+        key_of(Source::Database(mantis)),
+        Ok(vec![r([
+            "table",
+            "public",
+            "mantis_bug_table",
+            "schemas:2200/tables:100",
+            "2",
+        ])]),
+    );
+    let info = |a: &App| {
+        a.dialogs[0]
+            .widgets
+            .iter()
+            .find(|w| w.id == "info")
+            .unwrap()
+            .label
+            .text
+            .clone()
+    };
+    assert!(info(&a).contains("1 of 2 databases"), "{}", info(&a));
+    a.find_loaded(key_of(Source::Database(shop)), Ok(Vec::new()));
+    let f = a.find.as_ref().unwrap();
+    let shown: Vec<(&str, &str, &str)> = f
+        .hits
+        .iter()
+        .map(|h| (h.database.as_str(), h.schema.as_str(), h.name.as_str()))
+        .collect();
+    assert_eq!(
+        shown,
+        [("", "", "mantis"), ("mantis", "public", "mantis_bug_table")],
+        "the database object first (no database, no schema), then the table"
+    );
+    assert_eq!(f.hits[1].steps[0], (ObjType::Database, 5));
+    assert_eq!(info(&a), "2 objects");
+
+    // a database the search could not open is listed, without an error dialog
+    a.find.as_mut().unwrap().opened.insert(shop);
+    assert!(a.find_connect_failed(shop, &pgc_db::DbError::PasswordRequired));
+    assert!(
+        info(&a).contains("not searched: shop (password needed)"),
+        "{}",
+        info(&a)
+    );
+    assert_eq!(a.dialogs.len(), 1);
+
+    // closing the dialog closes the connections opened for the search
+    key(&mut a, "Esc");
+    a.update(Msg::EscTimeout(a.esc_seq), &Hits::default());
+    assert!(a.dialogs.is_empty() && a.find.is_none());
+    let conn = a.tree.node(mantis).unwrap().conn.as_ref().unwrap();
+    assert_eq!(conn.state, ConnState::Disconnected);
+    assert_eq!(
+        a.tree.node(shop).unwrap().conn.as_ref().unwrap().state,
+        ConnState::Connected,
+        "a database connected before the search stays"
+    );
+}

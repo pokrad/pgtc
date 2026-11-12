@@ -142,6 +142,7 @@ commands! {
     ToggleAutoRollback = "toggle_auto_rollback", "Auto rollback on error on / off";
     TogglePlpgsql = "toggle_plpgsql", "PL/pgSQL mode on / off";
     EditInQueryTab = "edit_in_query_tab", "Edit the shown definition in a new query tab";
+    FindObject = "find_object", "Find an object below the selected tree row";
     ShowMessages = "show_messages", "Switch between results and messages";
     NextResult = "next_result", "Next result set";
     PrevResult = "prev_result", "Previous result set";
@@ -208,6 +209,7 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::Tree, Command::RefreshTree, &["Ctrl+R"]),
     (Context::Tree, Command::QuickSearch, &["Alt+S", "Ctrl+S"]),
     (Context::Tree, Command::EditInQueryTab, &["Ctrl+E"]),
+    (Context::Tree, Command::FindObject, &["Ctrl+F"]),
     (Context::Editor, Command::EditInQueryTab, &["Ctrl+E"]),
     (Context::Editor, Command::Execute, &["F5"]),
     (Context::Editor, Command::NewFromTemplate, &["F7"]),

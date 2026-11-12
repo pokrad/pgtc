@@ -501,6 +501,7 @@ desktop dependency.
 - **View**
   - Refresh object tree
   - Edit in new query tab (`Ctrl+E`, D-049)
+  - Find object… (`Ctrl+F` in the tree, D-055)
   - Next tab / Previous tab / Close tab
 - **Tools**
   - Generate SQL from developer template… (D-013)
@@ -672,6 +673,7 @@ desktop dependency.
   | `Ctrl+R` | Re-read | Object tree: refresh tree · Query tab: show/hide results pane |
   | `Ctrl+N` | — | New query tab (global) |
   | `Alt+S` / `Ctrl+S` | Quick search | Quick search in the tree |
+  | `Ctrl+F` | Find object | Find an object below the selected tree row (D-055) |
   | `Esc` + digit | F-key substitute | Same — for SSH sessions and macOS where F-keys often do not reach the program |
 
 - **Text editing keys:** standard keys + mc/Windows `Ctrl+Insert` / `Shift+Insert` /
@@ -1682,6 +1684,68 @@ pgtc (binary)
     so); without either, `WHERE [condition]  -- no primary key: write a condition`.
     UPDATE sets every other column except generated and identity `ALWAYS` ones.
 
+### D-055 — Find object in the tree (`Ctrl+F`)
+- **Status:** Accepted (refines D-009, D-036)
+- **Key:** `Ctrl+F` in `[tree]` (`find_object`; *View → Find object…*). In `[editor]`
+  `Ctrl+F` stays *Find / replace* in the text (also in the read-only object view).
+  The tree loads lazily, so the search asks the database; quick search (`Alt+S`,
+  D-036) still moves among the visible rows.
+- **Scope — everything below the selected row:**
+  - server row → databases, roles and tablespaces (server connection) **and
+    everything in every database of the server**; the *Databases* group → the
+    databases and everything in them; *Roles* / *Tablespaces* → only their kind; a
+    role or tablespace has nothing below it;
+  - **all databases:** each database is searched through its tree connection, all at
+    the same time; results appear as each database answers (*1 of 20 databases*).
+    Databases that are not connected are opened, at most 8 at a time, already when
+    the dialog opens; they are closed again when the dialog closes, except the one
+    the tree opens into (OK), which stays connected like an expanded database
+    (D-011). Databases already connected keep their connection. A database that
+    cannot be opened (password needed, login failed, no permission, connections not
+    allowed) is skipped without a login dialog and listed in the count line (*not
+    searched: db3 (password needed)*). Templates follow *Show system objects*, as in
+    the tree;
+  - database → everything in that database (its tree connection; a database that
+    is not connected yet is connected and the search waits);
+  - a group below it (*Tables* of a schema, *Indexes* of a table, …) → only that kind
+    there; an object → its sub-objects (schema → its objects, table → columns,
+    indexes, constraints, triggers, rules, policies, partitions); an object without
+    child groups (a column, …) has nothing below it — the status line says so.
+- **Dialog:** input *Name*, combo **Match** — *Contains* (default), *Starts with*,
+  *Ends with* — checkbox **Show columns** (default **off**: columns are searched only
+  when checked), the selected row as *Below: …*, a count line, and the list of
+  matches with a header and the columns **Database**, **Schema**, **Name**, **Type**
+  — *Database* and *Schema* are empty for objects that are not in a database
+  (databases, roles, tablespaces) or not in a schema (schemas, extensions, languages,
+  …); *Name* is the object's own name, sub-objects with their table
+  (`orders.customer_id`), functions with their arguments. The list follows the
+  input after a 200 ms pause; `Up` / `Down` / `PgUp` / `PgDn` move in it while
+  typing.
+  - Case-insensitive, as chosen in *Match* (`%text%`, `text%`, `%text`); the text is a
+    **bind parameter** (`ILIKE`, `%` `_` `\` escaped); changing *Match* or *Show
+    columns* searches again. Order: by type in tree order (schemas, tables, partitions, views,
+    materialized views, foreign tables, sequences, functions, procedures, trigger
+    functions, aggregates, types, domains, collations, indexes, constraints, triggers,
+    rules, policies, database-level objects; columns last; on a server row the
+    databases, roles and tablespaces first), then by database, schema and name. At
+    most 200 rows in all (*200+ objects — type more to narrow the search*).
+  - Object kinds: those above plus extensions, event triggers, publications,
+    languages, foreign data wrappers; not casts, operators, FTS objects, subscriptions.
+  - System objects follow *Show system objects* (`Alt+.`, D-036), as the tree's
+    queries do; with it off, the Catalogs (`pg_catalog`, `information_schema`) are not
+    searched.
+- **OK / Enter:** the dialog closes and the tree opens **down to exactly that
+  object**: every level on the way is expanded and loaded when needed (database
+  connection, groups), one after the other; then the cursor is on the object, scrolled
+  into view, the tree has the focus (the default tab shows its definition). An object
+  that is gone, or a level that cannot be loaded, ends it with a status-line message;
+  the cursor stays on the deepest level reached.
+- **SQL:** versioned catalog queries `sql/find/` (`database.sql`, `server.sql`, D-010):
+  text columns type, schema, name, the **tree path**
+  (`schemas:2200/tables:16384/columns:3` — one `folder:oid` step per level, columns
+  by attnum, partitions below their parent table) and the type order (to merge the
+  answers of several databases); the scope is a path prefix (bind parameter).
+
 ### D-026 — Scope of the first alpha
 - **Status:** Accepted
 - **All features described in this document go into the first alpha.**
@@ -1800,3 +1864,5 @@ pgtc (binary)
 | 2026-11-12 | D-015 updated: function and `DO` bodies (a dollar quote after `AS` / `DO`) are lexed as SQL — highlighted, the first closing tag of an open body ends it, nested bodies and other-tag dollar strings inside; other dollar quotes stay strings; more PL/pgSQL keywords. D-052 updated: autocomplete works inside such bodies (statements between `;` and the body tags). |
 | 2026-11-12 | D-049 updated: *Edit in new query tab* (`Ctrl+E` in the editor and tree, View menu, context menu) puts the definition of the read-only view into a new query tab bound to the same server and database, as unsaved text; refused while loading, without a definition or database, or when the server is not connected. D-014 updated (View menu). |
 | 2026-11-12 | D-019 updated: a run that ends without any result set switches to the Messages tab (an empty `SELECT` is a result set and stays on Results). |
+| 2026-11-12 | D-055 accepted: Find object (`Ctrl+F` in the tree) — searches everything below the selected row through the tree connection (server rows: databases, roles, tablespaces), *Match* combo (Contains — default, Starts with, Ends with), "Show columns" checkbox (default off), matches with name and type, OK opens the tree level by level down to exactly that object. D-014, D-016 updated. |
+| 2026-11-12 | D-055 updated: a server row (and the Databases group) also searches everything in every database of the server — databases not connected are opened (8 at a time) and closed with the dialog, failures listed without a login dialog; the list has the columns Database, Schema, Name, Type. |

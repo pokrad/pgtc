@@ -141,13 +141,9 @@ impl App {
         match (target, event) {
             (Target::Query(tab), event) => self.on_query_event(id, tab, event),
             (Target::Structure, event) => self.on_job_event(id, event),
-            (
-                _,
-                DbEvent::Query { .. }
-                | DbEvent::Notice { .. }
-                | DbEvent::Lookup { .. }
-                | DbEvent::Model { .. },
-            ) => {}
+            // Find object searches run on tree connections (D-055)
+            (_, DbEvent::Lookup { key, result, .. }) => self.find_loaded(key, result),
+            (_, DbEvent::Query { .. } | DbEvent::Notice { .. } | DbEvent::Model { .. }) => {}
             (_, DbEvent::Nodes { key, result, .. }) => {
                 let Some(nid) = self.pending.remove(&key) else {
                     return;
@@ -208,7 +204,10 @@ impl App {
                     DbEvent::ConnectFailed { error, .. } => {
                         self.connections.remove(&id);
                         self.database_reset(nid);
-                        self.error(&format!("Cannot connect to database {name}:\n{error}"));
+                        // opened by Find object: listed there, no dialog (D-055)
+                        if !self.find_connect_failed(nid, &error) {
+                            self.error(&format!("Cannot connect to database {name}:\n{error}"));
+                        }
                     }
                     DbEvent::Closed { error, .. } => {
                         self.connections.remove(&id);
@@ -228,7 +227,7 @@ impl App {
         }
     }
 
-    fn database_reset(&mut self, nid: u64) {
+    pub(super) fn database_reset(&mut self, nid: u64) {
         if let Some(n) = self.tree.node_mut(nid) {
             n.conn = Some(DbConn {
                 state: ConnState::Disconnected,
