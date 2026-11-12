@@ -28,17 +28,17 @@ tabs with SQL on the right, function keys, menus and dialogs.
 - **Colour schemes** (Classic, Dark, Light, Terminal default, Tokyo Night, Dracula and
   your own), configurable keys, optional Nerd Font icons.
 
-![Developer template: Create table](docs/screenshots/template.svg)
+| Developer template: Create table | Developer templates (`F7`) |
+|---|---|
+| ![Developer template: Create table](docs/screenshots/template.svg) | ![Developer templates](docs/screenshots/templates.svg) |
 
 | Autocomplete | psql commands (`F4`) |
 |---|---|
 | ![Autocomplete](docs/screenshots/autocomplete.svg) | ![psql commands](docs/screenshots/psql.svg) |
 
-| Developer templates (`F7`) | Find object in the tree (`Ctrl+F`) |
+| Find object in the tree (`Ctrl+F`) | Query menu |
 |---|---|
-| ![Developer templates](docs/screenshots/templates.svg) | ![Find object](docs/screenshots/find.svg) |
-
-![Query menu](docs/screenshots/menu.svg)
+| ![Find object](docs/screenshots/find.svg) | ![Query menu](docs/screenshots/menu.svg) |
 
 *Screenshots: the Dracula colour scheme, drawn by pgtc's own renderer with sample data.*
 
