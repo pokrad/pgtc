@@ -101,6 +101,10 @@ impl App {
             conn.handle.abort();
             self.connections.remove(&conn.id);
         }
+        // changed logging settings are put back first (D-058)
+        if let Some(p) = tab.profiler {
+            self.close_profiler_conn(p);
+        }
         self.active_tab = self.active_tab.min(self.tabs.len() - 1);
         if self.focus == Focus::Results {
             self.focus = Focus::Tabs;
@@ -212,7 +216,12 @@ impl App {
     /// deleted server then leaves the tree.
     pub(super) fn finish_bulk(&mut self, b: Bulk) {
         match b {
-            Bulk::Quit => self.quit = true,
+            // profilers put the logging settings back first (D-058)
+            Bulk::Quit => {
+                if !self.restore_before_quit() {
+                    self.quit = true;
+                }
+            }
             Bulk::Disconnect(uid) | Bulk::Delete(uid) => {
                 let ids: Vec<u64> = self
                     .tabs

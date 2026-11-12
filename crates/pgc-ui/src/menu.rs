@@ -90,6 +90,7 @@ pub fn menu_bar() -> Vec<MenuDef> {
                 item("ps&ql command…", C::Psql),
                 Separator,
                 item("Server &dashboard", C::Dashboard),
+                item("SQL p&rofiler", C::SqlProfiler),
             ],
         },
         MenuDef {

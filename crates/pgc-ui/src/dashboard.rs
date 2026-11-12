@@ -129,6 +129,7 @@ const COL_DATABASE: usize = 1;
 const COL_USER: usize = 2;
 const COL_STATE: usize = 6;
 const COL_BLOCKED_BY: usize = 8;
+const COL_QUERY: usize = 13;
 
 /// Counters of one `stats.sql` row.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -275,6 +276,8 @@ pub struct Session {
 
 #[derive(Debug)]
 pub struct Dashboard {
+    /// The statement pane below the list (D-059).
+    pub pane: Pane,
     /// Server uid; database filter (`None` = the whole server); database connected to.
     pub uid: u64,
     pub database: Option<String>,
@@ -340,6 +343,7 @@ impl Dashboard {
             asking: None,
             timer_seq: 0,
             error: None,
+            pane: Pane::default(),
         }
     }
 
@@ -457,25 +461,45 @@ impl Dashboard {
 
     /// The whole row under the cursor as `name: value` lines (Enter).
     pub fn row_lines(&self) -> Option<Vec<String>> {
+        self.grid().row_lines()
+    }
+
+    /// The statement pane is part of the shown list (Sessions only, D-059).
+    pub fn has_pane(&self) -> bool {
+        self.list == List::Sessions
+    }
+
+    /// The query of the session under the cursor and its database (D-059).
+    pub fn statement(&self) -> Option<(String, String)> {
+        if !self.has_pane() {
+            return None;
+        }
         let g = self.grid();
         let row = g.rows.get(g.row)?;
-        let width = g
-            .columns
-            .iter()
-            .map(|c| c.name.chars().count())
-            .max()
-            .unwrap_or(0);
-        let mut out = Vec::new();
-        for (c, v) in g.columns.iter().zip(row) {
-            let v = v.as_deref().unwrap_or("");
-            let mut lines = v.lines();
-            let first = lines.next().unwrap_or("");
-            out.push(format!("{:<width$}  {first}", c.name));
-            for l in lines {
-                out.push(format!("{:<width$}  {l}", ""));
-            }
+        let col = |i: usize| {
+            row.get(i)
+                .and_then(|v| v.as_deref())
+                .unwrap_or("")
+                .to_owned()
+        };
+        Some((col(COL_QUERY), col(COL_DATABASE)))
+    }
+}
+
+/// The statement pane below a dashboard or profiler list (D-059).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Pane {
+    pub visible: bool,
+    /// Height in percent of the tab (as the query tab's results, D-019).
+    pub percent: u16,
+}
+
+impl Default for Pane {
+    fn default() -> Self {
+        Self {
+            visible: true,
+            percent: 33,
         }
-        Some(out)
     }
 }
 

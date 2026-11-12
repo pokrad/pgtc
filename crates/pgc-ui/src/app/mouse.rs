@@ -85,6 +85,9 @@ impl App {
         if !self.modal() && self.dashboard_mouse(m.kind, p, hits) {
             return;
         }
+        if !self.modal() && self.profiler_mouse(m.kind, p, hits) {
+            return;
+        }
         match m.kind {
             MouseEventKind::Down(MouseButton::Left)
                 if !self.modal() && self.editor_area.contains(p) =>
@@ -164,6 +167,11 @@ impl App {
         let results_h = area.bottom().saturating_sub(y).clamp(4, area.height - 3);
         // rounded up: the view rounds down, so the bar lands exactly on `y`
         let percent = (results_h as u32 * 100).div_ceil(area.height as u32) as u16;
+        // dashboard / profiler: the statement pane is the lower part (D-059)
+        if self.list_tab() {
+            self.set_pane_percent(percent);
+            return;
+        }
         if let Some(q) = self.query_mut() {
             q.results_percent = percent.clamp(15, 85);
         }
@@ -265,7 +273,12 @@ impl App {
             }
         } else if let Some(i) = hits.tabs.iter().position(|r| r.contains(p)) {
             self.active_tab = i;
-            self.focus = Focus::Tabs;
+            // dashboard / profiler: the list (D-059)
+            self.focus = if self.list_tab() {
+                Focus::Results
+            } else {
+                Focus::Tabs
+            };
         } else if let Some(k) = fkey {
             self.dispatch(KeyEvent::new(k.code, k.mods));
         } else if hits.tree.contains(p) {
@@ -277,7 +290,7 @@ impl App {
                     self.tree.cursor = i;
                 }
             }
-        } else if hits.right.contains(p) {
+        } else if hits.right.contains(p) && !self.list_tab() {
             self.focus = Focus::Tabs;
         }
     }

@@ -508,6 +508,7 @@ desktop dependency.
   - Generate SQL from developer template… (D-013)
   - psql command… (D-054)
   - Server dashboard (D-057)
+  - SQL profiler (D-058)
 - **Settings**
   - Settings… — dialog with icons on/off (D-005), colour scheme, ... (contents: D-051)
   - Install templates — same as `--install-templates` (D-013)
@@ -1778,7 +1779,7 @@ pgtc (binary)
 ### D-057 — Server dashboard tab
 - **Status:** Accepted (like pgAdmin's dashboard; refines D-009, D-014, D-016, D-043)
 - **Opening:** *Tools → Server dashboard* and the context menu of server rows,
-  database rows and every row inside a database (`dashboard`, no default key). Needs a
+  database rows and every row inside a database; `Ctrl+D` in the tree (`dashboard`). Needs a
   connected server. A server row (or a server-level group / object) shows the **whole
   server**; a database or anything inside it shows **that database** (every query is
   filtered by the database name, a bind parameter). Opening it again for the same
@@ -1806,7 +1807,8 @@ pgtc (binary)
   running for, backend type, query; blocked sessions in the theme role
   `dashboard.blocked`. *Hide idle sessions* toggles sessions in state `idle`. The cursor
   stays on the same row (first column) across refreshes. `Enter` shows the whole row
-  (with the full query text) in a scrolling window.
+  in a scrolling window; the session's query is in the statement pane below the list
+  (D-059).
 - **Cancel / terminate** (Sessions list): *Cancel query* (`pg_cancel_backend`) and
   *Terminate session* (`pg_terminate_backend`) of the row under the cursor, each after a
   Yes / No question naming the PID, user and database; the PID is a bind parameter. The
@@ -1821,6 +1823,89 @@ pgtc (binary)
   / `End` in the list. Commands also in the tab's context menu (`F2`).
 - **Colours:** theme roles `dashboard.graph` (sparklines) and `dashboard.blocked`.
 - **Later:** pgAdmin's system statistics (`system_stats` extension), replication, logs.
+
+### D-058 — SQL profiler tab (statements from the server log)
+- **Status:** Accepted (like SQL Server Profiler; refines D-009, D-014, D-016, D-043)
+- **Why the log:** PostgreSQL has no trace interface; the only place where it records
+  *every* statement is the server log. pgtc reads the log **through its connection**
+  (server functions `pg_current_logfile`, `pg_stat_file`, `pg_read_binary_file`) — no
+  file access, works over SSH. No sampling of `pg_stat_activity` (it misses short
+  statements).
+- **Opening:** *Tools → SQL profiler* and the context menu of server and database rows
+  and `Ctrl+P` in the tree (`sql_profiler`; elsewhere `Ctrl+P` keeps its meaning —
+  PL/pgSQL mode, pause); needs a connected server. One profiler tab per
+  server (`Profiler: server`), with **its own connection** to the maintenance database;
+  opened from a database row, its database filter is filled in. Opening it again
+  switches to the open tab. Closes like a query tab and with its server (D-043).
+- **Start** (`F5`): pgtc reads `logging_collector`, `log_destination`,
+  `log_min_duration_statement`, the current log files and the user's rights.
+  - `logging_collector` off: only a message — turning it on needs a server restart;
+    pgtc does not change it.
+  - A machine-readable log is needed: **jsonlog** (PostgreSQL 15+) or **csvlog**; one
+    already in `log_destination` is used (jsonlog first).
+  - The needed changes are listed in a **Yes / No question**: `log_min_duration_statement
+    = 0` (every statement, with its duration) and, if missing, `jsonlog` (15+) / `csvlog`
+    added to `log_destination`; applied with `ALTER SYSTEM` + `pg_reload_conf()`, no
+    restart. The question also says that the settings stay changed if pgtc ends without
+    Stop (crash, killed). Nothing to change: no question. Missing rights (superuser, or
+    `pg_read_server_files` and `ALTER SYSTEM` rights): an error naming them.
+  - Only statements logged **after Start** are shown (reading starts at the end of the
+    current log file).
+- **Stop** (`F5` again), closing the tab, disconnecting the server, quitting pgtc: the
+  changed settings are **put back** — a value that came from `postgresql.auto.conf` is
+  set again with `ALTER SYSTEM SET`, any other with `ALTER SYSTEM RESET` — and the
+  configuration reloaded. Quitting waits for that (status line *Restoring logging
+  settings…*); a lost connection cannot restore and is reported.
+- **Reading:** once a second, the new part of the current log file (at most 1 MB per
+  read, as hex); a partial last line waits for the next read; a new log file (rotation)
+  is followed after the rest of the old one is read. The profiler's own statements are
+  left out (its backend PID).
+- **Entries:** *statement* / *execute* log lines (`duration: … ms  statement: …`) and
+  **errors** (`ERROR` / `FATAL` with their statement); the separate *parse* / *bind*
+  lines of the extended protocol are left out. Columns: time, duration (ms), PID, user,
+  database, statement, detail (parameters of prepared statements / error message),
+  kind, application, client — the statement early, so it is visible in a narrow pane;
+  errors in the error colour. Statement text and kinds are recognised in English
+  server messages (`lc_messages`); in other languages every duration line is shown with
+  its message as it is.
+- **Grid:** the result grid (D-041); newest at the bottom, the cursor follows new rows
+  while it is on the last row; at most 100,000 entries (the oldest are dropped).
+  `Enter` shows the whole entry in a scrolling window; the statement is in the
+  statement pane below the list (D-059).
+- **Filters** (`Ctrl+F` dialog, shown above the grid): user, database, PID,
+  application, text in the statement (contains, case-insensitive); empty = all. Applied
+  by pgtc to the read entries, so changing them also filters what is already shown.
+- **Other keys** (`[profiler]` context, D-016): `F5` start / stop, `Ctrl+P` pause / resume
+  the display (reading continues after the pause from where it stopped), `Ctrl+L` clear,
+  `F2` context menu, `Ctrl+C` / `Ctrl+A` copy, arrows / `PgUp` / `PgDn` / `Home` / `End`.
+- **Tab status:** `server · user@database`, then *Stopped* / *Running – jsonlog* /
+  *Paused*, entries shown / read.
+- **SQL:** `sql/profiler/` (versioned, D-010), parts adapted from pgAdmin's dashboard log
+  queries (copyright notice kept). `ALTER SYSTEM` cannot take bind parameters: its values
+  are the server's own setting values, quoted with the `pgc-core` quoting.
+- **Later:** export of the entries (D-042), statements inside functions (`auto_explain`
+  / `pgaudit`), managed services' log APIs.
+
+### D-059 — Statement pane in the dashboard and profiler tabs
+- **Status:** Accepted (refines D-019, D-049, D-057, D-058)
+- **Pane:** below the list, a **read-only SQL editor** (the `pgc-editor` control of the
+  object view, D-038) with highlighting, line numbers, selection, `Ctrl+C`, find and
+  scrolling. It shows the statement of the row under the list cursor and changes with
+  it. Dashboard: only for the Sessions list (the query of the session); profiler: every
+  entry.
+- **Parameters and errors** as SQL comments at the top, so they are copied with the
+  statement: `-- parameters: $1 = '5', …` (prepared statements), `-- ERROR: message`
+  (errors); multi-line texts get `-- ` on every line.
+- **Focus:** `F6` / `Ctrl+Tab` cycle list → pane → tree (D-032); opening the tab or
+  clicking its label focuses the list. The list keeps its `[dashboard]` /
+  `[profiler]` keys, the pane has the `[editor]` keys (`Ctrl+F` there is Find).
+- **Split** as the query tab's editor / results (D-019): drag the separator row with
+  the mouse, `Alt+Shift+Up` / `Alt+Shift+Down` make the pane smaller / larger, `Ctrl+R`
+  shows / hides it; about a third of the tab at first.
+- **`Ctrl+E` — Edit in new query tab** (list and pane, D-049): the pane's text (with its
+  comments) in a new query tab bound to the tab's server and **the row's database**, as
+  unsaved text. A row without a database (background processes) is refused with a
+  status-line hint.
 
 ### D-026 — Scope of the first alpha
 - **Status:** Accepted
@@ -1945,3 +2030,6 @@ pgtc (binary)
 | 2026-11-12 | D-056 accepted: Select top 100 rows (`Ctrl+B` in the tree, View menu, context menu) on a table, view, materialized view, foreign table or partition or any row below it — `SELECT * … LIMIT 100` in a new query tab on the same server and database, executed once the tab is connected. D-014, D-016, D-049 updated. |
 | 2026-11-12 | D-037 updated: a connected server row also lists all configuration settings below the version (value, source, file and line, restart needed); read once per connection, `Ctrl+R` on the server row reads them again. |
 | 2026-11-12 | D-057 accepted: server dashboard as a tab with its own connection — graphs (sessions, TPS, tuples in / out, block I/O), Sessions / Locks / Prepared transactions / Configuration lists, cancel query and terminate session after a question, 2 s refresh with pause and interval, `[dashboard]` keys. D-014 updated (Tools menu). |
+| 2026-11-12 | D-058 accepted: SQL profiler tab — every statement from the server log (jsonlog / csvlog) read through the connection; Start asks before changing `log_min_duration_statement` / `log_destination` with `ALTER SYSTEM`, Stop / close / quit put them back; filters by user, database, PID, application, text; no sampling. D-014 updated (Tools menu). |
+| 2026-11-12 | D-057, D-058 updated: `Ctrl+D` (server dashboard) and `Ctrl+P` (SQL profiler) in the tree. |
+| 2026-11-12 | D-059 accepted: statement pane (read-only SQL editor) below the dashboard's Sessions list and the profiler's entries, parameters / errors as `--` comments, `F6` list → pane → tree, split keys as the query tab (`Ctrl+R`, `Alt+Shift+Up/Down`, mouse), `Ctrl+E` opens the statement in a new query tab on the row's database. D-057, D-058 updated. |

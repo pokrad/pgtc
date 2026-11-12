@@ -2427,7 +2427,7 @@ async fn dashboard_tab_refreshes_and_cancels() {
     );
     assert!(matches!(
         a.effects.last(),
-        Some(Effect::StartDashboardTimer { tab: t, after, .. })
+        Some(Effect::StartTabTimer { tab: t, after, .. })
             if *t == tab && *after == std::time::Duration::from_secs(2)
     ));
     let screen = screen_text(&a);
@@ -2466,4 +2466,188 @@ async fn dashboard_tab_refreshes_and_cancels() {
     key(&mut a, "Ctrl+W");
     assert_eq!(a.tabs.len(), 1);
     assert!(!a.connections.contains_key(&conn));
+}
+
+/// Sends answer `rows` for `key` of profiler `tab` on connection `conn`.
+fn profiler_answer(a: &mut App, conn: ConnId, tab: u64, key: u64, rows: Vec<Vec<&str>>) {
+    let rows = rows
+        .into_iter()
+        .map(|r| r.into_iter().map(str::to_owned).collect())
+        .collect();
+    a.on_profiler_event(
+        conn,
+        tab,
+        DbEvent::Lookup {
+            id: conn,
+            key,
+            result: Ok(rows),
+        },
+    );
+}
+
+fn hex(s: &str) -> String {
+    s.bytes().map(|b| format!("{b:02x}")).collect()
+}
+
+/// SQL profiler (D-058): Start asks before changing the logging settings, reads the
+/// log from the end of the current file, Stop and quitting put the settings back.
+#[tokio::test]
+async fn profiler_asks_reads_and_restores() {
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    key(&mut a, "Home");
+    a.run(Command::SqlProfiler);
+    assert_eq!(a.tabs[1].kind, TabKind::Profiler);
+    assert_eq!(a.tabs[1].label(), "Profiler: a");
+    assert_eq!(a.context(), Some(crate::keymap::Context::Profiler));
+    let tab = a.tabs[1].id;
+    let conn = {
+        let p = a.tabs[1].profiler.as_mut().unwrap();
+        let c = p.conn.as_mut().unwrap();
+        c.handle.abort();
+        c.handle = pgc_db::ConnectionHandle::detached(c.id);
+        c.connected = true;
+        p.version = Some(pgc_core::ServerVersion(170002));
+        c.id
+    };
+    fn prof(a: &App) -> &crate::profiler::Profiler {
+        a.tabs[1].profiler.as_ref().unwrap()
+    }
+
+    // F5: check → question listing the changes
+    key(&mut a, "F5");
+    assert_eq!(prof(&a).phase, crate::profiler::Phase::Checking);
+    let k = prof(&a).step_keys[0];
+    profiler_answer(
+        &mut a,
+        conn,
+        tab,
+        k,
+        vec![vec!["on", "stderr", "default", "-1", "default", "99"]],
+    );
+    let d = a.dialogs.last().unwrap();
+    assert_eq!(d.kind, DialogKind::ConfirmProfilerSettings);
+    let text = &d.widgets[0].label.text;
+    assert!(
+        text.contains("log_destination = 'stderr,jsonlog'"),
+        "{text}"
+    );
+    assert!(text.contains("log_min_duration_statement = '0'"), "{text}");
+    // Esc = No: nothing changed
+    esc(&mut a);
+    assert_eq!(prof(&a).phase, crate::profiler::Phase::Stopped);
+    assert!(!prof(&a).needs_restore());
+
+    // again, Yes: two ALTER SYSTEM statements and the reload
+    key(&mut a, "F5");
+    let k = prof(&a).step_keys[0];
+    profiler_answer(
+        &mut a,
+        conn,
+        tab,
+        k,
+        vec![vec!["on", "stderr", "default", "-1", "default", "99"]],
+    );
+    key(&mut a, "y");
+    let keys = prof(&a).step_keys.clone();
+    assert_eq!(keys.len(), 3);
+    for k in keys {
+        profiler_answer(&mut a, conn, tab, k, vec![]);
+    }
+    assert_eq!(prof(&a).phase, crate::profiler::Phase::Running);
+    assert!(prof(&a).needs_restore());
+
+    // first read: only the end of the current file
+    let k = prof(&a).read_key.unwrap();
+    profiler_answer(
+        &mut a,
+        conn,
+        tab,
+        k,
+        vec![vec!["log/p.json", "500", "", ""]],
+    );
+    assert_eq!(prof(&a).file.as_deref(), Some("log/p.json"));
+    assert_eq!(prof(&a).offset, 500);
+    assert!(matches!(
+        a.effects.last(),
+        Some(Effect::StartTabTimer { .. })
+    ));
+    let Some(Effect::StartTabTimer { seq, .. }) = a.effects.pop() else {
+        unreachable!()
+    };
+    a.update(Msg::TabTimer(tab, seq), &Hits::default());
+    let line = |pid: &str, user: &str, sql: &str| {
+        serde_json::json!({"user": user, "dbname": "shop", "pid": pid,
+            "error_severity": "LOG", "message": format!("duration: 0.5 ms  statement: {sql}")})
+        .to_string()
+            + "\n"
+    };
+    let data = line("7", "bob", "SELECT 1")
+        + &line("99", "me", "SELECT own")
+        + &line("8", "eve", "SELECT 2");
+    let k = prof(&a).read_key.unwrap();
+    profiler_answer(
+        &mut a,
+        conn,
+        tab,
+        k,
+        vec![vec!["log/p.json", "800", "800", &hex(&data)]],
+    );
+    assert_eq!(prof(&a).grid.rows.len(), 2, "its own PID 99 is left out");
+    assert_eq!(prof(&a).offset, 500 + data.len() as u64);
+    let screen = screen_text(&a);
+    assert!(screen.contains("SELECT 2"), "{screen}");
+
+    // the statement pane follows the list cursor (D-059); it is filled in `update`
+    a.update(Msg::Tick, &Hits::default());
+    assert_eq!(a.tabs[1].view.editor.text(), "SELECT 2");
+    key(&mut a, "Up");
+    a.update(Msg::Tick, &Hits::default());
+    assert_eq!(a.tabs[1].view.editor.text(), "SELECT 1");
+    // F6: list → pane (editor keys) → tree
+    assert_eq!(a.focus, Focus::Results);
+    key(&mut a, "F6");
+    assert_eq!(a.focus, Focus::Tabs);
+    assert_eq!(a.context(), Some(crate::keymap::Context::Editor));
+    // Ctrl+R hides the pane: the focus goes back to the list
+    key(&mut a, "Ctrl+R");
+    assert_eq!(a.focus, Focus::Results);
+    assert!(!a.pane_shown());
+    key(&mut a, "Ctrl+R");
+    assert!(a.pane_shown());
+    // Ctrl+E: the statement in a new query tab on the row's database
+    key(&mut a, "Ctrl+E");
+    assert_eq!(a.tabs.len(), 3);
+    assert_eq!(a.tabs[2].view.editor.text(), "SELECT 1");
+    assert_eq!(
+        a.tabs[2].query.as_ref().unwrap().binding,
+        Some((uid, "shop".to_owned()))
+    );
+    let id = a.tabs[2].id;
+    a.close_tab(id);
+    a.active_tab = 1;
+    a.focus = Focus::Results;
+
+    // the filter dialog
+    key(&mut a, "Ctrl+F");
+    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::ProfilerFilter);
+    typing(&mut a, "eve");
+    key(&mut a, "Alt+O");
+    assert_eq!(prof(&a).grid.rows.len(), 1);
+    assert!(screen_text(&a).contains("Filter: user eve"));
+
+    // quitting puts the settings back first
+    key(&mut a, "F10");
+    assert!(!a.should_quit());
+    assert_eq!(prof(&a).phase, crate::profiler::Phase::Restoring);
+    let keys = prof(&a).step_keys.clone();
+    assert_eq!(keys.len(), 3, "RESET, RESET-or-SET, reload");
+    for k in keys {
+        assert!(!a.should_quit());
+        profiler_answer(&mut a, conn, tab, k, vec![]);
+    }
+    assert!(a.should_quit());
+    assert!(!prof(&a).needs_restore());
 }

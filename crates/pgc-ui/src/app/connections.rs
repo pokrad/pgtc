@@ -142,6 +142,7 @@ impl App {
             (Target::Query(tab), event) => self.on_query_event(id, tab, event),
             (Target::Structure, event) => self.on_job_event(id, event),
             (Target::Dashboard(tab), event) => self.on_dashboard_event(id, tab, event),
+            (Target::Profiler(tab), event) => self.on_profiler_event(id, tab, event),
             // a server's configuration settings (D-037)
             (Target::Server(uid), DbEvent::Lookup { key, result, .. })
                 if self.settings_loaded(uid, key, &result) => {}

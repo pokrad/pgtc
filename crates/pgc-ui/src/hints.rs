@@ -95,6 +95,20 @@ const DASHBOARD: &[Entry] = &[
     (C::HideIdleSessions, "Idle", None),
     (C::CancelBackend, "Cancel", None),
     (C::TerminateBackend, "Terminate", None),
+    (C::EditInQueryTab, "Edit", None),
+    (C::CloseTab, "Close tab", None),
+    (C::SwitchPanel, "Panel", Some("F6")),
+    (C::Quit, "Quit", None),
+];
+
+const PROFILER: &[Entry] = &[
+    (C::Help, "Help", None),
+    (C::ContextMenu, "Menu", None),
+    (C::ProfilerStartStop, "Start/Stop", None),
+    (C::ProfilerPause, "Pause", None),
+    (C::ProfilerFilter, "Filter", None),
+    (C::ProfilerClear, "Clear", None),
+    (C::EditInQueryTab, "Edit", None),
     (C::CloseTab, "Close tab", None),
     (C::SwitchPanel, "Panel", Some("F6")),
     (C::Quit, "Quit", None),
@@ -165,10 +179,14 @@ impl App {
         } else {
             match self.focus {
                 Focus::Tree => (Context::Tree, TREE),
-                Focus::Results => (Context::Results, RESULTS),
-                Focus::Tabs if self.tabs[self.active_tab].dashboard.is_some() => {
+                // dashboard / profiler: the list has the results focus (D-059)
+                Focus::Results if self.tabs[self.active_tab].dashboard.is_some() => {
                     (Context::Dashboard, DASHBOARD)
                 }
+                Focus::Results if self.tabs[self.active_tab].profiler.is_some() => {
+                    (Context::Profiler, PROFILER)
+                }
+                Focus::Results => (Context::Results, RESULTS),
                 Focus::Tabs if self.tabs[self.active_tab].query.is_some() => {
                     (Context::Editor, QUERY_EDITOR)
                 }
@@ -223,7 +241,8 @@ impl App {
             | C::NewFromTemplate
             | C::Psql
             | C::CancelBackend
-            | C::TerminateBackend => self.is_enabled(cmd),
+            | C::TerminateBackend
+            | C::EditInQueryTab => self.is_enabled(cmd),
             // F8 only deletes saved connections (server rows)
             C::DropObject => self
                 .tree

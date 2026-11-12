@@ -62,6 +62,9 @@ pub enum DialogKind {
     /// Dashboard: cancel query / terminate session of a session (D-057).
     ConfirmCancelBackend,
     ConfirmTerminateBackend,
+    /// SQL profiler: change the logging settings? and the filter (D-058).
+    ConfirmProfilerSettings,
+    ProfilerFilter,
 }
 
 /// A `&'static str` for a dynamic widget id (template parameter names). Each distinct

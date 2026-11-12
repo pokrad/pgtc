@@ -17,6 +17,7 @@ mod keymap;
 mod keys;
 mod menu;
 mod objects;
+mod profiler;
 mod psql;
 mod query_tab;
 pub mod setup;
@@ -151,11 +152,11 @@ async fn event_loop(
                         let _ = tx.send(Msg::DefinitionTimer(seq));
                     });
                 }
-                Effect::StartDashboardTimer { tab, seq, after } => {
+                Effect::StartTabTimer { tab, seq, after } => {
                     let tx = tx.clone();
                     tokio::spawn(async move {
                         tokio::time::sleep(after).await;
-                        let _ = tx.send(Msg::DashboardTimer(tab, seq));
+                        let _ = tx.send(Msg::TabTimer(tab, seq));
                     });
                 }
                 Effect::StartEscTimer(seq) => {

@@ -55,6 +55,8 @@ pub struct Hits {
     pub message_rows: Vec<(usize, Rect)>,
     /// Dashboard tab: list sub-tabs and grid cells (D-057).
     pub dashboard: crate::dashboard::DashHits,
+    /// Profiler tab: grid cells (D-058).
+    pub profiler: crate::profiler::ProfHits,
 }
 
 /// Clickable items of the results bar.
@@ -275,6 +277,7 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
     hits.grid_cells.clear();
     hits.message_rows.clear();
     hits.dashboard = crate::dashboard::DashHits::default();
+    hits.profiler = crate::profiler::ProfHits::default();
     hits.tabs.clear();
     hits.tab_close.clear();
     hits.editor = Rect::default();
@@ -303,6 +306,7 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
             TabKind::Default | TabKind::Object => Icon::ObjectView,
             TabKind::Query(_) => Icon::Query,
             TabKind::Dashboard => Icon::Server,
+            TabKind::Profiler => Icon::Query,
         };
         // every tab but the default one has a close mark (D-043)
         let closable = i > 0;
@@ -336,15 +340,60 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
     }
     frame.render_widget(Paragraph::new(Line::from(spans)), strip);
 
-    // Dashboard tab: graphs and lists instead of an editor (D-057)
-    if let Some(d) = &tab.dashboard {
-        let focused = app.focus == Focus::Tabs;
-        hits.dashboard = crate::dashboard::render(frame, d, inner, &app.theme, focused, &|f, r| {
-            separator(f, app, r)
-        });
-        hits.grid = hits.dashboard.grid;
-        return;
-    }
+    // Dashboard / profiler tab: the list on top, the statement pane (the tab's
+    // read-only editor) below (D-057, D-058, D-059)
+    let inner = if tab.dashboard.is_some() || tab.profiler.is_some() {
+        let pane = app.pane_shown() && inner.height >= 12;
+        let (list_area, pane_area) = if pane {
+            let pane_h = (inner.height as u32 * app.pane_percent() as u32 / 100) as u16;
+            // the separator row and at least 2 lines; the list keeps 8 rows
+            let pane_h = pane_h.clamp(3, inner.height - 8);
+            let list_area = Rect {
+                height: inner.height - pane_h,
+                ..inner
+            };
+            let pane_area = Rect {
+                y: inner.y + list_area.height,
+                height: pane_h,
+                ..inner
+            };
+            (list_area, Some(pane_area))
+        } else {
+            (inner, None)
+        };
+        let focused = app.focus == Focus::Results;
+        if let Some(d) = &tab.dashboard {
+            hits.dashboard =
+                crate::dashboard::render(frame, d, list_area, &app.theme, focused, &|f, r| {
+                    separator(f, app, r)
+                });
+            hits.grid = hits.dashboard.grid;
+        } else if let Some(p) = &tab.profiler {
+            hits.profiler =
+                crate::profiler::render(frame, p, list_area, &app.theme, focused, &|f, r| {
+                    separator(f, app, r)
+                });
+            hits.grid = hits.profiler.grid;
+        }
+        let Some(pane_area) = pane_area else {
+            return;
+        };
+        // the separator is the split's drag handle (as D-019)
+        let split = Rect {
+            height: 1,
+            ..pane_area
+        };
+        separator(frame, app, split);
+        hits.split = split;
+        hits.split_area = inner;
+        Rect {
+            y: pane_area.y + 1,
+            height: pane_area.height - 1,
+            ..pane_area
+        }
+    } else {
+        inner
+    };
     let view = &tab.view;
     // Query tab: editor on top, results below (D-019)
     let inner = match &tab.query {
@@ -572,7 +621,10 @@ fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: 
     let gap = app.theme.get(Role::CoreNormal);
     let mut left = String::from(" ");
     let mut right = String::new();
-    if let Some((l, r)) = app.dashboard_status(tab) {
+    if let Some((l, r)) = app
+        .dashboard_status(tab)
+        .or_else(|| app.profiler_status(tab))
+    {
         left.push_str(&l);
         right = format!(" {r} ");
     } else {
@@ -610,7 +662,7 @@ fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: 
             right.push_str(&format!("{}  ", f.text()));
         }
     }
-    if tab.dashboard.is_none() {
+    if tab.dashboard.is_none() && tab.profiler.is_none() {
         let (line, col) = tab.view.editor.cursor_line_col();
         right.push_str(&format!("Ln {}, Col {} ", line + 1, col + 1));
     }

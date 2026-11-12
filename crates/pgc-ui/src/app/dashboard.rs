@@ -61,7 +61,8 @@ impl App {
                 .is_some_and(|d| d.uid == uid && d.database == db)
         }) {
             self.active_tab = i;
-            self.focus = Focus::Tabs;
+            // the list first (D-059)
+            self.focus = Focus::Results;
             return;
         }
         let label = match &db {
@@ -76,6 +77,7 @@ impl App {
             t.database = db.clone();
             t.dashboard = Some(Dashboard::new(uid, db, conn_db, label));
         }
+        self.focus = Focus::Results;
         self.dashboard_connect(id);
     }
 
@@ -292,7 +294,7 @@ impl App {
             return;
         }
         d.timer_seq += 1;
-        let effect = Effect::StartDashboardTimer {
+        let effect = Effect::StartTabTimer {
             tab,
             seq: d.timer_seq,
             after: Duration::from_secs(d.interval_secs()),
@@ -300,7 +302,7 @@ impl App {
         self.effects.push(effect);
     }
 
-    /// `Msg::DashboardTimer`: time for the next refresh.
+    /// `Msg::TabTimer`: time for the next refresh.
     pub(super) fn dashboard_timer(&mut self, tab: u64, seq: u64) {
         let Some(d) = self.dashboard_of(tab) else {
             return;
@@ -605,7 +607,7 @@ impl App {
                 if dh.lists.iter().any(|(_, r)| r.contains(p)) =>
             {
                 if let Some((list, _)) = dh.lists.iter().find(|(_, r)| r.contains(p)) {
-                    self.focus = Focus::Tabs;
+                    self.focus = Focus::Results;
                     self.show_list(*list);
                 }
                 true
@@ -613,7 +615,7 @@ impl App {
             MouseEventKind::Down(b @ (MouseButton::Left | MouseButton::Right))
                 if dh.grid.contains(p) =>
             {
-                self.focus = Focus::Tabs;
+                self.focus = Focus::Results;
                 let cell = dh
                     .cells
                     .iter()

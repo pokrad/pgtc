@@ -168,6 +168,31 @@ impl ResultSet {
     }
 }
 
+impl ResultSet {
+    /// The row under the cursor as `column  value` lines, multi-line values indented
+    /// (the dashboard's and profiler's Enter, D-057, D-058).
+    pub fn row_lines(&self) -> Option<Vec<String>> {
+        let row = self.rows.get(self.row)?;
+        let width = self
+            .columns
+            .iter()
+            .map(|c| c.name.chars().count())
+            .max()
+            .unwrap_or(0);
+        let mut out = Vec::new();
+        for (c, v) in self.columns.iter().zip(row) {
+            let v = v.as_deref().unwrap_or("");
+            let mut lines = v.lines();
+            let first = lines.next().unwrap_or("");
+            out.push(format!("{:<width$}  {first}", c.name));
+            for l in lines {
+                out.push(format!("{:<width$}  {l}", ""));
+            }
+        }
+        Some(out)
+    }
+}
+
 /// `1234567` → `1,234,567`
 pub fn thousands(n: usize) -> String {
     let s = n.to_string();

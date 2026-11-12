@@ -17,10 +17,12 @@ mod find_object;
 mod lookups;
 mod mouse;
 mod object_view;
+mod profiler;
 mod query;
 mod result_export;
 mod results;
 mod settings_dialog;
+mod statement_pane;
 mod templates;
 #[cfg(test)]
 mod tests;
@@ -70,9 +72,9 @@ pub enum Msg {
     /// Periodic tick while a query runs (elapsed time, cancel wait, D-041).
     Tick,
     Db(DbEvent),
-    /// Time for the next refresh of dashboard tab .0, if .1 is its latest timer
-    /// (D-057).
-    DashboardTimer(u64, u64),
+    /// Time for the next refresh of tab `.0` (dashboard, profiler) if `.1` is its
+    /// latest timer (D-057, D-058).
+    TabTimer(u64, u64),
     /// From a result export's writer thread (D-042).
     Export(ExportEvent),
 }
@@ -92,8 +94,8 @@ pub enum Effect {
     Tick,
     /// Put this text into the terminal's clipboard with OSC 52 (D-023).
     Osc52(String),
-    /// Send Msg::DashboardTimer(tab, seq) after fter (D-057).
-    StartDashboardTimer {
+    /// Send `Msg::TabTimer(tab, seq)` after `after` (D-057, D-058).
+    StartTabTimer {
         tab: u64,
         seq: u64,
         after: std::time::Duration,
@@ -120,6 +122,8 @@ pub enum TabKind {
     Query(u32),
     /// A server dashboard (D-057).
     Dashboard,
+    /// An SQL profiler (D-058).
+    Profiler,
 }
 
 /// Content of a tab: an editor (D-038), read-only for object views (D-037).
@@ -184,6 +188,8 @@ pub struct Tab {
     pub query: Option<QueryState>,
     /// Dashboard tabs (D-057).
     pub dashboard: Option<crate::dashboard::Dashboard>,
+    /// Profiler tabs (D-058).
+    pub profiler: Option<crate::profiler::Profiler>,
 }
 
 impl Tab {
@@ -196,6 +202,11 @@ impl Tab {
                 .dashboard
                 .as_ref()
                 .map(|d| d.label.clone())
+                .unwrap_or_default(),
+            TabKind::Profiler => self
+                .profiler
+                .as_ref()
+                .map(|p| p.label.clone())
                 .unwrap_or_default(),
             TabKind::Query(n) => {
                 let q = self.query.as_ref();
@@ -225,6 +236,8 @@ enum Target {
     Structure,
     /// Dashboard tab id (D-057).
     Dashboard(u64),
+    /// Profiler tab id (D-058).
+    Profiler(u64),
 }
 
 pub struct App {
@@ -321,6 +334,8 @@ pub struct App {
     pub(crate) screen: Rect,
     next_query: u32,
     quit: bool,
+    /// Quitting waits for profilers to put the logging settings back (D-058).
+    quit_after_restore: bool,
     esc_seq: u64,
     esc_pending: bool,
 }
@@ -403,6 +418,7 @@ impl App {
                 view: TextView::new(true, tab_width),
                 query: None,
                 dashboard: None,
+                profiler: None,
             }],
             active_tab: 0,
             status,
@@ -454,6 +470,7 @@ impl App {
             screen: Rect::default(),
             next_query: 0,
             quit: false,
+            quit_after_restore: false,
             esc_seq: 0,
             esc_pending: false,
         };
@@ -483,8 +500,13 @@ impl App {
     pub fn context(&self) -> Option<Context> {
         match self.focus {
             Focus::Tree => Some(Context::Tree),
-            Focus::Tabs if self.tabs[self.active_tab].dashboard.is_some() => {
+            // dashboard / profiler: the list has the results focus, the statement pane
+            // the editor focus (D-059)
+            Focus::Results if self.tabs[self.active_tab].dashboard.is_some() => {
                 Some(Context::Dashboard)
+            }
+            Focus::Results if self.tabs[self.active_tab].profiler.is_some() => {
+                Some(Context::Profiler)
             }
             Focus::Tabs => Some(Context::Editor),
             Focus::Results => Some(Context::Results),
@@ -523,7 +545,15 @@ impl App {
             Command::RefreshTree => server.is_some_and(|s| s.state == ConnState::Connected),
             Command::ShowInNewTab => self.tree.selected().is_some(),
             Command::FindObject => self.find_scope().is_ok(),
+            Command::EditInQueryTab if self.list_tab() && self.focus != Focus::Tree => {
+                self.can_edit_statement()
+            }
             Command::EditInQueryTab => self.edit_source().is_ok(),
+            Command::ToggleResults | Command::ResultsSmaller | Command::ResultsLarger
+                if self.list_tab() =>
+            {
+                true
+            }
             Command::SelectTopRows => self.top_rows_source().is_ok(),
             Command::ToggleSystemObjects => true,
             Command::Execute => self
@@ -570,7 +600,17 @@ impl App {
             | Command::PrevList
             | Command::CancelBackend
             | Command::TerminateBackend
-            | Command::ShowRow => self.dashboard_enabled(cmd),
+            | Command::ShowRow
+                if self.dashboard().is_some() =>
+            {
+                self.dashboard_enabled(cmd)
+            }
+            Command::SqlProfiler => self.dashboard_target().is_some(),
+            Command::ProfilerStartStop
+            | Command::ProfilerPause
+            | Command::ProfilerFilter
+            | Command::ProfilerClear
+            | Command::ShowRow => self.profiler_enabled(cmd),
             _ => false,
         }
     }
@@ -596,6 +636,7 @@ impl App {
                     Context::Editor,
                     Context::Results,
                     Context::Dashboard,
+                    Context::Profiler,
                 ],
                 cmd,
             )
@@ -692,8 +733,8 @@ impl App {
                 self.on_export_event(event);
                 Vec::new()
             }
-            Msg::DashboardTimer(tab, seq) => {
-                self.dashboard_timer(tab, seq);
+            Msg::TabTimer(tab, seq) => {
+                self.tab_timer(tab, seq);
                 Vec::new()
             }
         };
@@ -720,9 +761,15 @@ impl App {
             self.tick_scheduled = true;
             effects.push(Effect::Tick);
         }
-        if self.focus == Focus::Results && self.query().is_none_or(|q| !q.results_visible) {
+        if self.focus == Focus::Results
+            && !self.list_tab()
+            && self.query().is_none_or(|q| !q.results_visible)
+        {
             self.focus = Focus::Tabs;
         }
+        // the statement pane follows the list cursor (D-059)
+        self.sync_pane();
+        self.fix_list_focus();
         // the list belongs to the editor of the active query tab, or to the focused
         // `sql` box of that tab's template form (D-052)
         let keep = match self.completion.as_ref() {
@@ -919,11 +966,14 @@ impl App {
         let in_tree = self.focus == Focus::Tree && !self.modal();
         let in_view = self.focus == Focus::Tabs && !self.modal();
         let in_results = self.focus == Focus::Results && !self.modal();
-        let in_dashboard = in_view && self.dashboard().is_some();
+        let in_dashboard = in_results && self.dashboard().is_some();
+        let in_profiler = in_results && self.profiler().is_some();
         match cmd {
             Command::Quit => self.request_quit(),
             Command::Menu => self.open_menu(0),
             // D-041: F6 / Ctrl+Tab cycle editor → results → tree → editor
+            // D-059: list → statement pane → tree
+            Command::SwitchPanel if self.list_tab() => self.focus = self.next_list_focus(),
             Command::SwitchPanel => {
                 self.focus = match self.focus {
                     Focus::Tree => Focus::Tabs,
@@ -935,7 +985,16 @@ impl App {
             }
             c if in_results && self.results_command(c) => {}
             c if in_dashboard && self.dashboard_command(c) => {}
+            c if in_profiler && self.profiler_command(c) => {}
             Command::Dashboard => self.open_dashboard(),
+            Command::SqlProfiler => self.open_profiler(),
+            // the statement pane of a dashboard / profiler tab (D-059)
+            Command::ToggleResults if self.list_tab() => self.toggle_pane(),
+            Command::ResultsSmaller if self.list_tab() => self.resize_pane(-5),
+            Command::ResultsLarger if self.list_tab() => self.resize_pane(5),
+            Command::EditInQueryTab if self.list_tab() && !in_tree => {
+                self.edit_statement_in_query_tab();
+            }
             Command::Execute => self.execute(),
             Command::CancelQuery => self.cancel_query(),
             Command::FetchAll => self.fetch_all(),
@@ -1134,6 +1193,7 @@ impl App {
             view,
             query,
             dashboard: None,
+            profiler: None,
         });
         self.active_tab = self.tabs.len() - 1;
         self.focus = Focus::Tabs;
@@ -1177,7 +1237,11 @@ impl App {
         match event {
             DialogEvent::None => {}
             DialogEvent::Cancelled => {
-                self.dialogs.pop();
+                if let Some(d) = self.dialogs.pop()
+                    && d.kind == DialogKind::ConfirmProfilerSettings
+                {
+                    self.profiler_answer(d.tag, false);
+                }
             }
             DialogEvent::Button(id) => {
                 let Some(dialog) = self.dialogs.pop() else {
@@ -1236,6 +1300,10 @@ impl App {
                     (DialogKind::ConfirmCancelBackend, "yes") => {
                         self.send_signal(dialog.tag, crate::dashboard::Signal::Cancel);
                     }
+                    (DialogKind::ConfirmProfilerSettings, button) => {
+                        self.profiler_answer(dialog.tag, button == "yes");
+                    }
+                    (DialogKind::ProfilerFilter, "ok") => self.apply_profiler_filter(&dialog),
                     (DialogKind::ConfirmTerminateBackend, "yes") => {
                         self.send_signal(dialog.tag, crate::dashboard::Signal::Terminate);
                     }

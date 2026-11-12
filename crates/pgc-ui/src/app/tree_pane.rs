@@ -262,6 +262,7 @@ impl App {
                 MenuEntry::Separator,
                 menu::item("&Refresh", Command::RefreshTree),
                 menu::item("Server d&ashboard", Command::Dashboard),
+                menu::item("SQL &profiler", Command::SqlProfiler),
                 MenuEntry::Separator,
                 menu::item("&Edit connection…", Command::EditConnection),
                 menu::item("De&lete connection", Command::DeleteConnection),
@@ -284,6 +285,7 @@ impl App {
                     MenuEntry::Separator,
                     menu::item("&Refresh", Command::RefreshTree),
                     menu::item("Server d&ashboard", Command::Dashboard),
+                    menu::item("SQL &profiler", Command::SqlProfiler),
                 ]);
                 // database definition export / load (D-048)
                 if self.selected_database().is_some() {

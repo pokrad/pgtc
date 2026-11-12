@@ -23,16 +23,19 @@ pub enum Context {
     Results,
     /// The server dashboard tab (D-057).
     Dashboard,
+    /// The SQL profiler tab (D-058).
+    Profiler,
     Dialog,
 }
 
 impl Context {
-    pub const ALL: [Context; 6] = [
+    pub const ALL: [Context; 7] = [
         Context::Global,
         Context::Tree,
         Context::Editor,
         Context::Results,
         Context::Dashboard,
+        Context::Profiler,
         Context::Dialog,
     ];
 
@@ -43,6 +46,7 @@ impl Context {
             Context::Editor => "editor",
             Context::Results => "results",
             Context::Dashboard => "dashboard",
+            Context::Profiler => "profiler",
             Context::Dialog => "dialog",
         }
     }
@@ -94,7 +98,7 @@ commands! {
     // query tab
     Execute = "execute", "Execute the selection or the whole script";
     CancelQuery = "cancel_query", "Cancel the running query";
-    ToggleResults = "toggle_results", "Show / hide the results";
+    ToggleResults = "toggle_results", "Show / hide the results (statement pane in dashboard / profiler)";
     // navigation
     Up = "up", "Up";
     Down = "down", "Down";
@@ -145,14 +149,14 @@ commands! {
     ToggleAutoCommit = "toggle_auto_commit", "Auto commit on / off";
     ToggleAutoRollback = "toggle_auto_rollback", "Auto rollback on error on / off";
     TogglePlpgsql = "toggle_plpgsql", "PL/pgSQL mode on / off";
-    EditInQueryTab = "edit_in_query_tab", "Edit the shown definition in a new query tab";
+    EditInQueryTab = "edit_in_query_tab", "Edit the shown definition (or statement) in a new query tab";
     FindObject = "find_object", "Find an object below the selected tree row";
     SelectTopRows = "select_top_rows", "Select the top 100 rows of the table or view in a new query tab";
     ShowMessages = "show_messages", "Switch between results and messages";
     NextResult = "next_result", "Next result set";
     PrevResult = "prev_result", "Previous result set";
-    ResultsSmaller = "results_smaller", "Make the results smaller";
-    ResultsLarger = "results_larger", "Make the results larger";
+    ResultsSmaller = "results_smaller", "Make the results (statement pane) smaller";
+    ResultsLarger = "results_larger", "Make the results (statement pane) larger";
     // server dashboard (D-057)
     Dashboard = "dashboard", "Server dashboard of the selected server or database";
     DashboardRefresh = "dashboard_refresh", "Refresh the dashboard now (connects again when needed)";
@@ -164,6 +168,12 @@ commands! {
     CancelBackend = "cancel_backend", "Cancel the query of the selected session";
     TerminateBackend = "terminate_backend", "Terminate the selected session";
     ShowRow = "show_row", "Show the whole row (full query text)";
+    // SQL profiler (D-058)
+    SqlProfiler = "sql_profiler", "SQL profiler: every statement on the server";
+    ProfilerStartStop = "profiler_start_stop", "Start / stop the profiler";
+    ProfilerPause = "profiler_pause", "Pause / resume reading the server log";
+    ProfilerFilter = "profiler_filter", "Filter the profiler entries";
+    ProfilerClear = "profiler_clear", "Clear the profiler entries";
     // dialogs and menus
     NextField = "next_field", "Next field";
     PrevField = "prev_field", "Previous field";
@@ -227,6 +237,8 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::Tree, Command::EditInQueryTab, &["Ctrl+E"]),
     (Context::Tree, Command::FindObject, &["Ctrl+F"]),
     (Context::Tree, Command::SelectTopRows, &["Ctrl+B"]),
+    (Context::Tree, Command::Dashboard, &["Ctrl+D"]),
+    (Context::Tree, Command::SqlProfiler, &["Ctrl+P"]),
     (Context::Editor, Command::EditInQueryTab, &["Ctrl+E"]),
     (Context::Editor, Command::Execute, &["F5"]),
     (Context::Editor, Command::NewFromTemplate, &["F7"]),
@@ -387,6 +399,50 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::Dashboard, Command::End, &["End"]),
     (Context::Dashboard, Command::DocStart, &["Ctrl+Home"]),
     (Context::Dashboard, Command::DocEnd, &["Ctrl+End"]),
+    // the statement pane (D-059)
+    (Context::Dashboard, Command::ToggleResults, &["Ctrl+R"]),
+    (
+        Context::Dashboard,
+        Command::ResultsSmaller,
+        &["Alt+Shift+Up"],
+    ),
+    (
+        Context::Dashboard,
+        Command::ResultsLarger,
+        &["Alt+Shift+Down"],
+    ),
+    (Context::Dashboard, Command::EditInQueryTab, &["Ctrl+E"]),
+    (Context::Profiler, Command::ProfilerStartStop, &["F5"]),
+    (Context::Profiler, Command::ProfilerPause, &["Ctrl+P"]),
+    (Context::Profiler, Command::ProfilerFilter, &["Ctrl+F"]),
+    (Context::Profiler, Command::ProfilerClear, &["Ctrl+L"]),
+    (Context::Profiler, Command::ShowRow, &["Enter"]),
+    (Context::Profiler, Command::ContextMenu, &["F2"]),
+    (Context::Profiler, Command::Copy, &["Ctrl+C", "Ctrl+Insert"]),
+    (Context::Profiler, Command::SelectAll, &["Ctrl+A"]),
+    (Context::Profiler, Command::Up, &["Up"]),
+    (Context::Profiler, Command::Down, &["Down"]),
+    (Context::Profiler, Command::Left, &["Left"]),
+    (Context::Profiler, Command::Right, &["Right"]),
+    (Context::Profiler, Command::PageUp, &["PageUp"]),
+    (Context::Profiler, Command::PageDown, &["PageDown"]),
+    (Context::Profiler, Command::Home, &["Home"]),
+    (Context::Profiler, Command::End, &["End"]),
+    (Context::Profiler, Command::DocStart, &["Ctrl+Home"]),
+    (Context::Profiler, Command::DocEnd, &["Ctrl+End"]),
+    // the statement pane (D-059)
+    (Context::Profiler, Command::ToggleResults, &["Ctrl+R"]),
+    (
+        Context::Profiler,
+        Command::ResultsSmaller,
+        &["Alt+Shift+Up"],
+    ),
+    (
+        Context::Profiler,
+        Command::ResultsLarger,
+        &["Alt+Shift+Down"],
+    ),
+    (Context::Profiler, Command::EditInQueryTab, &["Ctrl+E"]),
     (Context::Dialog, Command::NextField, &["Tab"]),
     (Context::Dialog, Command::PrevField, &["Shift+Tab"]),
     (Context::Dialog, Command::Up, &["Up"]),
@@ -567,6 +623,28 @@ mod tests {
         assert_eq!(
             km.lookup(Context::Editor, k("Ctrl+Shift+Z")),
             Some(Command::Redo)
+        );
+    }
+
+    #[test]
+    fn dashboard_and_profiler_keys_in_the_tree() {
+        // D-057, D-058: Ctrl+P keeps its meaning outside the tree
+        let km = Keymap::default();
+        assert_eq!(
+            km.lookup(Context::Tree, k("Ctrl+D")),
+            Some(Command::Dashboard)
+        );
+        assert_eq!(
+            km.lookup(Context::Tree, k("Ctrl+P")),
+            Some(Command::SqlProfiler)
+        );
+        assert_eq!(
+            km.lookup(Context::Editor, k("Ctrl+P")),
+            Some(Command::TogglePlpgsql)
+        );
+        assert_eq!(
+            km.lookup(Context::Dashboard, k("Ctrl+P")),
+            Some(Command::DashboardPause)
         );
     }
 
