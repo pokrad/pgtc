@@ -1154,6 +1154,14 @@ pgtc (binary)
 - **Rows that are not objects** show info text as SQL comments: a server shows name,
   host:port, maintenance database, user, SSL mode, version and state; a group lists the
   objects in it.
+- **Server configuration:** below the version, a connected server also lists **all**
+  configuration settings it shows the user (`pg_settings`, query
+  `sql/server/<version>/settings.sql`), sorted by name: name, value as `SHOW` prints it
+  (`current_setting`), source and — where the server reports it — the file and line it
+  was set in; settings waiting for a restart are marked `(restart needed)`. Read on the
+  server's maintenance connection the first time the server row is selected, then kept
+  until the server is disconnected; `Ctrl+R` on the server row reads them again.
+  "loading…" is shown meanwhile, an error as a comment line.
 - **Keys:** the object view is read-only text and uses the `[editor]` keymap context
   (scrolling keys). Keys that edit do nothing there; to edit the text, copy it into a
   new query tab (D-049).
@@ -1887,3 +1895,4 @@ pgtc (binary)
 | 2026-11-12 | D-055 accepted: Find object (`Ctrl+F` in the tree) — searches everything below the selected row through the tree connection (server rows: databases, roles, tablespaces), *Match* combo (Contains — default, Starts with, Ends with), "Show columns" checkbox (default off), matches with name and type, OK opens the tree level by level down to exactly that object. D-014, D-016 updated. |
 | 2026-11-12 | D-055 updated: a server row (and the Databases group) also searches everything in every database of the server — databases not connected are opened (8 at a time) and closed with the dialog, failures listed without a login dialog; the list has the columns Database, Schema, Name, Type. |
 | 2026-11-12 | D-056 accepted: Select top 100 rows (`Ctrl+B` in the tree, View menu, context menu) on a table, view, materialized view, foreign table or partition or any row below it — `SELECT * … LIMIT 100` in a new query tab on the same server and database, executed once the tab is connected. D-014, D-016, D-049 updated. |
+| 2026-11-12 | D-037 updated: a connected server row also lists all configuration settings below the version (value, source, file and line, restart needed); read once per connection, `Ctrl+R` on the server row reads them again. |

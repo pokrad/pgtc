@@ -2260,3 +2260,100 @@ async fn find_object_searches_all_databases_of_the_server() {
         "a database connected before the search stays"
     );
 }
+
+/// Server configuration on the server row (D-037): read once on selection, shown below
+/// the version, read again with Ctrl+R, dropped on disconnect.
+#[tokio::test]
+async fn server_row_shows_configuration_settings() {
+    use crate::tree::ServerSettings;
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "srv");
+    let id = fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    a.tree.by_uid(uid).unwrap().handle = Some(pgc_db::ConnectionHandle::detached(id));
+    a.focus = Focus::Tree;
+    a.tree.select_server(uid);
+    a.follow_selection();
+    let ServerSettings::Loading(k) = a.tree.servers[0].settings else {
+        panic!("requested on selection: {:?}", a.tree.servers[0].settings);
+    };
+    assert!(a.tabs[0].view.shown.contains("-- Configuration: loading…"));
+    // selecting again does not read them again
+    a.follow_selection();
+    assert_eq!(a.tree.servers[0].settings, ServerSettings::Loading(k));
+
+    let row = |v: [&str; 6]| v.map(str::to_owned).to_vec();
+    a.update(
+        Msg::Db(DbEvent::Lookup {
+            id,
+            key: k,
+            result: Ok(vec![
+                row([
+                    "max_connections",
+                    "100",
+                    "configuration file",
+                    "/pg/postgresql.conf",
+                    "64",
+                    "f",
+                ]),
+                row(["search_path", "", "default", "", "", "f"]),
+                row([
+                    "shared_buffers",
+                    "128MB",
+                    "configuration file",
+                    "/pg/postgresql.conf",
+                    "127",
+                    "t",
+                ]),
+            ]),
+        }),
+        &Hits::default(),
+    );
+    let text = &a.tabs[0].view.shown;
+    let version = text.find("--   Version:").unwrap();
+    let config = text.find("-- Configuration (3 settings):").unwrap();
+    assert!(version < config, "below the version:\n{text}");
+    assert!(
+        text.contains(
+            "--   max_connections = 100    (configuration file: /pg/postgresql.conf:64)\n"
+        ),
+        "{text}"
+    );
+    assert!(
+        text.contains("--   search_path     = ''     (default)\n"),
+        "{text}"
+    );
+    assert!(text.contains(
+        "--   shared_buffers  = 128MB  (configuration file: /pg/postgresql.conf:127)  (restart needed)\n"
+    ), "{text}");
+
+    // Ctrl+R on the server row reads them again
+    a.refresh();
+    let ServerSettings::Loading(k2) = a.tree.servers[0].settings else {
+        panic!("read again on refresh");
+    };
+    assert_ne!(k, k2);
+    // an error is shown as comments
+    a.update(
+        Msg::Db(DbEvent::Lookup {
+            id,
+            key: k2,
+            result: Err(DbError::Other("permission denied".into())),
+        }),
+        &Hits::default(),
+    );
+    assert!(
+        a.tabs[0]
+            .view
+            .shown
+            .contains("-- Configuration: cannot read it\n--   permission denied\n")
+    );
+
+    // disconnected: nothing to show, read again after the next connect
+    for h in a.tree.by_uid(uid).unwrap().reset() {
+        h.abort();
+    }
+    a.follow_selection();
+    assert_eq!(a.tree.servers[0].settings, ServerSettings::NotLoaded);
+    assert!(!a.tabs[0].view.shown.contains("Configuration"));
+}

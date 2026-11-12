@@ -99,6 +99,8 @@ pub struct ServerNode {
     /// Groups (Databases, Roles, Tablespaces) while connected.
     pub children: Vec<Node>,
     pub version: Option<ServerVersion>,
+    /// Configuration settings for the info text (D-037), read once per connection.
+    pub settings: ServerSettings,
     /// Password known for this session (dialog, login prompt, URI, PGPASSWORD).
     pub password: Option<String>,
     /// Write the password to `.pgpass` after the next successful connect (D-035).
@@ -117,6 +119,7 @@ impl ServerNode {
             expanded: false,
             children: Vec::new(),
             version: None,
+            settings: ServerSettings::NotLoaded,
             password: None,
             save_password: false,
             never_prompt: false,
@@ -145,7 +148,49 @@ impl ServerNode {
         self.state = ConnState::Disconnected;
         self.expanded = false;
         self.version = None;
+        self.settings = ServerSettings::NotLoaded;
         handles
+    }
+}
+
+/// Configuration settings of a server, shown on its row (D-037).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ServerSettings {
+    NotLoaded,
+    /// Requested with this lookup key.
+    Loading(u64),
+    Loaded(Vec<Setting>),
+    Failed(String),
+}
+
+/// One row of `sql/server/*/settings.sql`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Setting {
+    pub name: String,
+    pub value: String,
+    pub source: String,
+    /// File and line, when the server tells the user.
+    pub file: Option<(String, String)>,
+    pub pending_restart: bool,
+}
+
+impl Setting {
+    /// From a lookup row: name, value, source, sourcefile, sourceline, pending_restart.
+    pub fn from_row(row: Vec<String>) -> Option<Self> {
+        let mut it = row.into_iter();
+        let name = it.next()?;
+        let value = it.next()?;
+        let source = it.next()?;
+        let file = it.next()?;
+        let line = it.next()?;
+        let pending_restart = it.next()? == "t";
+        Some(Self {
+            name,
+            value,
+            source,
+            file: (!file.is_empty()).then_some((file, line)),
+            pending_restart,
+        })
     }
 }
 

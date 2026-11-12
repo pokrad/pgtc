@@ -214,6 +214,10 @@ impl App {
         if self.tree.servers[row.server].state != ConnState::Connected {
             return;
         }
+        // a server row also reads its configuration settings again (D-037)
+        if row.kind == RowKind::Server {
+            self.request_settings(row.server);
+        }
         let groups = self.tree.loaded_groups(row);
         for g in groups {
             self.load_group(g);

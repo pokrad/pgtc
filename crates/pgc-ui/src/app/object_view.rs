@@ -4,7 +4,64 @@ use pgc_db::DbError;
 use pgc_sql::RenderContext;
 
 use super::{App, Effect, TabKind, TextView};
-use crate::tree::{ConnState, RowKind};
+use crate::tree::{ConnState, RowKind, ServerSettings, Setting};
+
+/// Values longer than this are not padded to line up the sources.
+const VALUE_WIDTH: usize = 24;
+
+/// The configuration part of a server's info text (D-037), as SQL comments.
+pub(super) fn settings_text(settings: &ServerSettings) -> String {
+    let list = match settings {
+        ServerSettings::NotLoaded | ServerSettings::Loading(_) => {
+            return "--\n-- Configuration: loading…\n".to_owned();
+        }
+        ServerSettings::Failed(e) => {
+            let mut t = "--\n-- Configuration: cannot read it\n".to_owned();
+            for l in e.lines() {
+                t.push_str(&format!("--   {l}\n"));
+            }
+            return t;
+        }
+        ServerSettings::Loaded(list) => list,
+    };
+    let mut t = format!("--\n-- Configuration ({} settings):\n--\n", list.len());
+    let value = |s: &Setting| {
+        if s.value.is_empty() {
+            "''".to_owned()
+        } else {
+            s.value.clone()
+        }
+    };
+    let name_w = list
+        .iter()
+        .map(|s| s.name.chars().count())
+        .max()
+        .unwrap_or(0);
+    let value_w = list
+        .iter()
+        .map(|s| value(s).chars().count())
+        .filter(|&w| w <= VALUE_WIDTH)
+        .max()
+        .unwrap_or(0);
+    for s in list {
+        let source = match &s.file {
+            Some((file, line)) if !line.is_empty() => format!("{}: {file}:{line}", s.source),
+            Some((file, _)) => format!("{}: {file}", s.source),
+            None => s.source.clone(),
+        };
+        let restart = if s.pending_restart {
+            "  (restart needed)"
+        } else {
+            ""
+        };
+        t.push_str(&format!(
+            "--   {:<name_w$} = {:<value_w$}  ({source}){restart}\n",
+            s.name,
+            value(s)
+        ));
+    }
+    t
+}
 
 impl App {
     /// Node id of the selected row if it is an object (not a group).
@@ -46,6 +103,12 @@ impl App {
                 if changed {
                     self.def_seq += 1;
                 }
+                // a server's settings are read once per connection (D-037)
+                if row.kind == RowKind::Server
+                    && self.tree.servers[row.server].settings == ServerSettings::NotLoaded
+                {
+                    self.request_settings(row.server);
+                }
                 let (title, text) = self.info_text(row);
                 self.tabs[0].view.set_text(title, text);
                 Vec::new()
@@ -81,6 +144,9 @@ impl App {
                 if let Some(v) = s.version {
                     text.push_str(&format!("--   Version:         PostgreSQL {v}\n"));
                 }
+                if s.state == ConnState::Connected {
+                    text.push_str(&settings_text(&s.settings));
+                }
                 (s.conn.name.clone(), text)
             }
             RowKind::Node(nid) => {
@@ -105,6 +171,57 @@ impl App {
             }
             RowKind::Loading(_) => ("".to_owned(), "-- loading…\n".to_owned()),
         }
+    }
+
+    /// Reads the configuration settings of server `i` (index) for its info text (D-037),
+    /// if it is connected.
+    pub(super) fn request_settings(&mut self, i: usize) {
+        let s = &self.tree.servers[i];
+        if s.state != ConnState::Connected {
+            return;
+        }
+        let (Some(version), Some(handle)) = (s.version, s.handle.clone()) else {
+            return;
+        };
+        let render = RenderContext {
+            version,
+            show_system: self.settings.ui.show_system_objects,
+        };
+        let state = match self.sql.render("server", "settings.sql", render) {
+            Ok(sql) => {
+                self.next_key += 1;
+                handle.lookup(self.next_key, sql);
+                ServerSettings::Loading(self.next_key)
+            }
+            Err(e) => {
+                tracing::error!("{e}");
+                ServerSettings::Failed(e.to_string())
+            }
+        };
+        self.tree.servers[i].settings = state;
+    }
+
+    /// Answer to [`Self::request_settings`]; false if `key` is not a settings request
+    /// of server `uid`.
+    pub(super) fn settings_loaded(
+        &mut self,
+        uid: u64,
+        key: u64,
+        result: &Result<Vec<Vec<String>>, DbError>,
+    ) -> bool {
+        let Some(s) = self.tree.by_uid(uid) else {
+            return false;
+        };
+        if s.settings != ServerSettings::Loading(key) {
+            return false;
+        }
+        s.settings = match result {
+            Ok(rows) => {
+                ServerSettings::Loaded(rows.iter().cloned().filter_map(Setting::from_row).collect())
+            }
+            Err(e) => ServerSettings::Failed(e.to_string()),
+        };
+        true
     }
 
     /// Requests the definition of object `nid` for tab `tab`.
