@@ -28,9 +28,15 @@ tabs with SQL on the right, function keys, menus and dialogs.
 - **Colour schemes** (Classic, Dark, Light, Terminal default, Tokyo Night, Dracula and
   your own), configurable keys, optional Nerd Font icons.
 
+![Developer template: Create table](docs/screenshots/template.svg)
+
 | Autocomplete | psql commands (`F4`) |
 |---|---|
 | ![Autocomplete](docs/screenshots/autocomplete.svg) | ![psql commands](docs/screenshots/psql.svg) |
+
+| Developer templates (`F7`) | Find object in the tree (`Ctrl+F`) |
+|---|---|
+| ![Developer templates](docs/screenshots/templates.svg) | ![Find object](docs/screenshots/find.svg) |
 
 ![Query menu](docs/screenshots/menu.svg)
 

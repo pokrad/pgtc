@@ -429,4 +429,173 @@ async fn readme_screenshots() {
     key(&mut a, "Right");
     key(&mut a, "Right");
     std::fs::write(dir.join("menu.svg"), svg(&a)).unwrap();
+    // 5. developer templates (F7): the picker on "Create table"
+    let picker = || {
+        let (mut a, d) = scene();
+        a.run(Command::InstallTemplates);
+        a.dialogs.clear();
+        a.run(Command::NewFromTemplate);
+        for _ in 0..60 {
+            let desc = a
+                .dialogs
+                .last()
+                .and_then(|d| d.widgets.iter().find(|w| w.id == "desc"))
+                .map(|w| w.label.text.clone())
+                .unwrap_or_default();
+            if desc.starts_with("CREATE TABLE") {
+                break;
+            }
+            key(&mut a, "Down");
+        }
+        (a, d)
+    };
+    let (a, _d) = picker();
+    std::fs::write(dir.join("templates.svg"), svg(&a)).unwrap();
+    // 6. the Create table form, filled in, with the live preview
+    let (mut a, _d) = picker();
+    key(&mut a, "Enter");
+    {
+        use crate::template_dialog::{Choice, FieldValue, Stop};
+        use pgc_sql::devtemplate::ParamValue;
+        let form = a.template.as_mut().expect("Create table form");
+        let text = |s: &str| ParamValue::Text(s.into());
+        let schemas = ["public", "sales", "audit"]
+            .iter()
+            .map(|s| Choice {
+                label: (*s).into(),
+                value: text(s),
+            })
+            .collect();
+        form.set_choices("schema", Ok(schemas));
+        let index = |name: &str| {
+            form.fields
+                .iter()
+                .position(|f| f.param.name == name)
+                .unwrap()
+        };
+        let (name, columns) = (index("name"), index("columns"));
+        form.fields[name].value = FieldValue::Text {
+            text: "order_items".into(),
+            cursor: 11,
+        };
+        let col = |n: &str, t: &str, not_null: bool, pk: bool, default: &str| {
+            std::collections::BTreeMap::from([
+                ("col_name".to_owned(), text(n)),
+                ("col_type".to_owned(), text(t)),
+                ("not_null".to_owned(), ParamValue::Bool(not_null)),
+                ("primary_key".to_owned(), ParamValue::Bool(pk)),
+                ("col_default".to_owned(), text(default)),
+            ])
+        };
+        *form.list_rows_mut(columns).unwrap() = vec![
+            col("id", "bigint", false, true, ""),
+            col("order_id", "bigint", true, false, ""),
+            col("quantity", "integer", true, false, "1"),
+            col("price", "numeric(10,2)", true, false, ""),
+        ];
+        form.list_select(columns, 0);
+        form.focus = Stop::Field(columns);
+        form.refresh();
+    }
+    std::fs::write(dir.join("template.svg"), svg(&a)).unwrap();
+    // 7. Find object (Ctrl+F) on the database "shop", columns included
+    let (mut a, _d) = scene();
+    {
+        use crate::objects::ObjType;
+        use crate::tree::{DbConn, RowKind};
+        let shop = a.tree.servers[0].children[0]
+            .children
+            .as_ref()
+            .unwrap()
+            .iter()
+            .find(|n| n.name == "shop")
+            .unwrap()
+            .nid;
+        let groups = a.tree.groups(&ObjType::Database.children(false));
+        let n = a.tree.node_mut(shop).unwrap();
+        n.conn = Some(DbConn {
+            state: crate::tree::ConnState::Connected,
+            handle: Some(pgc_db::ConnectionHandle::detached(51)),
+        });
+        n.children = Some(groups);
+        a.tree.select_kind(RowKind::Node(shop));
+    }
+    a.focus = Focus::Tree;
+    key(&mut a, "Ctrl+F");
+    typing(&mut a, "cust");
+    key(&mut a, "Alt+C");
+    let seq = a.find_seq;
+    a.update(Msg::FindTimer(seq), &Hits::default());
+    let sent = *a.find.as_ref().unwrap().pending.keys().next().unwrap();
+    let r = |v: [&str; 5]| v.iter().map(|s| (*s).to_owned()).collect::<Vec<String>>();
+    a.find_loaded(
+        sent,
+        Ok(vec![
+            r([
+                "table",
+                "public",
+                "customers",
+                "schemas:2200/tables:101",
+                "2",
+            ]),
+            r([
+                "table",
+                "sales",
+                "customer_notes",
+                "schemas:2300/tables:301",
+                "2",
+            ]),
+            r([
+                "view",
+                "sales",
+                "customer_revenue",
+                "schemas:2300/views:310",
+                "6",
+            ]),
+            r([
+                "sequence",
+                "public",
+                "customers_id_seq",
+                "schemas:2200/sequences:102",
+                "12",
+            ]),
+            r([
+                "function",
+                "sales",
+                "customer_balance(integer)",
+                "schemas:2300/functions:320",
+                "13",
+            ]),
+            r([
+                "index",
+                "public",
+                "customers_email_key",
+                "schemas:2200/tables:101/indexes:103",
+                "20",
+            ]),
+            r([
+                "constraint",
+                "public",
+                "orders_customer_id_fkey",
+                "schemas:2200/tables:100/constraints:104",
+                "21",
+            ]),
+            r([
+                "column",
+                "public",
+                "orders.customer_id",
+                "schemas:2200/tables:100/columns:2",
+                "90",
+            ]),
+            r([
+                "column",
+                "sales",
+                "invoices.customer_id",
+                "schemas:2300/tables:302/columns:3",
+                "90",
+            ]),
+        ]),
+    );
+    a.dialogs[0].list_select("list", 2);
+    std::fs::write(dir.join("find.svg"), svg(&a)).unwrap();
 }
