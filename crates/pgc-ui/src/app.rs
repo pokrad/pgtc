@@ -47,7 +47,6 @@ use crate::keymap::{Command, Context, Keymap};
 use crate::keys::KeyCombo;
 use crate::menu::{self, MenuDef, MenuEvent, MenuState, Popup};
 use crate::query_tab::{AfterRun, QueryState};
-use crate::setup;
 use crate::template_dialog::{Choice, TemplateForm};
 use crate::theme::{Theme, ThemeSet};
 use crate::tree::{ConnState, RowKind, Tree};
@@ -926,14 +925,8 @@ impl App {
                     self.open_definition_dialog(false, "");
                 }
             }
-            Command::InstallTemplates => {
-                let steps = vec![setup::templates_step(&self.paths)];
-                self.show_steps("Install templates", steps)
-            }
-            Command::RunSetup => {
-                let steps = setup::run_setup(&self.paths);
-                self.show_steps("Run setup", steps)
-            }
+            Command::InstallTemplates => self.start_setup(false),
+            Command::RunSetup => self.start_setup(true),
             Command::ShowTemplatesFolder => self.show_templates_folder(),
             Command::Help => self.open_shortcuts(true),
             Command::KeyboardShortcuts => self.open_shortcuts(false),
@@ -1138,6 +1131,10 @@ impl App {
                         if let Some(path) = self.pending_save.take() {
                             self.save_to(path);
                         }
+                    }
+                    // No: the other setup steps still run (templates are kept)
+                    (DialogKind::ConfirmTemplatesOverwrite, b) => {
+                        self.finish_setup(dialog.tag == 1, b == "yes");
                     }
                     _ => {}
                 }

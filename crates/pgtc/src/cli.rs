@@ -69,7 +69,7 @@ pub struct Cli {
     #[arg(long)]
     pub setup: bool,
 
-    /// Copy the embedded developer templates into the system templates folder (D-013)
+    /// Copy the embedded developer templates into the user templates folder (D-013)
     #[arg(long)]
     pub install_templates: bool,
 

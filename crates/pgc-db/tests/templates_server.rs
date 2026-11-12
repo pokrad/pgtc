@@ -3,7 +3,6 @@
 //! each template runs inside a transaction that is rolled back.
 
 use std::collections::BTreeMap;
-use std::path::Path;
 
 use pgc_core::ServerVersion;
 use pgc_sql::devtemplate::{
@@ -108,7 +107,10 @@ async fn built_in_templates_run_on_a_real_server() {
         .unwrap()
         .get(0);
     let version = ServerVersion(version as u32);
-    let lib = TemplateLibrary::scan(Path::new("/nonexistent"), Path::new("/nonexistent"));
+    // the embedded templates, installed into a fresh folder (D-013)
+    let dir = tempfile::tempdir().unwrap();
+    devtemplate::install(dir.path()).unwrap();
+    let lib = TemplateLibrary::scan(dir.path());
     assert!(lib.entries.len() >= 10);
     for e in &lib.entries {
         let (text, origin) = e.resolve(version).unwrap();

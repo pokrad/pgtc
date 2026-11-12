@@ -60,7 +60,7 @@ cargo install --path crates/pgtc
 pgtc                                   # start with the saved connections
 pgtc -h db.example.com -U app shop     # psql-style connection options
 pgtc postgresql://app@localhost/shop   # or a connection URI
-pgtc --setup                           # install the built-in templates
+pgtc --setup                           # install the developer templates
 pgtc --help
 ```
 

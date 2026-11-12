@@ -89,6 +89,45 @@ fn setup_menu_items_are_enabled() {
     )));
 }
 
+/// Install templates (D-013): a missing folder is filled without asking; an existing
+/// one only after Yes, and No keeps it as it is.
+#[test]
+fn install_templates_asks_before_overwriting() {
+    let (mut a, _d) = app();
+    let dir = a.paths.user_templates_dir();
+    a.run(Command::InstallTemplates);
+    let d = a.dialogs.pop().unwrap();
+    assert_eq!(d.kind, DialogKind::Message, "no question for a new folder");
+    let (first, _) = &devtemplate::embedded_files()[0];
+    let file = dir.join(first);
+    assert!(file.is_file());
+    std::fs::write(&file, "changed").unwrap();
+    // the folder exists: asked; No (the focused default of the question) keeps it
+    a.run(Command::InstallTemplates);
+    assert_eq!(
+        a.dialogs.last().unwrap().kind,
+        DialogKind::ConfirmTemplatesOverwrite
+    );
+    key(&mut a, "n");
+    assert_eq!(std::fs::read_to_string(&file).unwrap(), "changed");
+    assert!(
+        a.dialogs.pop().unwrap().widgets[0]
+            .label
+            .text
+            .contains("not installed")
+    );
+    // Yes: overwritten
+    a.run(Command::RunSetup);
+    key(&mut a, "y");
+    assert_ne!(std::fs::read_to_string(&file).unwrap(), "changed");
+    assert!(
+        a.dialogs.pop().unwrap().widgets[0]
+            .label
+            .text
+            .contains("overwritten")
+    );
+}
+
 #[test]
 fn steps_are_shown_in_one_message() {
     let (mut a, _d) = app();

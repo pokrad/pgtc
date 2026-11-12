@@ -51,6 +51,8 @@ pub enum DialogKind {
     SaveDefinition,
     OpenDefinition,
     ConfirmDefinitionOverwrite,
+    /// Install templates into an existing templates folder (D-013).
+    ConfirmTemplatesOverwrite,
     /// Help windows: scrolling text with a Close button (D-014).
     Viewer,
     /// psql-style command line (D-054).

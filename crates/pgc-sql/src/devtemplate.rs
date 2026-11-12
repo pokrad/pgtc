@@ -616,30 +616,17 @@ fn is_version_folder(name: &str) -> bool {
 }
 
 impl TemplateLibrary {
-    /// Scans the user directory, then the built-in directory, or the embedded
-    /// templates when the built-in directory does not exist (D-013).
-    pub fn scan(user_dir: &Path, system_dir: &Path) -> Self {
+    /// Scans the templates folder — the only place templates are read from; the
+    /// embedded ones get there by installing them (D-013).
+    pub fn scan(dir: &Path) -> Self {
         let mut found: BTreeMap<String, Vec<(String, String, String)>> = BTreeMap::new();
         let mut add = |rel: String, folder: &str, content: String, origin: String| {
-            let variants = found.entry(rel).or_default();
-            if !variants.iter().any(|v| v.0 == folder) {
-                variants.push((folder.to_owned(), content, origin));
-            }
+            found
+                .entry(rel)
+                .or_default()
+                .push((folder.to_owned(), content, origin));
         };
-        scan_dir(user_dir, &mut add);
-        if system_dir.is_dir() {
-            scan_dir(system_dir, &mut add);
-        } else {
-            for (path, content) in embedded_files() {
-                let Some((folder, rel)) = path.split_once('/') else {
-                    continue;
-                };
-                if is_version_folder(folder) && rel.ends_with(&format!(".{EXTENSION}")) {
-                    let text = String::from_utf8_lossy(content).into_owned();
-                    add(rel.to_owned(), folder, text, format!("built-in {path}"));
-                }
-            }
-        }
+        scan_dir(dir, &mut add);
         let mut entries: Vec<TemplateEntry> = found
             .into_iter()
             .map(|(rel, variants)| TemplateEntry { rel, variants })
@@ -882,30 +869,29 @@ CREATE FUNCTION {{ schema|ident }}.{{ name|ident }}(
     }
 
     #[test]
-    fn scanning_precedence_and_versions() {
+    fn scanning_one_folder_with_versions() {
         let dir = tempfile::tempdir().unwrap();
-        let user = dir.path().join("user");
-        let system = dir.path().join("system");
-        let write = |root: &Path, rel: &str, body: &str| {
+        let root = dir.path().join("developer_templates");
+        let write = |rel: &str, body: &str| {
             let p = root.join(rel);
             std::fs::create_dir_all(p.parent().unwrap()).unwrap();
-            std::fs::write(p, format!("+++\nname = \"{body}\"\n+++\n{body}")).unwrap();
+            std::fs::write(
+                p,
+                format!(
+                    "+++
+name = \"{body}\"
++++
+{body}"
+                ),
+            )
+            .unwrap();
         };
-        write(&user, "default/Tables/table.pgtemplate", "user table");
-        write(&system, "default/Tables/table.pgtemplate", "system table");
-        write(
-            &system,
-            "default/Tables/Partitioned/part.pgtemplate",
-            "part",
-        );
-        write(
-            &system,
-            "default/Functions/function.pgtemplate",
-            "f default",
-        );
-        write(&system, "16_plus/Functions/function.pgtemplate", "f 16");
-        write(&system, "junk/x.pgtemplate", "ignored");
-        let lib = TemplateLibrary::scan(&user, &system);
+        write("default/Tables/table.pgtemplate", "table");
+        write("default/Tables/Partitioned/part.pgtemplate", "part");
+        write("default/Functions/function.pgtemplate", "f default");
+        write("16_plus/Functions/function.pgtemplate", "f 16");
+        write("junk/x.pgtemplate", "ignored");
+        let lib = TemplateLibrary::scan(&root);
         let rels: Vec<&str> = lib.entries.iter().map(|e| e.rel.as_str()).collect();
         assert_eq!(
             rels,
@@ -931,22 +917,19 @@ CREATE FUNCTION {{ schema|ident }}.{{ name|ident }}(
                 .ends_with("f 16")
         );
         assert_eq!(lib.entries[1].folders(), vec!["Tables", "Partitioned"]);
-        // the user template wins
+        // no folder: no templates (the embedded ones are only installed, D-013)
         assert!(
-            lib.entries[2]
-                .resolve(ServerVersion(160000))
-                .unwrap()
-                .0
-                .ends_with("user table")
+            TemplateLibrary::scan(&dir.path().join("missing"))
+                .entries
+                .is_empty()
         );
-        // no built-in directory: embedded templates are used
-        let lib = TemplateLibrary::scan(&user, &dir.path().join("missing"));
-        assert!(lib.entries.len() > 3);
     }
 
     #[test]
     fn embedded_templates_parse_and_render() {
-        let lib = TemplateLibrary::scan(Path::new("/nonexistent"), Path::new("/nonexistent"));
+        let dir = tempfile::tempdir().unwrap();
+        assert!(install(dir.path()).unwrap() > 0);
+        let lib = TemplateLibrary::scan(dir.path());
         assert!(!lib.entries.is_empty());
         for e in &lib.entries {
             for version in [110000, 160000, 180000] {

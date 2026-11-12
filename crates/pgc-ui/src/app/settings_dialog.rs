@@ -1,8 +1,6 @@
 //! The Settings dialog (D-051), saving `settings.toml`, and the messages of the
 //! setup steps and the templates folders (D-047).
 
-use std::path::Path;
-
 use super::App;
 use crate::dialog::{Dialog, DialogKind, Widget};
 use crate::setup;
@@ -21,25 +19,49 @@ impl App {
     }
 
     /// Settings → Show templates folder: where templates are read from. Over SSH the
-    /// folders are on the machine running pgtc, so they are shown, not opened.
+    /// folder is on the machine running pgtc, so it is shown, not opened.
     pub(super) fn show_templates_folder(&mut self) {
-        let user = self.paths.user_templates_dir();
-        let system = pgc_core::paths::system_templates_dir();
-        let state = |p: &Path| if p.is_dir() { "" } else { "  (does not exist)" };
-        let text = format!(
-            "User templates (they win over the built-in ones):\n{}{}\n\nBuilt-in templates:\n{}{}{}",
-            user.display(),
-            state(&user),
-            system.display(),
-            state(&system),
-            if system.is_dir() {
-                ""
-            } else {
-                "\n(the templates embedded in pgtc are used)"
-            }
-        );
+        let dir = self.paths.user_templates_dir();
+        let text = if dir.is_dir() {
+            format!("Developer templates are read from:\n{}", dir.display())
+        } else {
+            format!(
+                "Developer templates are read from:\n{}\n\nThe folder does not exist yet — run Settings → Install templates.",
+                dir.display()
+            )
+        };
         self.dialogs
-            .push(Dialog::message("Templates folders", &text, false));
+            .push(Dialog::message("Templates folder", &text, false));
+    }
+
+    /// Settings → Install templates / Run setup: when the templates folder exists,
+    /// ask first whether pgtc's templates may overwrite files there (D-013, D-047).
+    pub(super) fn start_setup(&mut self, all_steps: bool) {
+        match setup::overwrite_question(&self.paths) {
+            Some(q) => {
+                let title = if all_steps {
+                    "Run setup"
+                } else {
+                    "Install templates"
+                };
+                self.dialogs.push(
+                    Dialog::confirm(DialogKind::ConfirmTemplatesOverwrite, title, &q)
+                        .with_tag(u64::from(all_steps)),
+                );
+            }
+            None => self.finish_setup(all_steps, true),
+        }
+    }
+
+    /// Runs the steps after the question (or without one).
+    pub(super) fn finish_setup(&mut self, all_steps: bool, overwrite: bool) {
+        if all_steps {
+            let steps = setup::run_setup(&self.paths, overwrite);
+            self.show_steps("Run setup", steps);
+        } else {
+            let steps = vec![setup::templates_step(&self.paths, overwrite)];
+            self.show_steps("Install templates", steps);
+        }
     }
 
     /// Settings dialog (D-051): one column, groups separated by an empty row.

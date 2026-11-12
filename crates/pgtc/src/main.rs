@@ -40,10 +40,15 @@ async fn run(cli: &Cli, paths: Paths) -> Result<()> {
 
     // D-047: installation steps (all of them with --setup, or a single one)
     if cli.setup || cli.install_templates {
+        // an existing templates folder: ask before overwriting (D-013)
+        let overwrite = match setup::overwrite_question(&paths) {
+            Some(q) => ask_yes_no(&q)?,
+            None => true,
+        };
         let steps = if cli.setup {
-            setup::run_setup(&paths)
+            setup::run_setup(&paths, overwrite)
         } else {
-            vec![setup::templates_step(&paths)]
+            vec![setup::templates_step(&paths, overwrite)]
         };
         return print_steps(&steps);
     }
@@ -68,6 +73,17 @@ async fn run(cli: &Cli, paths: Paths) -> Result<()> {
     };
 
     pgc_ui::run(paths, settings, startup).await
+}
+
+/// Asks a question on the terminal (before the TUI starts); only `y` / `yes` is yes,
+/// so no input (end of input, a script) means no.
+fn ask_yes_no(question: &str) -> Result<bool> {
+    use std::io::Write;
+    print!("{question} [y/N] ");
+    std::io::stdout().flush()?;
+    let mut answer = String::new();
+    std::io::stdin().read_line(&mut answer)?;
+    Ok(matches!(answer.trim().to_lowercase().as_str(), "y" | "yes"))
 }
 
 /// Print the outcome of installation steps; an error if any of them failed (D-047).

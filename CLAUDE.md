@@ -207,8 +207,9 @@ phase, small steps with a working state after each.
 - Picker: folder tree with search box (D-046). Only from a connected query tab.
 - Choice lists through the query tab's connection; defaults from the tree selection of
   the same server and database (D-046).
-- Directory scanning (user → built-in → embedded), precedence, `--install-templates`,
-  Settings → Install templates / Show templates folder.
+- Scanning the user's templates folder (the only source; embedded templates are only
+  installed there), `--install-templates`, Settings → Install templates / Show
+  templates folder.
 - A first set of built-in templates (function, table, index, view, trigger, ...).
 - Result inserted at the cursor of the query tab's editor (not executed, D-046).
 - **Result:** Tools → Generate SQL from developer template works end to end.

@@ -39,12 +39,10 @@ impl App {
             self.error("The server version of the tab is not known yet.");
             return;
         };
-        let lib = TemplateLibrary::scan(
-            &self.paths.user_templates_dir(),
-            &pgc_core::paths::system_templates_dir(),
-        );
+        // the templates folder is the only source (D-013)
+        let lib = TemplateLibrary::scan(&self.paths.user_templates_dir());
         if lib.entries.is_empty() {
-            self.error("No developer templates found.");
+            self.error("No developer templates — run Settings → Install templates.");
             return;
         }
         let names = lib

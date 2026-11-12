@@ -2,6 +2,8 @@
 //! Settings menu, so every entry point does the same. Today the only step is
 //! install templates (D-013); later steps are added to [`run_setup`].
 
+use std::path::Path;
+
 use pgc_core::paths::Paths;
 use pgc_sql::devtemplate;
 
@@ -14,43 +16,58 @@ pub struct StepOutcome {
 }
 
 /// Every installation step, in order (D-047). A failed step does not stop the next.
-pub fn run_setup(paths: &Paths) -> Vec<StepOutcome> {
-    vec![templates_step(paths)]
+/// `overwrite`: the answer to [`overwrite_question`] (when there was one).
+pub fn run_setup(paths: &Paths, overwrite: bool) -> Vec<StepOutcome> {
+    vec![templates_step(paths, overwrite)]
 }
 
-/// Copy the embedded templates into the built-in directory and create the (empty)
-/// user templates directory (D-013).
-pub fn templates_step(paths: &Paths) -> StepOutcome {
-    let dir = pgc_core::paths::system_templates_dir();
-    let (mut ok, mut text) = match devtemplate::install(&dir) {
-        Ok(n) => (
-            true,
-            format!("Templates: {n} installed into {}", dir.display()),
-        ),
-        Err(e) => (
-            false,
-            format!(
-                "Templates: cannot install into {}: {e}\n  This directory usually needs administrator rights.",
+/// The question to ask before installing: the templates folder exists, so the
+/// templates that come with pgtc would overwrite files of the same name (D-013).
+/// `None` when the folder does not exist yet (everything is installed, nothing asked).
+pub fn overwrite_question(paths: &Paths) -> Option<String> {
+    let dir = paths.user_templates_dir();
+    dir.is_dir().then(|| {
+        format!(
+            "The templates folder already exists:\n{}\n\nOverwrite the templates that come with pgtc?\nYour own templates (other file names) are kept.",
+            dir.display()
+        )
+    })
+}
+
+/// Copy the embedded templates into the user templates folder (D-013). An existing
+/// folder is written only with `overwrite`; files of other names are never touched.
+pub fn templates_step(paths: &Paths, overwrite: bool) -> StepOutcome {
+    install_into(&paths.user_templates_dir(), overwrite)
+}
+
+fn install_into(dir: &Path, overwrite: bool) -> StepOutcome {
+    let existed = dir.is_dir();
+    if existed && !overwrite {
+        return StepOutcome {
+            ok: true,
+            text: format!(
+                "Templates: not installed, the folder is kept as it is:\n  {}",
                 dir.display()
             ),
-        ),
-    };
-    text.push('\n');
-    text.push_str(&user_dir_line(&paths.user_templates_dir(), &mut ok));
-    StepOutcome { ok, text }
-}
-
-/// Create the user templates directory; existing files in it are kept.
-fn user_dir_line(user: &std::path::Path, ok: &mut bool) -> String {
-    match std::fs::create_dir_all(user) {
-        Ok(()) => format!("  User templates folder: {}", user.display()),
-        Err(e) => {
-            *ok = false;
-            format!(
-                "  Cannot create the user templates folder {}: {e}",
-                user.display()
-            )
-        }
+        };
+    }
+    match devtemplate::install(dir) {
+        Ok(n) => StepOutcome {
+            ok: true,
+            text: format!(
+                "Templates: {n} {} into\n  {}",
+                if existed {
+                    "installed (overwritten)"
+                } else {
+                    "installed"
+                },
+                dir.display()
+            ),
+        },
+        Err(e) => StepOutcome {
+            ok: false,
+            text: format!("Templates: cannot install into {}: {e}", dir.display()),
+        },
     }
 }
 
@@ -59,14 +76,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn user_templates_folder_is_created_and_kept() {
+    fn install_creates_asks_and_overwrites_only_its_own_files() {
         let tmp = tempfile::tempdir().unwrap();
-        let user = tmp.path().join("data").join("developer_templates");
-        let mut ok = true;
-        assert!(user_dir_line(&user, &mut ok).contains("User templates folder"));
-        assert!(ok && user.is_dir());
-        std::fs::write(user.join("mine.pgtemplate"), "x").unwrap();
-        user_dir_line(&user, &mut ok);
-        assert!(ok && user.join("mine.pgtemplate").is_file());
+        let paths = Paths::with_dirs(tmp.path().join("cfg"), tmp.path().join("data"));
+        let dir = paths.user_templates_dir();
+        // no folder yet: nothing to ask, everything installed
+        assert!(overwrite_question(&paths).is_none());
+        let s = templates_step(&paths, false);
+        assert!(s.ok, "{}", s.text);
+        let installed = devtemplate::embedded_files();
+        let (first, _) = &installed[0];
+        assert!(dir.join(first).is_file());
+        // the folder exists: asked; No keeps everything
+        assert!(overwrite_question(&paths).is_some());
+        std::fs::write(dir.join(first), "changed").unwrap();
+        std::fs::write(dir.join("mine.pgtemplate"), "mine").unwrap();
+        let s = templates_step(&paths, false);
+        assert!(s.ok && s.text.contains("not installed"), "{}", s.text);
+        assert_eq!(std::fs::read_to_string(dir.join(first)).unwrap(), "changed");
+        // Yes: pgtc's files are overwritten, the user's own file stays
+        let s = templates_step(&paths, true);
+        assert!(s.ok && s.text.contains("overwritten"), "{}", s.text);
+        assert_ne!(std::fs::read_to_string(dir.join(first)).unwrap(), "changed");
+        assert_eq!(
+            std::fs::read_to_string(dir.join("mine.pgtemplate")).unwrap(),
+            "mine"
+        );
     }
 }

@@ -354,28 +354,32 @@ desktop dependency.
     newest folder not newer than the server version (D-011).
   - Rendering uses the same template engine (`minijinja`) as the catalog queries.
 - **File extension:** `.pgtemplate` (one template per file).
-- **Template directories — both are always scanned:**
+- **Templates folder — the only one pgtc reads:** the user's data directory.
 
-  | Platform | Built-in (installed) templates | User templates |
-  |----------|--------------------------------|----------------|
-  | Linux    | `/usr/share/pgtc/developer_templates` | `~/.local/share/pgtc/developer_templates` |
-  | macOS    | `/Library/Application Support/pgtc/developer_templates` | `~/Library/Application Support/pgtc/developer_templates` |
-  | Windows  | `%ProgramData%\pgtc\developer_templates` | `%APPDATA%\pgtc\developer_templates` |
+  | Platform | Templates folder |
+  |----------|------------------|
+  | Linux    | `~/.local/share/pgtc/developer_templates` |
+  | macOS    | `~/Library/Application Support/pgtc/developer_templates` |
+  | Windows  | `%APPDATA%\pgtc\developer_templates` |
 
-  - User paths are computed in `pgc-core` (D-028, D-039).
-  - Inside each directory the same version-folder layout applies (`default/`,
-    `16_plus/`, ...).
-- **Precedence:** if a template with the same name and version folder exists in both
-  directories, the **user template wins**. This lets users customise a built-in template
-  without touching system files.
-- **Single binary without installer:**
-  - Built-in templates are also **embedded in the binary** and used as the lowest-priority
-    source when the built-in directory does not exist.
-  - `pgtc --install-templates` copies the embedded templates into the built-in
-    directory (also run by `--setup`, D-047). Writing to the built-in directory
-    requires administrator/root rights. It also creates the **user directory** (empty;
-    files already in it are kept), so it is there to add own templates.
-  - Resulting lookup order: user directory → built-in directory → embedded.
+  - The path is computed in `pgc-core` (D-028, D-039).
+  - Inside the folder the version-folder layout applies (`default/`, `16_plus/`, ...).
+  - No second (system-wide) folder and no merging by name: one folder, one file per
+    template and version folder.
+- **Templates that come with pgtc:**
+  - **Embedded in the binary**, but only as the source for installing — pgtc never
+    reads them directly. Without an installed templates folder the picker says
+    *No developer templates — run Settings → Install templates*.
+  - `pgtc --install-templates` (also `--setup`, D-047; *Settings → Install
+    templates*) copies them into the templates folder; no administrator rights needed.
+    - Folder **does not exist:** it is created and every template installed.
+    - Folder **exists:** pgtc asks first whether to overwrite the templates that come
+      with pgtc (on the command line `[y/N]`; no input means no). **Yes:** all of them
+      are written, files of the same name are overwritten (so a new pgtc version
+      brings its updated templates). **No:** nothing is written.
+    - pgtc **never deletes** a template file; files of other names (the user's own
+      templates) are never touched. Users who change a template that comes with pgtc
+      save it under another name, so installing does not overwrite it.
 - **Custom templates:**
   - The application has **no UI for creating or editing templates**.
   - Users who want their own templates write the files by hand and place them in the
@@ -498,8 +502,8 @@ desktop dependency.
   - Settings… — dialog with icons on/off (D-005), colour scheme, ... (contents: D-051)
   - Install templates — same as `--install-templates` (D-013)
   - Run setup — same as `--setup`: every installation step (D-047)
-  - Show templates folder — displays the paths of the built-in and user template
-    directories (a terminal app cannot open a file manager, especially over SSH)
+  - Show templates folder — displays the path of the templates folder (a terminal
+    app cannot open a file manager, especially over SSH)
 - **Help**
   - Keyboard shortcuts — a scrolling window (Close button, `↑↓` / `PgUp` / `PgDn` /
     `Home` / `End` / mouse wheel) listing every bound key of the **active keymap**
@@ -903,8 +907,8 @@ pgtc (binary)
 - Users build it themselves with Cargo, e.g. `cargo build --release` or
   `cargo install --path crates/pgtc`.
 - **Consequences:**
-  - The built-in templates directory (D-013) normally does not exist; the **embedded
-    templates** are the normal source. `--install-templates` remains available.
+  - The templates that come with pgtc are embedded in the binary and installed into
+    the user's templates folder with `--setup` / `--install-templates` (D-013).
   - CI builds and tests on Windows, Linux and macOS (D-003) but does not publish
     binaries (*deferred* with CI, D-051).
 
@@ -971,9 +975,6 @@ pgtc (binary)
 - **Files:**
   - Config dir: `settings.toml` (settings), `keymap.toml` (key overrides, D-016).
   - Data dir: `developer_templates/` (D-013), `themes/` (D-014), `logs/` (D-029).
-- System-wide built-in templates directory as listed in D-013
-  (`/usr/share/pgtc`, `/Library/Application Support/pgtc`,
-  `%ProgramData%\pgtc`).
 - All paths are computed only in `pgc-core` (CLAUDE.md).
 
 ### D-029 — Log file
@@ -1312,8 +1313,8 @@ pgtc (binary)
   otherwise an error is shown and nothing is generated.
 - **Picker:** a tree built from the **folder structure** of the template directories,
   read inside the version folders (`default/Functions/function.pgtemplate` →
-  *Functions › Function*) and merged over user / built-in / embedded templates
-  (precedence and version fallback as in D-013). The folder is the category, so the
+  *Functions › Function*) of the templates folder (version fallback as in D-013).
+  The folder is the category, so the
   header key `category` is not needed; the label is the header `name` (else the file
   name). A **search box** at the top filters the tree by name and description; the
   selected template's description is shown below the tree.
@@ -1353,6 +1354,8 @@ pgtc (binary)
   - One line per step says what was done or why it failed; a failed step does not stop
     the next one; the exit code is non-zero if any step failed.
   - The single-step switch `--install-templates` stays.
+  - Installing templates into an existing templates folder asks first (D-013); *No*
+    skips only that step.
   - Menu entry (rule "every command-line action has a menu entry"): **Settings → Run
     setup**; the result of each step is shown in a message.
 - **Fonts are not bundled or installed** (D-005 updated): a terminal app cannot choose
@@ -1752,3 +1755,4 @@ pgtc (binary)
 | 2026-11-12 | D-054 updated: `F4` commands are typed and shown without psql's backslash (`dt`, `d name`, `?`, `gts`, …) — the list, `?`, result labels and messages never show it; a typed backslash is ignored. |
 | 2026-11-12 | D-046 updated: the developer template window is drawn like the other dialogs (margin, single frame, shadow) with lines joined to the frame between form and preview and above the help / button rows; the `sql` box has its own frame. D-051: junctions of inner lines with single frames (`├ ┤ ┬ ┴`) follow ASCII frames. |
 | 2026-11-12 | D-016 updated: `Ctrl+Enter` (`dialog_ok`) presses the default button of a dialog from any field, also in the template form; only where the terminal reports it (Windows, kitty keyboard protocol), no second key by default. |
+| 2026-11-12 | D-013 simplified: the user's templates folder is the only one pgtc reads — no system-wide folder, no merging by name, the embedded templates are only the source for installing (none installed → the picker points to Settings → Install templates). Installing into an existing folder asks first; Yes overwrites the templates that come with pgtc, No writes nothing; pgtc never deletes template files. Files left in the old system folder (e.g. `%ProgramData%\pgtc\developer_templates`) are ignored. D-022, D-028, D-046, D-047 updated. |

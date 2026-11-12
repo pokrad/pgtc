@@ -160,28 +160,6 @@ pub fn pgpass_file() -> Option<PathBuf> {
     pgpass_for(CURRENT_OS, &real_env)
 }
 
-/// System-wide built-in developer templates directory (D-013). It normally does not
-/// exist (D-022); then the embedded templates are used.
-pub fn system_templates_dir() -> PathBuf {
-    system_data_dir().join(TEMPLATES_DIR)
-}
-
-#[cfg(windows)]
-fn system_data_dir() -> PathBuf {
-    let program_data = std::env::var_os("ProgramData").unwrap_or_else(|| r"C:\ProgramData".into());
-    PathBuf::from(program_data).join(APP_NAME)
-}
-
-#[cfg(target_os = "macos")]
-fn system_data_dir() -> PathBuf {
-    PathBuf::from("/Library/Application Support").join(APP_NAME)
-}
-
-#[cfg(not(any(windows, target_os = "macos")))]
-fn system_data_dir() -> PathBuf {
-    PathBuf::from("/usr/share").join(APP_NAME)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -287,6 +265,5 @@ mod tests {
             assert!(p.config_dir().ends_with(APP_NAME));
             assert!(p.data_dir().ends_with(APP_NAME));
         }
-        assert!(system_templates_dir().ends_with(Path::new(APP_NAME).join(TEMPLATES_DIR)));
     }
 }
