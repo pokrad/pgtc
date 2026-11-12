@@ -67,3 +67,7 @@ row_number = "#545c7e on #1a1b26"
 error = "#f7768e on #1a1b26"
 notice = "#7dcfff on #1a1b26"
 info = "#a9b1d6 on #1a1b26"
+
+[dashboard]
+graph = "#9ece6a on #1a1b26"
+blocked = "#f7768e on #1a1b26"

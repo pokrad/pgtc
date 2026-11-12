@@ -88,6 +88,8 @@ pub fn menu_bar() -> Vec<MenuDef> {
             entries: vec![
                 item("&Generate SQL from developer template…", C::NewFromTemplate),
                 item("ps&ql command…", C::Psql),
+                Separator,
+                item("Server &dashboard", C::Dashboard),
             ],
         },
         MenuDef {

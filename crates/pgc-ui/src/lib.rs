@@ -5,6 +5,7 @@ mod app;
 mod clipboard;
 mod combo;
 mod completion;
+mod dashboard;
 mod dialog;
 mod export;
 mod grid;
@@ -148,6 +149,13 @@ async fn event_loop(
                     tokio::spawn(async move {
                         tokio::time::sleep(DEFINITION_DELAY).await;
                         let _ = tx.send(Msg::DefinitionTimer(seq));
+                    });
+                }
+                Effect::StartDashboardTimer { tab, seq, after } => {
+                    let tx = tx.clone();
+                    tokio::spawn(async move {
+                        tokio::time::sleep(after).await;
+                        let _ = tx.send(Msg::DashboardTimer(tab, seq));
                     });
                 }
                 Effect::StartEscTimer(seq) => {

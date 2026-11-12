@@ -410,7 +410,7 @@ impl App {
     }
 
     /// `server · user@database` (or `server · user` without a database).
-    fn place_label(&self, uid: u64, db: Option<&str>) -> String {
+    pub(super) fn place_label(&self, uid: u64, db: Option<&str>) -> String {
         let (server, user) = self
             .tree
             .servers

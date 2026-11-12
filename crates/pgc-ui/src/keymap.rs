@@ -21,15 +21,18 @@ pub enum Context {
     Tree,
     Editor,
     Results,
+    /// The server dashboard tab (D-057).
+    Dashboard,
     Dialog,
 }
 
 impl Context {
-    pub const ALL: [Context; 5] = [
+    pub const ALL: [Context; 6] = [
         Context::Global,
         Context::Tree,
         Context::Editor,
         Context::Results,
+        Context::Dashboard,
         Context::Dialog,
     ];
 
@@ -39,6 +42,7 @@ impl Context {
             Context::Tree => "tree",
             Context::Editor => "editor",
             Context::Results => "results",
+            Context::Dashboard => "dashboard",
             Context::Dialog => "dialog",
         }
     }
@@ -149,6 +153,17 @@ commands! {
     PrevResult = "prev_result", "Previous result set";
     ResultsSmaller = "results_smaller", "Make the results smaller";
     ResultsLarger = "results_larger", "Make the results larger";
+    // server dashboard (D-057)
+    Dashboard = "dashboard", "Server dashboard of the selected server or database";
+    DashboardRefresh = "dashboard_refresh", "Refresh the dashboard now (connects again when needed)";
+    DashboardPause = "dashboard_pause", "Pause / resume the dashboard refresh";
+    DashboardInterval = "dashboard_interval", "Dashboard refresh interval (1, 2, 5, 10, 30 s)";
+    HideIdleSessions = "hide_idle_sessions", "Hide / show idle sessions";
+    NextList = "next_list", "Next dashboard list";
+    PrevList = "prev_list", "Previous dashboard list";
+    CancelBackend = "cancel_backend", "Cancel the query of the selected session";
+    TerminateBackend = "terminate_backend", "Terminate the selected session";
+    ShowRow = "show_row", "Show the whole row (full query text)";
     // dialogs and menus
     NextField = "next_field", "Next field";
     PrevField = "prev_field", "Previous field";
@@ -338,6 +353,40 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     ),
     (Context::Editor, Command::ResultsSmaller, &["Alt+Shift+Up"]),
     (Context::Editor, Command::ResultsLarger, &["Alt+Shift+Down"]),
+    (Context::Dashboard, Command::DashboardRefresh, &["F5"]),
+    (Context::Dashboard, Command::DashboardPause, &["Ctrl+P"]),
+    (Context::Dashboard, Command::DashboardInterval, &["Ctrl+T"]),
+    (Context::Dashboard, Command::HideIdleSessions, &["Alt+I"]),
+    (
+        Context::Dashboard,
+        Command::NextList,
+        &["Ctrl+PageDown", "Alt+PageDown"],
+    ),
+    (
+        Context::Dashboard,
+        Command::PrevList,
+        &["Ctrl+PageUp", "Alt+PageUp"],
+    ),
+    (Context::Dashboard, Command::CancelBackend, &["Alt+Shift+C"]),
+    (Context::Dashboard, Command::TerminateBackend, &["F8"]),
+    (Context::Dashboard, Command::ShowRow, &["Enter"]),
+    (Context::Dashboard, Command::ContextMenu, &["F2"]),
+    (
+        Context::Dashboard,
+        Command::Copy,
+        &["Ctrl+C", "Ctrl+Insert"],
+    ),
+    (Context::Dashboard, Command::SelectAll, &["Ctrl+A"]),
+    (Context::Dashboard, Command::Up, &["Up"]),
+    (Context::Dashboard, Command::Down, &["Down"]),
+    (Context::Dashboard, Command::Left, &["Left"]),
+    (Context::Dashboard, Command::Right, &["Right"]),
+    (Context::Dashboard, Command::PageUp, &["PageUp"]),
+    (Context::Dashboard, Command::PageDown, &["PageDown"]),
+    (Context::Dashboard, Command::Home, &["Home"]),
+    (Context::Dashboard, Command::End, &["End"]),
+    (Context::Dashboard, Command::DocStart, &["Ctrl+Home"]),
+    (Context::Dashboard, Command::DocEnd, &["Ctrl+End"]),
     (Context::Dialog, Command::NextField, &["Tab"]),
     (Context::Dialog, Command::PrevField, &["Shift+Tab"]),
     (Context::Dialog, Command::Up, &["Up"]),

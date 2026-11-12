@@ -81,6 +81,10 @@ impl App {
             MouseEventKind::Up(_) => self.split_drag = false,
             _ => {}
         }
+        // the dashboard tab's lists and grid (D-057)
+        if !self.modal() && self.dashboard_mouse(m.kind, p, hits) {
+            return;
+        }
         match m.kind {
             MouseEventKind::Down(MouseButton::Left)
                 if !self.modal() && self.editor_area.contains(p) =>

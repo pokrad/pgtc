@@ -1,7 +1,7 @@
 //! Help menu (D-014, D-016): keyboard shortcuts from the active keymap, third-party
 //! licences, About pgtc.
 
-use crate::app::{App, Focus};
+use crate::app::App;
 use crate::dialog::{Dialog, DialogKind, Widget};
 use crate::keymap::{Command, Context, Keymap};
 
@@ -17,7 +17,7 @@ const TEXT_ID: &str = "text";
 const WRAP: usize = 80;
 
 /// Word-wraps `line` to `width` columns, keeping its indentation on every part.
-fn wrap(line: &str, width: usize) -> Vec<String> {
+pub(crate) fn wrap(line: &str, width: usize) -> Vec<String> {
     let line = line.trim_end();
     if line.chars().count() <= width {
         return vec![line.to_owned()];
@@ -40,11 +40,12 @@ fn wrap(line: &str, width: usize) -> Vec<String> {
 }
 
 /// Sections of the shortcuts window, in order.
-const SECTIONS: [(Context, &str); 5] = [
+const SECTIONS: [(Context, &str); 6] = [
     (Context::Global, "Everywhere"),
     (Context::Tree, "Object tree"),
     (Context::Editor, "Editor and object view"),
     (Context::Results, "Results"),
+    (Context::Dashboard, "Server dashboard"),
     (Context::Dialog, "Dialogs and lists"),
 ];
 
@@ -171,7 +172,7 @@ pub fn licence_lines() -> Lines {
 }
 
 /// A Help window: scrolling text and a Close button.
-fn viewer(title: &str, lines: Lines) -> Dialog {
+pub(crate) fn viewer(title: &str, lines: Lines) -> Dialog {
     let longest = lines
         .lines
         .iter()
@@ -204,11 +205,7 @@ impl App {
         let section = if !self.dialogs.is_empty() || self.template.is_some() {
             Context::Dialog
         } else {
-            match self.focus {
-                Focus::Tree => Context::Tree,
-                Focus::Tabs => Context::Editor,
-                Focus::Results => Context::Results,
-            }
+            self.context().unwrap_or(Context::Global)
         };
         let file = self.paths.keymap_file().display().to_string();
         let lines = shortcut_lines(&self.keymap, &file);
@@ -265,7 +262,7 @@ mod tests {
             "{text}"
         );
         assert!(text.contains("Ctrl+C, Ctrl+Insert"));
-        assert_eq!(l.sections.len(), 5);
+        assert_eq!(l.sections.len(), 6);
         let tree = l.sections[1].1;
         assert_eq!(l.lines[tree], "Object tree");
         assert!(l.headers[tree]);

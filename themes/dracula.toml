@@ -67,3 +67,7 @@ row_number = "#6272a4 on #282a36"
 error = "#ff5555 on #282a36"
 notice = "#8be9fd on #282a36"
 info = "#f8f8f2 on #282a36"
+
+[dashboard]
+graph = "#50fa7b on #282a36"
+blocked = "#ff5555 on #282a36"

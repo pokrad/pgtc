@@ -82,6 +82,8 @@ roles! {
     MessagesError = "messages.error";
     MessagesNotice = "messages.notice";
     MessagesInfo = "messages.info";
+    DashboardGraph = "dashboard.graph";
+    DashboardBlocked = "dashboard.blocked";
 }
 
 /// Junction characters of a single frame, from [`Theme::plain_junctions`].

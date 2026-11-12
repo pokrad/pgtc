@@ -66,3 +66,7 @@ row_number = "default on default dim"
 error = "lightred on default"
 notice = "default on default bold"
 info = "default on default"
+
+[dashboard]
+graph = "default on default bold"
+blocked = "lightred on default"

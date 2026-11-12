@@ -211,6 +211,8 @@ const READABLE: &[Role] = &[
     R::MessagesError,
     R::MessagesNotice,
     R::MessagesInfo,
+    R::DashboardGraph,
+    R::DashboardBlocked,
 ];
 
 /// Deliberately quieter roles: contrast ≥ 2.

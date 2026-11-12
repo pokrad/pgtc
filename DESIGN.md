@@ -507,6 +507,7 @@ desktop dependency.
 - **Tools**
   - Generate SQL from developer template… (D-013)
   - psql command… (D-054)
+  - Server dashboard (D-057)
 - **Settings**
   - Settings… — dialog with icons on/off (D-005), colour scheme, ... (contents: D-051)
   - Install templates — same as `--install-templates` (D-013)
@@ -1774,6 +1775,53 @@ pgtc (binary)
   with the tab's auto commit / auto rollback); a failed connection is reported in the
   tab as usual and nothing runs. Refused when the server is not connected.
 
+### D-057 — Server dashboard tab
+- **Status:** Accepted (like pgAdmin's dashboard; refines D-009, D-014, D-016, D-043)
+- **Opening:** *Tools → Server dashboard* and the context menu of server rows,
+  database rows and every row inside a database (`dashboard`, no default key). Needs a
+  connected server. A server row (or a server-level group / object) shows the **whole
+  server**; a database or anything inside it shows **that database** (every query is
+  filtered by the database name, a bind parameter). Opening it again for the same
+  server and database switches to the open tab.
+- **A tab, not a dialog:** a dashboard tab (`Dashboard: server` /
+  `Dashboard: server · database`) stays open next to the query tabs and keeps
+  refreshing; it closes like a query tab (`Ctrl+W`, `×`) and with its server
+  (disconnect / delete, D-043).
+- **Connection:** its own connection (D-011) to the maintenance database (whole server)
+  or to the database, with the server's password. The dashboard's own backend is left
+  out of every count and list. A lost connection is shown in the tab; `F5` connects
+  again.
+- **Refresh:** every **2 s** by default; the next refresh is sent only after the answer
+  of the previous one (no pile-up). *Pause / resume* stops and restarts it, *Refresh
+  interval* cycles 1 → 2 → 5 → 10 → 30 s, `F5` refreshes at once. Rates are computed by
+  pgtc from two samples (server clock), as pgAdmin does.
+- **Graphs (top):** five boxes — *Sessions* (total / active / idle, client backends),
+  *Transactions per second* (total / commits / rollbacks), *Tuples in* (inserts /
+  updates / deletes per s), *Tuples out* (fetched / returned per s), *Block I/O* (reads
+  / hits per s). Each box: title, a sparkline of its total over the last samples (newest
+  right), current values as numbers. Five boxes in a row on wide windows, else 3 + 2.
+- **Lists (bottom):** sub-tabs *Sessions · Locks · Prepared transactions ·
+  Configuration* in the result grid (D-041). Sessions: PID, database, user, application,
+  client, backend start, state, wait event, blocked by, transaction start, query start,
+  running for, backend type, query; blocked sessions in the theme role
+  `dashboard.blocked`. *Hide idle sessions* toggles sessions in state `idle`. The cursor
+  stays on the same row (first column) across refreshes. `Enter` shows the whole row
+  (with the full query text) in a scrolling window.
+- **Cancel / terminate** (Sessions list): *Cancel query* (`pg_cancel_backend`) and
+  *Terminate session* (`pg_terminate_backend`) of the row under the cursor, each after a
+  Yes / No question naming the PID, user and database; the PID is a bind parameter. The
+  result (or the server's error, e.g. missing permission) is reported in the status line
+  / an error dialog.
+- **SQL:** `sql/dashboard/` (versioned, D-010), adapted from pgAdmin's dashboard
+  queries (copyright notice kept); all columns as text.
+- **Keys** (`[dashboard]` context, D-016): `F5` refresh now, `Ctrl+P` pause / resume,
+  `Ctrl+T` refresh interval, `Alt+I` hide idle sessions, `Ctrl+PgDn` / `Ctrl+PgUp`
+  (`Alt+PgDn` / `Alt+PgUp`) next / previous list, `Alt+Shift+C` cancel query, `F8`
+  terminate session, `Enter` show row, `Ctrl+C` copy, arrows / `PgUp` / `PgDn` / `Home`
+  / `End` in the list. Commands also in the tab's context menu (`F2`).
+- **Colours:** theme roles `dashboard.graph` (sparklines) and `dashboard.blocked`.
+- **Later:** pgAdmin's system statistics (`system_stats` extension), replication, logs.
+
 ### D-026 — Scope of the first alpha
 - **Status:** Accepted
 - **All features described in this document go into the first alpha.**
@@ -1896,3 +1944,4 @@ pgtc (binary)
 | 2026-11-12 | D-055 updated: a server row (and the Databases group) also searches everything in every database of the server — databases not connected are opened (8 at a time) and closed with the dialog, failures listed without a login dialog; the list has the columns Database, Schema, Name, Type. |
 | 2026-11-12 | D-056 accepted: Select top 100 rows (`Ctrl+B` in the tree, View menu, context menu) on a table, view, materialized view, foreign table or partition or any row below it — `SELECT * … LIMIT 100` in a new query tab on the same server and database, executed once the tab is connected. D-014, D-016, D-049 updated. |
 | 2026-11-12 | D-037 updated: a connected server row also lists all configuration settings below the version (value, source, file and line, restart needed); read once per connection, `Ctrl+R` on the server row reads them again. |
+| 2026-11-12 | D-057 accepted: server dashboard as a tab with its own connection — graphs (sessions, TPS, tuples in / out, block I/O), Sessions / Locks / Prepared transactions / Configuration lists, cancel query and terminate session after a question, 2 s refresh with pause and interval, `[dashboard]` keys. D-014 updated (Tools menu). |

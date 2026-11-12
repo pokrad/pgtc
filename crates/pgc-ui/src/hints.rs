@@ -86,6 +86,20 @@ const RESULTS: &[Entry] = &[
     (C::Quit, "Quit", None),
 ];
 
+const DASHBOARD: &[Entry] = &[
+    (C::Help, "Help", None),
+    (C::ContextMenu, "Menu", None),
+    (C::DashboardRefresh, "Refresh", None),
+    (C::DashboardPause, "Pause", None),
+    (C::NextList, "Next list", None),
+    (C::HideIdleSessions, "Idle", None),
+    (C::CancelBackend, "Cancel", None),
+    (C::TerminateBackend, "Terminate", None),
+    (C::CloseTab, "Close tab", None),
+    (C::SwitchPanel, "Panel", Some("F6")),
+    (C::Quit, "Quit", None),
+];
+
 const DIALOG: &[Entry] = &[
     (C::Accept, "OK", None),
     (C::Cancel, "Cancel", Some("Esc")),
@@ -152,6 +166,9 @@ impl App {
             match self.focus {
                 Focus::Tree => (Context::Tree, TREE),
                 Focus::Results => (Context::Results, RESULTS),
+                Focus::Tabs if self.tabs[self.active_tab].dashboard.is_some() => {
+                    (Context::Dashboard, DASHBOARD)
+                }
                 Focus::Tabs if self.tabs[self.active_tab].query.is_some() => {
                     (Context::Editor, QUERY_EDITOR)
                 }
@@ -204,7 +221,9 @@ impl App {
             | C::ShowInNewTab
             | C::CloseTab
             | C::NewFromTemplate
-            | C::Psql => self.is_enabled(cmd),
+            | C::Psql
+            | C::CancelBackend
+            | C::TerminateBackend => self.is_enabled(cmd),
             // F8 only deletes saved connections (server rows)
             C::DropObject => self
                 .tree

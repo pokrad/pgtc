@@ -9,6 +9,7 @@ mod autocomplete;
 mod closing;
 mod command_line;
 mod connections;
+mod dashboard;
 mod definition;
 mod editing;
 mod files;
@@ -69,6 +70,9 @@ pub enum Msg {
     /// Periodic tick while a query runs (elapsed time, cancel wait, D-041).
     Tick,
     Db(DbEvent),
+    /// Time for the next refresh of dashboard tab .0, if .1 is its latest timer
+    /// (D-057).
+    DashboardTimer(u64, u64),
     /// From a result export's writer thread (D-042).
     Export(ExportEvent),
 }
@@ -88,6 +92,12 @@ pub enum Effect {
     Tick,
     /// Put this text into the terminal's clipboard with OSC 52 (D-023).
     Osc52(String),
+    /// Send Msg::DashboardTimer(tab, seq) after fter (D-057).
+    StartDashboardTimer {
+        tab: u64,
+        seq: u64,
+        after: std::time::Duration,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -108,6 +118,8 @@ pub enum TabKind {
     Object,
     /// Query tab number `n`.
     Query(u32),
+    /// A server dashboard (D-057).
+    Dashboard,
 }
 
 /// Content of a tab: an editor (D-038), read-only for object views (D-037).
@@ -170,6 +182,8 @@ pub struct Tab {
     pub view: TextView,
     /// Query tabs: connection, results, messages (D-019).
     pub query: Option<QueryState>,
+    /// Dashboard tabs (D-057).
+    pub dashboard: Option<crate::dashboard::Dashboard>,
 }
 
 impl Tab {
@@ -178,6 +192,11 @@ impl Tab {
         match &self.kind {
             TabKind::Default => "Default".to_owned(),
             TabKind::Object => self.view.title.clone(),
+            TabKind::Dashboard => self
+                .dashboard
+                .as_ref()
+                .map(|d| d.label.clone())
+                .unwrap_or_default(),
             TabKind::Query(n) => {
                 let q = self.query.as_ref();
                 let name = q
@@ -204,6 +223,8 @@ enum Target {
     Query(u64),
     /// A definition export / load; the job is in `App::jobs` (D-048).
     Structure,
+    /// Dashboard tab id (D-057).
+    Dashboard(u64),
 }
 
 pub struct App {
@@ -381,6 +402,7 @@ impl App {
                 database: None,
                 view: TextView::new(true, tab_width),
                 query: None,
+                dashboard: None,
             }],
             active_tab: 0,
             status,
@@ -461,6 +483,9 @@ impl App {
     pub fn context(&self) -> Option<Context> {
         match self.focus {
             Focus::Tree => Some(Context::Tree),
+            Focus::Tabs if self.tabs[self.active_tab].dashboard.is_some() => {
+                Some(Context::Dashboard)
+            }
             Focus::Tabs => Some(Context::Editor),
             Focus::Results => Some(Context::Results),
         }
@@ -536,6 +561,16 @@ impl App {
             Command::Psql => self
                 .query()
                 .is_some_and(|q| q.connected() && !q.busy() && q.export.is_none()),
+            Command::Dashboard => self.dashboard_target().is_some(),
+            Command::DashboardRefresh
+            | Command::DashboardPause
+            | Command::DashboardInterval
+            | Command::HideIdleSessions
+            | Command::NextList
+            | Command::PrevList
+            | Command::CancelBackend
+            | Command::TerminateBackend
+            | Command::ShowRow => self.dashboard_enabled(cmd),
             _ => false,
         }
     }
@@ -560,6 +595,7 @@ impl App {
                     Context::Tree,
                     Context::Editor,
                     Context::Results,
+                    Context::Dashboard,
                 ],
                 cmd,
             )
@@ -654,6 +690,10 @@ impl App {
             }
             Msg::Export(event) => {
                 self.on_export_event(event);
+                Vec::new()
+            }
+            Msg::DashboardTimer(tab, seq) => {
+                self.dashboard_timer(tab, seq);
                 Vec::new()
             }
         };
@@ -879,6 +919,7 @@ impl App {
         let in_tree = self.focus == Focus::Tree && !self.modal();
         let in_view = self.focus == Focus::Tabs && !self.modal();
         let in_results = self.focus == Focus::Results && !self.modal();
+        let in_dashboard = in_view && self.dashboard().is_some();
         match cmd {
             Command::Quit => self.request_quit(),
             Command::Menu => self.open_menu(0),
@@ -893,6 +934,8 @@ impl App {
                 }
             }
             c if in_results && self.results_command(c) => {}
+            c if in_dashboard && self.dashboard_command(c) => {}
+            Command::Dashboard => self.open_dashboard(),
             Command::Execute => self.execute(),
             Command::CancelQuery => self.cancel_query(),
             Command::FetchAll => self.fetch_all(),
@@ -1090,6 +1133,7 @@ impl App {
             database: None,
             view,
             query,
+            dashboard: None,
         });
         self.active_tab = self.tabs.len() - 1;
         self.focus = Focus::Tabs;
@@ -1189,6 +1233,12 @@ impl App {
                         }
                     }
                     (DialogKind::CancelWait, "close") => self.abort_query_conn(dialog.tag),
+                    (DialogKind::ConfirmCancelBackend, "yes") => {
+                        self.send_signal(dialog.tag, crate::dashboard::Signal::Cancel);
+                    }
+                    (DialogKind::ConfirmTerminateBackend, "yes") => {
+                        self.send_signal(dialog.tag, crate::dashboard::Signal::Terminate);
+                    }
                     (DialogKind::OpenFile | DialogKind::SaveFile, "ok") => {
                         self.file_dialog_done(dialog);
                     }

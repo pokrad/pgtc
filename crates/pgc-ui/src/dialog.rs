@@ -59,6 +59,9 @@ pub enum DialogKind {
     PsqlCommand,
     /// Find object in the tree (D-055).
     FindObject,
+    /// Dashboard: cancel query / terminate session of a session (D-057).
+    ConfirmCancelBackend,
+    ConfirmTerminateBackend,
 }
 
 /// A `&'static str` for a dynamic widget id (template parameter names). Each distinct

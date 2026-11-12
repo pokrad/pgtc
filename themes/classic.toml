@@ -66,3 +66,7 @@ row_number = "brown on blue"
 error = "white on red"
 notice = "lightcyan on blue"
 info = "lightgray on blue"
+
+[dashboard]
+graph = "lightgreen on blue"
+blocked = "white on red"

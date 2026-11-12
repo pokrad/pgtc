@@ -97,6 +97,10 @@ impl App {
             conn.handle.abort();
             self.connections.remove(&conn.id);
         }
+        if let Some(conn) = tab.dashboard.and_then(|d| d.conn) {
+            conn.handle.abort();
+            self.connections.remove(&conn.id);
+        }
         self.active_tab = self.active_tab.min(self.tabs.len() - 1);
         if self.focus == Focus::Results {
             self.focus = Focus::Tabs;

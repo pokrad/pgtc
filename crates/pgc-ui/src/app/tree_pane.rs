@@ -261,6 +261,7 @@ impl App {
                 menu::item("&Disconnect", Command::Disconnect),
                 MenuEntry::Separator,
                 menu::item("&Refresh", Command::RefreshTree),
+                menu::item("Server d&ashboard", Command::Dashboard),
                 MenuEntry::Separator,
                 menu::item("&Edit connection…", Command::EditConnection),
                 menu::item("De&lete connection", Command::DeleteConnection),
@@ -282,6 +283,7 @@ impl App {
                 entries.extend([
                     MenuEntry::Separator,
                     menu::item("&Refresh", Command::RefreshTree),
+                    menu::item("Server d&ashboard", Command::Dashboard),
                 ]);
                 // database definition export / load (D-048)
                 if self.selected_database().is_some() {

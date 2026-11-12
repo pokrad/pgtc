@@ -53,6 +53,8 @@ pub struct Hits {
     pub grid: Rect,
     pub grid_cells: Vec<crate::grid::CellArea>,
     pub message_rows: Vec<(usize, Rect)>,
+    /// Dashboard tab: list sub-tabs and grid cells (D-057).
+    pub dashboard: crate::dashboard::DashHits,
 }
 
 /// Clickable items of the results bar.
@@ -272,6 +274,7 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
     hits.grid = Rect::default();
     hits.grid_cells.clear();
     hits.message_rows.clear();
+    hits.dashboard = crate::dashboard::DashHits::default();
     hits.tabs.clear();
     hits.tab_close.clear();
     hits.editor = Rect::default();
@@ -299,6 +302,7 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
         let ic = match &tab.kind {
             TabKind::Default | TabKind::Object => Icon::ObjectView,
             TabKind::Query(_) => Icon::Query,
+            TabKind::Dashboard => Icon::Server,
         };
         // every tab but the default one has a close mark (D-043)
         let closable = i > 0;
@@ -332,6 +336,15 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
     }
     frame.render_widget(Paragraph::new(Line::from(spans)), strip);
 
+    // Dashboard tab: graphs and lists instead of an editor (D-057)
+    if let Some(d) = &tab.dashboard {
+        let focused = app.focus == Focus::Tabs;
+        hits.dashboard = crate::dashboard::render(frame, d, inner, &app.theme, focused, &|f, r| {
+            separator(f, app, r)
+        });
+        hits.grid = hits.dashboard.grid;
+        return;
+    }
     let view = &tab.view;
     // Query tab: editor on top, results below (D-019)
     let inner = match &tab.query {
@@ -559,7 +572,12 @@ fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: 
     let gap = app.theme.get(Role::CoreNormal);
     let mut left = String::from(" ");
     let mut right = String::new();
-    left.push_str(&app.tab_connection_label(tab));
+    if let Some((l, r)) = app.dashboard_status(tab) {
+        left.push_str(&l);
+        right = format!(" {r} ");
+    } else {
+        left.push_str(&app.tab_connection_label(tab));
+    }
     if let Some(q) = &tab.query {
         match q.tx {
             pgc_db::TxStatus::Idle => {}
@@ -592,8 +610,10 @@ fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: 
             right.push_str(&format!("{}  ", f.text()));
         }
     }
-    let (line, col) = tab.view.editor.cursor_line_col();
-    right.push_str(&format!("Ln {}, Col {} ", line + 1, col + 1));
+    if tab.dashboard.is_none() {
+        let (line, col) = tab.view.editor.cursor_line_col();
+        right.push_str(&format!("Ln {}, Col {} ", line + 1, col + 1));
+    }
     if !right.starts_with(' ') {
         right.insert(0, ' ');
     }

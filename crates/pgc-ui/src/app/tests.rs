@@ -2357,3 +2357,113 @@ async fn server_row_shows_configuration_settings() {
     assert_eq!(a.tree.servers[0].settings, ServerSettings::NotLoaded);
     assert!(!a.tabs[0].view.shown.contains("Configuration"));
 }
+
+/// Server dashboard (D-057): opened once per server / database, refreshed by the
+/// answers of its connection, cancel query after a question, closed with the tab.
+#[tokio::test]
+async fn dashboard_tab_refreshes_and_cancels() {
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    key(&mut a, "Home");
+    assert!(a.is_enabled(Command::Dashboard));
+    a.run(Command::Dashboard);
+    assert_eq!(a.tabs.len(), 2);
+    assert_eq!(a.tabs[1].kind, TabKind::Dashboard);
+    assert_eq!(a.tabs[1].label(), "Dashboard: a");
+    assert_eq!(a.context(), Some(crate::keymap::Context::Dashboard));
+    // the same server again: the open tab
+    a.focus = Focus::Tree;
+    a.run(Command::Dashboard);
+    assert_eq!(a.tabs.len(), 2);
+    assert_eq!(a.active_tab, 1);
+    let tab = a.tabs[1].id;
+
+    // pretend the connection is open (a detached handle keeps the requests)
+    let conn = {
+        let d = a.tabs[1].dashboard.as_mut().unwrap();
+        let c = d.conn.as_mut().unwrap();
+        c.handle.abort();
+        c.handle = pgc_db::ConnectionHandle::detached(c.id);
+        c.connected = true;
+        d.version = Some(pgc_core::ServerVersion(170002));
+        c.id
+    };
+    a.dashboard_refresh(tab, true);
+    let (stats, list) = {
+        let d = a.tabs[1].dashboard.as_ref().unwrap();
+        (d.stats_key.unwrap(), d.list_key.unwrap().0)
+    };
+    let stats_row = |t: &str| -> Vec<String> {
+        let mut r: Vec<String> = ["3", "1", "2"].iter().map(|s| s.to_string()).collect();
+        r.extend((0..9).map(|_| "100".to_owned()));
+        r.push(t.to_owned());
+        r
+    };
+    a.on_dashboard_event(
+        conn,
+        tab,
+        DbEvent::Lookup {
+            id: conn,
+            key: stats,
+            result: Ok(vec![stats_row("1000")]),
+        },
+    );
+    assert!(a.effects.is_empty(), "the list is still on its way");
+    let mut session = vec![String::new(); 14];
+    session[0] = "4242".into();
+    session[1] = "db".into();
+    session[2] = "bob".into();
+    session[6] = "active".into();
+    a.on_dashboard_event(
+        conn,
+        tab,
+        DbEvent::Lookup {
+            id: conn,
+            key: list,
+            result: Ok(vec![session]),
+        },
+    );
+    assert!(matches!(
+        a.effects.last(),
+        Some(Effect::StartDashboardTimer { tab: t, after, .. })
+            if *t == tab && *after == std::time::Duration::from_secs(2)
+    ));
+    let screen = screen_text(&a);
+    assert!(screen.contains("Transactions"), "{screen}");
+    assert!(screen.contains("Sessions (1)"), "{screen}");
+    assert!(screen.contains("4242"), "{screen}");
+    assert!(screen.contains("total 3"), "{screen}");
+
+    // cancel query: asked first, No does nothing, Yes sends it
+    a.run(Command::CancelBackend);
+    let d = a.dialogs.last().unwrap();
+    assert_eq!(d.kind, DialogKind::ConfirmCancelBackend);
+    assert!(d.widgets[0].label.text.contains("PID 4242 (bob on db)"));
+    key(&mut a, "n");
+    assert!(a.tabs[1].dashboard.as_ref().unwrap().signal_key.is_none());
+    a.run(Command::CancelBackend);
+    key(&mut a, "y");
+    let signal = a.tabs[1].dashboard.as_ref().unwrap().signal_key.clone();
+    let (k, _, s) = signal.expect("sent");
+    assert_eq!(s.pid, "4242");
+    a.on_dashboard_event(
+        conn,
+        tab,
+        DbEvent::Lookup {
+            id: conn,
+            key: k,
+            result: Ok(vec![vec!["true".into()]]),
+        },
+    );
+    assert_eq!(a.status, "Cancel request sent to PID 4242 (bob on db)");
+
+    // pause: no new timer after the next answers
+    key(&mut a, "Ctrl+P");
+    assert!(a.tabs[1].dashboard.as_ref().unwrap().paused);
+    // closing the tab drops its connection
+    key(&mut a, "Ctrl+W");
+    assert_eq!(a.tabs.len(), 1);
+    assert!(!a.connections.contains_key(&conn));
+}
