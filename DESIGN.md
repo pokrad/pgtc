@@ -848,6 +848,8 @@ pgtc (binary)
   1. **SQL** — **default**. Executed as described in D-019.
   2. **PL/pgSQL** — procedural code with variables, `IF`, loops, etc. (PostgreSQL's
      counterpart of T-SQL; T-SQL syntax itself is not supported).
+- **Switching:** *Query → PL/pgSQL mode* or `Ctrl+P` (`toggle_plpgsql` in `[editor]`
+  and `[results]`) — for the active query tab only.
 - **PL/pgSQL mode execution:**
   - The editor text is wrapped in an anonymous **`DO` block** and executed:
     `DO $pgc$ <editor text> $pgc$;` — if the text has no `BEGIN ... END`, it is added.
@@ -1205,8 +1207,8 @@ pgtc (binary)
 - **Focus:** `F6` / `Ctrl+Tab` cycle editor → results → object tree → editor.
 - **Keys** (configurable, also in the Query menu): Results / Messages `Alt+M`; next /
   previous result set `Ctrl+PgDn` / `Ctrl+PgUp` (also `Alt+PgDn` / `Alt+PgUp`, D-053); Fetch all `Alt+End`; results pane
-  smaller / larger `Alt+Shift+Up` / `Alt+Shift+Down`. Commit, Rollback, PL/pgSQL mode
-  and the auto toggles: menu only (no default key).
+  smaller / larger `Alt+Shift+Up` / `Alt+Shift+Down`; PL/pgSQL mode `Ctrl+P` (D-020).
+  Commit, Rollback and the auto toggles: menu only (no default key).
 - **Result grid (pgAdmin-like):** NULL as dimmed `[null]`; line breaks and tabs in
   values shown as `↵` / `→` (copied unchanged); column width = widest of header and
   loaded values, capped at 40 (longer values cut with `…`); numbers right-aligned;
@@ -1756,3 +1758,4 @@ pgtc (binary)
 | 2026-11-12 | D-046 updated: the developer template window is drawn like the other dialogs (margin, single frame, shadow) with lines joined to the frame between form and preview and above the help / button rows; the `sql` box has its own frame. D-051: junctions of inner lines with single frames (`├ ┤ ┬ ┴`) follow ASCII frames. |
 | 2026-11-12 | D-016 updated: `Ctrl+Enter` (`dialog_ok`) presses the default button of a dialog from any field, also in the template form; only where the terminal reports it (Windows, kitty keyboard protocol), no second key by default. |
 | 2026-11-12 | D-013 simplified: the user's templates folder is the only one pgtc reads — no system-wide folder, no merging by name, the embedded templates are only the source for installing (none installed → the picker points to Settings → Install templates). Installing into an existing folder asks first; Yes overwrites the templates that come with pgtc, No writes nothing; pgtc never deletes template files. Files left in the old system folder (e.g. `%ProgramData%\pgtc\developer_templates`) are ignored. D-022, D-028, D-046, D-047 updated. |
+| 2026-11-12 | D-020 updated: `Ctrl+P` (`toggle_plpgsql`, editor and results) switches PL/pgSQL mode of the active query tab. |

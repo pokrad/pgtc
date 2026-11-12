@@ -275,6 +275,8 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::Editor, Command::Find, &["Ctrl+F"]),
     (Context::Editor, Command::Complete, &["Ctrl+Space", "Alt+/"]),
     (Context::Editor, Command::Psql, &["F4"]),
+    (Context::Editor, Command::TogglePlpgsql, &["Ctrl+P"]),
+    (Context::Results, Command::TogglePlpgsql, &["Ctrl+P"]),
     (Context::Results, Command::Psql, &["F4"]),
     (Context::Editor, Command::FindNext, &["F3"]),
     // Shift+F3 can be lost on some Linux terminals (D-053)

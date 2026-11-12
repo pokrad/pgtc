@@ -1655,3 +1655,27 @@ fn context_menu_runs_commands() {
     assert!(a.popup.is_none());
     assert_eq!(a.dialogs[0].kind, DialogKind::Connection);
 }
+
+/// Ctrl+P switches PL/pgSQL mode of the active query tab, from the editor and from
+/// the results (D-020).
+#[test]
+fn ctrl_p_toggles_plpgsql_mode_of_the_tab() {
+    let (mut a, _d) = app();
+    a.new_query_tab(None);
+    assert!(!a.query().unwrap().plpgsql);
+    key(&mut a, "Ctrl+P");
+    assert!(a.query().unwrap().plpgsql);
+    assert_eq!(a.status, "PL/pgSQL mode on");
+    assert!(
+        !a.editor().text().contains('p'),
+        "not typed into the editor"
+    );
+    a.focus = Focus::Results;
+    key(&mut a, "Ctrl+P");
+    assert!(!a.query().unwrap().plpgsql);
+    // another tab keeps its own mode
+    a.focus = Focus::Tabs;
+    key(&mut a, "Ctrl+P");
+    a.new_query_tab(None);
+    assert!(!a.query().unwrap().plpgsql);
+}
