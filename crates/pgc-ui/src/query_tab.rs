@@ -274,6 +274,11 @@ impl QueryState {
                     rs.more = false;
                     rs.fetching = false;
                 }
+                // D-019: nothing to show in Results (no result set, not even an empty
+                // one) — the Messages tab is shown
+                if self.results.is_empty() {
+                    self.show_messages = true;
+                }
                 self.push(
                     MessageKind::Time,
                     format!("Total time: {}", format_duration(elapsed)),
@@ -466,6 +471,57 @@ mod tests {
             "the run had an error"
         );
         assert!(q.label_suffix().contains("(tx failed)"));
+    }
+
+    /// A run without any result set shows Messages; an empty SELECT keeps Results.
+    #[test]
+    fn runs_without_result_sets_show_messages() {
+        let zero = |_: usize| 0;
+        let lines = LineMap {
+            line_of: &zero,
+            line_start: &zero,
+        };
+        let sent = Sent {
+            offset: 0,
+            plpgsql_lines: None,
+        };
+        let finished = QueryEvent::Finished {
+            elapsed: Duration::from_millis(1),
+            status: TxStatus::Idle,
+        };
+        let mut q = QueryState::new(true, false);
+        q.start_run(1, sent);
+        q.apply(
+            QueryEvent::Command {
+                tag: "INSERT 0 5".into(),
+            },
+            &lines,
+        );
+        assert!(!q.show_messages, "only when the run has finished");
+        q.apply(finished.clone(), &lines);
+        assert!(q.show_messages, "no result set: Messages");
+
+        // the next run starts on Results; SELECT with 0 rows is a result set
+        q.start_run(2, sent);
+        assert!(!q.show_messages);
+        q.apply(
+            QueryEvent::ResultStart {
+                columns: vec![Column {
+                    name: "a".into(),
+                    type_oid: 23,
+                }],
+                title: None,
+            },
+            &lines,
+        );
+        q.apply(
+            QueryEvent::Command {
+                tag: "SELECT 0".into(),
+            },
+            &lines,
+        );
+        q.apply(finished, &lines);
+        assert!(!q.show_messages, "an empty grid stays on Results");
     }
 
     #[test]

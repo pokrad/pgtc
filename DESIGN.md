@@ -837,6 +837,10 @@ pgtc (binary)
   - total execution time at the end.
   - On error the Messages tab is activated automatically (the Results tab still shows
     result set 1 when switched back).
+  - A run that ends **without any result set** (only command tags and notices:
+    `INSERT`, DDL, `DO` with `RAISE NOTICE`, also `F4` commands) activates the
+    Messages tab too. A `SELECT` with 0 rows is a result set: Results stays (the empty
+    grid with its columns). A hidden results pane stays hidden; `Alt+M` switches.
 - **Keys:** `Ctrl+R` shows / hides the results pane (context key, D-016).
 - **Unsaved query text:** if `query.ask_save` is on (Settings, default **on**, D-043),
   closing a query tab whose text was changed since it was
@@ -1795,3 +1799,4 @@ pgtc (binary)
 | 2026-11-12 | D-013, D-046 updated: `fill = true` on `sql` parameters — the editor box takes the free rows of the form (several share them; at least 5 rows); used by the built-in function, procedure, trigger and view templates. D-052 updated: autocomplete also in the template form's `sql` boxes, with the query tab's connection and names; `Esc` closes only the list. |
 | 2026-11-12 | D-015 updated: function and `DO` bodies (a dollar quote after `AS` / `DO`) are lexed as SQL — highlighted, the first closing tag of an open body ends it, nested bodies and other-tag dollar strings inside; other dollar quotes stay strings; more PL/pgSQL keywords. D-052 updated: autocomplete works inside such bodies (statements between `;` and the body tags). |
 | 2026-11-12 | D-049 updated: *Edit in new query tab* (`Ctrl+E` in the editor and tree, View menu, context menu) puts the definition of the read-only view into a new query tab bound to the same server and database, as unsaved text; refused while loading, without a definition or database, or when the server is not connected. D-014 updated (View menu). |
+| 2026-11-12 | D-019 updated: a run that ends without any result set switches to the Messages tab (an empty `SELECT` is a result set and stays on Results). |
