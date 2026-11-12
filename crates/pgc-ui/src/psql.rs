@@ -1,43 +1,43 @@
 //! psql-style commands (D-054): the command list, the parser (with psql patterns),
-//! the catalog queries of a command and pgtc's generate commands (`\gts` / `\gti` /
-//! `\gtu` / `\gtd`).
+//! the catalog queries of a command and pgtc's generate commands (`gts` / `gti` /
+//! `gtu` / `gtd`). Commands are psql's backslash commands, typed without the backslash.
 
 use pgc_core::quote::quote_ident;
 use pgc_db::CatalogQuery;
 use pgc_sql::{RenderContext, SqlCatalog};
 
-/// (command, arguments, description) — shown while typing and by `\?`.
+/// (command, arguments, description) — shown while typing and by `?`.
 pub const COMMANDS: &[(&str, &str, &str)] = &[
     (
-        "\\d",
+        "d",
         "[name]",
         "describe a table, view, sequence; without a name: list them",
     ),
-    ("\\l", "[pattern]", "list databases"),
-    ("\\dn", "[pattern]", "list schemas"),
-    ("\\dt", "[pattern]", "list tables"),
-    ("\\dv", "[pattern]", "list views"),
-    ("\\dm", "[pattern]", "list materialized views"),
-    ("\\di", "[pattern]", "list indexes"),
-    ("\\ds", "[pattern]", "list sequences"),
-    ("\\df", "[pattern]", "list functions"),
-    ("\\dT", "[pattern]", "list data types"),
-    ("\\dD", "[pattern]", "list domains"),
-    ("\\du", "[pattern]", "list roles"),
-    ("\\dg", "[pattern]", "list roles"),
-    ("\\dx", "[pattern]", "list extensions"),
-    ("\\db", "[pattern]", "list tablespaces"),
-    ("\\dp", "[pattern]", "list access privileges"),
-    ("\\conninfo", "", "information about the connection"),
-    ("\\?", "", "this list"),
+    ("l", "[pattern]", "list databases"),
+    ("dn", "[pattern]", "list schemas"),
+    ("dt", "[pattern]", "list tables"),
+    ("dv", "[pattern]", "list views"),
+    ("dm", "[pattern]", "list materialized views"),
+    ("di", "[pattern]", "list indexes"),
+    ("ds", "[pattern]", "list sequences"),
+    ("df", "[pattern]", "list functions"),
+    ("dT", "[pattern]", "list data types"),
+    ("dD", "[pattern]", "list domains"),
+    ("du", "[pattern]", "list roles"),
+    ("dg", "[pattern]", "list roles"),
+    ("dx", "[pattern]", "list extensions"),
+    ("db", "[pattern]", "list tablespaces"),
+    ("dp", "[pattern]", "list access privileges"),
+    ("conninfo", "", "information about the connection"),
+    ("?", "", "this list"),
 ];
 
-/// pgtc's own commands (listed separately by `\?`).
+/// pgtc's own commands (listed separately by `?`).
 pub const GENERATE: &[(&str, &str, &str)] = &[
-    ("\\gts", "table", "generate SELECT (inserted at the cursor)"),
-    ("\\gti", "table", "generate INSERT (inserted at the cursor)"),
-    ("\\gtu", "table", "generate UPDATE (inserted at the cursor)"),
-    ("\\gtd", "table", "generate DELETE (inserted at the cursor)"),
+    ("gts", "table", "generate SELECT (inserted at the cursor)"),
+    ("gti", "table", "generate INSERT (inserted at the cursor)"),
+    ("gtu", "table", "generate UPDATE (inserted at the cursor)"),
+    ("gtd", "table", "generate DELETE (inserted at the cursor)"),
 ];
 
 /// Modifiers: `+` (more columns), `S` (system objects).
@@ -88,36 +88,42 @@ pub fn list_rows() -> Vec<Option<(&'static str, &'static str, &'static str)>> {
 
 /// A generate command typed without its table: the input waits for the name.
 pub fn needs_table(input: &str) -> bool {
+    matches!(without_backslash(input), "gts" | "gti" | "gtu" | "gtd")
+}
+
+/// The typed text without surrounding spaces and a leading psql backslash.
+pub fn without_backslash(input: &str) -> &str {
     let input = input.trim();
-    let word = input.strip_prefix('\\').unwrap_or(input);
-    matches!(word, "gts" | "gti" | "gtu" | "gtd")
+    input.strip_prefix('\\').unwrap_or(input)
 }
 
 /// Matching commands for the typed command word (first match = the list row).
 pub fn matching(input: &str) -> Vec<(&'static str, &'static str, &'static str)> {
-    let word = input.split_whitespace().next().unwrap_or("");
-    let word = word.strip_prefix('\\').unwrap_or(word);
+    let word = without_backslash(input)
+        .split_whitespace()
+        .next()
+        .unwrap_or("");
     let word = word.trim_end_matches(MODIFIERS);
     COMMANDS
         .iter()
         .chain(GENERATE)
-        .filter(|(c, _, _)| c[1..].starts_with(word))
+        .filter(|(c, _, _)| c.starts_with(word))
         .copied()
         .collect()
 }
 
-/// Parses a command, typed with or without the backslash.
+/// Parses a command. Commands are typed without psql's backslash (F4 already opened
+/// the command line); a backslash typed out of psql habit is ignored.
 pub fn parse(input: &str) -> Result<Cmd, String> {
-    let input = input.trim();
-    let input = input.strip_prefix('\\').unwrap_or(input);
+    let input = without_backslash(input);
     let (word, arg) = match input.find(char::is_whitespace) {
         Some(i) => (&input[..i], input[i..].trim()),
         None => (input, ""),
     };
     let arg = (!arg.is_empty()).then(|| arg.to_owned());
-    let unknown = || format!("Unknown command \\{word} — \\? lists the commands");
+    let unknown = || format!("Unknown command {word} — ? lists the commands");
     match word {
-        "" => return Err("Type a command, e.g. \\dt — \\? lists them".to_owned()),
+        "" => return Err("Type a command, e.g. dt — ? lists them".to_owned()),
         "?" => return Ok(Cmd::Help),
         "conninfo" => return Ok(Cmd::ConnInfo),
         "gts" | "gti" | "gtu" | "gtd" => {
@@ -129,7 +135,7 @@ pub fn parse(input: &str) -> Result<Cmd, String> {
             };
             let Some(arg) = arg else {
                 return Err(format!(
-                    "\\{word} needs a table name, e.g. \\{word} public.orders"
+                    "{word} needs a table name, e.g. {word} public.orders"
                 ));
             };
             return Ok(Cmd::Generate {
@@ -157,8 +163,7 @@ pub fn parse(input: &str) -> Result<Cmd, String> {
         "d" => match &arg {
             Some(a) if a.contains(['*', '?']) => {
                 return Err(
-                    "\\d describes one name; for a pattern use \\dt, \\dv, ... (e.g. \\dt ord*)"
-                        .to_owned(),
+                    "d describes one name; for a pattern use dt, dv, ... (e.g. dt ord*)".to_owned(),
                 );
             }
             Some(a) => Cmd::Describe {
@@ -396,7 +401,7 @@ pub fn help_query() -> CatalogQuery {
         }
     }
     CatalogQuery {
-        title: "\\?".to_owned(),
+        title: "?".to_owned(),
         sql: format!(
             "SELECT * FROM (VALUES {}) AS c(\"Group\", \"Command\", \"Description\")",
             rows.join(", ")
@@ -666,8 +671,10 @@ mod tests {
 
     #[test]
     fn parse_commands_and_modifiers() {
-        assert_eq!(parse("\\?"), Ok(Cmd::Help));
+        assert_eq!(parse("?"), Ok(Cmd::Help));
         assert_eq!(parse("conninfo"), Ok(Cmd::ConnInfo));
+        // a backslash typed out of psql habit is ignored
+        assert_eq!(parse(" \\conninfo"), Ok(Cmd::ConnInfo));
         let Ok(Cmd::List {
             file,
             kinds,
@@ -675,7 +682,7 @@ mod tests {
             plus,
             system,
             ..
-        }) = parse("\\dtvS+ public.*")
+        }) = parse("dtvS+ public.*")
         else {
             panic!()
         };
@@ -685,19 +692,15 @@ mod tests {
         assert!(plus && system);
         assert!(matches!(parse("l+"), Ok(Cmd::List { plus: true, .. })));
         assert_eq!(
-            parse("\\d+ sales.\"Order Items\""),
+            parse("d+ sales.\"Order Items\""),
             Ok(Cmd::Describe {
                 name: (Some("sales".into()), "Order Items".into()),
                 plus: true
             })
         );
         assert!(matches!(parse("d"), Ok(Cmd::List { kinds: Some(k), .. }) if k == "rpvmSf"));
-        assert!(parse("\\d ord*").is_err());
-        assert!(
-            parse("\\xyz")
-                .unwrap_err()
-                .contains("Unknown command \\xyz")
-        );
+        assert!(parse("d ord*").is_err());
+        assert!(parse("xyz").unwrap_err().contains("Unknown command xyz"));
         assert_eq!(
             parse("gtu Orders"),
             Ok(Cmd::Generate {
@@ -705,8 +708,8 @@ mod tests {
                 table: (None, "orders".into())
             })
         );
-        assert!(parse("\\gti").is_err());
-        assert!(parse("\\gti a.b.c").is_err());
+        assert!(parse("gti").is_err());
+        assert!(parse("gti a.b.c").is_err());
     }
 
     #[test]
@@ -735,10 +738,11 @@ mod tests {
 
     #[test]
     fn matching_commands_for_the_hint_list() {
-        let m: Vec<&str> = matching("\\d").iter().map(|c| c.0).collect();
-        assert!(m.contains(&"\\dt") && m.contains(&"\\d") && !m.contains(&"\\l"));
+        let m: Vec<&str> = matching("d").iter().map(|c| c.0).collect();
+        assert!(m.contains(&"dt") && m.contains(&"d") && !m.contains(&"l"));
         let m: Vec<&str> = matching("gt").iter().map(|c| c.0).collect();
-        assert_eq!(m, ["\\gts", "\\gti", "\\gtu", "\\gtd"]);
+        assert_eq!(m, ["gts", "gti", "gtu", "gtd"]);
+        assert_eq!(matching("\\gt").len(), 4);
         assert_eq!(matching("dt+ x").len(), 1);
     }
 

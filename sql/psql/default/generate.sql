@@ -1,4 +1,4 @@
--- \gts / \gti / \gtu / \gtd (D-054): the columns of one table, view or foreign table.
+-- gts / gti / gtu / gtd (F4, D-054): the columns of one table, view or foreign table.
 -- $1 schema or NULL (search path), $2 name. One row per column, all text:
 -- schema, table, column, type, not_null, default (its expression or ''), identity
 -- ('a' / 'd' / ''), generated ('s' / ''), pk_pos (position in the primary key or ''),

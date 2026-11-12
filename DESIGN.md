@@ -1566,8 +1566,11 @@ pgtc (binary)
 ### D-054 — psql-style commands (`F4`)
 - **Status:** Accepted (refines D-016, D-019, D-046)
 - **Command line:** `F4` (`Esc 4`; *Query → psql command…*; `psql_command` in
-  `[editor]` / `[results]`) opens a one-line dialog in a **connected query tab**. The
-  command is typed with or without the backslash (`\dt public.*` = `dt public.*`).
+  `[editor]` / `[results]`) opens a one-line dialog in a **connected query tab**.
+  Commands are psql's backslash commands **without the backslash** — `F4` already
+  opened the command line (`dt public.*` = psql's `\dt public.*`). pgtc never shows
+  the backslash (list, `?`, result labels, messages); one typed out of psql habit is
+  ignored.
   Under the input a **list of every command** (command, argument, description;
   pgtc's own commands after a separator), as tall as the screen allows, scrolled with
   `Up` / `Down` / `PgUp` / `PgDn` (also while typing in the input) and the mouse
@@ -1578,28 +1581,28 @@ pgtc (binary)
   No command history. In SQL scripts a `\` line is **not** a command (psql-style script
   lines are a possible later addition).
 - **Commands (psql meanings, pgtc's own simpler queries):**
-  - Lists — `\l` databases, `\dn` schemas, `\dt` tables, `\dv` views, `\dm`
-    materialized views, `\di` indexes, `\ds` sequences (letters combine: `\dtv`),
-    `\df` functions, `\dT` types, `\dD` domains, `\du` / `\dg` roles, `\dx`
-    extensions, `\db` tablespaces, `\dp` access privileges; `\d` without a name lists
+  - Lists — `l` databases, `dn` schemas, `dt` tables, `dv` views, `dm`
+    materialized views, `di` indexes, `ds` sequences (letters combine: `dtv`),
+    `df` functions, `dT` types, `dD` domains, `du` / `dg` roles, `dx`
+    extensions, `db` tablespaces, `dp` access privileges; `d` without a name lists
     tables, views, materialized views, sequences and foreign tables.
   - Pattern (psql rules): `*` any text, `?` one character, `schema.name`, unquoted
     parts compared in lower case, `"..."` exact; passed as **bind parameters**. Without
-    a pattern system schemas are left out; `S` (`\dtS`) includes them; `+` adds columns
+    a pattern system schemas are left out; `S` (`dtS`) includes them; `+` adds columns
     (size, description, ...).
-  - `\d name` / `\d+ name` — describe one table, view, materialized view, sequence or
+  - `d name` / `d+ name` — describe one table, view, materialized view, sequence or
     foreign table: result sets *Relation*, *Columns*, *Indexes*, *Constraints*,
     *Triggers*, *Definition* (views); empty sections are left out; not found → a
-    message. A pattern (`*`, `?`) is refused with a hint to use `\dt` & co.
-  - `\conninfo` — connection of the tab, in Messages. `\?` — the commands, as a result
+    message. A pattern (`*`, `?`) is refused with a hint to use `dt` & co.
+  - `conninfo` — connection of the tab, in Messages. `?` — the commands, as a result
     set. Errors of these queries carry no editor position (no line jump).
-  - **Not included:** `\c`, `\i`, `\o`, `\h`, `\x`, `\copy`, `\password`, `\set`,
+  - **Not included** (psql's): `\c`, `\i`, `\o`, `\h`, `\x`, `\copy`, `\password`, `\set`,
     `\g…`, `\watch`, `\if` (no switching connections, no files, no SQL help).
 - **Output:** a run of the tab like `F5` (results, Messages, time, status), one result
   set per list or section, labelled with the command or section
-  (`1: \dt public.* · 12 rows`). Read through the tab's own connection.
-- **pgtc's generate commands** (listed separately by `\?`):
-  `\gts`, `\gti`, `\gtu`, `\gtd` *table* — SELECT / INSERT / UPDATE / DELETE for a
+  (`1: dt public.* · 12 rows`). Read through the tab's own connection.
+- **pgtc's generate commands** (listed separately by `?`):
+  `gts`, `gti`, `gtu`, `gtd` *table* — SELECT / INSERT / UPDATE / DELETE for a
   table (view, foreign table), **inserted at the cursor** of the editor, never run.
   - Reading the table uses the tab's connection: while a result is paused (D-019) or
     an export runs, the command is refused with the same message as developer
@@ -1729,3 +1732,4 @@ pgtc (binary)
 | 2026-11-10 | D-043 updated: *Delete connection* closes the server's tabs like *Disconnect* (same questions first). D-048 updated: partitions of a re-created table are created again and get their rows back through the parent, also when their own partitioning changed. |
 | 2026-11-10 | D-052, D-054 updated: nothing is looked up on a query tab's connection while its result is running or paused — autocomplete offers cached names only, `\gts` / `\gti` / `\gtu` / `\gtd` are refused (as developer templates are); `F4` is off while an export runs. |
 | 2026-11-11 | D-054 updated: the generated INSERT leaves out only generated, identity and sequence-filled (`nextval`) columns; columns with another default are listed, with the default in their comment. |
+| 2026-11-12 | D-054 updated: `F4` commands are typed and shown without psql's backslash (`dt`, `d name`, `?`, `gts`, …) — the list, `?`, result labels and messages never show it; a typed backslash is ignored. |

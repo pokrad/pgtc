@@ -104,7 +104,7 @@ async fn psql_commands_against_a_real_server() {
     pump(&mut a, &mut rx, &hits, idle).await;
     let t = titles(&a);
     assert_eq!(t.len(), 1, "{t:?}");
-    assert!(t[0].starts_with("1: \\dt pg_catalog.pg_cl* · "), "{t:?}");
+    assert!(t[0].starts_with("1: dt pg_catalog.pg_cl* · "), "{t:?}");
     let rs = &a.query().unwrap().results[0];
     assert_eq!(rs.columns[0].name, "Schema");
     assert!(
@@ -113,7 +113,7 @@ async fn psql_commands_against_a_real_server() {
         rs.rows
     );
     // describe: sections without rows are left out
-    run(&mut a, "\\d pgtc_psql");
+    run(&mut a, "d pgtc_psql");
     pump(&mut a, &mut rx, &hits, idle).await;
     let t = titles(&a);
     assert!(t[0].starts_with("1: Relation"), "{t:?}");
@@ -121,7 +121,7 @@ async fn psql_commands_against_a_real_server() {
     assert!(t.iter().any(|x| x.contains("Indexes")), "{t:?}");
     assert!(!t.iter().any(|x| x.contains("Triggers")), "{t:?}");
     // not found: a message, no result set
-    run(&mut a, "\\d no_such_table_here");
+    run(&mut a, "d no_such_table_here");
     pump(&mut a, &mut rx, &hits, idle).await;
     let q = a.query().unwrap();
     assert!(q.results.is_empty());
@@ -132,17 +132,17 @@ async fn psql_commands_against_a_real_server() {
         "{:?}",
         q.messages
     );
-    // \? and \conninfo
-    run(&mut a, "\\?");
+    // ? and conninfo
+    run(&mut a, "?");
     pump(&mut a, &mut rx, &hits, idle).await;
-    assert!(titles(&a)[0].starts_with("1: \\? · "));
+    assert!(titles(&a)[0].starts_with("1: ? · "));
     run(&mut a, "conninfo");
     assert!(a.query().unwrap().messages.iter().any(|m| {
         m.text
             .starts_with("You are connected to database \"postgres\"")
     }),);
     // generate: the statement at the cursor, the key in WHERE, [placeholders]
-    run(&mut a, "\\gtu pgtc_psql");
+    run(&mut a, "gtu pgtc_psql");
     pump(&mut a, &mut rx, &hits, |a| {
         a.status.starts_with("Generated")
     })
@@ -156,7 +156,7 @@ async fn psql_commands_against_a_real_server() {
     assert!(text.contains("-- primary key: integer"), "{text}");
     // INSERT: the serial key (default nextval) is left out, the other columns listed
     a.status.clear();
-    run(&mut a, "\\gti pgtc_psql");
+    run(&mut a, "gti pgtc_psql");
     pump(&mut a, &mut rx, &hits, |a| {
         a.status.starts_with("Generated")
     })
@@ -169,7 +169,7 @@ async fn psql_commands_against_a_real_server() {
         "{text}"
     );
     // unknown command: an error, the command line stays open
-    run(&mut a, "\\xyz");
+    run(&mut a, "xyz");
     assert_eq!(a.dialogs.len(), 2);
     assert!(a.dialogs[1].error);
     assert_eq!(a.dialogs[0].kind, DialogKind::PsqlCommand);
@@ -178,10 +178,10 @@ async fn psql_commands_against_a_real_server() {
     // the selected one
     key(&mut a, "F4");
     key(&mut a, "Down");
-    assert_eq!(a.dialogs[0].text("cmd"), Some("\\l "));
+    assert_eq!(a.dialogs[0].text("cmd"), Some("l "));
     key(&mut a, "Enter");
     pump(&mut a, &mut rx, &hits, idle).await;
-    assert!(titles(&a)[0].starts_with("1: \\l · "), "{:?}", titles(&a));
+    assert!(titles(&a)[0].starts_with("1: l · "), "{:?}", titles(&a));
 }
 
 /// Autocomplete against a real server (D-052): relations after FROM, columns after

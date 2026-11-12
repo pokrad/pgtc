@@ -772,21 +772,22 @@ fn psql_window_lists_every_command() {
     let rows = crate::psql::list_rows();
     let screen = screen_text(&a);
     assert!(
-        screen.contains("\\dt") && screen.contains("list tables"),
+        screen.contains("dt         [pattern] list tables"),
         "{screen}"
     );
+    assert!(!screen.contains("\\dt"), "no psql backslash: {screen}");
     assert!(screen.contains(" pgtc "), "{screen}");
-    assert!(screen.contains("\\gtd"), "the whole list fits: {screen}");
+    assert!(screen.contains("gtd"), "the whole list fits: {screen}");
     // Down: the next command goes into the input (with a space for its argument)
     key(&mut a, "Down");
-    assert_eq!(a.dialogs[0].text("cmd"), Some("\\l "));
+    assert_eq!(a.dialogs[0].text("cmd"), Some("l "));
     // typing moves the list to the command; the list stays complete
     a.dialogs[0].set_text("cmd", "");
     a.update(Msg::Tick, &Hits::default());
-    typing(&mut a, "\\gtu");
+    typing(&mut a, "gtu");
     let gtu = rows
         .iter()
-        .position(|r| r.is_some_and(|(c, _, _)| c == "\\gtu"))
+        .position(|r| r.is_some_and(|(c, _, _)| c == "gtu"))
         .unwrap();
     assert_eq!(a.dialogs[0].selected("list"), Some(gtu));
     // a generate command without a table waits for the name
@@ -799,7 +800,7 @@ fn psql_window_lists_every_command() {
     a.update(Msg::Tick, &Hits::default());
     key(&mut a, "Down");
     assert_eq!(a.dialogs[0].selected("list"), Some(sep + 1));
-    assert_eq!(a.dialogs[0].text("cmd"), Some("\\gts "));
+    assert_eq!(a.dialogs[0].text("cmd"), Some("gts "));
 }
 
 #[test]
@@ -1576,8 +1577,8 @@ async fn no_lookups_while_a_result_is_running_or_paused() {
         },
     );
     let gts = |a: &mut App| {
-        let d = a.psql_dialog("\\gts orders");
-        a.run_psql(d, "\\gts orders");
+        let d = a.psql_dialog("gts orders");
+        a.run_psql(d, "gts orders");
     };
 
     // typing (the list opens by itself) and Ctrl+Space read no names

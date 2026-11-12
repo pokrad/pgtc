@@ -130,7 +130,7 @@ commands! {
     DeleteWordRight = "delete_word_right", "Delete word right";
     Find = "find", "Find / replace";
     Complete = "complete", "Autocomplete: names and keywords";
-    Psql = "psql_command", "psql-style command line (\\dt, \\d, \\gti, ...)";
+    Psql = "psql_command", "psql-style command line (dt, d, gti, ...)";
     FindNext = "find_next", "Find next";
     FindPrev = "find_prev", "Find previous";
     // query tab (D-019, D-020, D-041)

@@ -119,12 +119,7 @@ impl App {
                 return;
             }
         };
-        let text = text.trim().to_owned();
-        let shown = if text.starts_with('\\') {
-            text.clone()
-        } else {
-            format!("\\{text}")
-        };
+        let shown = crate::psql::without_backslash(text).to_owned();
         let Some(version) = self.tab_server_version() else {
             return;
         };

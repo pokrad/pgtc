@@ -17,8 +17,8 @@ tabs with SQL on the right, function keys, menus and dialogs.
   read from the connected database.
 - **Query execution** — streamed results in a grid, several result sets, messages and
   notices, cancel, transactions, PL/pgSQL mode.
-- **psql-style commands** (`F4`) — `\dt`, `\d table`, `\df`, `\du`, … plus pgtc's own
-  `\gts` / `\gti` / `\gtu` / `\gtd` to generate SELECT / INSERT / UPDATE / DELETE for a
+- **psql-style commands** (`F4`) — psql's `\dt`, `\d table`, `\df`, `\du`, … typed without the
+  backslash (`dt`, `d table`, …), plus pgtc's own `gts` / `gti` / `gtu` / `gtd` to generate SELECT / INSERT / UPDATE / DELETE for a
   table.
 - **Export** results to CSV, JSON or XML — the whole result, streamed to the file.
 - **Developer templates** — fill in a short form, get ready-to-run SQL (CREATE

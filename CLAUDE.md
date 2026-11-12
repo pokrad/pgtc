@@ -245,8 +245,8 @@ phase, small steps with a working state after each.
 - `pgc-db`: catalog runs — several parameterised queries as one run, emitting the
   usual query events (titled result sets, empty sections skipped).
 - `pgc-ui`: `F4` command line (matching commands, session history), parser (commands,
-  `S` / `+`, psql patterns → bind parameters), list / describe queries, `\conninfo`,
-  `\?`; generate commands `\gts` / `\gti` / `\gtu` / `\gtd` (pure generators with unit
+  `S` / `+`, psql patterns → bind parameters), list / describe queries, `conninfo`,
+  `?` (psql's commands without the backslash); generate commands `gts` / `gti` / `gtu` / `gtd` (pure generators with unit
   tests) inserted at the cursor.
 - **Result:** psql's everyday commands inside query tabs.
 
