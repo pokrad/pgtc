@@ -49,6 +49,7 @@ default = "ROW"
 name  = "body"
 label = "Function body"
 type  = "sql"
+fill  = true
 +++
 {% set events = [] %}
 {% if on_insert %}{% set events = events + ["INSERT"] %}{% endif %}

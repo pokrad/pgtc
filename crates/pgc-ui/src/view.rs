@@ -101,7 +101,7 @@ pub fn render(frame: &mut Frame, app: &App, hits: &mut Hits) {
     hits.editor_cursor = None;
     render_tabs(frame, app, right, hits);
     hits.right = right;
-    if let Some(p) = app.completion.as_ref().filter(|p| p.shown())
+    if let Some(p) = app.completion.as_ref().filter(|p| p.shown() && !p.in_form)
         && let Some(at) = hits.editor_cursor
     {
         crate::completion::render(frame, p, at, area, &app.theme);
@@ -170,6 +170,12 @@ pub fn render(frame: &mut Frame, app: &App, hits: &mut Hits) {
         if !editing {
             // a row dialog is open on top: no cursor in the form
             hits.template.clear();
+        }
+        // the autocomplete list of the form's `sql` box, over the form (D-052)
+        if let Some(p) = app.completion.as_ref().filter(|p| p.shown() && p.in_form)
+            && let Some(at) = form.sql_cursor.get()
+        {
+            crate::completion::render(frame, p, at, frame.area(), &app.theme);
         }
     }
 

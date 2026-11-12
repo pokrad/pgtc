@@ -254,6 +254,9 @@ pub struct Param {
     /// `list`: the fields of one row.
     #[serde(default)]
     pub fields: Vec<Param>,
+    /// `sql`: the editor box takes the free rows of the form (D-013).
+    #[serde(default)]
+    pub fill: bool,
 }
 
 impl Param {
@@ -339,6 +342,11 @@ fn check_params(params: &[Param], in_list: bool) -> Result<(), String> {
             return Err(format!("parameter '{n}' is declared twice"));
         }
         seen.push(n);
+        if p.fill && (p.kind != ParamType::Sql || in_list) {
+            return Err(format!(
+                "`fill` of '{n}' is only for sql parameters of the form"
+            ));
+        }
         match p.kind {
             ParamType::Choice => {
                 let kinds = usize::from(!p.options.is_empty())
@@ -865,6 +873,31 @@ CREATE FUNCTION {{ schema|ident }}.{{ name|ident }}(
             parse("+++\n[[param]]\nname = \"a\"\ntype = \"text\"\n[[param]]\nname = \"a\"\ntype = \"text\"\n+++\n")
                 .unwrap_err()
                 .contains("twice")
+        );
+        assert!(
+            parse(
+                "+++
+[[param]]
+name = \"a\"
+type = \"text\"
+fill = true
++++
+"
+            )
+            .unwrap_err()
+            .contains("fill")
+        );
+        assert!(
+            parse(
+                "+++
+[[param]]
+name = \"a\"
+type = \"sql\"
+fill = true
++++
+"
+            )
+            .is_ok()
         );
     }
 

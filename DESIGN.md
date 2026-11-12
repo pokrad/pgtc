@@ -402,6 +402,11 @@ desktop dependency.
     filters, macros — rendered with minijinja (same engine as D-010).
   - **Parameter declaration:** minimum is `name` + `type`. Optional: `label` (defaults
     to `name`), `required`, `default`, `help`, plus type-specific keys.
+  - **`fill`** (`sql` only, not in `list` fields): the editor box grows to every row of
+    the form left after the other fields (never below its normal 5 rows); several
+    `fill` boxes share the free rows; a form that has to scroll keeps normal sizes.
+    The built-in function, procedure, trigger, view and materialized view templates
+    use it for their body / query.
   - **Parameter types:**
 
     | Type | Dialog shows | Example use |
@@ -411,7 +416,7 @@ desktop dependency.
     | `number` | numeric input | fill factor, sequence start |
     | `bool` | checkbox | `IF NOT EXISTS`, `UNIQUE`, `SECURITY DEFINER` |
     | `choice` | dropdown — fixed `options`, live `source` (`schemas`, `tables`, `types`, `roles`, ..., D-050) or custom `query = "SELECT ..."` | schema, data type, owner |
-    | `sql` | multi-line editor | function body, CHECK expression, WHERE clause |
+    | `sql` | multi-line editor; `fill = true`: it takes the free rows of the form | function body, CHECK expression, WHERE clause |
     | `list` | table where the user adds/removes rows; own `fields` (sub-parameters) | function arguments, table columns, index columns |
 
   - **Context variables** available in every body: server version and feature checks
@@ -1325,8 +1330,9 @@ pgtc (binary)
   removing of parameters). Widgets per type as in D-013:
   - `list`: the rows of the value are shown as a list with *Add*, *Edit*, *Delete*,
     *Up*, *Down*; *Add* / *Edit* open a small dialog with the row's `fields`.
-  - `sql`: a small multi-line SQL editor box in its own single frame, the parameter
-    name as the frame's title.
+  - `sql`: a multi-line SQL editor box in its own single frame, the parameter name
+    as the frame's title; 5 rows, or the free rows of the form with `fill` (D-013).
+    Autocomplete works in it as in a query tab (D-052).
   - `identifier`: validated as a PostgreSQL name.
 - **Live choice lists** (`source`, `query`) are read through the **query tab's own
   connection**, so they list the objects of the tab's database. Sources: see D-050.
@@ -1520,8 +1526,11 @@ pgtc (binary)
   catalog SQL (D-010). It is a heuristic, not a parser: subqueries, CTE columns and
   unusual syntax may not resolve. A real syntax tree (tree-sitter, D-015) stays a
   possible later addition.
-- **Only in query tabs** (not the read-only object view), only on a connected tab, never
-  inside strings, comments or quoted identifiers.
+- **Only in query tabs** (not the read-only object view) and in the `sql` boxes of the
+  developer template form of a query tab (D-046) — only on a connected tab, never
+  inside strings, comments or quoted identifiers. In the form the list uses the query
+  tab's connection and names, analyses the text of the box itself, is drawn over the
+  form at the cursor, and `Esc` closes only the list (the form stays open).
 - **Trigger:** `Ctrl+Space` and `Alt+/` (`complete` in `[editor]`; some terminals do
   not pass `Ctrl+Space` on), and **automatically** after typing `.` and after typing the
   **3rd letter** of a name. Opened automatically, the list appears only when it has
@@ -1761,3 +1770,4 @@ pgtc (binary)
 | 2026-11-12 | D-013 simplified: the user's templates folder is the only one pgtc reads — no system-wide folder, no merging by name, the embedded templates are only the source for installing (none installed → the picker points to Settings → Install templates). Installing into an existing folder asks first; Yes overwrites the templates that come with pgtc, No writes nothing; pgtc never deletes template files. Files left in the old system folder (e.g. `%ProgramData%\pgtc\developer_templates`) are ignored. D-022, D-028, D-046, D-047 updated. |
 | 2026-11-12 | D-020 updated: `Ctrl+P` (`toggle_plpgsql`, editor and results) switches PL/pgSQL mode of the active query tab. |
 | 2026-11-12 | D-014, D-054 updated: *psql command…* (`F4`) moved from the Query menu to Tools, under *Generate SQL from developer template…* (`F7`). |
+| 2026-11-12 | D-013, D-046 updated: `fill = true` on `sql` parameters — the editor box takes the free rows of the form (several share them; at least 5 rows); used by the built-in function, procedure, trigger and view templates. D-052 updated: autocomplete also in the template form's `sql` boxes, with the query tab's connection and names; `Esc` closes only the list. |

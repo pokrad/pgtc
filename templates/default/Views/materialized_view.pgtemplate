@@ -20,6 +20,7 @@ required = true
 name     = "query"
 label    = "Query"
 type     = "sql"
+fill     = true
 default  = "SELECT 1"
 required = true
 

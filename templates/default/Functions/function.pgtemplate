@@ -66,6 +66,7 @@ type  = "bool"
 name  = "body"
 label = "Body"
 type  = "sql"
+fill  = true
 help  = "Statements between BEGIN and END (plpgsql) or the SQL statement (sql)"
 +++
 CREATE OR REPLACE FUNCTION {{ schema|ident }}.{{ name|ident }}(

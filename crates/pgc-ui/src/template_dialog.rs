@@ -154,6 +154,9 @@ pub struct TemplateForm {
     pub popup: Option<Popup>,
     /// Where the open list was drawn (for the mouse).
     pub popup_area: std::cell::Cell<Option<Rect>>,
+    /// The text cursor of the focused `sql` box when last drawn (the autocomplete
+    /// list opens there, D-052).
+    pub sql_cursor: std::cell::Cell<Option<Position>>,
 }
 
 impl TemplateForm {
@@ -185,6 +188,7 @@ impl TemplateForm {
             error: None,
             popup: None,
             popup_area: std::cell::Cell::new(None),
+            sql_cursor: std::cell::Cell::new(None),
         };
         form.focus = form.stops().first().copied().unwrap_or(Stop::Ok);
         form.refresh();
@@ -312,6 +316,27 @@ impl TemplateForm {
             self.focus,
             Stop::Field(i) if matches!(self.fields[i].value, FieldValue::Sql(_))
         )
+    }
+
+    /// The focused `sql` box's editor.
+    pub fn sql_editor(&self) -> Option<&Editor> {
+        let Stop::Field(i) = self.focus else {
+            return None;
+        };
+        match &self.fields.get(i)?.value {
+            FieldValue::Sql(e) => Some(e),
+            _ => None,
+        }
+    }
+
+    pub fn sql_editor_mut(&mut self) -> Option<&mut Editor> {
+        let Stop::Field(i) = self.focus else {
+            return None;
+        };
+        match &mut self.fields.get_mut(i)?.value {
+            FieldValue::Sql(e) => Some(e),
+            _ => None,
+        }
     }
 
     // ---- keys ---------------------------------------------------------------------
@@ -610,10 +635,13 @@ impl TemplateForm {
         self.preview
             .set_view(l.preview.height as usize, l.preview.width as usize);
         if let Stop::Field(i) = self.focus
-            && let FieldValue::Sql(e) = &mut self.fields[i].value
+            && matches!(self.fields[i].value, FieldValue::Sql(_))
         {
             // inside the box's frame
-            e.set_view(SQL_ROWS as usize, l.form.width.saturating_sub(2) as usize);
+            let rows = self.heights(l.form.height)[i].saturating_sub(2);
+            if let FieldValue::Sql(e) = &mut self.fields[i].value {
+                e.set_view(rows as usize, l.form.width.saturating_sub(2) as usize);
+            }
         }
     }
 
@@ -638,7 +666,7 @@ impl TemplateForm {
 
     // ---- layout and drawing -------------------------------------------------------
 
-    /// Rows a field takes in the form.
+    /// Rows a field takes in the form at its normal size.
     fn field_height(f: &Field) -> u16 {
         match f.value {
             // the editor in its own frame, the label as the frame's title
@@ -646,6 +674,26 @@ impl TemplateForm {
             FieldValue::List { .. } => 1 + LIST_ROWS + 1,
             _ => 1,
         }
+    }
+
+    /// Rows of every field in a form `form_h` rows high: `sql` boxes with `fill`
+    /// share the free rows (D-013); a form that has to scroll keeps normal sizes.
+    fn heights(&self, form_h: u16) -> Vec<u16> {
+        let mut h: Vec<u16> = self.fields.iter().map(Self::field_height).collect();
+        let free = form_h.saturating_sub(h.iter().sum());
+        let fill: Vec<usize> = (0..self.fields.len())
+            .filter(|&i| {
+                self.fields[i].param.fill && matches!(self.fields[i].value, FieldValue::Sql(_))
+            })
+            .collect();
+        if free > 0 && !fill.is_empty() {
+            let n = fill.len() as u16;
+            for (k, &i) in fill.iter().enumerate() {
+                // the first boxes take the rows left over by the division
+                h[i] += free / n + u16::from((k as u16) < free % n);
+            }
+        }
+        h
     }
 
     fn label_width(&self) -> u16 {
@@ -844,18 +892,19 @@ impl TemplateForm {
         self.draw_lines(frame, theme, &layout);
 
         // keep the focused field visible
+        let heights = self.heights(form.height);
         let mut tops = Vec::new();
         let mut y = 0u16;
-        for f in &self.fields {
+        for h in &heights {
             tops.push(y);
-            y += Self::field_height(f);
+            y += h;
         }
         let total = y;
         if let Some(i) = match self.focus {
             Stop::Field(i) | Stop::ListButton(i, _) => Some(i),
             _ => None,
         } {
-            let (top, h) = (tops[i], Self::field_height(&self.fields[i]));
+            let (top, h) = (tops[i], heights[i]);
             let visible = form.height;
             if top < self.scroll.get() {
                 self.scroll.set(top);
@@ -869,8 +918,9 @@ impl TemplateForm {
         let rows_area = form;
         let lw = self.label_width();
         let mut cursor: Option<Position> = None;
+        self.sql_cursor.set(None);
         for (i, f) in self.fields.iter().enumerate() {
-            let h = Self::field_height(f);
+            let h = heights[i];
             let top = tops[i] as i32 - scroll as i32;
             if top + h as i32 <= 0 || top >= rows_area.height as i32 {
                 continue;
@@ -958,8 +1008,9 @@ impl TemplateForm {
                     // drawn only when fully visible (the editor needs its whole box);
                     // otherwise just the label
                     let title = format!(" {label}{star} ");
-                    if let (Some(y0), Some(_)) = (row_y(0), row_y(SQL_ROWS + 1)) {
-                        let boxed = Rect::new(form.x, y0, form.width, SQL_ROWS + 2);
+                    let rows = h.saturating_sub(2);
+                    if let (Some(y0), Some(_)) = (row_y(0), row_y(rows + 1)) {
+                        let boxed = Rect::new(form.x, y0, form.width, rows + 2);
                         frame.render_widget(
                             Block::bordered()
                                 .border_set(theme.plain_border())
@@ -971,13 +1022,13 @@ impl TemplateForm {
                                 .style(normal),
                             boxed,
                         );
-                        let r =
-                            Rect::new(form.x + 1, y0 + 1, form.width.saturating_sub(2), SQL_ROWS);
+                        let r = Rect::new(form.x + 1, y0 + 1, form.width.saturating_sub(2), rows);
                         frame.render_widget(Block::new().style(editor_styles.text), r);
                         let pos =
                             pgc_editor::render(e, r, frame.buffer_mut(), editor_styles, false);
                         if focused {
                             cursor = pos;
+                            self.sql_cursor.set(pos);
                         }
                         hits.push((Stop::Field(i), r));
                     } else if let Some(yy) = row_y(0) {
@@ -1342,6 +1393,48 @@ CREATE {{ schema|ident }}.{{ name|ident }}({% for c in cols %}{{ c.c }}{% endfor
 
     fn key(f: &mut TemplateForm, cmd: Option<Command>, code: KeyCode) -> FormEvent {
         f.handle_key(cmd, None, &KeyEvent::new(code, KeyModifiers::NONE))
+    }
+
+    /// `fill` boxes share the free rows of the form; without room they keep 5 rows.
+    #[test]
+    fn fill_boxes_take_the_free_rows() {
+        let file = devtemplate::parse(
+            "+++
+name = \"T\"
+[[param]]
+name = \"name\"
+type = \"text\"
+[[param]]
+name = \"a\"
+type = \"sql\"
+fill = true
+[[param]]
+name = \"b\"
+type = \"sql\"
+fill = true
+[[param]]
+name = \"c\"
+type = \"sql\"
++++
+x
+",
+        )
+        .unwrap();
+        let f = TemplateForm::new(
+            1,
+            "T".into(),
+            file,
+            TemplateContext {
+                version: ServerVersion(160000),
+                database: "db".into(),
+            },
+            4,
+        );
+        // normal: 1 + 7 + 7 + 7 = 22 rows; 9 free rows, 5 and 4 for the fill boxes
+        assert_eq!(f.heights(31), vec![1, 12, 11, 7]);
+        assert_eq!(f.heights(31).iter().sum::<u16>(), 31);
+        // the form has to scroll: normal sizes
+        assert_eq!(f.heights(10), vec![1, 7, 7, 7]);
     }
 
     /// Ctrl+Enter is OK from any field; an open choice list takes its item first.

@@ -403,6 +403,7 @@ async fn readme_screenshots() {
         pgc_editor::lexer::keywords(),
     );
     let mut popup = crate::completion::Popup {
+        in_form: false,
         tab: a.tabs[a.active_tab].id,
         analysis,
         items: Vec::new(),

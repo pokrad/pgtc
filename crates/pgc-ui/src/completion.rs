@@ -246,6 +246,8 @@ pub fn build(a: &Analysis, names: &Names, keywords: &[&str]) -> Built {
 pub struct Popup {
     /// Query tab id.
     pub tab: u64,
+    /// In the template form's `sql` box (not the tab's editor), D-052.
+    pub in_form: bool,
     pub analysis: Analysis,
     pub items: Vec<Item>,
     pub loading: bool,

@@ -36,6 +36,7 @@ type  = "list"
 name  = "body"
 label = "Body"
 type  = "sql"
+fill  = true
 +++
 CREATE OR REPLACE PROCEDURE {{ schema|ident }}.{{ name|ident }}(
 {% for a in args %}

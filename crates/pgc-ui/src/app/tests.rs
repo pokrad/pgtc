@@ -1679,3 +1679,70 @@ fn ctrl_p_toggles_plpgsql_mode_of_the_tab() {
     a.new_query_tab(None);
     assert!(!a.query().unwrap().plpgsql);
 }
+
+/// Autocomplete in the template form's `sql` box (D-052): names of the query tab, the
+/// list over the form, Enter inserts into the box, Esc closes only the list.
+#[tokio::test]
+async fn autocomplete_in_the_template_sql_box() {
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    a.new_query_tab(None);
+    let tab = a.tabs[a.active_tab].id;
+    let q = a.query_mut().unwrap();
+    q.binding = Some((uid, "shop".into()));
+    q.conn = Some(QueryConn {
+        id: 99,
+        database: "shop".into(),
+        handle: pgc_db::ConnectionHandle::detached(99),
+        cancel: None,
+        state: QueryConnState::Connected,
+        ssl_mode: SslMode::default(),
+        ssl_root_cert: None,
+    });
+    q.names.set_objects(vec![vec![
+        "public".into(),
+        "orders".into(),
+        "table".into(),
+        "t".into(),
+    ]]);
+    let file = devtemplate::parse(
+        "+++\nname = \"F\"\n[[param]]\nname = \"body\"\ntype = \"sql\"\nfill = true\n+++\n{{ body }}\n",
+    )
+    .unwrap();
+    a.template = Some(TemplateForm::new(
+        tab,
+        "F".into(),
+        file,
+        devtemplate::TemplateContext {
+            version: pgc_core::ServerVersion(170002),
+            database: "shop".into(),
+        },
+        4,
+    ));
+    assert!(a.completion_in_form());
+    typing(&mut a, "select * from ord");
+    let p = a.completion.as_ref().expect("the list opened");
+    assert!(p.in_form && p.shown(), "{p:?}");
+    // drawn over the form
+    let screen = screen_text(&a);
+    assert!(screen.contains("orders"), "{screen}");
+    // Enter takes the entry into the box (not a new line), the preview follows
+    key(&mut a, "Enter");
+    assert!(a.completion.is_none());
+    let form = a.template.as_ref().unwrap();
+    assert_eq!(form.sql_editor().unwrap().text(), "select * from orders");
+    assert!(form.preview.text().contains("from orders"));
+    assert!(
+        a.tabs[a.active_tab].view.editor.text().is_empty(),
+        "not the tab's editor"
+    );
+    // Esc closes only the list; Ctrl+Space opens it again
+    typing(&mut a, " o");
+    key(&mut a, "Ctrl+Space");
+    assert!(a.completion.is_some());
+    key(&mut a, "Esc");
+    assert!(a.completion.is_none());
+    assert!(a.template.is_some(), "the form stays open");
+}

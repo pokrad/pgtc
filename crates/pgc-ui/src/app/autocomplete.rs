@@ -1,8 +1,9 @@
-//! Autocomplete in query tabs (D-052): opening, filtering and accepting the list,
-//! reading names through the tab's connection.
+//! Autocomplete in query tabs and in the `sql` boxes of the developer template form
+//! (D-052): opening, filtering and accepting the list, reading names through the
+//! query tab's connection (the form belongs to a query tab).
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use pgc_editor::Action;
+use pgc_editor::{Action, Editor};
 use pgc_sql::RenderContext;
 
 use super::App;
@@ -15,6 +16,51 @@ pub(super) const NAMES_HELD: &str =
     "Autocomplete: new names are read after the running or paused result ends";
 
 impl App {
+    /// The list works in the template form: its focused `sql` box, no dialog on top.
+    pub(super) fn completion_in_form(&self) -> bool {
+        self.dialogs.is_empty() && self.template.as_ref().is_some_and(|f| f.editing_sql())
+    }
+
+    /// The editor the list works in: the form's `sql` box or the active tab's editor.
+    fn completion_editor(&self, in_form: bool) -> Option<&Editor> {
+        if in_form {
+            self.template.as_ref()?.sql_editor()
+        } else {
+            Some(&self.tabs[self.active_tab].view.editor)
+        }
+    }
+
+    fn completion_editor_mut(&mut self, in_form: bool) -> Option<&mut Editor> {
+        if in_form {
+            self.template.as_mut()?.sql_editor_mut()
+        } else {
+            Some(self.editor())
+        }
+    }
+
+    /// The query tab whose connection and names serve the list.
+    fn completion_tab(&self, in_form: bool) -> Option<usize> {
+        if in_form {
+            self.tab_index(self.template.as_ref()?.tab)
+        } else {
+            Some(self.active_tab)
+        }
+    }
+
+    /// An edit made by the list; the form's preview follows its fields.
+    fn completion_edit(&mut self, in_form: bool, action: Action) {
+        if in_form {
+            if let Some(e) = self.completion_editor_mut(true) {
+                e.apply(action);
+            }
+            if let Some(f) = self.template.as_mut() {
+                f.refresh();
+            }
+        } else {
+            self.edit(action);
+        }
+    }
+
     /// Keys while the list is open; true when the key was used. Typed characters go
     /// on into the editor (and refilter the list afterwards).
     pub(super) fn completion_key(&mut self, ev: &KeyEvent, cmd: Option<Command>) -> bool {
@@ -51,7 +97,8 @@ impl App {
                 true
             }
             Some(Command::Backspace) => {
-                self.edit(Action::Backspace);
+                let in_form = self.completion.as_ref().is_some_and(|p| p.in_form);
+                self.completion_edit(in_form, Action::Backspace);
                 self.refresh_completion();
                 true
             }
@@ -77,8 +124,12 @@ impl App {
     pub(super) fn open_completion(&mut self, manual: bool) {
         use crate::completion::{AUTO_LETTERS, Popup};
         use pgc_editor::complete::Want;
-        let tab = self.tabs[self.active_tab].id;
-        let Some(q) = self.query() else {
+        let in_form = self.completion_in_form();
+        let Some(i) = self.completion_tab(in_form) else {
+            return;
+        };
+        let tab = self.tabs[i].id;
+        let Some(q) = self.tabs[i].query.as_ref() else {
             return;
         };
         if !q.connected() {
@@ -87,7 +138,10 @@ impl App {
             }
             return;
         }
-        let Some(a) = pgc_editor::complete::analyze(&self.tabs[self.active_tab].view.editor) else {
+        let Some(a) = self
+            .completion_editor(in_form)
+            .and_then(pgc_editor::complete::analyze)
+        else {
             if manual {
                 self.status = "No suggestions".to_owned();
             }
@@ -108,11 +162,12 @@ impl App {
             if manual && !held {
                 self.status = "No suggestions".to_owned();
             }
-            self.request_names(&needs);
+            self.request_names(i, &needs);
             return;
         }
         let mut popup = Popup {
             tab,
+            in_form,
             analysis: a,
             items: Vec::new(),
             loading: false,
@@ -122,7 +177,7 @@ impl App {
         };
         popup.set_items(built.items, built.loading);
         self.completion = Some(popup);
-        self.request_names(&needs);
+        self.request_names(i, &needs);
     }
 
     /// The text changed or names arrived: new entries for the open list; it closes
@@ -136,12 +191,13 @@ impl App {
             self.completion = None;
             return;
         };
-        let tab = &self.tabs[i];
-        let Some(q) = tab.query.as_ref() else {
+        let Some(q) = self.tabs[i].query.as_ref() else {
             self.completion = None;
             return;
         };
-        let a = pgc_editor::complete::analyze(&tab.view.editor);
+        let a = self
+            .completion_editor(popup.in_form)
+            .and_then(pgc_editor::complete::analyze);
         let Some(a) = a.filter(|a| {
             !a.prefix.is_empty() || matches!(a.want, Want::Qualified(_)) || !popup.auto
         }) else {
@@ -163,7 +219,7 @@ impl App {
             p.analysis = a;
             p.set_items(built.items, built.loading);
         }
-        self.request_names(&needs);
+        self.request_names(i, &needs);
     }
 
     /// Inserts the selected entry in place of the typed prefix.
@@ -174,24 +230,32 @@ impl App {
         let Some(item) = popup.items.get(popup.selected).cloned() else {
             return;
         };
-        let editor = self.editor();
+        let Some(editor) = self.completion_editor_mut(popup.in_form) else {
+            return;
+        };
         let Some(a) = pgc_editor::complete::analyze(editor) else {
             return;
         };
         let cursor = editor.cursor();
         editor.set_cursor(a.start, false);
         editor.set_cursor(cursor, true);
-        editor.apply(Action::Insert(item.insert));
+        self.completion_edit(popup.in_form, Action::Insert(item.insert));
     }
 
-    /// Asks the active query tab's connection for missing names.
-    fn request_names(&mut self, needs: &[crate::completion::Need]) {
+    /// Asks the connection of query tab `i` for missing names.
+    fn request_names(&mut self, i: usize, needs: &[crate::completion::Need]) {
         use crate::completion::Need;
         if needs.is_empty() {
             return;
         }
-        let tab = self.tabs[self.active_tab].id;
-        let Some(version) = self.tab_server_version() else {
+        let tab = self.tabs[i].id;
+        let Some(version) = self.tabs[i]
+            .query
+            .as_ref()
+            .and_then(|q| q.binding.as_ref())
+            .and_then(|(uid, _)| self.tree.servers.iter().find(|s| s.uid == *uid))
+            .and_then(|s| s.version)
+        else {
             return;
         };
         let render = RenderContext {
@@ -200,7 +264,7 @@ impl App {
         };
         let objects_sql = self.sql.render("completion", "objects.sql", render);
         let columns_sql = self.sql.render("completion", "columns.sql", render);
-        let Some(q) = self.tabs[self.active_tab].query.as_mut() else {
+        let Some(q) = self.tabs[i].query.as_mut() else {
             return;
         };
         let Some(handle) = q.conn.as_ref().map(|c| c.handle.clone()) else {

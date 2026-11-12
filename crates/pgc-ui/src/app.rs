@@ -652,14 +652,18 @@ impl App {
         if self.focus == Focus::Results && self.query().is_none_or(|q| !q.results_visible) {
             self.focus = Focus::Tabs;
         }
-        // the list belongs to the editor of the active query tab (D-052)
-        if self
-            .completion
-            .as_ref()
-            .is_some_and(|p| p.tab != self.tabs[self.active_tab].id)
-            || self.focus != Focus::Tabs
-            || self.modal()
-        {
+        // the list belongs to the editor of the active query tab, or to the focused
+        // `sql` box of that tab's template form (D-052)
+        let keep = match self.completion.as_ref() {
+            None => true,
+            Some(p) if p.in_form => {
+                self.completion_in_form() && self.template.as_ref().is_some_and(|f| f.tab == p.tab)
+            }
+            Some(p) => {
+                p.tab == self.tabs[self.active_tab].id && self.focus == Focus::Tabs && !self.modal()
+            }
+        };
+        if !keep {
             self.completion = None;
         }
         effects
@@ -726,17 +730,44 @@ impl App {
             return;
         }
 
-        if let Some(form) = self.template.as_mut() {
-            // an SQL box gets the editor's keys (D-046)
-            let action = if form.editing_sql() {
-                self.keymap
-                    .lookup_only(Context::Editor, combo)
-                    .and_then(editor_action)
+        if self.template.is_some() {
+            // an SQL box gets the editor's keys (D-046) and autocomplete (D-052)
+            let in_sql = self.completion_in_form();
+            let editor_cmd = if in_sql {
+                self.keymap.lookup_only(Context::Editor, combo)
             } else {
                 None
             };
-            let event = form.handle_key(cmd, action, &ev);
+            if in_sql {
+                if self.completion.is_some() && self.completion_key(&ev, editor_cmd) {
+                    return;
+                }
+                if editor_cmd == Some(Command::Complete) {
+                    self.open_completion(true);
+                    return;
+                }
+            }
+            let typed = match ev.code {
+                KeyCode::Char(c)
+                    if in_sql
+                        && !ev
+                            .modifiers
+                            .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
+                {
+                    Some(c)
+                }
+                _ => None,
+            };
+            let Some(form) = self.template.as_mut() else {
+                return;
+            };
+            let event = form.handle_key(cmd, editor_cmd.and_then(editor_action), &ev);
             self.form_event(event);
+            if let Some(c) = typed
+                && self.completion_in_form()
+            {
+                self.after_typing(c);
+            }
             return;
         }
 
