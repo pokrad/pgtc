@@ -1365,7 +1365,7 @@ fn byte_index(s: &str, char_index: usize) -> usize {
     s.char_indices().nth(char_index).map_or(s.len(), |(b, _)| b)
 }
 
-fn draw_shadow(frame: &mut Frame, area: Rect, style: Style) {
+pub(crate) fn draw_shadow(frame: &mut Frame, area: Rect, style: Style) {
     let screen = frame.area();
     let buf = frame.buffer_mut();
     let right = area.x + area.width;

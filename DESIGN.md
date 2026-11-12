@@ -1314,7 +1314,8 @@ pgtc (binary)
   removing of parameters). Widgets per type as in D-013:
   - `list`: the rows of the value are shown as a list with *Add*, *Edit*, *Delete*,
     *Up*, *Down*; *Add* / *Edit* open a small dialog with the row's `fields`.
-  - `sql`: a small multi-line SQL editor box.
+  - `sql`: a small multi-line SQL editor box in its own single frame, the parameter
+    name as the frame's title.
   - `identifier`: validated as a PostgreSQL name.
 - **Live choice lists** (`source`, `query`) are read through the **query tab's own
   connection**, so they list the objects of the tab's database. Sources: see D-050.
@@ -1329,6 +1330,14 @@ pgtc (binary)
   updates as the fields change. Errors (missing required value, invalid identifier,
   template error) are shown in the preview. *OK* inserts the SQL **at the cursor** of
   the tab's editor (replacing a selection); it is not executed.
+- **Window:** drawn like every dialog (margin of dialog colour, single frame, shadow),
+  as large as the screen between the menu bar and the F-key bar. Form on the left,
+  preview on the right, divided by a vertical line joined to the frame (`┬ … ┴`); the
+  window title is centred over the form, the preview has its title row (*Preview*)
+  under its own line (`├───┤`). On narrow screens the preview is below the form,
+  divided by a horizontal line with the title (`├─ Preview ──┤`). A line across the
+  window (`├───┤`) separates the help of the focused field and the *OK* / *Cancel*
+  row.
 
 ### D-047 — `--setup`; no font installation
 - **Status:** Accepted
@@ -1476,7 +1485,8 @@ pgtc (binary)
 - **ASCII frames** (`ui.ascii_frames`, default off, D-002): for terminals or fonts
   without box-drawing characters. Window (double) frames use `+` corners, `=`
   horizontal and `|` vertical lines; single frames (dialogs, menus, combo lists) and
-  inner separators use `+`, `-`, `|` (`+---+`); grid and results-bar column lines
+  inner separators use `+`, `-`, `|` (`+---+`; also where inner lines join a single
+  frame, `├ ┤ ┬ ┴`, through the theme's junction helper); grid and results-bar column lines
   `|`. Other symbols (`…`, `×`, `▼`, `►`, `↵`,
   arrows) are not box drawing and stay.
 - **LISTEN / NOTIFY** (D-006): a notification received on a query tab's connection
@@ -1733,3 +1743,4 @@ pgtc (binary)
 | 2026-11-10 | D-052, D-054 updated: nothing is looked up on a query tab's connection while its result is running or paused — autocomplete offers cached names only, `\gts` / `\gti` / `\gtu` / `\gtd` are refused (as developer templates are); `F4` is off while an export runs. |
 | 2026-11-11 | D-054 updated: the generated INSERT leaves out only generated, identity and sequence-filled (`nextval`) columns; columns with another default are listed, with the default in their comment. |
 | 2026-11-12 | D-054 updated: `F4` commands are typed and shown without psql's backslash (`dt`, `d name`, `?`, `gts`, …) — the list, `?`, result labels and messages never show it; a typed backslash is ignored. |
+| 2026-11-12 | D-046 updated: the developer template window is drawn like the other dialogs (margin, single frame, shadow) with lines joined to the frame between form and preview and above the help / button rows; the `sql` box has its own frame. D-051: junctions of inner lines with single frames (`├ ┤ ┬ ┴`) follow ASCII frames. |

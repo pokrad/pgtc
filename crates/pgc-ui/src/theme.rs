@@ -84,6 +84,19 @@ roles! {
     MessagesInfo = "messages.info";
 }
 
+/// Junction characters of a single frame, from [`Theme::plain_junctions`].
+#[derive(Debug, Clone, Copy)]
+pub struct Junctions {
+    /// An inner horizontal line meets the left frame (`├`).
+    pub left: &'static str,
+    /// An inner horizontal line meets the right frame (`┤`).
+    pub right: &'static str,
+    /// An inner vertical line meets the top frame (`┬`).
+    pub top: &'static str,
+    /// An inner vertical line meets a horizontal line below it (`┴`).
+    pub bottom: &'static str,
+}
+
 /// A resolved colour scheme.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Theme {
@@ -146,6 +159,25 @@ impl Theme {
             ("+", "+")
         } else {
             ("╟", "╢")
+        }
+    }
+
+    /// Where inner lines meet a single dialog frame or each other (`├ ┤ ┬ ┴`).
+    pub fn plain_junctions(&self) -> Junctions {
+        if self.ascii {
+            Junctions {
+                left: "+",
+                right: "+",
+                top: "+",
+                bottom: "+",
+            }
+        } else {
+            Junctions {
+                left: "├",
+                right: "┤",
+                top: "┬",
+                bottom: "┴",
+            }
         }
     }
 

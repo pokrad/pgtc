@@ -1,8 +1,10 @@
 //! The developer template form (D-013, D-046): every parameter of the template, a live
 //! read-only preview of the generated SQL, OK / Cancel.
 //!
-//! Layout: the form on the left and the preview on the right (on narrow screens the
-//! preview is below the form). The form scrolls when it is taller than the screen.
+//! Layout: a dialog window (margin, single frame, shadow) with the form on the left
+//! and the preview on the right, split by a line joined to the frame (on narrow
+//! screens the preview is below the form); a line above the help line and the
+//! buttons. The form scrolls when it is taller than the screen.
 
 use std::collections::BTreeMap;
 
@@ -21,6 +23,35 @@ use unicode_width::UnicodeWidthStr;
 use crate::combo::{self, ComboList, ListEvent};
 use crate::keymap::Command;
 use crate::theme::{Role, Theme};
+
+/// Where the parts of the form are drawn ([`TemplateForm::layout`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Layout {
+    /// The window with its margin (the shadow is outside).
+    pub outer: Rect,
+    /// The frame lines.
+    pub frame: Rect,
+    /// The parameters (scrolled).
+    pub form: Rect,
+    /// The generated SQL.
+    pub preview: Rect,
+    pub split: Split,
+    /// Row of the line above the help line.
+    pub separator: u16,
+    /// Help of the focused field.
+    pub help: Rect,
+    /// OK / Cancel.
+    pub buttons: Rect,
+}
+
+/// The line between form and preview.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Split {
+    /// Side by side: a vertical line at column `x`.
+    Vertical { x: u16 },
+    /// Preview below the form: a horizontal line at row `y`.
+    Horizontal { y: u16 },
+}
 
 /// Rows of an `sql` editor box.
 const SQL_ROWS: u16 = 5;
@@ -567,16 +598,14 @@ impl TemplateForm {
 
     /// Tells the preview how big it is drawn (for scrolling).
     pub fn set_screen(&mut self, screen: Rect) {
-        let (_, _, preview, _) = Self::layout(screen);
-        self.preview.set_view(
-            preview.height.saturating_sub(1) as usize,
-            preview.width as usize,
-        );
+        let l = Self::layout(screen);
+        self.preview
+            .set_view(l.preview.height as usize, l.preview.width as usize);
         if let Stop::Field(i) = self.focus
             && let FieldValue::Sql(e) = &mut self.fields[i].value
         {
-            let (_, form, _, _) = Self::layout(screen);
-            e.set_view(SQL_ROWS as usize, form.width as usize);
+            // inside the box's frame
+            e.set_view(SQL_ROWS as usize, l.form.width.saturating_sub(2) as usize);
         }
     }
 
@@ -604,7 +633,8 @@ impl TemplateForm {
     /// Rows a field takes in the form.
     fn field_height(f: &Field) -> u16 {
         match f.value {
-            FieldValue::Sql(_) => 1 + SQL_ROWS,
+            // the editor in its own frame, the label as the frame's title
+            FieldValue::Sql(_) => SQL_ROWS + 2,
             FieldValue::List { .. } => 1 + LIST_ROWS + 1,
             _ => 1,
         }
@@ -625,52 +655,156 @@ impl TemplateForm {
             .min(28)
     }
 
-    /// Outer box, form area, preview area, button row.
-    pub fn layout(screen: Rect) -> (Rect, Rect, Rect, Rect) {
-        // the whole screen between the menu bar and the F-key bar
+    /// Where everything of the form is drawn on `screen`.
+    pub fn layout(screen: Rect) -> Layout {
+        // like every dialog (D-014): a margin of dialog colour around the frame and
+        // a shadow; as large as the screen between the menu bar and the F-key bar
         let outer = Rect {
             x: screen.x,
             y: screen.y + 1,
-            width: screen.width,
-            height: screen.height.saturating_sub(2),
+            width: screen.width.saturating_sub(2),
+            height: screen.height.saturating_sub(3),
         };
-        let inner = Rect {
-            x: outer.x + 2,
+        let frame = Rect {
+            x: outer.x + 1,
             y: outer.y + 1,
-            width: outer.width.saturating_sub(4),
+            width: outer.width.saturating_sub(2),
             height: outer.height.saturating_sub(2),
         };
+        // inside the frame lines
+        let inner = Rect {
+            x: frame.x + 1,
+            y: frame.y + 1,
+            width: frame.width.saturating_sub(2),
+            height: frame.height.saturating_sub(2),
+        };
+        // bottom: separator, help line, buttons
         let buttons = Rect {
             y: inner.bottom().saturating_sub(1),
             height: 1,
             ..inner
         };
+        let help = Rect {
+            x: inner.x + 1,
+            y: buttons.y.saturating_sub(1),
+            width: inner.width.saturating_sub(2),
+            height: 1,
+        };
+        let separator = help.y.saturating_sub(1);
         let body = Rect {
-            height: inner.height.saturating_sub(2),
+            height: separator.saturating_sub(inner.y),
             ..inner
         };
-        let (form, preview) = if body.width >= 90 {
-            let fw = body.width * 11 / 20;
+        // the form keeps one column of space on both sides
+        let pad = |r: Rect| Rect {
+            x: r.x + 1,
+            width: r.width.saturating_sub(2),
+            ..r
+        };
+        let (form, preview, split) = if inner.width >= 90 {
+            // side by side: a vertical line, the preview's title under its own line
+            let fw = inner.width * 11 / 20;
+            let x = inner.x + fw;
+            let pane = Rect {
+                x: x + 1,
+                width: inner.right().saturating_sub(x + 1),
+                ..body
+            };
+            let preview = Rect {
+                y: pane.y + 2,
+                height: pane.height.saturating_sub(2),
+                ..pane
+            };
             (
-                Rect { width: fw, ..body },
-                Rect {
-                    x: body.x + fw + 2,
-                    width: body.width.saturating_sub(fw + 2),
-                    ..body
-                },
+                pad(Rect { width: fw, ..body }),
+                preview,
+                Split::Vertical { x },
             )
         } else {
+            // one above the other: a horizontal line with the preview's title
             let fh = body.height * 3 / 5;
+            let y = body.y + fh;
+            let preview = Rect {
+                y: y + 1,
+                height: body.bottom().saturating_sub(y + 1),
+                ..body
+            };
             (
-                Rect { height: fh, ..body },
-                Rect {
-                    y: body.y + fh + 1,
-                    height: body.height.saturating_sub(fh + 1),
-                    ..body
-                },
+                pad(Rect { height: fh, ..body }),
+                preview,
+                Split::Horizontal { y },
             )
         };
-        (outer, form, preview, buttons)
+        Layout {
+            outer,
+            frame,
+            form,
+            preview,
+            split,
+            separator,
+            help,
+            buttons,
+        }
+    }
+
+    /// The frame, the line between form and preview, the line above the help line.
+    fn draw_lines(&self, frame: &mut Frame, theme: &Theme, l: &Layout) {
+        let normal = theme.get(Role::DialogNormal);
+        let j = theme.plain_junctions();
+        let f = l.frame;
+        if f.width < 2 || f.height < 2 {
+            return;
+        }
+        frame.render_widget(
+            Block::bordered()
+                .border_set(theme.plain_border())
+                .border_style(normal)
+                .style(normal),
+            f,
+        );
+        // the title centred over the form (side by side: left of the vertical line)
+        let title_w = match l.split {
+            Split::Vertical { x } => x - f.x,
+            Split::Horizontal { .. } => f.width,
+        };
+        let title = format!(" {} ", self.title);
+        let tw = (title.width() as u16).min(title_w.saturating_sub(2));
+        put(
+            frame,
+            f.x + title_w.saturating_sub(tw) / 2,
+            f.y,
+            &title,
+            tw,
+            theme.get(Role::DialogTitle),
+        );
+        // a horizontal line from frame to frame (or from x to the right frame)
+        let hline = |frame: &mut Frame, x0: u16, y: u16, left: &str| {
+            let w = f.right().saturating_sub(x0 + 1);
+            if y <= f.y || y + 1 >= f.bottom() || w == 0 {
+                return;
+            }
+            let line = format!("{left}{}{}", theme.hline().repeat(w as usize - 1), j.right);
+            put(frame, x0, y, &line, w + 1, normal);
+        };
+        hline(frame, f.x, l.separator, j.left);
+        let title = |frame: &mut Frame, x: u16, y: u16| {
+            put(frame, x, y, " Preview ", 9, theme.get(Role::DialogTitle));
+        };
+        match l.split {
+            Split::Vertical { x } => {
+                put(frame, x, f.y, j.top, 1, normal);
+                for y in f.y + 1..l.separator {
+                    put(frame, x, y, theme.vline(), 1, normal);
+                }
+                put(frame, x, l.separator, j.bottom, 1, normal);
+                title(frame, x + 1, f.y + 1);
+                hline(frame, x, f.y + 2, j.left);
+            }
+            Split::Horizontal { y } => {
+                hline(frame, f.x, y, j.left);
+                title(frame, f.x + 2, y);
+            }
+        }
     }
 
     /// Draws the form; returns the click areas of the stops.
@@ -681,7 +815,14 @@ impl TemplateForm {
         editor_styles: &EditorStyles,
     ) -> Vec<(Stop, Rect)> {
         let screen = frame.area();
-        let (outer, form, preview_area, buttons) = Self::layout(screen);
+        let layout = Self::layout(screen);
+        let Layout {
+            outer,
+            form,
+            preview: pv,
+            buttons,
+            ..
+        } = layout;
         let normal = theme.get(Role::DialogNormal);
         let focus = theme.get(Role::DialogFocus);
         let input = theme.get(Role::DialogInput);
@@ -689,21 +830,10 @@ impl TemplateForm {
         let hint = theme.get(Role::DialogDisabled);
         let mut hits = Vec::new();
 
+        crate::dialog::draw_shadow(frame, outer, theme.get(Role::DialogShadow));
         frame.render_widget(Clear, outer);
-        frame.render_widget(
-            Block::bordered()
-                .border_set(theme.plain_border())
-                .border_style(normal)
-                .title_top(
-                    Line::from(Span::styled(
-                        format!(" {} ", self.title),
-                        theme.get(Role::DialogTitle),
-                    ))
-                    .centered(),
-                )
-                .style(normal),
-            outer,
-        );
+        frame.render_widget(Block::new().style(normal), outer);
+        self.draw_lines(frame, theme, &layout);
 
         // keep the focused field visible
         let mut tops = Vec::new();
@@ -718,24 +848,17 @@ impl TemplateForm {
             _ => None,
         } {
             let (top, h) = (tops[i], Self::field_height(&self.fields[i]));
-            let visible = form.height.saturating_sub(1);
+            let visible = form.height;
             if top < self.scroll.get() {
                 self.scroll.set(top);
             } else if top + h > self.scroll.get() + visible {
                 self.scroll.set((top + h).saturating_sub(visible));
             }
         }
-        let scroll = self
-            .scroll
-            .get()
-            .min(total.saturating_sub(form.height.saturating_sub(1)));
+        let scroll = self.scroll.get().min(total.saturating_sub(form.height));
         self.scroll.set(scroll);
 
-        // help line of the focused field at the bottom of the form
-        let rows_area = Rect {
-            height: form.height.saturating_sub(1),
-            ..form
-        };
+        let rows_area = form;
         let lw = self.label_width();
         let mut cursor: Option<Position> = None;
         for (i, f) in self.fields.iter().enumerate() {
@@ -824,19 +947,24 @@ impl TemplateForm {
                     }
                 }
                 FieldValue::Sql(e) => {
-                    if let Some(yy) = row_y(0) {
-                        put(
-                            frame,
-                            form.x,
-                            yy,
-                            &format!("{label}{star}:"),
-                            form.width,
-                            normal,
+                    // drawn only when fully visible (the editor needs its whole box);
+                    // otherwise just the label
+                    let title = format!(" {label}{star} ");
+                    if let (Some(y0), Some(_)) = (row_y(0), row_y(SQL_ROWS + 1)) {
+                        let boxed = Rect::new(form.x, y0, form.width, SQL_ROWS + 2);
+                        frame.render_widget(
+                            Block::bordered()
+                                .border_set(theme.plain_border())
+                                .border_style(normal)
+                                .title_top(Line::from(Span::styled(
+                                    title,
+                                    if focused { focus } else { normal },
+                                )))
+                                .style(normal),
+                            boxed,
                         );
-                    }
-                    // drawn only when fully visible (the editor needs its whole box)
-                    if let (Some(y0), Some(_)) = (row_y(1), row_y(SQL_ROWS)) {
-                        let r = Rect::new(form.x, y0, form.width, SQL_ROWS);
+                        let r =
+                            Rect::new(form.x + 1, y0 + 1, form.width.saturating_sub(2), SQL_ROWS);
                         frame.render_widget(Block::new().style(editor_styles.text), r);
                         let pos =
                             pgc_editor::render(e, r, frame.buffer_mut(), editor_styles, false);
@@ -844,6 +972,8 @@ impl TemplateForm {
                             cursor = pos;
                         }
                         hits.push((Stop::Field(i), r));
+                    } else if let Some(yy) = row_y(0) {
+                        put(frame, form.x, yy, &title, form.width, normal);
                     }
                 }
                 FieldValue::List { rows, selected } => {
@@ -916,23 +1046,16 @@ impl TemplateForm {
             Stop::Preview => "Read-only preview".to_owned(),
             _ => String::new(),
         };
-        let help_y = form.bottom().saturating_sub(1);
-        put(frame, form.x, help_y, &help, form.width, hint);
-
-        // preview
         put(
             frame,
-            preview_area.x,
-            preview_area.y,
-            "Preview:",
-            preview_area.width,
-            normal,
+            layout.help.x,
+            layout.help.y,
+            &help,
+            layout.help.width,
+            hint,
         );
-        let pv = Rect {
-            y: preview_area.y + 1,
-            height: preview_area.height.saturating_sub(1),
-            ..preview_area
-        };
+
+        // preview (its title is drawn with the lines)
         frame.render_widget(Block::new().style(editor_styles.text), pv);
         match &self.error {
             Some(e) => {
