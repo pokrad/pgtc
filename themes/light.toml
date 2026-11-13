@@ -35,6 +35,7 @@ title = "lightyellow on red"
 [tabs]
 bar = "black on white"
 active = "white on blue"
+active_unfocused = "white on darkgray"
 inactive = "black on lightgray"
 
 [status]

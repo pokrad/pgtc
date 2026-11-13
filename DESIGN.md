@@ -541,12 +541,18 @@ desktop dependency.
 - **Frame style (mc look):** windows (the object tree pane and the tab pane) have
   **double-line frames**; separators inside a window are **single lines** joined to
   the frame (`╟───╢`), e.g. the editor / results split and the grid column lines.
-  Both windows start on the row under the menu bar. The tree window has the title
-  *Connections* in its top frame line. The tab window has no title (the tab strip
+  Both windows start on the row under the menu bar. The tree window looks like the
+  tab window: inside it, a **title strip** over the whole width with *Connections*
+  centered, `─`, the tree rows (no frame title, no bottom rows). The tab window has no title (the tab strip
   names the tab, the tab status says where it comes from); inside it, top to bottom:
   **tab strip**, `─`, editor, `─`, **Results / Messages labels**, `─`, results, `─`,
   **tab status row** (D-019, D-043). Labels and status are rows of their own between
-  separator lines, not text in the frame lines. The window status line under the
+  separator lines, not text in the frame lines.
+- **Focus colour:** the active tab of a strip (and the tree's title strip) has the
+  colour `tabs.active` **only while its part has the focus** — the tree's title while
+  the tree is focused, the main tab while the right frame is, the Results / Messages /
+  result-set label while the results are. Otherwise it has `tabs.active_unfocused`
+  (still apart from `tabs.inactive`), so one coloured strip shows where the focus is. The window status line under the
   windows uses the window colour (`core.normal`), like mc's hint line, so it stands
   apart from the key-hint bar. Dialogs, menus and combo lists keep
   single-line frames. Same for every colour scheme.
@@ -2102,4 +2108,5 @@ pgtc (binary)
 | 2026-11-13 | D-060 updated: `F6` / `Ctrl+Tab` only switch object tree ↔ right frame (the part last used), no more cycling through the right frame's parts. D-032, D-041, D-059 updated. |
 | 2026-11-13 | D-016 updated: key-hint bar labels `F6` by where it goes (*Right* / *Tree*); lists of the dashboard, profiler and statement pane; dashboard shows `Alt+Right` for Next list. README key table updated (D-060 keys, `Ctrl+D` / `Ctrl+P`). |
 | 2026-11-13 | D-060 updated: `Alt+Left` / `Right` do nothing in the object tree (no tab switching behind the focus); README key table updated. |
+| 2026-11-13 | D-014 updated: tree window with a title strip (*Connections* centered over the whole width) and a separator like the tab window; active tabs and the tree title coloured only while their part has the focus, new role `tabs.active_unfocused`. |
 | 2026-11-13 | D-061 accepted: vendored, patched crossterm 0.29.0 — `ESC` + escape sequence is the key with Alt (PuTTY's Alt+arrows); README PuTTY note. |

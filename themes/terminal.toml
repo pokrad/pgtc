@@ -36,6 +36,7 @@ title = "default on default reversed bold"
 [tabs]
 bar = "default on default"
 active = "default on default reversed"
+active_unfocused = "default on default bold underlined"
 inactive = "default on default"
 
 [status]

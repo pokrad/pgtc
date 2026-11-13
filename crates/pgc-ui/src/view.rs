@@ -20,6 +20,8 @@ use crate::tree::RowKind;
 pub struct Hits {
     pub menu: MenuHits,
     pub tree: Rect,
+    /// The rows of the object tree, below its title strip.
+    pub tree_rows: Rect,
     pub right: Rect,
     pub tabs: Vec<Rect>,
     /// The two border columns between the tree and the tabs (drag handle) and the
@@ -100,7 +102,7 @@ pub fn render(frame: &mut Frame, app: &App, hits: &mut Hits) {
     let [left, right] =
         Layout::horizontal([Constraint::Length(left_width), Constraint::Fill(1)]).areas(main);
 
-    render_tree(frame, app, left);
+    hits.tree_rows = render_tree(frame, app, left);
     hits.tree = left;
     hits.editor_cursor = None;
     render_tabs(frame, app, right, hits);
@@ -219,22 +221,44 @@ fn separator(frame: &mut Frame, app: &App, row: Rect) {
     buf.set_string(row.right(), row.y, right, border);
 }
 
-fn render_tree(frame: &mut Frame, app: &App, area: Rect) {
+/// The object tree window; returns the area of its rows.
+fn render_tree(frame: &mut Frame, app: &App, area: Rect) -> Rect {
     let focused = app.focus == Focus::Tree;
-    let block = pane_block(app, "Connections", focused);
+    let block = pane_block(app, "", focused);
     let hint = app.theme.get(Role::CoreHint);
     let normal = app.theme.get(Role::CoreNormal);
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+    if inner.height < 3 || inner.width < 2 {
+        return Rect::default();
+    }
+    // inside the frame as the right one: a title strip over the whole width, ─,
+    // the rows; the strip is coloured like the active tab while focused (D-014)
+    let [strip, sep, inner] = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Fill(1),
+    ])
+    .areas(inner);
+    separator(frame, app, sep);
+    let strip_style = app.theme.get(if focused {
+        Role::TabsActive
+    } else {
+        Role::TabsActiveUnfocused
+    });
+    frame.render_widget(
+        Paragraph::new(Line::from("Connections").centered()).style(strip_style),
+        strip,
+    );
     let rows = app.tree.rows();
     if rows.is_empty() {
         let text = vec![
             Line::from(Span::styled(" No connections yet.", hint)),
             Line::from(Span::styled(" F9 → File → New connection…", hint)),
         ];
-        frame.render_widget(Paragraph::new(text).block(block), area);
-        return;
+        frame.render_widget(Paragraph::new(text), inner);
+        return inner;
     }
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
     let width = inner.width as usize;
     let selected = if focused {
         app.theme.get(Role::CoreSelected)
@@ -262,6 +286,7 @@ fn render_tree(frame: &mut Frame, app: &App, area: Rect) {
         })
         .collect();
     frame.render_widget(Paragraph::new(lines), inner);
+    inner
 }
 
 fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
@@ -323,8 +348,11 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
                 hits.tab_close.push((i, Rect::new(cx, strip.y, 1, 1)));
             }
         }
-        let style = if i == app.active_tab {
+        // the active tab is coloured only while the right frame has the focus (D-014)
+        let style = if i == app.active_tab && app.focus != Focus::Tree {
             app.theme.get(Role::TabsActive)
+        } else if i == app.active_tab {
+            app.theme.get(Role::TabsActiveUnfocused)
         } else {
             app.theme.get(Role::TabsInactive)
         };
@@ -509,8 +537,11 @@ fn render_results(
             x = x.saturating_add(2);
             continue;
         };
-        let style = if active {
+        // coloured only while the results have the focus (D-014)
+        let style = if active && app.focus == Focus::Results {
             t.get(Role::TabsActive)
+        } else if active {
+            t.get(Role::TabsActiveUnfocused)
         } else {
             t.get(Role::TabsInactive)
         };

@@ -197,8 +197,8 @@ impl App {
 
     /// Index of the tree row at `p`, if any.
     fn tree_row_at(&self, p: Position, hits: &Hits) -> Option<usize> {
-        let first = hits.tree.y + 1;
-        let last = hits.tree.bottom().saturating_sub(1);
+        let first = hits.tree_rows.y;
+        let last = hits.tree_rows.bottom();
         if p.y < first || p.y >= last {
             return None;
         }

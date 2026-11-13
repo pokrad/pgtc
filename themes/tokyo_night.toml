@@ -37,6 +37,7 @@ title = "#1a1b26 on #f7768e bold"
 [tabs]
 bar = "#a9b1d6 on #16161e"
 active = "#1a1b26 on #7aa2f7"
+active_unfocused = "#1a1b26 on #737aa2"
 inactive = "#a9b1d6 on #292e42"
 
 [status]

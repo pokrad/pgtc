@@ -62,6 +62,7 @@ roles! {
     ErrorTitle = "error.title";
     TabsBar = "tabs.bar";
     TabsActive = "tabs.active";
+    TabsActiveUnfocused = "tabs.active_unfocused";
     TabsInactive = "tabs.inactive";
     StatusNormal = "status.normal";
     FkeyNumber = "fkeybar.number";

@@ -22,6 +22,7 @@ use crate::menu::{self, MenuEntry};
 use crate::query_tab::{LineMap, QueryConn, QueryConnState, QueryState, Sent};
 use crate::setup;
 use crate::template_dialog::{FormEvent, TemplateForm};
+use crate::theme::Role;
 use crate::tree::ConnState;
 use crate::view::Hits;
 
@@ -259,7 +260,9 @@ fn settings_dialog_query_clipboard_and_frames() {
     // ASCII frames: no box-drawing characters anywhere on screen
     let text = screen_text(&a);
     assert!(
-        text.contains("+=== Connections") || text.contains("= Connections ="),
+        text.lines()
+            .nth(2)
+            .is_some_and(|l| l.contains("Connections")),
         "{text}"
     );
     assert!(text.contains("|+-----"), "inner separator: {text}");
@@ -552,8 +555,57 @@ fn ctrl_n_and_tab_status_bar_at_the_bottom() {
     // the tab strip is the first row inside the right frame, a separator below it
     assert!(rows[1].contains("╗╔═══"), "{screen}");
     assert!(rows[2].contains("Query 2 ×"), "{screen}");
-    assert!(rows[3].contains("║╟───"), "{screen}");
+    assert!(rows[3].contains("╢╟───"), "{screen}");
     assert!(screen.contains(" Results   Messages (1) "), "{screen}");
+    // the tree has the same look: title strip, separator, rows (D-014)
+    assert!(rows[2].starts_with("║") && rows[2].contains("Connections"));
+    assert!(rows[3].starts_with("╟───"), "{screen}");
+}
+
+#[test]
+fn active_tabs_are_coloured_only_in_the_focused_frame() {
+    let (mut a, _d) = app();
+    a.new_query_tab(None);
+    a.query_mut().unwrap().results_visible = true;
+    let style_at = |a: &App, text: &str, row: u16| {
+        let mut terminal =
+            ratatui::Terminal::new(ratatui::backend::TestBackend::new(100, 30)).unwrap();
+        terminal
+            .draw(|f| crate::view::render(f, a, &mut Hits::default()))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let line: String = (0..100).map(|x| buf[(x, row)].symbol()).collect();
+        let x = line.find(text).map(|b| line[..b].chars().count()).unwrap();
+        let cell = &buf[(x as u16, row)];
+        (cell.fg, cell.bg)
+    };
+    let theme = |r: Role| {
+        let s = a.theme.get(r);
+        (s.fg.unwrap(), s.bg.unwrap())
+    };
+    let (active, unfocused) = (theme(Role::TabsActive), theme(Role::TabsActiveUnfocused));
+    // the editor has the focus: the query tab, not the tree title nor Results
+    a.focus = Focus::Tabs;
+    assert_eq!(style_at(&a, "Query 1", 2), active);
+    assert_eq!(style_at(&a, "Connections", 2), unfocused);
+    let results_row = (0..30)
+        .find(|&y| {
+            screen_text(&a)
+                .lines()
+                .nth(y)
+                .unwrap()
+                .contains(" Results ")
+        })
+        .unwrap() as u16;
+    assert_eq!(style_at(&a, "Results", results_row), unfocused);
+    // the results have the focus: the query tab and Results
+    a.focus = Focus::Results;
+    assert_eq!(style_at(&a, "Query 1", 2), active);
+    assert_eq!(style_at(&a, "Results", results_row), active);
+    // the tree has the focus: only its title
+    a.focus = Focus::Tree;
+    assert_eq!(style_at(&a, "Connections", 2), active);
+    assert_eq!(style_at(&a, "Query 1", 2), unfocused);
 }
 
 #[test]

@@ -661,7 +661,7 @@ impl App {
     // ---- update -------------------------------------------------------------------
 
     pub fn update(&mut self, msg: Msg, hits: &Hits) -> Vec<Effect> {
-        self.tree_height = hits.tree.height.saturating_sub(2) as usize;
+        self.tree_height = hits.tree_rows.height as usize;
         // (an empty screen: no frame drawn yet)
         if !hits.screen.is_empty() && hits.screen != self.screen {
             self.screen = hits.screen;
