@@ -528,6 +528,12 @@ impl App {
             });
         }
         match self.context() {
+            // the tab keys switch the tabs nearest to the focus; the tree has none, so
+            // the global ones do nothing there (only a `[tree]` binding of its own, D-060)
+            Some(Context::Tree) => self.keymap.lookup(Context::Tree, key).filter(|c| {
+                !matches!(c, Command::NextTab | Command::PrevTab)
+                    || self.keymap.lookup_only(Context::Tree, key).is_some()
+            }),
             Some(ctx) => self.keymap.lookup(ctx, key),
             None => self.keymap.lookup_only(Context::Global, key),
         }

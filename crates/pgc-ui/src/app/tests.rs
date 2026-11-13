@@ -2723,6 +2723,16 @@ fn direct_keys_for_the_frames() {
     assert_eq!(a.focus, Focus::Tabs);
     key(&mut a, "Ctrl+1");
     assert_eq!(a.focus, Focus::Tree);
+    // the tree has no tabs: Alt+Left / Right leave the tabs and the focus alone
+    let tab = a.active_tab;
+    key(&mut a, "Alt+Right");
+    key(&mut a, "Alt+Left");
+    key(&mut a, "Alt+Left");
+    assert_eq!((a.active_tab, a.focus), (tab, Focus::Tree));
+    // the menu still switches tabs from the tree
+    a.run(Command::NextTab);
+    assert_ne!(a.active_tab, tab);
+    a.run(Command::PrevTab);
     key(&mut a, "Ctrl+2");
     assert_eq!(a.focus, Focus::Tabs);
     // without a result set: the empty Results view and Messages, both ways

@@ -70,3 +70,5 @@ codegen-units = 1
 # D-040: tokio-postgres with the pgtc patch (command tag, transaction status, type OIDs)
 [patch.crates-io]
 tokio-postgres = { path = "vendor/tokio-postgres" }
+# D-061: crossterm reading ESC-prefixed sequences as Alt+key (PuTTY's Alt+arrows)
+crossterm = { path = "vendor/crossterm" }

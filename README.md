@@ -85,13 +85,15 @@ file; `PGHOST`, `PGUSER`, `PGPASSWORD` and the other libpq variables work as in 
 | `F10` | quit |
 | `Alt+1` / `Alt+2` | object tree / right frame |
 | `Alt+Up` / `Alt+Down` | upper / lower part of the right frame (editor ↔ results) |
-| `Alt+Left` / `Alt+Right` | previous / next tab (in the results: result sets and Messages) |
+| `Alt+Left` / `Alt+Right` | previous / next tab (in the results: result sets and Messages; nothing in the tree) |
 | `Ctrl+N` | new query tab |
 | `Ctrl+D` / `Ctrl+P` | server dashboard / SQL profiler (in the tree) |
 | `Ctrl+Space` / `Alt+/` | autocomplete |
 
 `Esc` followed by a digit works as an F-key in terminals that do not pass F-keys
-through. All keys can be changed in `keymap.toml` (Help → Keyboard shortcuts shows
+through. Alt+arrows also work from PuTTY in its default setting (Alt sent as an `Esc`
+prefix); in PuTTY 0.77+ the xterm style for arrow keys with modifiers
+(Terminal → Keyboard) works as well. All keys can be changed in `keymap.toml` (Help → Keyboard shortcuts shows
 where it is).
 
 ## Status

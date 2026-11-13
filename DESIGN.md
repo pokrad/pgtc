@@ -1943,14 +1943,33 @@ pgtc (binary)
     and Messages; `Ctrl+PgUp` / `PgDn` still switch result sets;
   - the dashboard list: its lists Sessions · Locks · Prepared · Configuration
     (`prev_list` / `next_list` in `[dashboard]`);
-  - everywhere else (tree, editor, object view, statement pane, profiler list): the
-    main tabs. From the results or the dashboard list the main tabs are reached with
-    `Alt+Up` (or the tree / pane) first.
+  - everywhere else in the right frame (editor, object view, statement pane, profiler
+    list): the main tabs. From the results or the dashboard list the main tabs are
+    reached with `Alt+Up` (or the pane) first;
+  - the object tree has no tabs, so they **do nothing** there (switching the main tabs
+    from the tree would change the right frame while the focus stays in the tree);
+    Window → Next / Previous tab still work. The global `next_tab` / `prev_tab` keys
+    are not used in the tree; only a `[tree]` binding of its own would be.
 - `Ctrl+Shift+Left` / `Right` stay word selection in the editor. `F6` / `Ctrl+Tab`
   switch **only** between the object tree and the right frame (to the part last used
   there, as `Alt+2`); they never go through the parts of the right frame, which differ
   by tab type. `Alt+digit` is one key event, so it does not clash with
   `Esc` + digit for F-keys (D-032).
+
+### D-061 — Patched crossterm for ESC-prefixed Alt keys
+- **Status:** Accepted (refines D-016, D-040)
+- PuTTY (and other terminals in their default setting) send Alt+<key> as `ESC`
+  followed by the key's own sequence, e.g. Alt+Up = `ESC ESC [ A`. crossterm 0.29's
+  Unix parser turns `ESC ESC` into a lone Esc and the rest into typed characters, so
+  Alt+arrows (D-060) did not work over PuTTY.
+- A copy of crossterm 0.29.0 (MIT) lives in `vendor/crossterm` and is used through
+  `[patch.crates-io]` (as D-040); the change is marked `pgtc patch`: `ESC` followed by
+  an escape sequence (`ESC [`, `ESC O`) is that key with **Alt** added (Alt+arrows,
+  Alt+Home / End / PgUp / PgDn, Alt+F-keys, combined with Ctrl / Shift where sent).
+  `ESC ESC` alone is still one Esc. Windows input is not affected.
+- README notes the PuTTY alternative: Terminal → Keyboard → arrow keys with modifiers
+  in xterm style (PuTTY 0.77+) also makes Alt+arrows work without the patch.
+- If upstream handles this, the patch is dropped.
 
 ### D-026 — Scope of the first alpha
 - **Status:** Accepted
@@ -2082,3 +2101,5 @@ pgtc (binary)
 | 2026-11-13 | D-060 updated: `Alt+Left` / `Right` switch the tabs nearest to the focus — result sets and Messages in the results, the lists in the dashboard list, the main tabs elsewhere. |
 | 2026-11-13 | D-060 updated: `F6` / `Ctrl+Tab` only switch object tree ↔ right frame (the part last used), no more cycling through the right frame's parts. D-032, D-041, D-059 updated. |
 | 2026-11-13 | D-016 updated: key-hint bar labels `F6` by where it goes (*Right* / *Tree*); lists of the dashboard, profiler and statement pane; dashboard shows `Alt+Right` for Next list. README key table updated (D-060 keys, `Ctrl+D` / `Ctrl+P`). |
+| 2026-11-13 | D-060 updated: `Alt+Left` / `Right` do nothing in the object tree (no tab switching behind the focus); README key table updated. |
+| 2026-11-13 | D-061 accepted: vendored, patched crossterm 0.29.0 — `ESC` + escape sequence is the key with Alt (PuTTY's Alt+arrows); README PuTTY note. |
