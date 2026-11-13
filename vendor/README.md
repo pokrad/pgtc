@@ -28,3 +28,5 @@ Changes (search for `pgtc patch`):
   `ESC O`) is that key with Alt added — PuTTY sends Alt+Up as `ESC ESC [ A`. Upstream
   reported a lone Esc and left `[` and `A` as typed characters. `ESC ESC` alone stays
   one Esc. Unit test `test_esc_prefixed_sequence_is_alt` (Unix only).
+- `src/terminal/sys/unix.rs`: needless parentheses removed (`unused_parens` warning,
+  shown because a path dependency is not lint-capped).

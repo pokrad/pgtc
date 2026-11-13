@@ -84,7 +84,8 @@ pub(crate) fn window_size() -> io::Result<WindowSize> {
 
 #[cfg(not(feature = "libc"))]
 pub(crate) fn window_size() -> io::Result<WindowSize> {
-    let file = File::open("/dev/tty").map(|file| (FileDesc::Owned(file.into())));
+    // pgtc patch: no parentheses (unused_parens warning when built as a path dependency)
+    let file = File::open("/dev/tty").map(|file| FileDesc::Owned(file.into()));
     let fd = if let Ok(file) = &file {
         file.as_fd()
     } else {
