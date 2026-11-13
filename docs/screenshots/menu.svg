@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="646" viewBox="0 0 1080 646" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15">
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="646" viewBox="0 0 1080 646" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15" shape-rendering="crispEdges">
+<rect x="0" y="0" width="1080" height="646" fill="#282a36"/>
 <rect x="0" y="0" width="153.5" height="19.5" fill="#44475a"/>
 <rect x="153" y="0" width="81.5" height="19.5" fill="#bd93f9"/>
 <rect x="234" y="0" width="846.5" height="19.5" fill="#44475a"/>

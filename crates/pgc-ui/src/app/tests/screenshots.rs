@@ -317,12 +317,23 @@ async fn readme_screenshots() {
         let mut out = format!(
             "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{}\" height=\"{}\" \
                  viewBox=\"0 0 {} {}\" font-family=\"Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace\" \
-                 font-size=\"15\">\n",
+                 font-size=\"15\" shape-rendering=\"crispEdges\">\n",
             W as f32 * cw,
             H as f32 * ch,
             W as f32 * cw,
             H as f32 * ch
         );
+        // crispEdges: shown smaller (README grid) the row backgrounds are not
+        // anti-aliased, so no page colour shows between rows; the window colour
+        // under everything covers renderers that ignore it
+        let (_, window) =
+            crate::theme_check::shown(a.theme.get(crate::theme::Role::CoreNormal), palette);
+        out.push_str(&format!(
+            "<rect x=\"0\" y=\"0\" width=\"{}\" height=\"{}\" fill=\"{}\"/>\n",
+            W as f32 * cw,
+            H as f32 * ch,
+            hex(window)
+        ));
         for y in 0..H {
             // backgrounds as runs of one colour
             let mut x = 0;
