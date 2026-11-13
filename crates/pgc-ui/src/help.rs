@@ -40,13 +40,14 @@ pub(crate) fn wrap(line: &str, width: usize) -> Vec<String> {
 }
 
 /// Sections of the shortcuts window, in order.
-const SECTIONS: [(Context, &str); 7] = [
+const SECTIONS: [(Context, &str); 8] = [
     (Context::Global, "Everywhere"),
     (Context::Tree, "Object tree"),
     (Context::Editor, "Editor and object view"),
     (Context::Results, "Results"),
     (Context::Dashboard, "Server dashboard"),
     (Context::Profiler, "SQL profiler"),
+    (Context::DbStats, "Database statistics"),
     (Context::Dialog, "Dialogs and lists"),
 ];
 
@@ -263,7 +264,7 @@ mod tests {
             "{text}"
         );
         assert!(text.contains("Ctrl+C, Ctrl+Insert"));
-        assert_eq!(l.sections.len(), 7);
+        assert_eq!(l.sections.len(), 8);
         let tree = l.sections[1].1;
         assert_eq!(l.lines[tree], "Object tree");
         assert!(l.headers[tree]);

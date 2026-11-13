@@ -101,6 +101,10 @@ impl App {
             conn.handle.abort();
             self.connections.remove(&conn.id);
         }
+        if let Some(conn) = tab.db_stats.and_then(|s| s.conn) {
+            conn.handle.abort();
+            self.connections.remove(&conn.id);
+        }
         // changed logging settings are put back first (D-058)
         if let Some(p) = tab.profiler {
             self.close_profiler_conn(p);

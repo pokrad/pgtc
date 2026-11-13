@@ -1977,6 +1977,35 @@ pgtc (binary)
   in xterm style (PuTTY 0.77+) also makes Alt+arrows work without the patch.
 - If upstream handles this, the patch is dropped.
 
+### D-062 — Database statistics tab
+- **Status:** Accepted (refines D-009, D-016, D-043, D-049; framed like D-057)
+- **Opening:** *Database statistics* in the context menu of **database rows only**
+  (D-049) and `Alt+I` in the tree on a database row (`db_stats`). Needs a connected
+  server. Opening it again for the same database switches to the open tab.
+  (`Ctrl+I` was not taken: most terminals send it as `Tab`; `Alt+S` is quick search.)
+- **A tab like the dashboard:** `Stats: server · database`; it closes like a query tab
+  (`Ctrl+W`, `×`) and with its server (D-043).
+- **Connection:** its own connection to that database (as D-057), so the size can
+  always be read; a lost connection is shown in the tab, `F5` connects again.
+- **Refresh only on `F5`** — no timer. The tab status shows when the values were read
+  (server clock).
+- **Top: summary boxes** (title, current value): *Size*, *Connections* (backends /
+  connection limit), *Cache hit ratio*, *Transactions* (committed / rolled back),
+  *XID age* (`age(datfrozenxid)`).
+- **Bottom: Group / Statistic / Value** list in the result grid (D-041), one row per
+  statistic, groups in this order: *Database* (size, backends, connection limit, XID
+  and multixact ID age, stats reset), *Transactions* (+ deadlocks), *Block I/O* (reads,
+  hits, cache hit ratio, read / write time), *Tuples*, *Temporary files*, *Sessions*
+  (14+), *Checksums* (12+), *Parallel workers* (18+), *Recovery conflicts*
+  (`pg_stat_database_conflicts`, logical slot 16+). Version differences through the
+  feature table (D-011). Counts with thousands separators, sizes readable plus bytes,
+  times in ms / s / min / h.
+- **SQL:** `sql/db_stats/` (versioned, D-010), partly adapted from pgAdmin's
+  `databases/sql/default/stats.sql` (copyright notice kept); reads the connected
+  database (`current_database()`), no SQL text from the user; all columns as text.
+- **Keys** (`[db_stats]` context, D-016): `F5` refresh, `F2` context menu, `Ctrl+C`
+  copy, `Ctrl+A` select all, arrows / `PgUp` / `PgDn` / `Home` / `End` in the list.
+
 ### D-026 — Scope of the first alpha
 - **Status:** Accepted
 - **All features described in this document go into the first alpha.**
@@ -2110,3 +2139,4 @@ pgtc (binary)
 | 2026-11-13 | D-060 updated: `Alt+Left` / `Right` do nothing in the object tree (no tab switching behind the focus); README key table updated. |
 | 2026-11-13 | D-014 updated: tree window with a title strip (*Connections* centered over the whole width) and a separator like the tab window; active tabs and the tree title coloured only while their part has the focus, new role `tabs.active_unfocused`. |
 | 2026-11-13 | D-061 accepted: vendored, patched crossterm 0.29.0 — `ESC` + escape sequence is the key with Alt (PuTTY's Alt+arrows); README PuTTY note. |
+| 2026-11-13 | D-062 accepted: database statistics tab — database rows only, `Alt+I` in the tree / context menu, own connection, summary boxes + Group / Statistic / Value list from `pg_stat_database` (version-dependent groups), refresh only on `F5`. |

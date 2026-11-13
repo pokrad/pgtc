@@ -114,6 +114,16 @@ const PROFILER: &[Entry] = &[
     (C::Quit, "Quit", None),
 ];
 
+const DB_STATS: &[Entry] = &[
+    (C::Help, "Help", None),
+    (C::ContextMenu, "Menu", None),
+    (C::DbStatsRefresh, "Refresh", None),
+    (C::Copy, "Copy", Some("Ctrl+C")),
+    (C::CloseTab, "Close tab", None),
+    (C::SwitchPanel, "Tree", Some("F6")),
+    (C::Quit, "Quit", None),
+];
+
 /// The statement pane of a dashboard / profiler tab (D-059).
 const PANE: &[Entry] = &[
     (C::Help, "Help", None),
@@ -198,6 +208,9 @@ impl App {
                 }
                 Focus::Results if self.tabs[self.active_tab].profiler.is_some() => {
                     (Context::Profiler, PROFILER)
+                }
+                Focus::Results if self.tabs[self.active_tab].db_stats.is_some() => {
+                    (Context::DbStats, DB_STATS)
                 }
                 Focus::Results => (Context::Results, RESULTS),
                 Focus::Tabs if self.tabs[self.active_tab].query.is_some() => {

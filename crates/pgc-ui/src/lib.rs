@@ -6,6 +6,7 @@ mod clipboard;
 mod combo;
 mod completion;
 mod dashboard;
+mod db_stats;
 mod dialog;
 mod export;
 mod grid;

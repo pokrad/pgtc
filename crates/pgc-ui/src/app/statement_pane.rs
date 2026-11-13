@@ -67,6 +67,10 @@ impl App {
 
     /// Keeps the focus where it can be: on the list when the pane is hidden.
     pub(super) fn fix_list_focus(&mut self) {
+        // the statistics tab has only its list (D-062)
+        if self.db_stats().is_some() && self.focus == Focus::Tabs {
+            self.focus = Focus::Results;
+        }
         if self.list_tab() && self.focus == Focus::Tabs && !self.pane_shown() {
             self.focus = Focus::Results;
         }

@@ -287,8 +287,9 @@ impl App {
                     menu::item("Server d&ashboard", Command::Dashboard),
                     menu::item("SQL &profiler", Command::SqlProfiler),
                 ]);
-                // database definition export / load (D-048)
+                // database definition export / load (D-048), statistics (D-062)
                 if self.selected_database().is_some() {
+                    entries.push(menu::item("Database stat&istics", Command::DbStats));
                     entries.extend([
                         MenuEntry::Separator,
                         menu::item("&Export database definition…", Command::ExportDefinition),

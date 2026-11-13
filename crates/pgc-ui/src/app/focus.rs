@@ -10,7 +10,8 @@ use super::{App, Focus};
 impl App {
     /// Focus of the upper part of the active tab.
     fn upper_focus(&self) -> Focus {
-        if self.list_tab() {
+        // the statistics tab (D-062) has only its list
+        if self.list_tab() || self.db_stats().is_some() {
             Focus::Results
         } else {
             Focus::Tabs
@@ -19,7 +20,9 @@ impl App {
 
     /// Focus of the lower part of the active tab.
     fn lower_focus(&self) -> Focus {
-        if self.list_tab() {
+        if self.db_stats().is_some() {
+            Focus::Results
+        } else if self.list_tab() {
             Focus::Tabs
         } else {
             Focus::Results

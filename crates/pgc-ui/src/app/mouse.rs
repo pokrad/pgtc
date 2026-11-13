@@ -88,6 +88,9 @@ impl App {
         if !self.modal() && self.profiler_mouse(m.kind, p, hits) {
             return;
         }
+        if !self.modal() && self.db_stats_mouse(m.kind, p, hits) {
+            return;
+        }
         match m.kind {
             MouseEventKind::Down(MouseButton::Left)
                 if !self.modal() && self.editor_area.contains(p) =>
@@ -274,7 +277,7 @@ impl App {
         } else if let Some(i) = hits.tabs.iter().position(|r| r.contains(p)) {
             self.active_tab = i;
             // dashboard / profiler: the list (D-059)
-            self.focus = if self.list_tab() {
+            self.focus = if self.list_tab() || self.db_stats().is_some() {
                 Focus::Results
             } else {
                 Focus::Tabs
@@ -290,7 +293,7 @@ impl App {
                     self.tree.cursor = i;
                 }
             }
-        } else if hits.right.contains(p) && !self.list_tab() {
+        } else if hits.right.contains(p) && !self.list_tab() && self.db_stats().is_none() {
             self.focus = Focus::Tabs;
         }
     }

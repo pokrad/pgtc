@@ -1868,6 +1868,104 @@ async fn ctrl_e_edits_the_definition_in_a_new_query_tab() {
     assert_eq!(a.tabs.len(), 3);
 }
 
+/// Database statistics (D-062): only on database rows, Alt+I in the tree, one tab per
+/// database, read on connect and on F5 only, closed with the tab.
+#[tokio::test]
+async fn alt_i_opens_the_database_statistics() {
+    use crate::objects::ObjType;
+    use crate::tree::{NodeKind, RowKind};
+    use pgc_db::NodeRow;
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "srv");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    let dbs = a.tree.servers[0]
+        .children
+        .iter()
+        .find(|n| n.kind == NodeKind::Group(ObjType::Database))
+        .unwrap()
+        .nid;
+    a.tree.set_children(
+        dbs,
+        vec![NodeRow {
+            oid: 5,
+            name: "shop".into(),
+            label: None,
+            partitioned: false,
+        }],
+    );
+    a.tree.node_mut(dbs).unwrap().expanded = true;
+    let db = a.tree.node(dbs).unwrap().children.as_ref().unwrap()[0].nid;
+    // not on the server row or the Databases group
+    a.tree.select_kind(RowKind::Server);
+    assert!(!a.is_enabled(Command::DbStats));
+    a.tree.select_kind(RowKind::Node(dbs));
+    assert!(!a.is_enabled(Command::DbStats));
+    a.tree.select_kind(RowKind::Node(db));
+    assert!(a.is_enabled(Command::DbStats));
+    a.focus = Focus::Tree;
+    key(&mut a, "Alt+I");
+    assert_eq!(a.tabs.len(), 2);
+    assert_eq!(a.tabs[1].kind, TabKind::DbStats);
+    assert_eq!(a.tabs[1].label(), "Stats: srv · shop");
+    assert_eq!(a.context(), Some(crate::keymap::Context::DbStats));
+    // the same database again: the open tab
+    a.focus = Focus::Tree;
+    key(&mut a, "Alt+I");
+    assert_eq!(a.tabs.len(), 2);
+    assert_eq!(a.active_tab, 1);
+    let tab = a.tabs[1].id;
+
+    // pretend the connection is open (a detached handle keeps the requests)
+    let conn = {
+        let s = a.tabs[1].db_stats.as_mut().unwrap();
+        let c = s.conn.as_mut().unwrap();
+        c.handle.abort();
+        c.handle = pgc_db::ConnectionHandle::detached(c.id);
+        c.connected = true;
+        s.version = Some(pgc_core::ServerVersion(170002));
+        c.id
+    };
+    a.db_stats_refresh(tab);
+    let k = a.tabs[1].db_stats.as_ref().unwrap().key.unwrap();
+    // F5 while a read is on its way sends nothing more
+    key(&mut a, "F5");
+    assert_eq!(a.tabs[1].db_stats.as_ref().unwrap().key, Some(k));
+    let r = |key: &str, label: &str, kind: &str, value: &str| -> Vec<String> {
+        [key, "Database", label, kind, value]
+            .iter()
+            .map(|s| (*s).to_owned())
+            .collect()
+    };
+    a.on_db_stats_event(
+        conn,
+        tab,
+        DbEvent::Lookup {
+            id: conn,
+            key: k,
+            result: Ok(vec![
+                r("read_at", "Read at", "time", "2026-11-13 10:00:00+01"),
+                r("size", "Size", "bytes", "12582912"),
+                r("backends", "Backends", "count", "3"),
+            ]),
+        },
+    );
+    {
+        let s = a.tabs[1].db_stats.as_ref().unwrap();
+        assert_eq!(s.key, None);
+        assert_eq!(s.grid.rows.len(), 2);
+        let (_, right) = a.db_stats_status(&a.tabs[1]).unwrap();
+        assert!(right.starts_with("Read at 2026-11-13"), "{right}");
+    }
+    // F5 reads again
+    key(&mut a, "F5");
+    assert!(a.tabs[1].db_stats.as_ref().unwrap().key.is_some());
+    // closed with the tab
+    key(&mut a, "Ctrl+W");
+    assert_eq!(a.tabs.len(), 1);
+    assert!(!a.connections.contains_key(&conn));
+}
+
 /// Ctrl+B (D-056): the top 100 rows of the table, view or partition that the selected
 /// row is or is below, in a new query tab run once its connection is open; refused
 /// elsewhere.

@@ -25,17 +25,20 @@ pub enum Context {
     Dashboard,
     /// The SQL profiler tab (D-058).
     Profiler,
+    /// The database statistics tab (D-062).
+    DbStats,
     Dialog,
 }
 
 impl Context {
-    pub const ALL: [Context; 7] = [
+    pub const ALL: [Context; 8] = [
         Context::Global,
         Context::Tree,
         Context::Editor,
         Context::Results,
         Context::Dashboard,
         Context::Profiler,
+        Context::DbStats,
         Context::Dialog,
     ];
 
@@ -47,6 +50,7 @@ impl Context {
             Context::Results => "results",
             Context::Dashboard => "dashboard",
             Context::Profiler => "profiler",
+            Context::DbStats => "db_stats",
             Context::Dialog => "dialog",
         }
     }
@@ -181,6 +185,9 @@ commands! {
     ProfilerPause = "profiler_pause", "Pause / resume reading the server log";
     ProfilerFilter = "profiler_filter", "Filter the profiler entries";
     ProfilerClear = "profiler_clear", "Clear the profiler entries";
+    // database statistics (D-062)
+    DbStats = "db_stats", "Statistics of the selected database";
+    DbStatsRefresh = "db_stats_refresh", "Read the database statistics again (connects again when needed)";
     // dialogs and menus
     NextField = "next_field", "Next field";
     PrevField = "prev_field", "Previous field";
@@ -259,6 +266,8 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::Tree, Command::SelectTopRows, &["Ctrl+B"]),
     (Context::Tree, Command::Dashboard, &["Ctrl+D"]),
     (Context::Tree, Command::SqlProfiler, &["Ctrl+P"]),
+    // Ctrl+I is Tab in most terminals, Alt+S quick search (D-062)
+    (Context::Tree, Command::DbStats, &["Alt+I"]),
     (Context::Editor, Command::EditInQueryTab, &["Ctrl+E"]),
     (Context::Editor, Command::Execute, &["F5"]),
     (Context::Editor, Command::NewFromTemplate, &["F7"]),
@@ -468,6 +477,20 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
         &["Alt+Shift+Down"],
     ),
     (Context::Profiler, Command::EditInQueryTab, &["Ctrl+E"]),
+    (Context::DbStats, Command::DbStatsRefresh, &["F5"]),
+    (Context::DbStats, Command::ContextMenu, &["F2"]),
+    (Context::DbStats, Command::Copy, &["Ctrl+C", "Ctrl+Insert"]),
+    (Context::DbStats, Command::SelectAll, &["Ctrl+A"]),
+    (Context::DbStats, Command::Up, &["Up"]),
+    (Context::DbStats, Command::Down, &["Down"]),
+    (Context::DbStats, Command::Left, &["Left"]),
+    (Context::DbStats, Command::Right, &["Right"]),
+    (Context::DbStats, Command::PageUp, &["PageUp"]),
+    (Context::DbStats, Command::PageDown, &["PageDown"]),
+    (Context::DbStats, Command::Home, &["Home"]),
+    (Context::DbStats, Command::End, &["End"]),
+    (Context::DbStats, Command::DocStart, &["Ctrl+Home"]),
+    (Context::DbStats, Command::DocEnd, &["Ctrl+End"]),
     (Context::Dialog, Command::NextField, &["Tab"]),
     (Context::Dialog, Command::PrevField, &["Shift+Tab"]),
     (Context::Dialog, Command::Up, &["Up"]),
@@ -670,6 +693,16 @@ mod tests {
         assert_eq!(
             km.lookup(Context::Dashboard, k("Ctrl+P")),
             Some(Command::DashboardPause)
+        );
+        // D-062: Alt+I in the tree; Alt+S stays quick search
+        assert_eq!(km.lookup(Context::Tree, k("Alt+I")), Some(Command::DbStats));
+        assert_eq!(
+            km.lookup(Context::Tree, k("Alt+S")),
+            Some(Command::QuickSearch)
+        );
+        assert_eq!(
+            km.lookup(Context::DbStats, k("F5")),
+            Some(Command::DbStatsRefresh)
         );
     }
 

@@ -10,6 +10,7 @@ mod closing;
 mod command_line;
 mod connections;
 mod dashboard;
+mod db_stats;
 mod definition;
 mod editing;
 mod files;
@@ -125,6 +126,8 @@ pub enum TabKind {
     Dashboard,
     /// An SQL profiler (D-058).
     Profiler,
+    /// Database statistics (D-062).
+    DbStats,
 }
 
 /// Content of a tab: an editor (D-038), read-only for object views (D-037).
@@ -191,6 +194,8 @@ pub struct Tab {
     pub dashboard: Option<crate::dashboard::Dashboard>,
     /// Profiler tabs (D-058).
     pub profiler: Option<crate::profiler::Profiler>,
+    /// Database statistics tabs (D-062).
+    pub db_stats: Option<crate::db_stats::DbStats>,
     /// The lower part (results, statement pane) had the focus last (`Alt+2`, D-060).
     pub lower_focused: bool,
 }
@@ -210,6 +215,11 @@ impl Tab {
                 .profiler
                 .as_ref()
                 .map(|p| p.label.clone())
+                .unwrap_or_default(),
+            TabKind::DbStats => self
+                .db_stats
+                .as_ref()
+                .map(|s| s.label.clone())
                 .unwrap_or_default(),
             TabKind::Query(n) => {
                 let q = self.query.as_ref();
@@ -241,6 +251,8 @@ enum Target {
     Dashboard(u64),
     /// Profiler tab id (D-058).
     Profiler(u64),
+    /// Database statistics tab id (D-062).
+    DbStats(u64),
 }
 
 pub struct App {
@@ -422,6 +434,7 @@ impl App {
                 query: None,
                 dashboard: None,
                 profiler: None,
+                db_stats: None,
                 lower_focused: false,
             }],
             active_tab: 0,
@@ -511,6 +524,9 @@ impl App {
             }
             Focus::Results if self.tabs[self.active_tab].profiler.is_some() => {
                 Some(Context::Profiler)
+            }
+            Focus::Results if self.tabs[self.active_tab].db_stats.is_some() => {
+                Some(Context::DbStats)
             }
             Focus::Tabs => Some(Context::Editor),
             Focus::Results => Some(Context::Results),
@@ -621,6 +637,11 @@ impl App {
                 self.dashboard_enabled(cmd)
             }
             Command::SqlProfiler => self.dashboard_target().is_some(),
+            Command::DbStats => self.db_stats_target().is_some(),
+            Command::DbStatsRefresh => self.db_stats().is_some(),
+            Command::Copy | Command::SelectAll if self.db_stats().is_some() => {
+                self.db_stats().is_some_and(|s| !s.grid.rows.is_empty())
+            }
             Command::ProfilerStartStop
             | Command::ProfilerPause
             | Command::ProfilerFilter
@@ -652,6 +673,7 @@ impl App {
                     Context::Results,
                     Context::Dashboard,
                     Context::Profiler,
+                    Context::DbStats,
                 ],
                 cmd,
             )
@@ -778,6 +800,7 @@ impl App {
         }
         if self.focus == Focus::Results
             && !self.list_tab()
+            && self.db_stats().is_none()
             && self.query().is_none_or(|q| !q.results_visible)
         {
             self.focus = Focus::Tabs;
@@ -995,6 +1018,7 @@ impl App {
         let in_results = self.focus == Focus::Results && !self.modal();
         let in_dashboard = in_results && self.dashboard().is_some();
         let in_profiler = in_results && self.profiler().is_some();
+        let in_db_stats = in_results && self.db_stats().is_some();
         match cmd {
             Command::Quit => self.request_quit(),
             Command::Menu => self.open_menu(0),
@@ -1009,7 +1033,9 @@ impl App {
             c if in_results && self.results_command(c) => {}
             c if in_dashboard && self.dashboard_command(c) => {}
             c if in_profiler && self.profiler_command(c) => {}
+            c if in_db_stats && self.db_stats_command(c) => {}
             Command::Dashboard => self.open_dashboard(),
+            Command::DbStats => self.open_db_stats(),
             Command::SqlProfiler => self.open_profiler(),
             // the statement pane of a dashboard / profiler tab (D-059)
             Command::ToggleResults if self.list_tab() => self.toggle_pane(),
@@ -1243,6 +1269,7 @@ impl App {
             query,
             dashboard: None,
             profiler: None,
+            db_stats: None,
             lower_focused: false,
         });
         self.active_tab = self.tabs.len() - 1;

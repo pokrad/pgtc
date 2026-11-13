@@ -88,6 +88,7 @@ file; `PGHOST`, `PGUSER`, `PGPASSWORD` and the other libpq variables work as in 
 | `Alt+Left` / `Alt+Right` | previous / next tab (in the results: result sets and Messages; nothing in the tree) |
 | `Ctrl+N` | new query tab |
 | `Ctrl+D` / `Ctrl+P` | server dashboard / SQL profiler (in the tree) |
+| `Alt+I` | database statistics (on a database row in the tree) |
 | `Ctrl+Space` / `Alt+/` | autocomplete |
 
 `Esc` followed by a digit works as an F-key in terminals that do not pass F-keys

@@ -59,6 +59,8 @@ pub struct Hits {
     pub dashboard: crate::dashboard::DashHits,
     /// Profiler tab: grid cells (D-058).
     pub profiler: crate::profiler::ProfHits,
+    /// The database statistics tab (D-062).
+    pub db_stats: crate::db_stats::StatsHits,
 }
 
 /// Clickable items of the results bar.
@@ -303,6 +305,7 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
     hits.message_rows.clear();
     hits.dashboard = crate::dashboard::DashHits::default();
     hits.profiler = crate::profiler::ProfHits::default();
+    hits.db_stats = crate::db_stats::StatsHits::default();
     hits.tabs.clear();
     hits.tab_close.clear();
     hits.editor = Rect::default();
@@ -332,6 +335,7 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
             TabKind::Query(_) => Icon::Query,
             TabKind::Dashboard => Icon::Server,
             TabKind::Profiler => Icon::Query,
+            TabKind::DbStats => Icon::Database,
         };
         // every tab but the default one has a close mark (D-043)
         let closable = i > 0;
@@ -368,6 +372,15 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
     }
     frame.render_widget(Paragraph::new(Line::from(spans)), strip);
 
+    // Database statistics tab: boxes and the list (D-062)
+    if let Some(s) = &tab.db_stats {
+        let focused = app.focus == Focus::Results;
+        hits.db_stats = crate::db_stats::render(frame, s, inner, &app.theme, focused, &|f, r| {
+            separator(f, app, r)
+        });
+        hits.grid = hits.db_stats.grid;
+        return;
+    }
     // Dashboard / profiler tab: the list on top, the statement pane (the tab's
     // read-only editor) below (D-057, D-058, D-059)
     let inner = if tab.dashboard.is_some() || tab.profiler.is_some() {
@@ -655,6 +668,7 @@ fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: 
     if let Some((l, r)) = app
         .dashboard_status(tab)
         .or_else(|| app.profiler_status(tab))
+        .or_else(|| app.db_stats_status(tab))
     {
         left.push_str(&l);
         right = format!(" {r} ");

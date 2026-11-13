@@ -74,6 +74,11 @@ features! {
     NullsNotDistinct = 150000;
     TriggerParentId = 130000;
     LastSeqScan = 160000;
+    // pg_stat_database / _conflicts columns (D-062)
+    StatChecksums = 120000;
+    StatSessions = 140000;
+    StatLogicalSlotConflicts = 160000;
+    StatParallelWorkers = 180000;
 }
 
 impl Feature {
