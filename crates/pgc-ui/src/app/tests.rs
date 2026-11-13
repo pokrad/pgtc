@@ -569,7 +569,7 @@ fn key_hint_bar_follows_the_focused_frame() {
     a.focus = Focus::Tree;
     let t = texts(&a);
     assert_eq!(t.first().map(String::as_str), Some("F1 Help"), "{t:?}");
-    assert!(t.contains(&"F6 Panel".to_owned()), "F6 preferred: {t:?}");
+    assert!(t.contains(&"F6 Right".to_owned()), "F6 preferred: {t:?}");
     assert!(t.contains(&"Alt+S Search".to_owned()), "{t:?}");
     assert!(
         !t.iter()
@@ -592,6 +592,7 @@ fn key_hint_bar_follows_the_focused_frame() {
     a.focus = Focus::Results;
     let t = texts(&a);
     assert!(t.contains(&"Alt+M Messages".to_owned()), "{t:?}");
+    assert!(t.contains(&"F6 Tree".to_owned()), "{t:?}");
     assert!(!t.iter().any(|x| x.contains("Fetch all")), "{t:?}");
     // read-only object view
     a.active_tab = 0;
@@ -793,13 +794,17 @@ fn query_tab_editing_clipboard_and_find() {
     key(&mut a, "Alt+A");
     assert_eq!(a.editor().line(0), "SELECT 1;");
     assert!(a.status.contains("occurrence"));
-    // D-041: F6 cycles editor → results → tree → editor
-    key(&mut a, "F6");
-    assert_eq!(a.focus, Focus::Results);
+    // D-060: F6 only switches tree ↔ right frame, back to the part last used there
     key(&mut a, "F6");
     assert_eq!(a.focus, Focus::Tree);
     key(&mut a, "F6");
     assert_eq!(a.focus, Focus::Tabs);
+    key(&mut a, "Alt+Down");
+    assert_eq!(a.focus, Focus::Results);
+    key(&mut a, "F6");
+    assert_eq!(a.focus, Focus::Tree);
+    key(&mut a, "F6");
+    assert_eq!(a.focus, Focus::Results, "the results were used last");
 }
 
 #[test]
@@ -2462,6 +2467,26 @@ async fn dashboard_tab_refreshes_and_cancels() {
     // pause: no new timer after the next answers
     key(&mut a, "Ctrl+P");
     assert!(a.tabs[1].dashboard.as_ref().unwrap().paused);
+    // Alt+Left / Right in the list switch its lists (D-060), also in the key-hint bar
+    let h: Vec<String> = a
+        .key_hints()
+        .iter()
+        .map(|h| format!("{} {}", h.key_text(), h.label))
+        .collect();
+    for want in ["F5 Refresh", "Alt+Right Next list", "F6 Tree"] {
+        assert!(h.contains(&want.to_owned()), "{want} in {h:?}");
+    }
+    key(&mut a, "Alt+Right");
+    assert_eq!(
+        a.tabs[1].dashboard.as_ref().unwrap().list,
+        crate::dashboard::List::Locks
+    );
+    key(&mut a, "Alt+Left");
+    assert_eq!(
+        a.tabs[1].dashboard.as_ref().unwrap().list,
+        crate::dashboard::List::Sessions
+    );
+    assert_eq!(a.active_tab, 1);
     // closing the tab drops its connection
     key(&mut a, "Ctrl+W");
     assert_eq!(a.tabs.len(), 1);
@@ -2606,11 +2631,29 @@ async fn profiler_asks_reads_and_restores() {
     key(&mut a, "Up");
     a.update(Msg::Tick, &Hits::default());
     assert_eq!(a.tabs[1].view.editor.text(), "SELECT 1");
-    // F6: list → pane (editor keys) → tree
+    // Alt+Down: list → pane (editor keys); F6 only tree ↔ right frame (D-060)
     assert_eq!(a.focus, Focus::Results);
     key(&mut a, "F6");
+    assert_eq!(a.focus, Focus::Tree);
+    key(&mut a, "F6");
+    assert_eq!(a.focus, Focus::Results);
+    let hints = |a: &App| -> Vec<String> {
+        a.key_hints()
+            .iter()
+            .map(|h| format!("{} {}", h.key_text(), h.label))
+            .collect()
+    };
+    let h = hints(&a);
+    for want in ["F5 Start/Stop", "^F Filter", "F6 Tree"] {
+        assert!(h.contains(&want.to_owned()), "list: {want} in {h:?}");
+    }
+    key(&mut a, "Alt+Down");
     assert_eq!(a.focus, Focus::Tabs);
     assert_eq!(a.context(), Some(crate::keymap::Context::Editor));
+    let h = hints(&a);
+    for want in ["^F Find", "^E Edit", "^R Hide", "F6 Tree"] {
+        assert!(h.contains(&want.to_owned()), "pane: {want} in {h:?}");
+    }
     // Ctrl+R hides the pane: the focus goes back to the list
     key(&mut a, "Ctrl+R");
     assert_eq!(a.focus, Focus::Results);
@@ -2650,4 +2693,89 @@ async fn profiler_asks_reads_and_restores() {
     }
     assert!(a.should_quit());
     assert!(!prof(&a).needs_restore());
+}
+
+/// Direct keys for the frames (D-060): tree, right frame (the part last used), lower /
+/// upper part; the second keys do the same.
+#[test]
+fn direct_keys_for_the_frames() {
+    let (mut a, _d) = app();
+    a.new_query_tab(None);
+    a.query_mut().unwrap().results_visible = false;
+    assert_eq!(a.focus, Focus::Tabs);
+    key(&mut a, "Alt+1");
+    assert_eq!(a.focus, Focus::Tree);
+    key(&mut a, "Alt+2");
+    assert_eq!(a.focus, Focus::Tabs, "at first the upper part");
+    // the lower part is shown first when hidden
+    key(&mut a, "Alt+Down");
+    assert_eq!(a.focus, Focus::Results);
+    assert!(a.query().unwrap().results_visible);
+    // Alt+2 comes back to the part last used
+    key(&mut a, "Alt+1");
+    key(&mut a, "Alt+2");
+    assert_eq!(a.focus, Focus::Results);
+    key(&mut a, "Alt+Up");
+    assert_eq!(a.focus, Focus::Tabs);
+    key(&mut a, "Ctrl+Shift+Down");
+    assert_eq!(a.focus, Focus::Results);
+    key(&mut a, "Ctrl+Shift+Up");
+    assert_eq!(a.focus, Focus::Tabs);
+    key(&mut a, "Ctrl+1");
+    assert_eq!(a.focus, Focus::Tree);
+    key(&mut a, "Ctrl+2");
+    assert_eq!(a.focus, Focus::Tabs);
+    // without a result set: the empty Results view and Messages, both ways
+    key(&mut a, "Alt+Down");
+    assert!(!a.query().unwrap().show_messages);
+    key(&mut a, "Alt+Right");
+    assert!(a.query().unwrap().show_messages);
+    key(&mut a, "Alt+Left");
+    assert!(
+        !a.query().unwrap().show_messages,
+        "back to the empty results"
+    );
+    key(&mut a, "Alt+Left");
+    assert!(a.query().unwrap().show_messages);
+    key(&mut a, "Alt+Right");
+    assert!(!a.query().unwrap().show_messages);
+    key(&mut a, "Alt+Up");
+    // in the results Alt+Left / Right go through the result sets, then Messages
+    {
+        let q = a.query_mut().unwrap();
+        q.results = vec![
+            crate::grid::ResultSet::new(Vec::new()),
+            crate::grid::ResultSet::new(Vec::new()),
+        ];
+        q.active_result = 0;
+        q.show_messages = false;
+    }
+    key(&mut a, "Alt+Down");
+    key(&mut a, "Alt+Right");
+    assert_eq!(a.query().unwrap().active_result, 1);
+    key(&mut a, "Alt+Right");
+    assert!(a.query().unwrap().show_messages);
+    key(&mut a, "Alt+Right");
+    assert!(!a.query().unwrap().show_messages);
+    assert_eq!(a.query().unwrap().active_result, 0);
+    key(&mut a, "Alt+Left");
+    assert!(
+        a.query().unwrap().show_messages,
+        "backwards: wraps to Messages"
+    );
+    assert_eq!(a.active_tab, 1, "the main tabs stay");
+    // from the editor they switch the main tabs; the default tab has no lower part
+    key(&mut a, "Alt+Up");
+    key(&mut a, "Alt+Left");
+    assert_eq!(a.active_tab, 0);
+    key(&mut a, "Alt+Down");
+    assert_eq!(a.focus, Focus::Tabs);
+    // the editor keeps Ctrl+Shift+Left / Right for word selection
+    assert_eq!(
+        a.keymap.lookup(
+            crate::keymap::Context::Editor,
+            KeyCombo::parse("Ctrl+Shift+Left").unwrap()
+        ),
+        Some(Command::SelectWordLeft)
+    );
 }

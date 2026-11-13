@@ -79,11 +79,15 @@ file; `PGHOST`, `PGUSER`, `PGPASSWORD` and the other libpq variables work as in 
 | `F2` | context menu |
 | `F4` | psql-style commands |
 | `F5` | execute the selection or the whole script |
-| `F6` | switch panel |
+| `F6` / `Ctrl+Tab` | object tree ↔ right frame |
 | `F7` | generate SQL from a developer template |
 | `F9` | menu |
 | `F10` | quit |
+| `Alt+1` / `Alt+2` | object tree / right frame |
+| `Alt+Up` / `Alt+Down` | upper / lower part of the right frame (editor ↔ results) |
+| `Alt+Left` / `Alt+Right` | previous / next tab (in the results: result sets and Messages) |
 | `Ctrl+N` | new query tab |
+| `Ctrl+D` / `Ctrl+P` | server dashboard / SQL profiler (in the tree) |
 | `Ctrl+Space` / `Alt+/` | autocomplete |
 
 `Esc` followed by a digit works as an F-key in terminals that do not pass F-keys

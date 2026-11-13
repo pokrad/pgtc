@@ -72,15 +72,6 @@ impl App {
         }
     }
 
-    /// `F6` / `Ctrl+Tab` in a list tab: list → pane → tree (D-059).
-    pub(super) fn next_list_focus(&self) -> Focus {
-        match self.focus {
-            Focus::Tree => Focus::Results,
-            Focus::Results if self.pane_shown() => Focus::Tabs,
-            Focus::Results | Focus::Tabs => Focus::Tree,
-        }
-    }
-
     /// `Ctrl+R`: shows / hides the pane.
     pub(super) fn toggle_pane(&mut self) {
         if let Some(p) = self.pane_mut() {

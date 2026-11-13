@@ -640,7 +640,7 @@ desktop dependency.
   - Menu bar always visible at the top (D-014).
   - **Key-hint bar** at the bottom (in place of mc's `1Help 2Menu …` F-key bar): the
     **most important keys of the focused frame, whatever the key is** — F-keys and
-    others alike, e.g. `F5 Exec  F7 Template  ^R Results  ^F Find  F6 Panel`.
+    others alike, e.g. `F5 Exec  F7 Template  ^R Results  ^F Find  F6 Tree`.
     - Each entry is the key (F-key number colour) followed by a short label, only as
       wide as it needs; `Ctrl+` is shown as `^`. Entries that do not fit are left out
       from the right, so the order is the priority.
@@ -648,12 +648,19 @@ desktop dependency.
       active keymap** (user bindings show; an unbound command is left out). Commands
       that cannot run now are hidden (e.g. *Cancel* only while a query runs, *Fetch
       all* only while rows wait, `F8` *Delete* only on a server row).
+    - `F6` is labelled by where it goes (D-060): *Right* in the object tree, *Tree*
+      everywhere in the right frame.
     - Lists: object tree — Help, Menu (`F2`), New tab (`F3`), New query, Refresh,
-      Search, Delete (`F8`, server rows), Panel (`F6`), Menu bar (`F9`), Quit; query
-      editor — Help, Exec, Cancel, Template, psql (`F4`, D-054), Find, Results, Close tab, Panel, Menu bar,
-      Quit; read-only object view — Help, Find, Find next, Copy, New query, Panel, Menu
-      bar, Quit; results — Help, Exec, Cancel, Messages, Next result (more than one
-      set), Fetch all, Menu, Copy, Hide, Panel, Quit; dialogs and the template form —
+      Search, Delete (`F8`, server rows), Right (`F6`), Menu bar (`F9`), Quit; query
+      editor — Help, Exec, Cancel, Template, psql (`F4`, D-054), Find, Results, Close
+      tab, Tree, Menu bar, Quit; read-only object view — Help, Find, Find next, Copy,
+      New query, Tree, Menu bar, Quit; results — Help, Exec, Cancel, Messages, Next
+      result (more than one set), Fetch all, Menu, Copy, Hide, Tree, Quit; dashboard
+      list (D-057) — Help, Menu, Refresh, Pause, Next list (`Alt+Right`), Idle, Cancel,
+      Terminate (Sessions), Edit (`Ctrl+E`), Close tab, Tree, Quit; profiler list
+      (D-058) — Help, Menu, Start/Stop, Pause, Filter, Clear, Edit, Close tab, Tree,
+      Quit; statement pane (D-059) — Help, Find, Find next, Copy, Edit, Hide (`Ctrl+R`),
+      Close tab, Tree, Quit; dialogs and the template form —
       OK, Cancel, Next field, Toggle; Help windows (D-014) — `↑↓` Scroll, `PgUp/PgDn`
       Page, Esc Close; open menu bar — `←→` Menus, Enter Choose, Esc Close (context
       menu: Enter, Esc).
@@ -672,7 +679,7 @@ desktop dependency.
   | `F8` | Delete | Object tree: delete the selected saved connection (with confirmation, D-035). Database objects are dropped with the DROP developer templates (D-050) |
   | `F9` | Menu | Menu (D-014) |
   | `F10` | Quit | Quit; closes a dialog when one is open |
-  | `Ctrl+Tab` / `F6` | Switch panel | Cycle focus: object tree → editor → results (D-032) |
+  | `Ctrl+Tab` / `F6` | Switch panel | Object tree ↔ right frame (D-032, D-060) |
   | `Ctrl+R` | Re-read | Object tree: refresh tree · Query tab: show/hide results pane |
   | `Ctrl+N` | — | New query tab (global) |
   | `Alt+S` / `Ctrl+S` | Quick search | Quick search in the tree |
@@ -1097,12 +1104,15 @@ pgtc (binary)
     fields (mc);
   - SQL editor: `Tab` / `Shift+Tab` indent / unindent (D-015, D-038);
   - in the object tree and the results `Tab` does nothing.
-- **Switching panels:** `Ctrl+Tab` cycles the focus object tree → editor → results (the
-  results only while shown) → tree, from every panel. `F6` does the same, because many
+- **Switching panels:** `Ctrl+Tab` switches the focus between the object tree and the
+  right frame only (in the right frame: the part last used there; the parts are reached
+  with `Alt+Up` / `Alt+Down`, D-060), from every panel. `F6` does the same, because many
   terminals never pass `Ctrl+Tab` on (the classic Windows console and SSH send a plain
   `Tab`, Windows Terminal uses it for its own tabs).
 - **Right-pane tab keys** (`[global]`, configurable): next tab `Alt+Right`, previous
-  tab `Alt+Left`, close tab `Ctrl+W`. The default tab cannot be closed.
+  tab `Alt+Left`, close tab `Ctrl+W`. The default tab cannot be closed. In the results
+  and the dashboard list `Alt+Left` / `Alt+Right` switch the tabs nearest to the focus
+  instead (result sets and Messages, the dashboard's lists, D-060).
 - **`Esc` + digit (mc style):** `Esc` opens a **1-second** window; a digit pressed in it
   becomes `F1`..`F10` (`0` = `F10`). If nothing follows, `Esc` acts as `Esc` after the
   timeout; if another key follows, `Esc` is processed first, then that key.
@@ -1239,7 +1249,8 @@ pgtc (binary)
   (D-049). The tab's own connection (D-011) is opened when the tab is created; the tab
   label shows the database (`Query 1 – mydb`). A tab that lost its connection is
   unbound and F5 asks to select a database in the tree.
-- **Focus:** `F6` / `Ctrl+Tab` cycle editor → results → object tree → editor.
+- **Focus:** `F6` / `Ctrl+Tab` switch object tree ↔ right frame (D-032); editor ↔
+  results with `Alt+Up` / `Alt+Down` (D-060).
 - **Keys** (configurable, also in the Query menu): Results / Messages `Alt+M`; next /
   previous result set `Ctrl+PgDn` / `Ctrl+PgUp` (also `Alt+PgDn` / `Alt+PgUp`, D-053); Fetch all `Alt+End`; results pane
   smaller / larger `Alt+Shift+Up` / `Alt+Shift+Down`; PL/pgSQL mode `Ctrl+P` (D-020).
@@ -1896,7 +1907,8 @@ pgtc (binary)
 - **Parameters and errors** as SQL comments at the top, so they are copied with the
   statement: `-- parameters: $1 = '5', …` (prepared statements), `-- ERROR: message`
   (errors); multi-line texts get `-- ` on every line.
-- **Focus:** `F6` / `Ctrl+Tab` cycle list → pane → tree (D-032); opening the tab or
+- **Focus:** list ↔ pane with `Alt+Up` / `Alt+Down` (D-060), `F6` / `Ctrl+Tab` tree ↔
+  right frame (D-032); opening the tab or
   clicking its label focuses the list. The list keeps its `[dashboard]` /
   `[profiler]` keys, the pane has the `[editor]` keys (`Ctrl+F` there is Find).
 - **Split** as the query tab's editor / results (D-019): drag the separator row with
@@ -1906,6 +1918,39 @@ pgtc (binary)
   comments) in a new query tab bound to the tab's server and **the row's database**, as
   unsaved text. A row without a database (background processes) is refused with a
   status-line hint.
+
+### D-060 — Direct keys for the frames
+- **Status:** Accepted (refines D-016, D-032, D-041, D-059)
+- **Keys** (`[global]`, so they work from every frame; second keys only where the
+  terminal reports them — Windows console, kitty keyboard protocol; D-053):
+
+  | Key | Second key | Action |
+  |---|---|---|
+  | `Alt+1` | `Ctrl+1` | Focus the object tree (`focus_tree`) |
+  | `Alt+2` | `Ctrl+2` | Focus the right frame (`focus_right`) — the part last focused in that tab, at first the upper part |
+  | `Alt+Left` / `Alt+Right` | — | The tabs nearest to the focus, to the left / right (below) |
+  | `Alt+Down` | `Ctrl+Shift+Down` | Lower part of the right frame (`focus_lower`): query editor → results / messages; dashboard / profiler list → statement pane |
+  | `Alt+Up` | `Ctrl+Shift+Up` | Upper part of the right frame (`focus_upper`) |
+
+- **Lower part:** `Alt+Down` shows a hidden results pane / statement pane first; it keeps
+  the lower view that is shown (Results or Messages; `Alt+M` switches). Tabs without a
+  lower part (default and object tabs, dashboard lists other than Sessions) stay on the
+  upper part. In the tree, `Alt+Up` / `Alt+Down` move to the right frame's part.
+- **`Alt+Left` / `Alt+Right` switch the tabs nearest to the focus:**
+  - results / messages of a query tab: the result sets and Messages, in the order
+    result set 1 → 2 → … → Messages → 1 (and backwards; `prev_result_tab` /
+    `next_result_tab` in `[results]`); without a result set the (empty) Results view
+    and Messages; `Ctrl+PgUp` / `PgDn` still switch result sets;
+  - the dashboard list: its lists Sessions · Locks · Prepared · Configuration
+    (`prev_list` / `next_list` in `[dashboard]`);
+  - everywhere else (tree, editor, object view, statement pane, profiler list): the
+    main tabs. From the results or the dashboard list the main tabs are reached with
+    `Alt+Up` (or the tree / pane) first.
+- `Ctrl+Shift+Left` / `Right` stay word selection in the editor. `F6` / `Ctrl+Tab`
+  switch **only** between the object tree and the right frame (to the part last used
+  there, as `Alt+2`); they never go through the parts of the right frame, which differ
+  by tab type. `Alt+digit` is one key event, so it does not clash with
+  `Esc` + digit for F-keys (D-032).
 
 ### D-026 — Scope of the first alpha
 - **Status:** Accepted
@@ -2033,3 +2078,7 @@ pgtc (binary)
 | 2026-11-12 | D-058 accepted: SQL profiler tab — every statement from the server log (jsonlog / csvlog) read through the connection; Start asks before changing `log_min_duration_statement` / `log_destination` with `ALTER SYSTEM`, Stop / close / quit put them back; filters by user, database, PID, application, text; no sampling. D-014 updated (Tools menu). |
 | 2026-11-12 | D-057, D-058 updated: `Ctrl+D` (server dashboard) and `Ctrl+P` (SQL profiler) in the tree. |
 | 2026-11-12 | D-059 accepted: statement pane (read-only SQL editor) below the dashboard's Sessions list and the profiler's entries, parameters / errors as `--` comments, `F6` list → pane → tree, split keys as the query tab (`Ctrl+R`, `Alt+Shift+Up/Down`, mouse), `Ctrl+E` opens the statement in a new query tab on the row's database. D-057, D-058 updated. |
+| 2026-11-13 | D-060 accepted: `Alt+1` / `Alt+2` focus the tree / right frame (`Ctrl+1` / `Ctrl+2` second keys), `Alt+Down` / `Alt+Up` the lower / upper part of the right frame (`Ctrl+Shift+Down` / `Up` second keys; showing a hidden results or statement pane); `Alt+Left` / `Right` stay for tabs. |
+| 2026-11-13 | D-060 updated: `Alt+Left` / `Right` switch the tabs nearest to the focus — result sets and Messages in the results, the lists in the dashboard list, the main tabs elsewhere. |
+| 2026-11-13 | D-060 updated: `F6` / `Ctrl+Tab` only switch object tree ↔ right frame (the part last used), no more cycling through the right frame's parts. D-032, D-041, D-059 updated. |
+| 2026-11-13 | D-016 updated: key-hint bar labels `F6` by where it goes (*Right* / *Tree*); lists of the dashboard, profiler and statement pane; dashboard shows `Alt+Right` for Next list. README key table updated (D-060 keys, `Ctrl+D` / `Ctrl+P`). |

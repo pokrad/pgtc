@@ -14,6 +14,7 @@ mod definition;
 mod editing;
 mod files;
 mod find_object;
+mod focus;
 mod lookups;
 mod mouse;
 mod object_view;
@@ -190,6 +191,8 @@ pub struct Tab {
     pub dashboard: Option<crate::dashboard::Dashboard>,
     /// Profiler tabs (D-058).
     pub profiler: Option<crate::profiler::Profiler>,
+    /// The lower part (results, statement pane) had the focus last (`Alt+2`, D-060).
+    pub lower_focused: bool,
 }
 
 impl Tab {
@@ -419,6 +422,7 @@ impl App {
                 query: None,
                 dashboard: None,
                 profiler: None,
+                lower_focused: false,
             }],
             active_tab: 0,
             status,
@@ -534,6 +538,10 @@ impl App {
         let server = self.tree.selected_server();
         match cmd {
             Command::Quit | Command::Settings | Command::NewConnection => true,
+            Command::FocusTree
+            | Command::FocusRight
+            | Command::FocusLower
+            | Command::FocusUpper => true,
             // a database or an object below it, on a connected server (D-049)
             Command::NewQuery | Command::OpenFile => self.query_target().is_some(),
             Command::SaveFile => self.query().is_some(),
@@ -588,6 +596,7 @@ impl App {
             Command::NextResult | Command::PrevResult => {
                 self.query().is_some_and(|q| q.results.len() > 1)
             }
+            Command::NextResultTab | Command::PrevResultTab => self.query().is_some(),
             Command::Psql => self
                 .query()
                 .is_some_and(|q| q.connected() && !q.busy() && q.export.is_none()),
@@ -770,6 +779,7 @@ impl App {
         // the statement pane follows the list cursor (D-059)
         self.sync_pane();
         self.fix_list_focus();
+        self.remember_part();
         // the list belongs to the editor of the active query tab, or to the focused
         // `sql` box of that tab's template form (D-052)
         let keep = match self.completion.as_ref() {
@@ -821,6 +831,17 @@ impl App {
     fn dispatch(&mut self, ev: KeyEvent) {
         let combo = KeyCombo::from_event(&ev);
         let cmd = self.command_for(combo);
+        // what the terminal sent and what it became (PGTC_LOG=pgc_ui=trace)
+        tracing::trace!(
+            code = ?ev.code,
+            modifiers = ?ev.modifiers,
+            kind = ?ev.kind,
+            key = %combo,
+            focus = ?self.focus,
+            context = ?self.context(),
+            ?cmd,
+            "key"
+        );
 
         if let Some(dialog) = self.dialogs.last_mut() {
             if cmd == Some(Command::Help) {
@@ -971,18 +992,14 @@ impl App {
         match cmd {
             Command::Quit => self.request_quit(),
             Command::Menu => self.open_menu(0),
-            // D-041: F6 / Ctrl+Tab cycle editor → results → tree → editor
-            // D-059: list → statement pane → tree
-            Command::SwitchPanel if self.list_tab() => self.focus = self.next_list_focus(),
-            Command::SwitchPanel => {
-                self.focus = match self.focus {
-                    Focus::Tree => Focus::Tabs,
-                    Focus::Tabs if self.query().is_some_and(|q| q.results_visible) => {
-                        Focus::Results
-                    }
-                    Focus::Tabs | Focus::Results => Focus::Tree,
-                }
-            }
+            // direct keys for the frames (D-060)
+            Command::FocusTree => self.focus = Focus::Tree,
+            Command::FocusRight => self.focus_right(),
+            Command::FocusLower => self.focus_lower(),
+            Command::FocusUpper => self.focus_upper(),
+            // F6 / Ctrl+Tab: only the tree ↔ the right frame (its part last used, D-060)
+            Command::SwitchPanel if self.focus == Focus::Tree => self.focus_right(),
+            Command::SwitchPanel => self.focus = Focus::Tree,
             c if in_results && self.results_command(c) => {}
             c if in_dashboard && self.dashboard_command(c) => {}
             c if in_profiler && self.profiler_command(c) => {}
@@ -1032,6 +1049,32 @@ impl App {
                         } else {
                             (q.active_result + n - 1) % n
                         };
+                    }
+                    String::new()
+                });
+            }
+            // Alt+Left / Right in the results: result sets, then Messages (D-060)
+            Command::NextResultTab | Command::PrevResultTab => {
+                let next = cmd == Command::NextResultTab;
+                self.toggle_query(|q| {
+                    q.results_visible = true;
+                    // positions: the result sets 0..k, then Messages (k); without a
+                    // result set the (empty) Results view is one position
+                    let n = q.results.len();
+                    let k = n.max(1);
+                    let at = if q.show_messages {
+                        k
+                    } else {
+                        q.active_result.min(k - 1)
+                    };
+                    let to = if next {
+                        (at + 1) % (k + 1)
+                    } else {
+                        (at + k) % (k + 1)
+                    };
+                    q.show_messages = to == k;
+                    if to < n {
+                        q.active_result = to;
                     }
                     String::new()
                 });
@@ -1194,6 +1237,7 @@ impl App {
             query,
             dashboard: None,
             profiler: None,
+            lower_focused: false,
         });
         self.active_tab = self.tabs.len() - 1;
         self.focus = Focus::Tabs;

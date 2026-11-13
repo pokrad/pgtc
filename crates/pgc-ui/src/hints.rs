@@ -42,7 +42,7 @@ const TREE: &[Entry] = &[
     (C::RefreshTree, "Refresh", None),
     (C::QuickSearch, "Search", Some("Alt+S")),
     (C::DropObject, "Delete", None),
-    (C::SwitchPanel, "Panel", Some("F6")),
+    (C::SwitchPanel, "Right", Some("F6")),
     (C::Menu, "Menu bar", None),
     (C::Quit, "Quit", None),
 ];
@@ -56,7 +56,7 @@ const QUERY_EDITOR: &[Entry] = &[
     (C::Find, "Find", None),
     (C::ToggleResults, "Results", None),
     (C::CloseTab, "Close tab", None),
-    (C::SwitchPanel, "Panel", Some("F6")),
+    (C::SwitchPanel, "Tree", Some("F6")),
     (C::Menu, "Menu bar", None),
     (C::Quit, "Quit", None),
 ];
@@ -67,7 +67,7 @@ const OBJECT_VIEW: &[Entry] = &[
     (C::FindNext, "Find next", None),
     (C::Copy, "Copy", Some("Ctrl+C")),
     (C::NewQuery, "New query", None),
-    (C::SwitchPanel, "Panel", Some("F6")),
+    (C::SwitchPanel, "Tree", Some("F6")),
     (C::Menu, "Menu bar", None),
     (C::Quit, "Quit", None),
 ];
@@ -82,7 +82,7 @@ const RESULTS: &[Entry] = &[
     (C::ContextMenu, "Menu", None),
     (C::Copy, "Copy", Some("Ctrl+C")),
     (C::ToggleResults, "Hide", None),
-    (C::SwitchPanel, "Panel", Some("F6")),
+    (C::SwitchPanel, "Tree", Some("F6")),
     (C::Quit, "Quit", None),
 ];
 
@@ -91,13 +91,13 @@ const DASHBOARD: &[Entry] = &[
     (C::ContextMenu, "Menu", None),
     (C::DashboardRefresh, "Refresh", None),
     (C::DashboardPause, "Pause", None),
-    (C::NextList, "Next list", None),
+    (C::NextList, "Next list", Some("Alt+Right")),
     (C::HideIdleSessions, "Idle", None),
     (C::CancelBackend, "Cancel", None),
     (C::TerminateBackend, "Terminate", None),
     (C::EditInQueryTab, "Edit", None),
     (C::CloseTab, "Close tab", None),
-    (C::SwitchPanel, "Panel", Some("F6")),
+    (C::SwitchPanel, "Tree", Some("F6")),
     (C::Quit, "Quit", None),
 ];
 
@@ -110,7 +110,20 @@ const PROFILER: &[Entry] = &[
     (C::ProfilerClear, "Clear", None),
     (C::EditInQueryTab, "Edit", None),
     (C::CloseTab, "Close tab", None),
-    (C::SwitchPanel, "Panel", Some("F6")),
+    (C::SwitchPanel, "Tree", Some("F6")),
+    (C::Quit, "Quit", None),
+];
+
+/// The statement pane of a dashboard / profiler tab (D-059).
+const PANE: &[Entry] = &[
+    (C::Help, "Help", None),
+    (C::Find, "Find", None),
+    (C::FindNext, "Find next", None),
+    (C::Copy, "Copy", Some("Ctrl+C")),
+    (C::EditInQueryTab, "Edit", None),
+    (C::ToggleResults, "Hide", None),
+    (C::CloseTab, "Close tab", None),
+    (C::SwitchPanel, "Tree", Some("F6")),
     (C::Quit, "Quit", None),
 ];
 
@@ -190,6 +203,7 @@ impl App {
                 Focus::Tabs if self.tabs[self.active_tab].query.is_some() => {
                     (Context::Editor, QUERY_EDITOR)
                 }
+                Focus::Tabs if self.list_tab() => (Context::Editor, PANE),
                 Focus::Tabs => (Context::Editor, OBJECT_VIEW),
             }
         };

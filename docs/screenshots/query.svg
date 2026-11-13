@@ -1351,11 +1351,11 @@
 <rect x="495" y="627" width="18.5" height="19.5" fill="#21222c"/>
 <rect x="513" y="627" width="99.5" height="19.5" fill="#bd93f9"/>
 <rect x="612" y="627" width="18.5" height="19.5" fill="#21222c"/>
-<rect x="630" y="627" width="63.5" height="19.5" fill="#bd93f9"/>
-<rect x="693" y="627" width="18.5" height="19.5" fill="#21222c"/>
-<rect x="711" y="627" width="90.5" height="19.5" fill="#bd93f9"/>
-<rect x="801" y="627" width="27.5" height="19.5" fill="#21222c"/>
-<rect x="828" y="627" width="252.5" height="19.5" fill="#bd93f9"/>
+<rect x="630" y="627" width="54.5" height="19.5" fill="#bd93f9"/>
+<rect x="684" y="627" width="18.5" height="19.5" fill="#21222c"/>
+<rect x="702" y="627" width="90.5" height="19.5" fill="#bd93f9"/>
+<rect x="792" y="627" width="27.5" height="19.5" fill="#21222c"/>
+<rect x="819" y="627" width="261.5" height="19.5" fill="#bd93f9"/>
 <text x="0" y="641.25" fill="#f8f8f2">F</text>
 <text x="9" y="641.25" fill="#f8f8f2">1</text>
 <text x="27" y="641.25" fill="#282a36">H</text>
@@ -1411,25 +1411,24 @@
 <text x="594" y="641.25" fill="#282a36">b</text>
 <text x="612" y="641.25" fill="#f8f8f2">F</text>
 <text x="621" y="641.25" fill="#f8f8f2">6</text>
-<text x="639" y="641.25" fill="#282a36">P</text>
-<text x="648" y="641.25" fill="#282a36">a</text>
-<text x="657" y="641.25" fill="#282a36">n</text>
+<text x="639" y="641.25" fill="#282a36">T</text>
+<text x="648" y="641.25" fill="#282a36">r</text>
+<text x="657" y="641.25" fill="#282a36">e</text>
 <text x="666" y="641.25" fill="#282a36">e</text>
-<text x="675" y="641.25" fill="#282a36">l</text>
-<text x="693" y="641.25" fill="#f8f8f2">F</text>
-<text x="702" y="641.25" fill="#f8f8f2">9</text>
-<text x="720" y="641.25" fill="#282a36">M</text>
-<text x="729" y="641.25" fill="#282a36">e</text>
-<text x="738" y="641.25" fill="#282a36">n</text>
-<text x="747" y="641.25" fill="#282a36">u</text>
-<text x="765" y="641.25" fill="#282a36">b</text>
-<text x="774" y="641.25" fill="#282a36">a</text>
-<text x="783" y="641.25" fill="#282a36">r</text>
-<text x="801" y="641.25" fill="#f8f8f2">F</text>
-<text x="810" y="641.25" fill="#f8f8f2">1</text>
-<text x="819" y="641.25" fill="#f8f8f2">0</text>
-<text x="837" y="641.25" fill="#282a36">Q</text>
-<text x="846" y="641.25" fill="#282a36">u</text>
-<text x="855" y="641.25" fill="#282a36">i</text>
-<text x="864" y="641.25" fill="#282a36">t</text>
+<text x="684" y="641.25" fill="#f8f8f2">F</text>
+<text x="693" y="641.25" fill="#f8f8f2">9</text>
+<text x="711" y="641.25" fill="#282a36">M</text>
+<text x="720" y="641.25" fill="#282a36">e</text>
+<text x="729" y="641.25" fill="#282a36">n</text>
+<text x="738" y="641.25" fill="#282a36">u</text>
+<text x="756" y="641.25" fill="#282a36">b</text>
+<text x="765" y="641.25" fill="#282a36">a</text>
+<text x="774" y="641.25" fill="#282a36">r</text>
+<text x="792" y="641.25" fill="#f8f8f2">F</text>
+<text x="801" y="641.25" fill="#f8f8f2">1</text>
+<text x="810" y="641.25" fill="#f8f8f2">0</text>
+<text x="828" y="641.25" fill="#282a36">Q</text>
+<text x="837" y="641.25" fill="#282a36">u</text>
+<text x="846" y="641.25" fill="#282a36">i</text>
+<text x="855" y="641.25" fill="#282a36">t</text>
 </svg>

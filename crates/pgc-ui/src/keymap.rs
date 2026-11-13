@@ -83,10 +83,15 @@ commands! {
     Help = "help", "Keyboard shortcuts of the focused frame";
     Menu = "menu", "Open the menu bar";
     Quit = "quit", "Quit pgtc";
-    SwitchPanel = "switch_panel", "Switch between the panels";
+    SwitchPanel = "switch_panel", "Switch between the object tree and the right frame";
     NextTab = "next_tab", "Next tab";
     PrevTab = "prev_tab", "Previous tab";
     CloseTab = "close_tab", "Close the tab";
+    // direct keys for the frames (D-060)
+    FocusTree = "focus_tree", "Focus the object tree";
+    FocusRight = "focus_right", "Focus the right frame (the part last used)";
+    FocusLower = "focus_lower", "Lower part of the right frame (results, messages, statement pane)";
+    FocusUpper = "focus_upper", "Upper part of the right frame (editor, list)";
     // tree
     ContextMenu = "context_menu", "Context menu";
     ShowInNewTab = "show_in_new_tab", "Show the object in a new tab";
@@ -155,6 +160,8 @@ commands! {
     ShowMessages = "show_messages", "Switch between results and messages";
     NextResult = "next_result", "Next result set";
     PrevResult = "prev_result", "Previous result set";
+    NextResultTab = "next_result_tab", "Next result set, then Messages";
+    PrevResultTab = "prev_result_tab", "Previous result set or Messages";
     ResultsSmaller = "results_smaller", "Make the results (statement pane) smaller";
     ResultsLarger = "results_larger", "Make the results (statement pane) larger";
     // server dashboard (D-057)
@@ -220,6 +227,19 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::Global, Command::NextTab, &["Alt+Right"]),
     (Context::Global, Command::PrevTab, &["Alt+Left"]),
     (Context::Global, Command::CloseTab, &["Ctrl+W"]),
+    // D-060: the Ctrl keys only where the terminal reports them
+    (Context::Global, Command::FocusTree, &["Alt+1", "Ctrl+1"]),
+    (Context::Global, Command::FocusRight, &["Alt+2", "Ctrl+2"]),
+    (
+        Context::Global,
+        Command::FocusLower,
+        &["Alt+Down", "Ctrl+Shift+Down"],
+    ),
+    (
+        Context::Global,
+        Command::FocusUpper,
+        &["Alt+Up", "Ctrl+Shift+Up"],
+    ),
     (Context::Tree, Command::Up, &["Up"]),
     (Context::Tree, Command::Down, &["Down"]),
     (Context::Tree, Command::Left, &["Left"]),
@@ -334,6 +354,11 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::Results, Command::FetchAll, &["Alt+End"]),
     (Context::Results, Command::ContextMenu, &["F2"]),
     (Context::Results, Command::ShowMessages, &["Alt+M"]),
+    // D-060: the tabs nearest to the focus
+    (Context::Results, Command::NextResultTab, &["Alt+Right"]),
+    (Context::Results, Command::PrevResultTab, &["Alt+Left"]),
+    (Context::Dashboard, Command::NextList, &["Alt+Right"]),
+    (Context::Dashboard, Command::PrevList, &["Alt+Left"]),
     // GNOME Terminal / xfce switch their tabs with Ctrl+PgUp / PgDn (D-053)
     (
         Context::Results,
