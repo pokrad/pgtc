@@ -1352,6 +1352,14 @@ fn split_is_dragged_by_the_results_bar() {
 }
 
 #[test]
+fn file_paths_are_shortened_from_the_left() {
+    use crate::view::shorten_left;
+    assert_eq!(shorten_left(r"C:\a\b.sql", 20), r"C:\a\b.sql");
+    assert_eq!(shorten_left(r"C:\work\report.sql", 12), r"…\report.sql");
+    assert_eq!(shorten_left("/home/dž/ćevapi.sql", 11), "…ćevapi.sql");
+}
+
+#[test]
 fn save_and_open_sql_files_through_the_dialog() {
     let (mut a, dir) = app();
     let files = dir.path().join("sql");
@@ -1359,6 +1367,14 @@ fn save_and_open_sql_files_through_the_dialog() {
     a.file_dir = files.clone();
     a.new_query_tab(None); // unbound (no server): still editable
     typing(&mut a, "select 'čšž';");
+    // no file: no file bar, the editor follows the tab strip's line
+    let screen = screen_text(&a);
+    let lines: Vec<&str> = screen.lines().collect();
+    let first = lines
+        .iter()
+        .position(|l| l.contains("select 'čšž';"))
+        .unwrap();
+    assert!(lines[first - 1].contains("──"), "{screen}");
     // Save: the name field starts with query.sql
     a.run(Command::SaveFile);
     assert_eq!(a.dialogs[0].kind, DialogKind::SaveFile);
@@ -1366,12 +1382,43 @@ fn save_and_open_sql_files_through_the_dialog() {
     let saved = files.join("query.sql");
     assert_eq!(std::fs::read_to_string(&saved).unwrap(), "select 'čšž';");
     assert!(a.tabs[a.active_tab].label().starts_with("query.sql"));
-    // Save again: asks before overwriting
-    a.run(Command::SaveFile);
+    // the full path is shown in a bar right above the editor (D-064)
+    let tail = format!("sql{}query.sql", std::path::MAIN_SEPARATOR);
+    let screen = screen_text(&a);
+    let lines: Vec<&str> = screen.lines().collect();
+    let bar = lines.iter().position(|l| l.contains(&tail));
+    assert!(
+        bar.is_some_and(|i| lines[i + 1].contains("select 'čšž';")),
+        "{screen}"
+    );
+    // Ctrl+S with a file: written at once, no dialog (D-064)
+    typing(&mut a, " -- more");
+    key(&mut a, "Ctrl+S");
+    assert!(a.dialogs.is_empty());
+    assert_eq!(
+        std::fs::read_to_string(&saved).unwrap(),
+        "select 'čšž'; -- more"
+    );
+    assert!(!a.editor().modified());
+    // Save as: always the dialog, in the file's folder; asks before overwriting
+    a.file_dir = files.join("sub");
+    a.run(Command::SaveFileAs);
+    assert_eq!(a.dialogs[0].kind, DialogKind::SaveFile);
+    assert_eq!(a.file_dir, files);
     key(&mut a, "Enter");
     assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::ConfirmOverwrite);
     key(&mut a, "Enter");
     assert!(a.dialogs.is_empty());
+    // Save as under another name: the tab belongs to the new file
+    a.run(Command::SaveFileAs);
+    for _ in 0.."query.sql".len() {
+        key(&mut a, "Backspace");
+    }
+    typing(&mut a, "other.sql");
+    key(&mut a, "Enter");
+    assert!(a.dialogs.is_empty());
+    assert_eq!(a.query().unwrap().file, Some(files.join("other.sql")));
+    assert!(files.join("other.sql").exists());
     // Open: the list shows ../, sub/ and query.sql (highlighted); pick the file
     a.open_file_dialog(false);
     let d = a.dialogs.last().unwrap();
@@ -1388,7 +1435,7 @@ fn save_and_open_sql_files_through_the_dialog() {
         "{:?}",
         a.dialogs.last().map(|d| d.kind)
     );
-    assert_eq!(a.editor().text(), "select 'čšž';");
+    assert_eq!(a.editor().text(), "select 'čšž'; -- more");
     assert_eq!(a.tabs.len(), 3);
 }
 

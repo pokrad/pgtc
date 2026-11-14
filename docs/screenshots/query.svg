@@ -1177,9 +1177,7 @@
 <text x="1062" y="584.25" fill="#6272a4">─</text>
 <text x="1071" y="584.25" fill="#6272a4">╢</text>
 <rect x="0" y="589" width="369.5" height="19.5" fill="#282a36"/>
-<rect x="369" y="589" width="207.5" height="19.5" fill="#44475a"/>
-<rect x="576" y="589" width="108.5" height="19.5" fill="#282a36"/>
-<rect x="684" y="589" width="387.5" height="19.5" fill="#44475a"/>
+<rect x="369" y="589" width="702.5" height="19.5" fill="#44475a"/>
 <rect x="1071" y="589" width="9.5" height="19.5" fill="#282a36"/>
 <text x="0" y="603.25" fill="#6272a4">║</text>
 <text x="351" y="603.25" fill="#6272a4">║</text>

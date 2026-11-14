@@ -655,7 +655,7 @@ impl App {
             | Command::FocusUpper => true,
             // a database or an object below it, on a connected server (D-049)
             Command::NewQuery | Command::OpenFile => self.query_target().is_some(),
-            Command::SaveFile => self.query().is_some(),
+            Command::SaveFile | Command::SaveFileAs => self.query().is_some(),
             Command::NextTab | Command::PrevTab => self.tabs.len() > 1,
             Command::CloseTab => self.active_tab != 0,
             Command::Connect => server.is_some_and(|s| s.state == ConnState::Disconnected),
@@ -1081,11 +1081,11 @@ impl App {
         // keys reach here without the menus' enabled check (D-049)
         if matches!(
             cmd,
-            Command::NewQuery | Command::OpenFile | Command::SaveFile
+            Command::NewQuery | Command::OpenFile | Command::SaveFile | Command::SaveFileAs
         ) && !self.modal()
             && !self.is_enabled(cmd)
         {
-            self.status = if cmd == Command::SaveFile {
+            self.status = if matches!(cmd, Command::SaveFile | Command::SaveFileAs) {
                 "Only a query tab can be saved".to_owned()
             } else {
                 "Select a database (or an object in it) of a connected server first".to_owned()
@@ -1198,7 +1198,8 @@ impl App {
                 });
             }
             Command::OpenFile => self.open_file_dialog(false),
-            Command::SaveFile => self.open_file_dialog(true),
+            Command::SaveFile => self.save_file(),
+            Command::SaveFileAs => self.save_file_as(),
             Command::NextTab => self.active_tab = (self.active_tab + 1) % self.tabs.len(),
             Command::PrevTab => {
                 self.active_tab = (self.active_tab + self.tabs.len() - 1) % self.tabs.len();

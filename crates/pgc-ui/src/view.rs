@@ -217,6 +217,37 @@ fn separator(frame: &mut Frame, app: &App, row: Rect) {
     buf.set_string(row.right(), row.y, right, border);
 }
 
+/// The full path of a query tab's file in a bar above its editor, coloured like an
+/// inactive tab (D-064); shortened from the left when it does not fit.
+fn file_bar(frame: &mut Frame, app: &App, path: &str, row: Rect) {
+    let width = row.width as usize;
+    let text = format!(" {}", shorten_left(path, width.saturating_sub(2)));
+    frame.render_widget(
+        Paragraph::new(format!("{text:<width$}")).style(app.theme.get(Role::TabsInactive)),
+        row,
+    );
+}
+
+/// `text` cut from the left to `width` columns, with `…` in front when cut.
+pub(crate) fn shorten_left(text: &str, width: usize) -> String {
+    use unicode_width::UnicodeWidthChar;
+    let full: usize = text.chars().map(|c| c.width().unwrap_or(0)).sum();
+    if full <= width {
+        return text.to_owned();
+    }
+    let mut kept = Vec::new();
+    let mut used = 1; // the `…`
+    for c in text.chars().rev() {
+        let w = c.width().unwrap_or(0);
+        if used + w > width {
+            break;
+        }
+        used += w;
+        kept.push(c);
+    }
+    std::iter::once('…').chain(kept.into_iter().rev()).collect()
+}
+
 /// The object tree window; returns the area of its rows.
 fn render_tree(frame: &mut Frame, app: &App, area: Rect) -> Rect {
     let focused = app.focus == Focus::Tree;
@@ -418,6 +449,23 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
         inner
     };
     let view = &tab.view;
+    // a saved query tab: the file bar on top (D-064)
+    let inner = match tab.query().and_then(|q| q.file.as_ref()) {
+        Some(file) if inner.height >= 4 => {
+            file_bar(
+                frame,
+                app,
+                &file.display().to_string(),
+                Rect { height: 1, ..inner },
+            );
+            Rect {
+                y: inner.y + 1,
+                height: inner.height - 1,
+                ..inner
+            }
+        }
+        _ => inner,
+    };
     // Query tab: editor on top, results below (D-019)
     let inner = match tab.query() {
         Some(q) if q.results_visible && inner.height >= 8 => {
@@ -643,8 +691,8 @@ fn render_status(frame: &mut Frame, app: &App, area: Rect) {
 /// Status row of one tab, at the bottom inside its frame: where it is connected and
 /// what it is doing (D-043).
 fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: Rect) {
+    // one full-width bar (D-064)
     let style = app.theme.get(Role::StatusNormal);
-    let gap = app.theme.get(Role::CoreNormal);
     let mut left = String::from(" ");
     let mut right = String::new();
     if let Some((l, r)) = app
@@ -704,13 +752,13 @@ fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: 
     let width = area.width as usize;
     let right: String = right.chars().take(width).collect();
     let right_width = right.chars().count();
-    // one frame character at least between the two parts
+    // one space at least between the two parts
     let left_width = width.saturating_sub(right_width + 1);
     let left: String = left.chars().take(left_width).collect();
     let fill = width - right_width - left.chars().count();
     let line = Line::from(vec![
         Span::styled(left, style),
-        Span::styled(" ".repeat(fill), gap),
+        Span::styled(" ".repeat(fill), style),
         Span::styled(right, style),
     ]);
     frame.render_widget(Paragraph::new(line), area);

@@ -84,6 +84,27 @@ impl App {
         }
     }
 
+    /// Save (D-064): to the tab's file without a dialog, else Save as.
+    pub(super) fn save_file(&mut self) {
+        match self.query().and_then(|q| q.file.clone()) {
+            Some(path) => self.save_to(path),
+            None => self.save_file_as(),
+        }
+    }
+
+    /// Save as (D-064): always the dialog, in the folder of the tab's file.
+    pub(super) fn save_file_as(&mut self) {
+        if let Some(dir) = self
+            .query()
+            .and_then(|q| q.file.as_ref())
+            .and_then(|f| f.parent())
+            .filter(|d| d.is_dir())
+        {
+            self.file_dir = dir.to_path_buf();
+        }
+        self.open_file_dialog(true);
+    }
+
     pub(super) fn open_file_dialog(&mut self, save: bool) {
         let name = if save {
             self.query()
@@ -95,7 +116,7 @@ impl App {
             String::new()
         };
         let (kind, title) = if save {
-            (DialogKind::SaveFile, "Save SQL file")
+            (DialogKind::SaveFile, "Save SQL file as")
         } else {
             (DialogKind::OpenFile, "Open SQL file")
         };

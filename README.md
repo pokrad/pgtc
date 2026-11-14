@@ -87,6 +87,7 @@ file; `PGHOST`, `PGUSER`, `PGPASSWORD` and the other libpq variables work as in 
 | `Alt+Up` / `Alt+Down` | upper / lower part of the right frame (editor ↔ results) |
 | `Alt+Left` / `Alt+Right` | previous / next tab (in the results: result sets and Messages; nothing in the tree) |
 | `Ctrl+N` | new query tab |
+| `Ctrl+S` | save the query tab (asks for a file only the first time; *Save SQL file as…* in the File menu) |
 | `Ctrl+D` / `Ctrl+P` | server dashboard / SQL profiler (in the tree) |
 | `Alt+I` | database statistics (on a database row in the tree) |
 | `Ctrl+Space` / `Alt+/` | autocomplete |

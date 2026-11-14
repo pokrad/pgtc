@@ -206,6 +206,7 @@ commands! {
     NewQuery = "new_query", "New query tab";
     OpenFile = "open_file", "Open SQL file";
     SaveFile = "save_file", "Save SQL file";
+    SaveFileAs = "save_file_as", "Save SQL file as";
     ExportDefinition = "export_definition", "Export database definition";
     LoadDefinition = "load_definition", "Load database definition";
     Settings = "settings", "Settings";
@@ -338,6 +339,8 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::Editor, Command::Find, &["Ctrl+F"]),
     (Context::Editor, Command::Complete, &["Ctrl+Space", "Alt+/"]),
     (Context::Editor, Command::Psql, &["F4"]),
+    (Context::Editor, Command::SaveFile, &["Ctrl+S"]),
+    (Context::Results, Command::SaveFile, &["Ctrl+S"]),
     (Context::Editor, Command::TogglePlpgsql, &["Ctrl+P"]),
     (Context::Results, Command::TogglePlpgsql, &["Ctrl+P"]),
     (Context::Results, Command::Psql, &["F4"]),

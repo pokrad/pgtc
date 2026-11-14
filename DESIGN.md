@@ -476,7 +476,7 @@ desktop dependency.
   - New connection…
   - Connect / Disconnect
   - New query
-  - Open SQL file… / Save SQL file…
+  - Open SQL file… / Save SQL file (`Ctrl+S`) / Save SQL file as… (D-064)
   - Export database definition (`.pgdef`)… (D-012)
   - Load database definition (`.pgdef`)… (D-012)
   - Quit
@@ -1243,7 +1243,7 @@ pgtc (binary)
   `Ctrl+C` copies the result set tab-separated with a header row.
 - **File → Open / Save SQL file:** mc-style dialog with a path input and a directory
   listing (directories first, `*.sql` highlighted); Enter opens a directory or picks a
-  file; Save asks before overwriting; files are UTF-8.
+  file; Save asks before overwriting; files are UTF-8. Save / Save as: D-064.
 - **Cancel:** if the server has not reacted after `query.cancel_wait_secs` seconds
   (settings, default **5**), pgtc asks whether to close the tab's connection.
 
@@ -1286,7 +1286,7 @@ pgtc (binary)
 - **Per-tab status bar:** each tab has its own status row, the **last row inside the
   tab's frame**, below a separator line (below the results pane of a query tab;
   D-014): the connection and transaction part on the left, progress and `Ln, Col` on
-  the right, both as labels in the status colour. Each query tab has its own connection (D-011), so the user
+  the right, in one full-width bar in the status colour (D-064). Each query tab has its own connection (D-011), so the user
   sees at a glance where every tab is connected.
   - Query tab: `server · user@database`, or the connection state (*connecting…*,
     *not connected*, *no database — select one in the tree*); *Executing…* /
@@ -1453,7 +1453,8 @@ pgtc (binary)
   database. Disabled on servers, server-level rows (Databases group, roles,
   tablespaces, …) and without a selection. A key for a disabled command only shows a
   hint in the status line.
-- **Save SQL file…:** only when the active tab is a query tab (not the object view).
+- **Save SQL file / Save SQL file as…:** only when the active tab is a query tab (not
+  the object view), D-064.
 - **Edit in new query tab** (`Ctrl+E`, `edit_in_query_tab` in `[editor]` and `[tree]`;
   View menu; context menu): the whole definition shown in the read-only view (the
   default tab — from the tree, the one of the selected object — or an `F3` object tab)
@@ -2024,6 +2025,24 @@ pgtc (binary)
 - **Help → Keyboard shortcuts** is unchanged: every bound key, grouped by context,
   opened at the top (D-014).
 
+### D-064 — Save, Save as, and the file name above the editor
+- **Status:** Accepted (refines D-014, D-041, D-043, D-049)
+- **Save SQL file** (`save_file`, `Ctrl+S` in `[editor]` and `[results]`; File menu):
+  a query tab that has a file (opened from it or saved to it) is written to that file
+  at once — no dialog, no overwrite question; the window status line says *Saved …*.
+  A tab without a file does Save as. In the tree `Ctrl+S` stays quick search.
+- **Save SQL file as…** (`save_file_as`, File menu, no default key): always the file
+  dialog (D-041), opened in the folder of the tab's file with its name filled in (a
+  tab without a file: the dialogs' folder and `query.sql`); asks before overwriting
+  an existing file. Afterwards the tab belongs to the new file.
+- **File name:** a query tab with a file shows its full path in a **file bar**: one
+  full-width row right above the editor, coloured like an inactive tab
+  (`tabs.inactive`); never in the tab label. A path that does not fit is shortened
+  from the left (`…\work\report.sql`). A tab without a file has no bar (the editor
+  gets the row).
+- **Tab status row** (D-043): one full-width bar in the status colour, no gap between
+  its left and right parts.
+
 ---
 
 ## 3. Change log
@@ -2151,3 +2170,4 @@ pgtc (binary)
 | 2026-11-13 | D-062 accepted: database statistics tab — database rows only, `Alt+I` in the tree / context menu, own connection, summary boxes + Group / Statistic / Value list from `pg_stat_database` (version-dependent groups), refresh only on `F5`. |
 | 2026-11-14 | D-019 updated: closing a paused result cancels its statement only when nothing can be lost (no open transaction, first statement of the run) and waits for the cancel request before the next request; otherwise the remaining rows are read and dropped, status *Closing the result…*. D-040 updated: the patched cancel request waits until the server closes the cancel connection (as libpq). D-042 updated. |
 | 2026-11-14 | D-063 accepted: icons removed (D-005 withdrawn, `ui.icons` gone); key-hint bar removed — the bottom row is the window status line in the bar's colour (role `status.window` replaces `fkeybar.*`); `F1` opens *Keys available now* with only the keys that work in the current state, Help → Keyboard shortcuts still lists all keys. D-007, D-009, D-014, D-016, D-018, D-043, D-046, D-047, D-051 updated. |
+| 2026-11-14 | D-064 accepted: Save SQL file (`Ctrl+S` in editor and results) writes to the tab's file without a dialog, else does Save as; new *Save SQL file as…* always asks for the file; the full path of the tab's file is shown in a full-width bar above the editor in the inactive-tab colour (shortened from the left, no bar without a file), not in the tab label; the tab status row (D-043) is one full-width bar too. D-014, D-041, D-049 updated. |
