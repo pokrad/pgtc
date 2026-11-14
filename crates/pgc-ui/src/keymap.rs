@@ -60,8 +60,41 @@ impl Context {
     }
 }
 
+/// Groups of the key lists, in their order (D-065).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Group {
+    General,
+    Actions,
+    File,
+    Moving,
+    Selecting,
+    Editing,
+    Clipboard,
+    Find,
+    Results,
+    Windows,
+}
+
+impl Group {
+    /// Subheading in the key lists.
+    pub fn title(self) -> &'static str {
+        match self {
+            Group::General => "General",
+            Group::Actions => "Actions",
+            Group::File => "File",
+            Group::Moving => "Moving",
+            Group::Selecting => "Selecting",
+            Group::Editing => "Editing",
+            Group::Clipboard => "Clipboard and undo",
+            Group::Find => "Find",
+            Group::Results => "Results",
+            Group::Windows => "Windows and tabs",
+        }
+    }
+}
+
 macro_rules! commands {
-    ($($variant:ident = $name:literal, $desc:literal;)*) => {
+    ($($variant:ident = $name:literal, $desc:literal, $group:ident;)*) => {
         /// Everything the user can trigger by key or menu.
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum Command { $($variant),* }
@@ -78,144 +111,150 @@ macro_rules! commands {
             pub fn description(self) -> &'static str {
                 match self { $(Command::$variant => $desc),* }
             }
+
+            /// Group in the key lists (D-065).
+            pub fn group(self) -> Group {
+                match self { $(Command::$variant => Group::$group),* }
+            }
         }
     };
 }
 
 commands! {
     // global
-    Help = "help", "The keys that work now";
-    Menu = "menu", "Open the menu bar";
-    Quit = "quit", "Quit pgtc";
-    SwitchPanel = "switch_panel", "Switch between the object tree and the right frame";
-    NextTab = "next_tab", "Next tab";
-    PrevTab = "prev_tab", "Previous tab";
-    CloseTab = "close_tab", "Close the tab";
+    Help = "help", "The keys that work now", General;
+    Menu = "menu", "Open the menu bar", General;
+    Quit = "quit", "Quit pgtc", General;
+    SwitchPanel = "switch_panel", "Switch between the object tree and the right frame", Windows;
+    NextTab = "next_tab", "Next tab", Windows;
+    PrevTab = "prev_tab", "Previous tab", Windows;
+    CloseTab = "close_tab", "Close the tab", Windows;
     // direct keys for the frames (D-060)
-    FocusTree = "focus_tree", "Focus the object tree";
-    FocusRight = "focus_right", "Focus the right frame (the part last used)";
-    FocusLower = "focus_lower", "Lower part of the right frame (results, messages, statement pane)";
-    FocusUpper = "focus_upper", "Upper part of the right frame (editor, list)";
+    FocusTree = "focus_tree", "Focus the object tree", Windows;
+    FocusRight = "focus_right", "Focus the right frame (the part last used)", Windows;
+    FocusLower = "focus_lower", "Lower part of the right frame (results, messages, statement pane)", Windows;
+    FocusUpper = "focus_upper", "Upper part of the right frame (editor, list)", Windows;
     // tree
-    ContextMenu = "context_menu", "Context menu";
-    ShowInNewTab = "show_in_new_tab", "Show the object in a new tab";
-    NewFromTemplate = "new_from_template", "Generate SQL from developer template";
-    DropObject = "drop_object", "Delete the saved connection";
-    RefreshTree = "refresh_tree", "Refresh the object tree";
-    ToggleSystemObjects = "toggle_system_objects", "Show / hide system objects";
-    QuickSearch = "quick_search", "Quick search";
+    ContextMenu = "context_menu", "Context menu", Actions;
+    ShowInNewTab = "show_in_new_tab", "Show the object in a new tab", Actions;
+    DropObject = "drop_object", "Delete the saved connection", Actions;
+    RefreshTree = "refresh_tree", "Refresh the object tree", Actions;
+    ToggleSystemObjects = "toggle_system_objects", "Show / hide system objects", Actions;
+    QuickSearch = "quick_search", "Quick search", Find;
     // query tab
-    Execute = "execute", "Execute the selection or the whole script";
-    CancelQuery = "cancel_query", "Cancel the running query";
-    ToggleResults = "toggle_results", "Show / hide the results (statement pane in dashboard / profiler)";
+    Execute = "execute", "Execute the selection or the whole script", Actions;
+    CancelQuery = "cancel_query", "Cancel the running query", Actions;
+    NewFromTemplate = "new_from_template", "Generate SQL from developer template", Actions;
+    ToggleResults = "toggle_results", "Show / hide the results (statement pane in dashboard / profiler)", Results;
     // navigation
-    Up = "up", "Up";
-    Down = "down", "Down";
-    Left = "left", "Left / collapse";
-    Right = "right", "Right / expand";
-    PageUp = "page_up", "Page up";
-    PageDown = "page_down", "Page down";
-    Home = "home", "Start of line / first row";
-    End = "end", "End of line / last row";
-    DocStart = "doc_start", "Start of the text";
-    DocEnd = "doc_end", "End of the text";
+    Up = "up", "Up", Moving;
+    Down = "down", "Down", Moving;
+    Left = "left", "Left / collapse", Moving;
+    Right = "right", "Right / expand", Moving;
+    PageUp = "page_up", "Page up", Moving;
+    PageDown = "page_down", "Page down", Moving;
+    Home = "home", "Start of line / first row", Moving;
+    End = "end", "End of line / last row", Moving;
+    DocStart = "doc_start", "Start of the text", Moving;
+    DocEnd = "doc_end", "End of the text", Moving;
     // editor (D-015, D-038)
-    WordLeft = "word_left", "Word left";
-    WordRight = "word_right", "Word right";
-    SelectLeft = "select_left", "Select left";
-    SelectRight = "select_right", "Select right";
-    SelectUp = "select_up", "Select up";
-    SelectDown = "select_down", "Select down";
-    SelectWordLeft = "select_word_left", "Select word left";
-    SelectWordRight = "select_word_right", "Select word right";
-    SelectHome = "select_home", "Select to start of line";
-    SelectEnd = "select_end", "Select to end of line";
-    SelectPageUp = "select_page_up", "Select page up";
-    SelectPageDown = "select_page_down", "Select page down";
-    SelectDocStart = "select_doc_start", "Select to start of the text";
-    SelectDocEnd = "select_doc_end", "Select to end of the text";
-    SelectAll = "select_all", "Select all";
-    Copy = "copy", "Copy";
-    Cut = "cut", "Cut";
-    Paste = "paste", "Paste";
-    Undo = "undo", "Undo";
-    Redo = "redo", "Redo";
-    Indent = "indent", "Indent";
-    Unindent = "unindent", "Unindent";
-    Newline = "newline", "New line";
-    DeleteWordLeft = "delete_word_left", "Delete word left";
-    DeleteWordRight = "delete_word_right", "Delete word right";
-    Find = "find", "Find / replace";
-    Complete = "complete", "Autocomplete: names and keywords";
-    Psql = "psql_command", "psql-style command line (dt, d, gti, ...)";
-    FindNext = "find_next", "Find next";
-    FindPrev = "find_prev", "Find previous";
+    WordLeft = "word_left", "Word left", Moving;
+    WordRight = "word_right", "Word right", Moving;
+    SelectLeft = "select_left", "Select left", Selecting;
+    SelectRight = "select_right", "Select right", Selecting;
+    SelectUp = "select_up", "Select up", Selecting;
+    SelectDown = "select_down", "Select down", Selecting;
+    SelectWordLeft = "select_word_left", "Select word left", Selecting;
+    SelectWordRight = "select_word_right", "Select word right", Selecting;
+    SelectHome = "select_home", "Select to start of line", Selecting;
+    SelectEnd = "select_end", "Select to end of line", Selecting;
+    SelectPageUp = "select_page_up", "Select page up", Selecting;
+    SelectPageDown = "select_page_down", "Select page down", Selecting;
+    SelectDocStart = "select_doc_start", "Select to start of the text", Selecting;
+    SelectDocEnd = "select_doc_end", "Select to end of the text", Selecting;
+    SelectAll = "select_all", "Select all", Selecting;
+    Copy = "copy", "Copy", Clipboard;
+    Cut = "cut", "Cut", Clipboard;
+    Paste = "paste", "Paste", Clipboard;
+    Undo = "undo", "Undo", Clipboard;
+    Redo = "redo", "Redo", Clipboard;
+    Indent = "indent", "Indent", Editing;
+    Unindent = "unindent", "Unindent", Editing;
+    Newline = "newline", "New line", Editing;
+    DeleteWordLeft = "delete_word_left", "Delete word left", Editing;
+    DeleteWordRight = "delete_word_right", "Delete word right", Editing;
+    DeleteLine = "delete_line", "Delete the line (the selected lines)", Editing;
+    Find = "find", "Find / replace", Find;
+    Complete = "complete", "Autocomplete: names and keywords", Actions;
+    Psql = "psql_command", "psql-style command line (dt, d, gti, ...)", Actions;
+    FindNext = "find_next", "Find next", Find;
+    FindPrev = "find_prev", "Find previous", Find;
     // query tab (D-019, D-020, D-041)
-    FetchAll = "fetch_all", "Fetch all rows";
-    ExportResult = "export_result", "Export the result";
-    Commit = "commit", "Commit";
-    Rollback = "rollback", "Rollback";
-    ToggleAutoCommit = "toggle_auto_commit", "Auto commit on / off";
-    ToggleAutoRollback = "toggle_auto_rollback", "Auto rollback on error on / off";
-    TogglePlpgsql = "toggle_plpgsql", "PL/pgSQL mode on / off";
-    EditInQueryTab = "edit_in_query_tab", "Edit the shown definition (or statement) in a new query tab";
-    FindObject = "find_object", "Find an object below the selected tree row";
-    SelectTopRows = "select_top_rows", "Select the top 100 rows of the table or view in a new query tab";
-    ShowMessages = "show_messages", "Switch between results and messages";
-    NextResult = "next_result", "Next result set";
-    PrevResult = "prev_result", "Previous result set";
-    NextResultTab = "next_result_tab", "Next result set, then Messages";
-    PrevResultTab = "prev_result_tab", "Previous result set or Messages";
-    ResultsSmaller = "results_smaller", "Make the results (statement pane) smaller";
-    ResultsLarger = "results_larger", "Make the results (statement pane) larger";
+    FetchAll = "fetch_all", "Fetch all rows", Results;
+    ExportResult = "export_result", "Export the result", Results;
+    Commit = "commit", "Commit", Actions;
+    Rollback = "rollback", "Rollback", Actions;
+    ToggleAutoCommit = "toggle_auto_commit", "Auto commit on / off", Actions;
+    ToggleAutoRollback = "toggle_auto_rollback", "Auto rollback on error on / off", Actions;
+    TogglePlpgsql = "toggle_plpgsql", "PL/pgSQL mode on / off", Actions;
+    EditInQueryTab = "edit_in_query_tab", "Edit the shown definition (or statement) in a new query tab", Actions;
+    FindObject = "find_object", "Find an object below the selected tree row", Find;
+    SelectTopRows = "select_top_rows", "Select the top 100 rows of the table or view in a new query tab", Actions;
+    ShowMessages = "show_messages", "Switch between results and messages", Results;
+    NextResult = "next_result", "Next result set", Results;
+    PrevResult = "prev_result", "Previous result set", Results;
+    NextResultTab = "next_result_tab", "Next result set, then Messages", Results;
+    PrevResultTab = "prev_result_tab", "Previous result set or Messages", Results;
+    ResultsSmaller = "results_smaller", "Make the results (statement pane) smaller", Results;
+    ResultsLarger = "results_larger", "Make the results (statement pane) larger", Results;
     // server dashboard (D-057)
-    Dashboard = "dashboard", "Server dashboard of the selected server or database";
-    DashboardRefresh = "dashboard_refresh", "Refresh the dashboard now (connects again when needed)";
-    DashboardPause = "dashboard_pause", "Pause / resume the dashboard refresh";
-    DashboardInterval = "dashboard_interval", "Dashboard refresh interval (1, 2, 5, 10, 30 s)";
-    HideIdleSessions = "hide_idle_sessions", "Hide / show idle sessions";
-    NextList = "next_list", "Next dashboard list";
-    PrevList = "prev_list", "Previous dashboard list";
-    CancelBackend = "cancel_backend", "Cancel the query of the selected session";
-    TerminateBackend = "terminate_backend", "Terminate the selected session";
-    ShowRow = "show_row", "Show the whole row (full query text)";
+    Dashboard = "dashboard", "Server dashboard of the selected server or database", Actions;
+    DashboardRefresh = "dashboard_refresh", "Refresh the dashboard now (connects again when needed)", Actions;
+    DashboardPause = "dashboard_pause", "Pause / resume the dashboard refresh", Actions;
+    DashboardInterval = "dashboard_interval", "Dashboard refresh interval (1, 2, 5, 10, 30 s)", Actions;
+    HideIdleSessions = "hide_idle_sessions", "Hide / show idle sessions", Actions;
+    NextList = "next_list", "Next dashboard list", Moving;
+    PrevList = "prev_list", "Previous dashboard list", Moving;
+    CancelBackend = "cancel_backend", "Cancel the query of the selected session", Actions;
+    TerminateBackend = "terminate_backend", "Terminate the selected session", Actions;
+    ShowRow = "show_row", "Show the whole row (full query text)", Actions;
     // SQL profiler (D-058)
-    SqlProfiler = "sql_profiler", "SQL profiler: every statement on the server";
-    ProfilerStartStop = "profiler_start_stop", "Start / stop the profiler";
-    ProfilerPause = "profiler_pause", "Pause / resume reading the server log";
-    ProfilerFilter = "profiler_filter", "Filter the profiler entries";
-    ProfilerClear = "profiler_clear", "Clear the profiler entries";
+    SqlProfiler = "sql_profiler", "SQL profiler: every statement on the server", Actions;
+    ProfilerStartStop = "profiler_start_stop", "Start / stop the profiler", Actions;
+    ProfilerPause = "profiler_pause", "Pause / resume reading the server log", Actions;
+    ProfilerFilter = "profiler_filter", "Filter the profiler entries", Actions;
+    ProfilerClear = "profiler_clear", "Clear the profiler entries", Actions;
     // database statistics (D-062)
-    DbStats = "db_stats", "Statistics of the selected database";
-    DbStatsRefresh = "db_stats_refresh", "Read the database statistics again (connects again when needed)";
+    DbStats = "db_stats", "Statistics of the selected database", Actions;
+    DbStatsRefresh = "db_stats_refresh", "Read the database statistics again (connects again when needed)", Actions;
     // dialogs and menus
-    NextField = "next_field", "Next field";
-    PrevField = "prev_field", "Previous field";
-    Accept = "accept", "Open / choose / OK";
-    DialogOk = "dialog_ok", "OK from any field (where the terminal reports Ctrl+Enter)";
-    Cancel = "cancel", "Cancel / close";
-    Toggle = "toggle", "Toggle the checkbox";
-    Backspace = "backspace", "Delete left";
-    Delete = "delete", "Delete right";
+    NextField = "next_field", "Next field", Moving;
+    PrevField = "prev_field", "Previous field", Moving;
+    Accept = "accept", "Open / choose / OK", Actions;
+    DialogOk = "dialog_ok", "OK from any field (where the terminal reports Ctrl+Enter)", Actions;
+    Cancel = "cancel", "Cancel / close", Actions;
+    Toggle = "toggle", "Toggle the checkbox", Actions;
+    Backspace = "backspace", "Delete left", Editing;
+    Delete = "delete", "Delete right", Editing;
     // menu commands (no default key)
-    NewConnection = "new_connection", "New connection";
-    EditConnection = "edit_connection", "Edit the connection";
-    DeleteConnection = "delete_connection", "Delete the connection";
-    Connect = "connect", "Connect";
-    Disconnect = "disconnect", "Disconnect";
-    NewQuery = "new_query", "New query tab";
-    OpenFile = "open_file", "Open SQL file";
-    SaveFile = "save_file", "Save SQL file";
-    SaveFileAs = "save_file_as", "Save SQL file as";
-    ExportDefinition = "export_definition", "Export database definition";
-    LoadDefinition = "load_definition", "Load database definition";
-    Settings = "settings", "Settings";
-    RunSetup = "run_setup", "Run setup";
-    InstallTemplates = "install_templates", "Install templates";
-    ShowTemplatesFolder = "show_templates_folder", "Show templates folder";
-    KeyboardShortcuts = "keyboard_shortcuts", "All keyboard shortcuts";
-    ThirdPartyLicences = "third_party_licences", "Third-party licences";
-    About = "about", "About pgtc";
+    NewConnection = "new_connection", "New connection", General;
+    EditConnection = "edit_connection", "Edit the connection", General;
+    DeleteConnection = "delete_connection", "Delete the connection", General;
+    Connect = "connect", "Connect", General;
+    Disconnect = "disconnect", "Disconnect", General;
+    NewQuery = "new_query", "New query tab", File;
+    OpenFile = "open_file", "Open SQL file", File;
+    SaveFile = "save_file", "Save SQL file", File;
+    SaveFileAs = "save_file_as", "Save SQL file as", File;
+    ExportDefinition = "export_definition", "Export database definition", File;
+    LoadDefinition = "load_definition", "Load database definition", File;
+    Settings = "settings", "Settings", General;
+    RunSetup = "run_setup", "Run setup", General;
+    InstallTemplates = "install_templates", "Install templates", General;
+    ShowTemplatesFolder = "show_templates_folder", "Show templates folder", General;
+    KeyboardShortcuts = "keyboard_shortcuts", "All keyboard shortcuts", General;
+    ThirdPartyLicences = "third_party_licences", "Third-party licences", General;
+    About = "about", "About pgtc", General;
 }
 
 impl Command {
@@ -324,7 +363,12 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::Editor, Command::Cut, &["Ctrl+X", "Shift+Delete"]),
     (Context::Editor, Command::Paste, &["Ctrl+V", "Shift+Insert"]),
     (Context::Editor, Command::Undo, &["Ctrl+Z"]),
-    (Context::Editor, Command::Redo, &["Ctrl+Y", "Ctrl+Shift+Z"]),
+    (
+        Context::Editor,
+        Command::Redo,
+        &["Ctrl+Shift+Z", "Alt+Shift+Z"],
+    ),
+    (Context::Editor, Command::DeleteLine, &["Ctrl+Y"]),
     (Context::Editor, Command::Indent, &["Tab"]),
     (Context::Editor, Command::Unindent, &["Shift+Tab"]),
     (Context::Editor, Command::Newline, &["Enter"]),

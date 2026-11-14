@@ -209,6 +209,7 @@ pub(super) fn editor_action(cmd: Command) -> Option<Action> {
         Command::Delete => Action::Delete,
         Command::DeleteWordLeft => Action::DeleteWordLeft,
         Command::DeleteWordRight => Action::DeleteWordRight,
+        Command::DeleteLine => Action::DeleteLine,
         _ => return None,
     })
 }

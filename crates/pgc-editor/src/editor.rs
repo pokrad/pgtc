@@ -40,6 +40,8 @@ pub enum Action {
     Delete,
     DeleteWordLeft,
     DeleteWordRight,
+    /// The cursor line, or every line the selection touches (D-065).
+    DeleteLine,
     Indent,
     Unindent,
     SelectAll,
@@ -423,6 +425,7 @@ impl Editor {
                     self.edit_group(|ed| ed.replace(start, end, ""));
                 }
             }
+            Action::DeleteLine => self.delete_lines(),
             Action::Indent => self.indent(),
             Action::Unindent => self.unindent(),
             Action::Undo => self.undo(),
@@ -703,6 +706,28 @@ impl Editor {
     fn select_lines(&mut self, first: usize, last: usize) {
         self.anchor = Some(self.rope.line_to_char(first));
         self.cursor = self.rope.line_to_char(last) + trim_newline(self.rope.line(last)).len_chars();
+    }
+
+    /// Ctrl+Y: deletes the selected lines or the cursor line; the cursor keeps its
+    /// column on the line that takes their place (D-065).
+    fn delete_lines(&mut self) {
+        let (first, last) = self.selected_lines();
+        let col = self.display_col(self.rope.char_to_line(self.cursor), self.cursor);
+        let lines = self.rope.len_lines();
+        let mut start = self.rope.line_to_char(first);
+        let end = if last + 1 < lines {
+            self.rope.line_to_char(last + 1)
+        } else {
+            // the last line: the line break before it goes too
+            start = start.saturating_sub(usize::from(first > 0));
+            self.rope.len_chars()
+        };
+        self.edit_group(|ed| ed.replace(start, end, ""));
+        let line = first.min(self.rope.len_lines() - 1);
+        self.cursor = self.pos_at_col(line, col);
+        if let Some(g) = self.undo.last_mut() {
+            g.after = (self.cursor, None);
+        }
     }
 
     /// Tab: a tab character, or indent all selected lines (D-038).
@@ -1023,6 +1048,68 @@ mod tests {
         e.apply(Action::Redo);
         e.apply(Action::Redo);
         assert_eq!(e.text(), "select 1");
+    }
+
+    #[test]
+    fn ctrl_y_deletes_lines() {
+        // the cursor line; the cursor keeps its column on the next line
+        let mut e = ed("one
+two
+three");
+        e.set_cursor(6, false); // "tw|o"
+        e.apply(Action::DeleteLine);
+        assert_eq!(
+            e.text(),
+            "one
+three"
+        );
+        assert_eq!(e.cursor_line_col(), (1, 2));
+        // one undo step, back where it was
+        e.apply(Action::Undo);
+        assert_eq!(
+            e.text(),
+            "one
+two
+three"
+        );
+        e.apply(Action::Redo);
+        assert_eq!(
+            e.text(),
+            "one
+three"
+        );
+        // the last line takes the line break before it
+        e.apply(Action::Move(Motion::DocEnd, false));
+        e.apply(Action::DeleteLine);
+        assert_eq!(e.text(), "one");
+        assert_eq!(e.cursor_line_col(), (0, 3));
+        // the only line: empty text
+        e.apply(Action::DeleteLine);
+        assert_eq!(e.text(), "");
+        // a selection: every line it touches
+        let mut e = ed("a
+b
+c
+d");
+        e.set_cursor(2, false);
+        e.set_cursor(5, true); // "b" .. "c|"
+        e.apply(Action::DeleteLine);
+        assert_eq!(
+            e.text(),
+            "a
+d"
+        );
+        // nothing in a read-only view
+        let mut e = Editor::new(
+            "x
+y", true, 4,
+        );
+        assert!(!e.apply(Action::DeleteLine));
+        assert_eq!(
+            e.text(),
+            "x
+y"
+        );
     }
 
     #[test]

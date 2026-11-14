@@ -640,9 +640,34 @@ fn f1_lists_only_the_keys_that_work_now() {
     assert!(t.starts_with("Query editor\n"), "{t}");
     assert!(
         t.lines()
-            .any(|l| l.starts_with("  F5 ") && l.contains("Execute"))
+            .any(|l| l.starts_with("    F5 ") && l.contains("Execute"))
     );
     assert!(t.contains("Ctrl+V, Shift+Insert"), "{t}");
+    // in groups (D-065): actions first, the file, then moving and editing
+    let pos = |s: &str| t.find(s).unwrap_or_else(|| panic!("{s}: {t}"));
+    assert!(
+        pos("  Actions
+") < pos("  File
+"),
+        "{t}"
+    );
+    assert!(
+        pos("  File
+") < pos("  Moving
+"),
+        "{t}"
+    );
+    assert!(
+        pos("Save SQL file")
+            < pos("  Moving
+"),
+        "{t}"
+    );
+    assert!(
+        pos("  Editing
+") < pos("Delete the line"),
+        "{t}"
+    );
     assert!(!t.contains("Cancel the running query"), "{t}");
     assert!(!t.contains("Fetch all rows"), "{t}");
     assert!(t.contains("Close the tab"), "{t}");
@@ -732,8 +757,8 @@ fn help_menu_shortcuts_licences_about() {
     assert_eq!(a.dialogs[0].title, "Keyboard shortcuts");
     assert_eq!(a.dialogs[0].text_offset("text"), Some(0));
     let screen = screen_text(&a);
-    assert!(screen.contains("Object tree"), "{screen}");
-    assert!(screen.contains("Refresh the object tree"), "{screen}");
+    assert!(screen.contains("Everywhere"), "{screen}");
+    assert!(screen.contains("Open the menu bar"), "{screen}");
     key(&mut a, "Down");
     assert_eq!(a.dialogs[0].text_offset("text"), Some(1));
     a.dialogs.clear();

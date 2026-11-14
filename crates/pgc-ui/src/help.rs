@@ -4,7 +4,7 @@
 
 use crate::app::App;
 use crate::dialog::{Dialog, DialogKind, Widget};
-use crate::keymap::{Command, Context, Keymap};
+use crate::keymap::{Command, Context, Group, Keymap};
 use crate::keys::KeyCombo;
 
 /// Licence text of the pgAdmin SQL templates (D-010).
@@ -73,8 +73,28 @@ impl Lines {
     }
 }
 
-/// Rows of one section of a keys window: the key(s) and what they do.
-pub(crate) type KeyRows = Vec<(String, &'static str)>;
+/// Rows of one section of a keys window: the key(s), what they do, and the group
+/// (D-065).
+pub(crate) type KeyRows = Vec<(String, &'static str, Group)>;
+
+/// A section with more rows than this (and more than one group) shows the group names
+/// as subheadings (D-065).
+const SUBHEADINGS_FROM: usize = 8;
+
+/// Key rows of the commands, group by group (D-065); `keys` gives
+/// the keys shown for a command (none: left out).
+pub(crate) fn command_rows(keys: impl Fn(Command) -> Vec<KeyCombo>) -> KeyRows {
+    let mut rows: KeyRows = Command::ALL
+        .iter()
+        .filter_map(|&cmd| {
+            let k = keys(cmd);
+            (!k.is_empty()).then(|| (key_names(&k), cmd.description(), cmd.group()))
+        })
+        .collect();
+    // stable: the table's order inside a group
+    rows.sort_by_key(|r| r.2);
+    rows
+}
 
 /// Keys that are not commands of the keymap.
 pub(crate) const ESC_DIGIT: (&str, &str) = (
@@ -96,7 +116,7 @@ pub(crate) fn key_sections(sections: &[(&str, KeyRows)]) -> Lines {
     let width = sections
         .iter()
         .flat_map(|(_, rows)| rows)
-        .map(|(k, _)| k.chars().count())
+        .map(|(k, _, _)| k.chars().count())
         .max()
         .unwrap_or(0)
         .min(24);
@@ -109,8 +129,15 @@ pub(crate) fn key_sections(sections: &[(&str, KeyRows)]) -> Lines {
             out.push(String::new(), false);
         }
         out.push((*title).to_owned(), true);
-        for (keys, desc) in rows {
-            out.push(format!("  {keys:<width$}  {desc}"), false);
+        let sub = rows.len() > SUBHEADINGS_FROM && rows.iter().any(|r| r.2 != rows[0].2);
+        let mut group = None;
+        for (keys, desc, g) in rows {
+            if sub && group != Some(*g) {
+                out.push(format!("  {}", g.title()), true);
+                group = Some(*g);
+            }
+            let indent = if sub { "    " } else { "  " };
+            out.push(format!("{indent}{keys:<width$}  {desc}"), false);
         }
     }
     out
@@ -120,20 +147,11 @@ pub(crate) fn key_sections(sections: &[(&str, KeyRows)]) -> Lines {
 pub fn shortcut_lines(km: &Keymap, keymap_file: &str) -> Lines {
     let mut sections: Vec<(&str, KeyRows)> = SECTIONS
         .iter()
-        .map(|&(ctx, title)| {
-            let rows = Command::ALL
-                .iter()
-                .filter_map(|&cmd| {
-                    let keys = km.keys_for(ctx, cmd);
-                    (!keys.is_empty()).then(|| (key_names(&keys), cmd.description()))
-                })
-                .collect();
-            (title, rows)
-        })
+        .map(|&(ctx, title)| (title, command_rows(|cmd| km.keys_for(ctx, cmd))))
         .collect();
     let other = [ESC_DIGIT, MENU_LETTER, FIELD_LETTER]
         .iter()
-        .map(|&(k, d)| (k.to_owned(), d))
+        .map(|&(k, d)| (k.to_owned(), d, Group::General))
         .collect();
     sections.push(("Other keys", other));
     let mut out = key_sections(&sections);
@@ -268,14 +286,33 @@ mod tests {
         let text = l.lines.join("\n");
         assert!(text.contains("Everywhere\n"), "{text}");
         assert!(
-            l.lines.iter().any(|r| r.starts_with("  F5 ")
+            l.lines.iter().any(|r| r.starts_with("    F5 ")
                 && r.ends_with("Execute the selection or the whole script")),
             "{text}"
         );
         assert!(text.contains("Ctrl+C, Ctrl+Insert"));
         let tree = l.lines.iter().position(|x| x == "Object tree").unwrap();
         assert!(l.headers[tree]);
-        assert_eq!(l.headers.iter().filter(|h| **h).count(), 11);
+        // 8 contexts, Other keys, If a key does not work, Keys are changed in
+        let top = l
+            .lines
+            .iter()
+            .zip(&l.headers)
+            .filter(|(t, h)| **h && !t.starts_with(' '))
+            .count();
+        assert_eq!(top, 11, "{text}");
+        // larger sections in groups with subheadings, in the groups' order (D-065)
+        let at = |s: &str| l.lines.iter().skip(tree).position(|x| x == s).unwrap();
+        assert!(at("  Actions") < at("  Moving"), "{text}");
+        assert!(at("  Moving") < at("  Editing"), "{text}");
+        assert!(
+            l.lines.iter().any(|r| r.starts_with("    Ctrl+Y ")
+                && r.ends_with("Delete the line (the selected lines)"))
+        );
+        assert!(text.contains("Alt+Shift+Z, Ctrl+Shift+Z"), "{text}");
+        // small sections are only ordered: Other keys has no subheadings
+        let other = l.lines.iter().position(|x| x == "Other keys").unwrap();
+        assert!(l.lines[other + 1].starts_with("  Esc, digit"), "{text}");
         assert!(text.ends_with("  keymap.toml"));
         assert!(
             text.contains(

@@ -34,15 +34,14 @@ impl App {
         // the keys of `section` that reach their command now (a context key hides
         // the global one) and whose command can run
         let rows = |section: Context| -> KeyRows {
-            Command::ALL
-                .iter()
-                .filter_map(|&cmd| {
-                    let mut keys = self.keymap.keys_for(section, cmd);
-                    keys.retain(|k| self.command_for(*k) == Some(cmd));
-                    (!keys.is_empty() && self.key_works(cmd))
-                        .then(|| (help::key_names(&keys), cmd.description()))
-                })
-                .collect()
+            help::command_rows(|cmd| {
+                if !self.key_works(cmd) {
+                    return Vec::new();
+                }
+                let mut keys = self.keymap.keys_for(section, cmd);
+                keys.retain(|k| self.command_for(*k) == Some(cmd));
+                keys
+            })
         };
         let global = if ctx == Context::Global {
             KeyRows::new()
@@ -56,7 +55,7 @@ impl App {
         };
         let other = [help::ESC_DIGIT, letter]
             .iter()
-            .map(|&(k, d)| (k.to_owned(), d))
+            .map(|&(k, d)| (k.to_owned(), d, crate::keymap::Group::General))
             .collect();
         let mut lines = help::key_sections(&[
             (self.frame_name(ctx), rows(ctx)),
@@ -152,7 +151,8 @@ impl App {
             | C::Backspace
             | C::Delete
             | C::DeleteWordLeft
-            | C::DeleteWordRight => editable,
+            | C::DeleteWordRight
+            | C::DeleteLine => editable,
             C::Complete => in_view && self.query().is_some(),
             C::ResultsSmaller | C::ResultsLarger if !self.list_tab() => {
                 self.query().is_some_and(|q| q.results_visible)

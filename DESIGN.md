@@ -1178,9 +1178,10 @@ pgtc (binary)
 - **Keys** (`[editor]`, configurable): arrows, `Ctrl+Left/Right` word, `Home` (first
   non-blank, then column 1) / `End`, `PgUp` / `PgDn`, `Ctrl+Home` / `Ctrl+End`; `Shift`
   + any of these selects; `Ctrl+A` select all; `Ctrl+C` / `Ctrl+Insert` copy, `Ctrl+X` /
-  `Shift+Delete` cut, `Ctrl+V` / `Shift+Insert` paste; `Ctrl+Z` undo, `Ctrl+Y` /
-  `Ctrl+Shift+Z` redo; `Ctrl+Backspace` / `Ctrl+Delete` delete word. Mouse: click places
-  the cursor, drag selects, wheel scrolls.
+  `Shift+Delete` cut, `Ctrl+V` / `Shift+Insert` paste; `Ctrl+Z` undo, `Ctrl+Shift+Z` /
+  `Alt+Shift+Z` redo; `Ctrl+Y` delete the line (D-065); `Ctrl+Backspace` /
+  `Ctrl+Delete` delete word. Mouse: click places the cursor, drag selects, wheel
+  scrolls.
 - **Syntax colours:** `[editor]` roles in the colour schemes (text, keyword, string,
   number, comment, quoted identifier, operator, selection, line number); mc-like
   defaults in all four built-in schemes.
@@ -1619,7 +1620,7 @@ pgtc (binary)
   exit and on panic. Other terminals and Windows are unchanged.
 - **Second keys** (configurable): select to start / end of text also `Alt+Shift+Home` /
   `Alt+Shift+End`; previous / next result set also `Alt+PgUp` / `Alt+PgDn`; find
-  previous also `Alt+F3`. Existing alternatives: `F6` (switch panel), `Ctrl+Y` (redo),
+  previous also `Alt+F3`. Existing alternatives: `F6` (switch panel), `Alt+Shift+Z` (redo, D-065),
   `Alt+/` (autocomplete), mouse drag (results size), `Esc` + digit (F-keys). *Select a
   page* and *delete word left* get no second key.
 - **Query menu:** also *Next result set* / *Previous result set* (enabled with more than
@@ -2043,6 +2044,22 @@ pgtc (binary)
 - **Tab status row** (D-043): one full-width bar in the status colour, no gap between
   its left and right parts.
 
+
+### D-065 — Key lists in groups; `Ctrl+Y` deletes the line
+- **Status:** Accepted (refines D-015, D-016, D-053, D-063)
+- **Groups:** every command belongs to one group, set with it in the `commands!` table
+  (`keymap.rs`), so a new command cannot land in a random place. Order: *General*,
+  *Actions*, *File*, *Moving*, *Selecting*, *Editing*, *Clipboard and undo*, *Find*,
+  *Results*, *Windows and tabs*. Inside a group the commands keep the table's order.
+- **`F1` and Help → Keyboard shortcuts:** each frame's keys are listed group by group;
+  a section with more than 8 keys and more than one group shows the group names as
+  subheadings (indented under the frame's name), smaller sections are only ordered.
+- **Delete line** (`delete_line`, `Ctrl+Y` in `[editor]`): deletes the cursor's line,
+  with a selection every line the selection touches; one undo step; the clipboard is
+  not touched (as mc); nothing in read-only views.
+- **Redo:** `Ctrl+Shift+Z` and **`Alt+Shift+Z`** (works in terminals that send
+  `Ctrl+Shift+Z` as `Ctrl+Z`); `Ctrl+Y` is no longer redo.
+
 ---
 
 ## 3. Change log
@@ -2171,3 +2188,4 @@ pgtc (binary)
 | 2026-11-14 | D-019 updated: closing a paused result cancels its statement only when nothing can be lost (no open transaction, first statement of the run) and waits for the cancel request before the next request; otherwise the remaining rows are read and dropped, status *Closing the result…*. D-040 updated: the patched cancel request waits until the server closes the cancel connection (as libpq). D-042 updated. |
 | 2026-11-14 | D-063 accepted: icons removed (D-005 withdrawn, `ui.icons` gone); key-hint bar removed — the bottom row is the window status line in the bar's colour (role `status.window` replaces `fkeybar.*`); `F1` opens *Keys available now* with only the keys that work in the current state, Help → Keyboard shortcuts still lists all keys. D-007, D-009, D-014, D-016, D-018, D-043, D-046, D-047, D-051 updated. |
 | 2026-11-14 | D-064 accepted: Save SQL file (`Ctrl+S` in editor and results) writes to the tab's file without a dialog, else does Save as; new *Save SQL file as…* always asks for the file; the full path of the tab's file is shown in a full-width bar above the editor in the inactive-tab colour (shortened from the left, no bar without a file), not in the tab label; the tab status row (D-043) is one full-width bar too. D-014, D-041, D-049 updated. |
+| 2026-11-14 | D-065 accepted: commands in groups (General, Actions, File, Moving, Selecting, Editing, Clipboard and undo, Find, Results, Windows and tabs) — `F1` and Help → Keyboard shortcuts list the keys group by group, with subheadings in larger sections; `Ctrl+Y` deletes the line (or the selected lines), redo is `Ctrl+Shift+Z` / `Alt+Shift+Z`. D-015, D-053 updated. |

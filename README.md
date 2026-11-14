@@ -91,6 +91,7 @@ file; `PGHOST`, `PGUSER`, `PGPASSWORD` and the other libpq variables work as in 
 | `Ctrl+D` / `Ctrl+P` | server dashboard / SQL profiler (in the tree) |
 | `Alt+I` | database statistics (on a database row in the tree) |
 | `Ctrl+Space` / `Alt+/` | autocomplete |
+| `Ctrl+Y` | delete the line in the editor (redo is `Ctrl+Shift+Z` / `Alt+Shift+Z`) |
 
 `Esc` followed by a digit works as an F-key in terminals that do not pass F-keys
 through. Alt+arrows also work from PuTTY in its default setting (Alt sent as an `Esc`
