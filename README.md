@@ -2,8 +2,9 @@
 
 A PostgreSQL administration and query tool that runs entirely in the terminal —
 locally or over SSH, on Linux, Windows and macOS. It looks and feels like
-[Midnight Commander](https://midnight-commander.org/): an object tree on the left,
-tabs with SQL on the right, function keys, menus and dialogs.
+[Midnight Commander](https://midnight-commander.org/), and thinks like
+[pgAdmin](https://www.pgadmin.org/) — on a good day: an object tree on the left, tabs
+with SQL on the right, function keys, menus and dialogs.
 
 ![Query tab with results](docs/screenshots/query.svg)
 
