@@ -807,13 +807,13 @@ pgtc (binary)
   ```
   - Editor at the top, **results pane** below, with a resizable split. The split is
     resized with the keys or by **dragging the results bar with the mouse**. The
-    results bar is a row of labels (`Results │ Messages (n) │ 1: …`, the active one
+    results bar is a row of labels (`Messages (n) │ 1: …  2: …`, D-066; the active one
     highlighted) between two single separator lines; the line above it is the drag
     handle (D-014).
-  - Results pane has two tabs: **Results** and **Messages**.
+  - Results pane: **Messages** first, then one tab per result set (D-066).
 - **Multiple result sets:**
   - Each statement returning rows produces one result set.
-  - Shown as **numbered sub-tabs inside Results**:
+  - Shown as **numbered tabs** after Messages (D-066):
     `[1: customers 120 rows] [2: orders 1,000+] [3: ...]` — one grid at a time, using the
     full height of the pane. The label shows the row count (`1,000+` while more rows are
     available, D-019 batches).
@@ -2060,6 +2060,23 @@ pgtc (binary)
 - **Redo:** `Ctrl+Shift+Z` and **`Alt+Shift+Z`** (works in terminals that send
   `Ctrl+Shift+Z` as `Ctrl+Z`); `Ctrl+Y` is no longer redo.
 
+
+### D-066 — Results bar: Messages, then the result sets
+- **Status:** Accepted (changes D-019, D-041, D-060)
+- **Tabs:** the results bar of a query tab has **`Messages (n)` first, always at the
+  same place**, followed by **one tab per result set** (`1: …`, `2: …`); there is no
+  separate *Results* tab and the result-set tabs never disappear when Messages is
+  selected. Without a result set
+  (new tab, connecting, a run without rows) only *Messages* is there and shown —
+  *Connecting…*, *Connected to …* as today.
+- **After a run:** the first result set is shown as soon as it arrives; a run without
+  any result set ends on Messages. On an error the Messages tab is shown (D-019); the
+  result sets of the statements before stay as tabs.
+- **Keys:** `Alt+Left` / `Alt+Right` in the results (D-060) go through the tabs in
+  this order (Messages first); `Ctrl+PgUp` / `Ctrl+PgDn` (D-053) through the result
+  sets; `Alt+M` switches between the shown result set and Messages; a click selects a
+  tab.
+
 ---
 
 ## 3. Change log
@@ -2189,3 +2206,4 @@ pgtc (binary)
 | 2026-11-14 | D-063 accepted: icons removed (D-005 withdrawn, `ui.icons` gone); key-hint bar removed — the bottom row is the window status line in the bar's colour (role `status.window` replaces `fkeybar.*`); `F1` opens *Keys available now* with only the keys that work in the current state, Help → Keyboard shortcuts still lists all keys. D-007, D-009, D-014, D-016, D-018, D-043, D-046, D-047, D-051 updated. |
 | 2026-11-14 | D-064 accepted: Save SQL file (`Ctrl+S` in editor and results) writes to the tab's file without a dialog, else does Save as; new *Save SQL file as…* always asks for the file; the full path of the tab's file is shown in a full-width bar above the editor in the inactive-tab colour (shortened from the left, no bar without a file), not in the tab label; the tab status row (D-043) is one full-width bar too. D-014, D-041, D-049 updated. |
 | 2026-11-14 | D-065 accepted: commands in groups (General, Actions, File, Moving, Selecting, Editing, Clipboard and undo, Find, Results, Windows and tabs) — `F1` and Help → Keyboard shortcuts list the keys group by group, with subheadings in larger sections; `Ctrl+Y` deletes the line (or the selected lines), redo is `Ctrl+Shift+Z` / `Alt+Shift+Z`. D-015, D-053 updated. |
+| 2026-11-14 | D-066 accepted: results bar with *Messages* first at a fixed place, then one tab per result set (no *Results* tab, result tabs stay visible on Messages); only *Messages* without a result set; a run shows its first result set, a run without one ends on Messages, an error shows Messages. D-019, D-041 updated. |

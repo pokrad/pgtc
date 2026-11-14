@@ -721,42 +721,33 @@
 <text x="1062" y="375.25" fill="#6272a4">─</text>
 <text x="1071" y="375.25" fill="#6272a4">╢</text>
 <rect x="0" y="380" width="369.5" height="19.5" fill="#282a36"/>
-<rect x="369" y="380" width="81.5" height="19.5" fill="#6272a4"/>
-<rect x="450" y="380" width="9.5" height="19.5" fill="#21222c"/>
-<rect x="459" y="380" width="126.5" height="19.5" fill="#44475a"/>
-<rect x="585" y="380" width="27.5" height="19.5" fill="#21222c"/>
-<rect x="612" y="380" width="99.5" height="19.5" fill="#6272a4"/>
-<rect x="711" y="380" width="360.5" height="19.5" fill="#21222c"/>
+<rect x="369" y="380" width="126.5" height="19.5" fill="#44475a"/>
+<rect x="495" y="380" width="27.5" height="19.5" fill="#21222c"/>
+<rect x="522" y="380" width="99.5" height="19.5" fill="#6272a4"/>
+<rect x="621" y="380" width="450.5" height="19.5" fill="#21222c"/>
 <rect x="1071" y="380" width="9.5" height="19.5" fill="#282a36"/>
 <text x="0" y="394.25" fill="#6272a4">║</text>
 <text x="351" y="394.25" fill="#6272a4">║</text>
 <text x="360" y="394.25" fill="#6272a4">║</text>
-<text x="378" y="394.25" fill="#f8f8f2">R</text>
+<text x="378" y="394.25" fill="#f8f8f2">M</text>
 <text x="387" y="394.25" fill="#f8f8f2">e</text>
 <text x="396" y="394.25" fill="#f8f8f2">s</text>
-<text x="405" y="394.25" fill="#f8f8f2">u</text>
-<text x="414" y="394.25" fill="#f8f8f2">l</text>
-<text x="423" y="394.25" fill="#f8f8f2">t</text>
-<text x="432" y="394.25" fill="#f8f8f2">s</text>
-<text x="468" y="394.25" fill="#f8f8f2">M</text>
-<text x="477" y="394.25" fill="#f8f8f2">e</text>
-<text x="486" y="394.25" fill="#f8f8f2">s</text>
-<text x="495" y="394.25" fill="#f8f8f2">s</text>
-<text x="504" y="394.25" fill="#f8f8f2">a</text>
-<text x="513" y="394.25" fill="#f8f8f2">g</text>
-<text x="522" y="394.25" fill="#f8f8f2">e</text>
-<text x="531" y="394.25" fill="#f8f8f2">s</text>
-<text x="549" y="394.25" fill="#f8f8f2">(</text>
-<text x="558" y="394.25" fill="#f8f8f2">2</text>
-<text x="567" y="394.25" fill="#f8f8f2">)</text>
-<text x="594" y="394.25" fill="#f8f8f2">│</text>
-<text x="621" y="394.25" fill="#f8f8f2">1</text>
-<text x="630" y="394.25" fill="#f8f8f2">:</text>
-<text x="648" y="394.25" fill="#f8f8f2">5</text>
-<text x="666" y="394.25" fill="#f8f8f2">r</text>
-<text x="675" y="394.25" fill="#f8f8f2">o</text>
-<text x="684" y="394.25" fill="#f8f8f2">w</text>
-<text x="693" y="394.25" fill="#f8f8f2">s</text>
+<text x="405" y="394.25" fill="#f8f8f2">s</text>
+<text x="414" y="394.25" fill="#f8f8f2">a</text>
+<text x="423" y="394.25" fill="#f8f8f2">g</text>
+<text x="432" y="394.25" fill="#f8f8f2">e</text>
+<text x="441" y="394.25" fill="#f8f8f2">s</text>
+<text x="459" y="394.25" fill="#f8f8f2">(</text>
+<text x="468" y="394.25" fill="#f8f8f2">2</text>
+<text x="477" y="394.25" fill="#f8f8f2">)</text>
+<text x="504" y="394.25" fill="#f8f8f2">│</text>
+<text x="531" y="394.25" fill="#f8f8f2">1</text>
+<text x="540" y="394.25" fill="#f8f8f2">:</text>
+<text x="558" y="394.25" fill="#f8f8f2">5</text>
+<text x="576" y="394.25" fill="#f8f8f2">r</text>
+<text x="585" y="394.25" fill="#f8f8f2">o</text>
+<text x="594" y="394.25" fill="#f8f8f2">w</text>
+<text x="603" y="394.25" fill="#f8f8f2">s</text>
 <text x="1071" y="394.25" fill="#6272a4">║</text>
 <rect x="0" y="399" width="1080.5" height="19.5" fill="#282a36"/>
 <text x="0" y="413.25" fill="#6272a4">║</text>

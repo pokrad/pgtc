@@ -117,7 +117,6 @@ impl App {
                     self.focus = Focus::Results;
                     self.toggle_query(|q| {
                         match item {
-                            crate::view::BarItem::Results => q.show_messages = false,
                             crate::view::BarItem::Messages => q.show_messages = true,
                             crate::view::BarItem::Set(i) => {
                                 q.show_messages = false;

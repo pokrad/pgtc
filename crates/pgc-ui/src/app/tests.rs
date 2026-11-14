@@ -553,7 +553,9 @@ fn ctrl_n_and_tab_status_bar_at_the_bottom() {
     assert!(rows[1].contains("╗╔═══"), "{screen}");
     assert!(rows[2].contains("Query 2 ×"), "{screen}");
     assert!(rows[3].contains("╢╟───"), "{screen}");
-    assert!(screen.contains(" Results   Messages (1) "), "{screen}");
+    // only Messages without a result set (D-066)
+    assert!(screen.contains(" Messages (1) "), "{screen}");
+    assert!(!screen.contains(" Results "), "{screen}");
     // the tree has the same look: title strip, separator, rows (D-014)
     assert!(rows[2].starts_with("║") && rows[2].contains("Connections"));
     assert!(rows[3].starts_with("╟───"), "{screen}");
@@ -591,14 +593,14 @@ fn active_tabs_are_coloured_only_in_the_focused_frame() {
                 .lines()
                 .nth(y)
                 .unwrap()
-                .contains(" Results ")
+                .contains(" Messages (")
         })
         .unwrap() as u16;
-    assert_eq!(style_at(&a, "Results", results_row), unfocused);
+    assert_eq!(style_at(&a, "Messages", results_row), unfocused);
     // the results have the focus: the query tab and Results
     a.focus = Focus::Results;
     assert_eq!(style_at(&a, "Query 1", 2), active);
-    assert_eq!(style_at(&a, "Results", results_row), active);
+    assert_eq!(style_at(&a, "Messages", results_row), active);
     // the tree has the focus: only its title
     a.focus = Focus::Tree;
     assert_eq!(style_at(&a, "Connections", 2), active);
@@ -674,10 +676,10 @@ fn f1_lists_only_the_keys_that_work_now() {
     assert!(t.contains("Focus the object tree"), "{t}");
     // the context key hides the global one: Ctrl+R is the results here
     assert!(!t.contains("Refresh the object tree"), "{t}");
-    // results
+    // results without a result set: Messages (D-066)
     a.focus = Focus::Results;
     let t = f1_text(&a);
-    assert!(t.starts_with("Results\n"), "{t}");
+    assert!(t.starts_with("Messages\n"), "{t}");
     assert!(t.contains("Switch between results and messages"), "{t}");
     assert!(!t.contains("Paste"), "{t}");
     // read-only object view: no editing keys, nothing to execute
@@ -1499,15 +1501,19 @@ fn query_tab_layout_draws_results_and_messages() {
         },
         &lines,
     );
+    // Messages first, then the shown result set (D-066)
     let text = screen_text(&a);
-    assert!(text.contains("Results"), "{text}");
-    assert!(text.contains("1: 2+ rows"), "{text}");
+    assert!(text.contains(" Messages (0)  │  1: 2+ rows "), "{text}");
     assert!(text.contains("answer"), "{text}");
     assert!(text.contains("[null]"), "{text}");
     assert!(text.contains("2 rows loaded – more available"), "{text}");
     key(&mut a, "Alt+M");
+    assert!(a.query().unwrap().on_messages());
     let text = screen_text(&a);
-    assert!(text.contains("Messages (0)"), "{text}");
+    assert!(
+        text.contains(" Messages (0)  │  1: 2+ rows "),
+        "result tabs stay: {text}"
+    );
 }
 
 /// The text cursor is drawn in reverse video too, so it is visible in every
@@ -2979,22 +2985,17 @@ fn direct_keys_for_the_frames() {
     a.run(Command::PrevTab);
     key(&mut a, "Ctrl+2");
     assert_eq!(a.focus, Focus::Tabs);
-    // without a result set: the empty Results view and Messages, both ways
+    // without a result set only Messages is there, both ways (D-066)
     key(&mut a, "Alt+Down");
-    assert!(!a.query().unwrap().show_messages);
+    assert!(a.query().unwrap().on_messages());
     key(&mut a, "Alt+Right");
-    assert!(a.query().unwrap().show_messages);
+    assert!(a.query().unwrap().on_messages());
     key(&mut a, "Alt+Left");
-    assert!(
-        !a.query().unwrap().show_messages,
-        "back to the empty results"
-    );
-    key(&mut a, "Alt+Left");
-    assert!(a.query().unwrap().show_messages);
-    key(&mut a, "Alt+Right");
-    assert!(!a.query().unwrap().show_messages);
+    assert!(a.query().unwrap().on_messages());
+    key(&mut a, "Alt+M");
+    assert!(a.query().unwrap().on_messages(), "Alt+M stays on Messages");
     key(&mut a, "Alt+Up");
-    // in the results Alt+Left / Right go through the result sets, then Messages
+    // in the results Alt+Left / Right go through Messages and the result sets (D-066)
     {
         let q = a.query_mut().unwrap();
         q.results = vec![
@@ -3015,7 +3016,7 @@ fn direct_keys_for_the_frames() {
     key(&mut a, "Alt+Left");
     assert!(
         a.query().unwrap().show_messages,
-        "backwards: wraps to Messages"
+        "backwards: Messages is before the first"
     );
     assert_eq!(a.active_tab, 1, "the main tabs stay");
     // from the editor they switch the main tabs; the default tab has no lower part

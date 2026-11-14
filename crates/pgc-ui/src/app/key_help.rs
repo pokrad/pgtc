@@ -73,7 +73,7 @@ impl App {
             Context::Editor if self.query().is_some() => "Query editor",
             Context::Editor if self.list_tab() => "Statement pane",
             Context::Editor => "Object view",
-            Context::Results if self.query().is_some_and(|q| q.show_messages) => "Messages",
+            Context::Results if self.query().is_some_and(|q| q.on_messages()) => "Messages",
             _ => help::SECTIONS
                 .iter()
                 .find(|(c, _)| *c == ctx)
@@ -110,7 +110,7 @@ impl App {
             C::Accept if in_tree => self.tree.selected().is_some(),
             // Enter on an error message jumps to its line (D-019)
             C::Accept => self.query().is_some_and(|q| {
-                q.show_messages
+                q.on_messages()
                     && q.messages
                         .get(q.message_cursor)
                         .is_some_and(|m| m.jump.is_some())

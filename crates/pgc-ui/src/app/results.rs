@@ -56,7 +56,7 @@ impl App {
 
     pub(super) fn active_result_set(&mut self) -> Option<&mut crate::grid::ResultSet> {
         let q = self.query_mut()?;
-        if q.show_messages {
+        if q.on_messages() {
             return None;
         }
         let i = q.active_result;
@@ -69,7 +69,7 @@ impl App {
         let Some(q) = self.query_mut() else {
             return false;
         };
-        if q.show_messages {
+        if q.on_messages() {
             let n = q.messages.len();
             let cursor = &mut q.message_cursor;
             match cmd {
@@ -134,7 +134,7 @@ impl App {
         let Some(q) = self.query_mut() else {
             return;
         };
-        if q.show_messages {
+        if q.on_messages() {
             let i = (p.y - grid.y) as usize;
             if i < q.messages.len() {
                 q.message_cursor = hits

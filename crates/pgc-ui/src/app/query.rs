@@ -155,7 +155,7 @@ impl App {
             self.status = match q.finished {
                 Some(f) if f.failed => format!("{} — see Messages", f.text()),
                 Some(f) => f.text(),
-                None if q.show_messages => "Query failed — see Messages".to_owned(),
+                None if q.on_messages() => "Query failed — see Messages".to_owned(),
                 None => String::new(),
             };
         }

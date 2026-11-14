@@ -62,7 +62,6 @@ pub struct Hits {
 /// Clickable items of the results bar.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BarItem {
-    Results,
     Messages,
     Set(usize),
 }
@@ -554,24 +553,23 @@ fn render_results(
     let bar = t.get(Role::TabsBar);
     frame.render_widget(Block::new().style(bar), bar_area);
     // (label, active, item); `None` = separator
-    let mut items: Vec<Option<(String, bool, BarItem)>> = vec![
-        Some(("Results".into(), !q.show_messages, BarItem::Results)),
-        Some((
-            format!("Messages ({})", q.messages.len()),
-            q.show_messages,
-            BarItem::Messages,
-        )),
-    ];
-    if !q.show_messages && !q.results.is_empty() {
+    // Messages always first, then the result sets (D-066)
+    let messages = q.on_messages();
+    let mut items: Vec<Option<(String, bool, BarItem)>> = vec![Some((
+        format!("Messages ({})", q.messages.len()),
+        messages,
+        BarItem::Messages,
+    ))];
+    if !q.results.is_empty() {
         items.push(None);
-        for (i, rs) in q.results.iter().enumerate() {
-            items.push(Some((
-                rs.label(i + 1),
-                i == q.active_result,
-                BarItem::Set(i),
-            )));
-        }
     }
+    items.extend(q.results.iter().enumerate().map(|(i, rs)| {
+        Some((
+            rs.label(i + 1),
+            !messages && i == q.active_result,
+            BarItem::Set(i),
+        ))
+    }));
     let mut x = bar_area.x;
     let mut spans = Vec::new();
     for entry in items {
@@ -598,7 +596,17 @@ fn render_results(
     frame.render_widget(Paragraph::new(Line::from(spans)), bar_area);
     hits.grid = body;
 
-    if q.show_messages {
+    if messages {
+        if q.messages.is_empty() {
+            frame.render_widget(
+                Paragraph::new(Line::from(Span::styled(
+                    " F5 executes the text (or the selection).",
+                    t.get(Role::CoreHint),
+                ))),
+                body,
+            );
+            return;
+        }
         let mut y = body.y;
         let hint = t.get(Role::MessagesInfo);
         // keep the cursor message visible: start a few messages before it
@@ -638,39 +646,24 @@ fn render_results(
         }
         return;
     }
-    match q.results.get(q.active_result) {
-        Some(rs) => {
-            let styles = crate::grid::GridStyles {
-                text: t.get(Role::CoreNormal),
-                header: t.get(Role::GridHeader),
-                null: t.get(Role::GridNull),
-                cursor: t.get(Role::GridCursor),
-                row_number: t.get(Role::GridRowNumber),
-                // lines in the border colour on the grid background
-                separator: {
-                    let text = t.get(Role::CoreNormal);
-                    match t.get(Role::CoreBorder).fg {
-                        Some(fg) => text.fg(fg),
-                        None => text,
-                    }
-                },
-                ascii: t.ascii,
-            };
-            hits.grid_cells = crate::grid::render(rs, body, frame.buffer_mut(), &styles, focused);
-        }
-        None => {
-            let text = if q.busy() {
-                " running…"
-            } else if q.messages.is_empty() {
-                " F5 executes the text (or the selection)."
-            } else {
-                " No result rows — see Messages (Alt+M)."
-            };
-            frame.render_widget(
-                Paragraph::new(Line::from(Span::styled(text, t.get(Role::CoreHint)))),
-                body,
-            );
-        }
+    if let Some(rs) = q.results.get(q.active_result) {
+        let styles = crate::grid::GridStyles {
+            text: t.get(Role::CoreNormal),
+            header: t.get(Role::GridHeader),
+            null: t.get(Role::GridNull),
+            cursor: t.get(Role::GridCursor),
+            row_number: t.get(Role::GridRowNumber),
+            // lines in the border colour on the grid background
+            separator: {
+                let text = t.get(Role::CoreNormal);
+                match t.get(Role::CoreBorder).fg {
+                    Some(fg) => text.fg(fg),
+                    None => text,
+                }
+            },
+            ascii: t.ascii,
+        };
+        hits.grid_cells = crate::grid::render(rs, body, frame.buffer_mut(), &styles, focused);
     }
 }
 

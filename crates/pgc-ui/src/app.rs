@@ -1144,8 +1144,9 @@ impl App {
                 q.results_visible = !q.results_visible;
                 String::new()
             }),
+            // the shown result set ↔ Messages; without one Messages stays (D-066)
             Command::ShowMessages => self.toggle_query(|q| {
-                q.show_messages = !q.show_messages;
+                q.show_messages = !q.on_messages();
                 q.results_visible = true;
                 String::new()
             }),
@@ -1169,23 +1170,21 @@ impl App {
                 let next = cmd == Command::NextResultTab;
                 self.toggle_query(|q| {
                     q.results_visible = true;
-                    // positions: the result sets 0..k, then Messages (k); without a
-                    // result set the (empty) Results view is one position
+                    // positions: Messages (0), then the result sets 1..=n (D-066)
                     let n = q.results.len();
-                    let k = n.max(1);
-                    let at = if q.show_messages {
-                        k
+                    let at = if q.on_messages() {
+                        0
                     } else {
-                        q.active_result.min(k - 1)
+                        q.active_result.min(n - 1) + 1
                     };
                     let to = if next {
-                        (at + 1) % (k + 1)
+                        (at + 1) % (n + 1)
                     } else {
-                        (at + k) % (k + 1)
+                        (at + n) % (n + 1)
                     };
-                    q.show_messages = to == k;
-                    if to < n {
-                        q.active_result = to;
+                    q.show_messages = to == 0;
+                    if to > 0 {
+                        q.active_result = to - 1;
                     }
                     String::new()
                 });

@@ -191,6 +191,11 @@ impl QueryState {
     }
 
     /// An execution is working (not just paused at a batch boundary).
+    /// The Messages tab is the one shown: chosen, or no result set to show (D-066).
+    pub fn on_messages(&self) -> bool {
+        self.show_messages || self.results.is_empty()
+    }
+
     pub fn busy(&self) -> bool {
         self.running.is_some_and(|r| !r.paused)
     }
@@ -305,11 +310,8 @@ impl QueryState {
                     rs.more = false;
                     rs.fetching = false;
                 }
-                // D-019: nothing to show in Results (no result set, not even an empty
-                // one) — the Messages tab is shown
-                if self.results.is_empty() {
-                    self.show_messages = true;
-                }
+                // D-066: without a result set (not even an empty one) only Messages
+                // is there, so it is shown
                 self.push(
                     MessageKind::Time,
                     format!("Total time: {}", format_duration(elapsed)),
@@ -528,13 +530,14 @@ mod tests {
             },
             &lines,
         );
-        assert!(!q.show_messages, "only when the run has finished");
+        // no result set: only Messages is there (D-066)
+        assert!(q.on_messages());
         q.apply(finished.clone(), &lines);
-        assert!(q.show_messages, "no result set: Messages");
+        assert!(q.on_messages(), "no result set: Messages");
 
-        // the next run starts on Results; SELECT with 0 rows is a result set
+        // the first result set is shown when it arrives; SELECT with 0 rows is one
         q.start_run(2, sent);
-        assert!(!q.show_messages);
+        assert!(q.on_messages());
         q.apply(
             QueryEvent::ResultStart {
                 columns: vec![Column {
@@ -552,7 +555,7 @@ mod tests {
             &lines,
         );
         q.apply(finished, &lines);
-        assert!(!q.show_messages, "an empty grid stays on Results");
+        assert!(!q.on_messages(), "an empty grid is a result set");
     }
 
     /// D-019: a closed paused result counts as running until its statement has ended
