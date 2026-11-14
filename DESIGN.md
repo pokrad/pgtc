@@ -817,6 +817,20 @@ pgtc (binary)
   - **Side effect:** while a result is paused, the query stays open on the server
     (snapshot, locks). It ends when all rows are fetched, the query is cancelled, the
     tab is closed or the next query is run. The status line makes this visible.
+  - **Closing a paused result** (the cancel key on a paused result, the next
+    execution, Commit / Rollback, an export that ends early) must not lose work:
+    - The statement is **cancelled** only when nothing can be lost: no transaction was
+      open when the run started **and** the paused result belongs to the first
+      statement of the run. pgtc waits for the cancel request — until the server has
+      closed the cancel connection, as libpq does (D-040) — before it sends the next
+      request, so a late cancel cannot hit the next statement.
+    - Otherwise (a transaction is open, auto commit is off, or the script has already
+      completed a statement) the remaining rows are **read and dropped**: a cancel
+      would abort the transaction and undo what was done before. The rest of the
+      script then runs as usual. Closing a very large result this way takes as long
+      as reading it; the status line shows *Closing the result…* and `Alt+Shift+C`
+      cancels for real (which aborts the transaction, as any cancel does).
+    - Closing the tab or its connection still ends the query with the connection.
   - **Memory / speed:** values are kept as text in a compact form; the result grid
     draws only the visible cells.
   - **Export:** every result set can be exported to a file — see D-021.
@@ -1240,7 +1254,10 @@ pgtc (binary)
     `Client::transaction_status()` returns Idle / InTransaction / Failed (also after an
     error, when the result stream was dropped);
   - `SimpleQueryStream::command_tag()` returns the tag of the last CommandComplete;
-  - `SimpleColumn::type_oid()` returns the column's type OID.
+  - `SimpleColumn::type_oid()` returns the column's type OID;
+  - a cancel request waits until the server has closed the cancel connection (as
+    libpq's `PQcancel`): the request is then processed, so a cancel that pgtc awaits
+    cannot hit a later statement (D-019).
 - `vendor/` is excluded from the workspace (no fmt / clippy on it). If upstream adds
   these, the patch is dropped; an upstream pull request is possible later.
 
@@ -1298,8 +1315,9 @@ pgtc (binary)
   A value or column name with characters XML 1.0 forbids gets `encoding="base64"`.
 - **Progress / cancel:** the status line shows the rows written; `Alt+Shift+C`
   cancels the export. On cancel or error the incomplete file is **deleted** and a
-  message says why. If rows were already taken from the paused stream, the query is
-  cancelled too (those rows are gone from the stream).
+  message says why. If rows were already taken from the paused stream, the result is
+  closed too (those rows are gone from the stream) — cancelled, or its remaining rows
+  read and dropped, as D-019 says for closing a paused result.
 - **Grid afterwards:** the grid keeps the rows it had loaded; the sub-tab label and the
   status line show e.g. `1,000 of 1,234,567 rows (rest exported)`. The query has then
   finished, so its snapshot / locks are released.
@@ -2140,3 +2158,4 @@ pgtc (binary)
 | 2026-11-13 | D-014 updated: tree window with a title strip (*Connections* centered over the whole width) and a separator like the tab window; active tabs and the tree title coloured only while their part has the focus, new role `tabs.active_unfocused`. |
 | 2026-11-13 | D-061 accepted: vendored, patched crossterm 0.29.0 — `ESC` + escape sequence is the key with Alt (PuTTY's Alt+arrows); README PuTTY note. |
 | 2026-11-13 | D-062 accepted: database statistics tab — database rows only, `Alt+I` in the tree / context menu, own connection, summary boxes + Group / Statistic / Value list from `pg_stat_database` (version-dependent groups), refresh only on `F5`. |
+| 2026-11-14 | D-019 updated: closing a paused result cancels its statement only when nothing can be lost (no open transaction, first statement of the run) and waits for the cancel request before the next request; otherwise the remaining rows are read and dropped, status *Closing the result…*. D-040 updated: the patched cancel request waits until the server closes the cancel connection (as libpq). D-042 updated. |

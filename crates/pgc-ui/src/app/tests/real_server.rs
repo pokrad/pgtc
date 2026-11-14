@@ -326,6 +326,168 @@ async fn autocomplete_against_a_real_server() {
     );
 }
 
+/// D-019: closing a paused result must not lose work. A script's earlier statements
+/// and an open transaction survive (the remaining rows are read and dropped); a lone
+/// SELECT is cancelled, and the cancel does not hit the next statement. Runs only when
+/// `PGTC_TEST_PASSWORD` is set (local server, user postgres, database postgres).
+#[tokio::test]
+#[ignore]
+async fn closing_a_paused_result_against_a_real_server() {
+    let Ok(password) = std::env::var("PGTC_TEST_PASSWORD") else {
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let paths = Paths::with_dirs(dir.path().join("cfg"), dir.path().join("data"));
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    let sink: EventSink = Arc::new(move |e| {
+        let _ = tx.send(e);
+    });
+    let mut settings = Settings::default();
+    settings.clipboard.system = false;
+    let startup = pgc_db::conninfo::resolve_with(
+        &pgc_db::conninfo::ConnArgs {
+            host: Some("localhost".into()),
+            username: Some("postgres".into()),
+            dbname: Some("postgres".into()),
+            ..Default::default()
+        },
+        &|_| None,
+    )
+    .unwrap();
+    let startup = pgc_db::conninfo::Resolved {
+        password: Some(password),
+        ..startup
+    };
+    let mut a = App::new(paths, settings, sink, Some(startup));
+    let hits = Hits {
+        grid: Rect::new(0, 0, 80, 10),
+        ..Hits::default()
+    };
+    // pump database events until `done` holds
+    async fn pump(
+        a: &mut App,
+        rx: &mut tokio::sync::mpsc::UnboundedReceiver<DbEvent>,
+        hits: &Hits,
+        done: impl Fn(&App) -> bool,
+    ) {
+        while !done(a) {
+            let Ok(e) = tokio::time::timeout(std::time::Duration::from_secs(10), rx.recv()).await
+            else {
+                panic!(
+                    "timeout; status {:?}; messages {:?}",
+                    a.status,
+                    a.query().map(|q| &q.messages)
+                );
+            };
+            let e = e.expect("event");
+            a.update(Msg::Db(e), hits);
+        }
+    }
+    // F5 on `sql`, until the run is paused or has finished
+    async fn run(
+        a: &mut App,
+        rx: &mut tokio::sync::mpsc::UnboundedReceiver<DbEvent>,
+        hits: &Hits,
+        sql: &str,
+    ) {
+        a.focus = Focus::Tabs;
+        key(a, "Ctrl+A");
+        typing(a, sql);
+        key(a, "F5");
+        pump(a, rx, hits, |a| !a.query().unwrap().busy()).await;
+    }
+    fn errors(a: &App) -> Vec<String> {
+        let q = a.query().unwrap();
+        q.messages
+            .iter()
+            .filter(|m| m.kind == crate::query_tab::MessageKind::Error)
+            .map(|m| m.text.clone())
+            .collect()
+    }
+    fn count(a: &App) -> Option<String> {
+        let q = a.query().unwrap();
+        q.results[0].rows[0][0].as_deref().map(str::to_owned)
+    }
+    const BIG: &str = "select g from generate_series(1, 300000) g";
+
+    pump(&mut a, &mut rx, &hits, |a| {
+        a.tree.servers[0].state == ConnState::Connected
+    })
+    .await;
+    key(&mut a, "Home");
+    a.new_query_tab(Some((a.tree.servers[0].uid, "postgres".to_owned())));
+    pump(&mut a, &mut rx, &hits, |a| {
+        a.query().is_some_and(|q| q.connected())
+    })
+    .await;
+
+    // auto commit on: the script's statements before the paused result are kept when
+    // the next query closes it (one implicit transaction: a cancel would undo them)
+    let script = format!("create temp table pgtc_p(x int); insert into pgtc_p values (1); {BIG};");
+    run(&mut a, &mut rx, &hits, &script).await;
+    assert!(a.query().unwrap().paused());
+    run(&mut a, &mut rx, &hits, "select count(*) from pgtc_p").await;
+    assert_eq!(errors(&a), Vec::<String>::new());
+    assert_eq!(count(&a).as_deref(), Some("1"));
+
+    // auto commit off: Commit on a paused result commits
+    a.run(Command::ToggleAutoCommit);
+    run(&mut a, &mut rx, &hits, "insert into pgtc_p values (2)").await;
+    assert_eq!(a.query().unwrap().tx, TxStatus::InTransaction);
+    run(&mut a, &mut rx, &hits, BIG).await;
+    assert!(a.query().unwrap().paused());
+    a.run(Command::Commit);
+    pump(&mut a, &mut rx, &hits, |a| {
+        a.query().unwrap().running.is_none()
+    })
+    .await;
+    let q = a.query().unwrap();
+    assert!(
+        q.messages.iter().any(|m| m.text == "COMMIT"),
+        "{:?}",
+        q.messages
+    );
+    assert_eq!(q.tx, TxStatus::Idle);
+    a.run(Command::ToggleAutoCommit);
+    run(&mut a, &mut rx, &hits, "select count(*) from pgtc_p").await;
+    assert_eq!(count(&a).as_deref(), Some("2"));
+
+    // the cancel key on a paused result inside a transaction: read to the end, the
+    // transaction stays usable
+    run(&mut a, &mut rx, &hits, &format!("begin; {BIG};")).await;
+    assert!(a.query().unwrap().paused());
+    a.run(Command::CancelQuery);
+    assert!(a.query().unwrap().busy(), "closing counts as running");
+    pump(&mut a, &mut rx, &hits, |a| {
+        a.query().unwrap().running.is_none()
+    })
+    .await;
+    assert_eq!(errors(&a), Vec::<String>::new());
+    assert_eq!(a.query().unwrap().tx, TxStatus::InTransaction);
+    a.run(Command::Rollback);
+    pump(&mut a, &mut rx, &hits, |a| !a.query().unwrap().busy()).await;
+
+    // a lone SELECT is cancelled: reading its 100,000 slow rows would take minutes
+    // (the pump gives up after 10 s), and the cancel does not hit the next statement
+    run(
+        &mut a,
+        &mut rx,
+        &hits,
+        "select g, pg_sleep(0.002) from generate_series(1, 100000) g",
+    )
+    .await;
+    assert!(a.query().unwrap().paused());
+    a.run(Command::CancelQuery);
+    pump(&mut a, &mut rx, &hits, |a| {
+        a.query().unwrap().running.is_none()
+    })
+    .await;
+    assert_eq!(a.query().unwrap().tx, TxStatus::Idle);
+    run(&mut a, &mut rx, &hits, "select 7 from pg_sleep(0.3)").await;
+    assert_eq!(errors(&a), Vec::<String>::new());
+    assert_eq!(count(&a).as_deref(), Some("7"));
+}
+
 /// End-to-end against a real server: connect, open a query tab, execute, page
 /// through a paused result, error with line jump, transactions. Runs only when
 /// `PGTC_TEST_PASSWORD` is set (local server, user postgres, database postgres).

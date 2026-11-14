@@ -3,7 +3,7 @@ use crate::tls::TlsConnect;
 use crate::{Error, connect_tls};
 use bytes::BytesMut;
 use postgres_protocol::message::frontend;
-use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 pub async fn cancel_query_raw<S, T>(
     stream: S,
@@ -26,6 +26,17 @@ where
     stream.write_all(&buf).await.map_err(Error::io)?;
     stream.flush().await.map_err(Error::io)?;
     stream.shutdown().await.map_err(Error::io)?;
+
+    // pgtc patch (D-040): as libpq's PQcancel, wait until the server closes the
+    // connection — the request is then processed. Without this, a command sent right
+    // after could be the one the cancel hits. No data is expected; an error here is
+    // the connection ending, too.
+    let mut scratch = [0u8; 16];
+    while let Ok(n) = stream.read(&mut scratch).await {
+        if n == 0 {
+            break;
+        }
+    }
 
     Ok(())
 }

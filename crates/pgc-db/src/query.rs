@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 use tokio_postgres::error::ErrorPosition;
 use tokio_postgres::{Client, SimpleQueryMessage, SimpleQueryRow, TransactionStatus};
 
-use crate::connection::Request;
+use crate::connection::{Canceller, Request};
 
 /// One execution (F5).
 #[derive(Debug, Clone)]
@@ -242,13 +242,38 @@ fn row_values(row: &SimpleQueryRow) -> Vec<Value> {
     (0..row.len()).map(|i| row.get(i).map(Box::from)).collect()
 }
 
+/// How a paused result ends when it is closed (D-019).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Ending {
+    /// PostgreSQL's cancel request: nothing can be lost.
+    Cancel,
+    /// The remaining rows are read and dropped: a cancel would abort the transaction
+    /// and undo what was done before.
+    Drain,
+}
+
+/// `in_transaction`: a transaction was open when the run started; `completed`:
+/// statements of the run that have completed; `closing`: the connection closes next,
+/// which ends the query anyway.
+fn ending(in_transaction: bool, completed: usize, closing: bool) -> Ending {
+    if closing || (!in_transaction && completed == 0) {
+        Ending::Cancel
+    } else {
+        Ending::Drain
+    }
+}
+
+/// Message of a paused result that is closed by reading its remaining rows.
+const DRAINING: &str = "Result closed: its remaining rows are read and dropped \
+                        (a cancel would abort the open transaction)";
+
 /// Runs one execution. Returns a request that arrived while the result was paused
 /// and must be handled next (a new execution, close, ...).
 pub(crate) async fn execute(
     client: &Client,
     req: ExecuteRequest,
     rx: &mut mpsc::UnboundedReceiver<Request>,
-    cancel: &(dyn Fn() + Sync),
+    canceller: &Canceller,
     emit: &(dyn Fn(QueryEvent) + Sync),
 ) -> Option<Request> {
     let start = Instant::now();
@@ -265,6 +290,10 @@ pub(crate) async fn execute(
         }
     }
 
+    // A transaction is open (also the one of auto commit off): closing a paused result
+    // must not abort it (D-019).
+    let in_transaction = TxStatus::from(client.transaction_status()) != TxStatus::Idle;
+
     if !had_error {
         match client.simple_query_raw(&req.sql).await {
             Err(e) => {
@@ -276,19 +305,25 @@ pub(crate) async fn execute(
                 let mut rows: Vec<Vec<Value>> = Vec::new();
                 let mut in_result = false;
                 let mut fetch_all = false;
-                // After a close / new request while paused: cancel and drop the rest.
-                let mut discard = false;
+                // Statements of this run that have completed.
+                let mut completed = 0usize;
+                // The paused result was closed by reading on: its rows are dropped,
+                // the rest of the script is reported as usual.
+                let mut skip_rows = false;
+                // The run was cancelled, or another request waits: everything up to
+                // the end of the stream is dropped and nothing more is reported.
+                let mut drop_all = false;
                 loop {
                     match stream.next().await {
                         None => break,
                         Some(Err(e)) => {
-                            if in_result && !discard {
-                                emit(QueryEvent::Rows {
-                                    rows: std::mem::take(&mut rows),
-                                    more: false,
-                                });
-                            }
-                            if !discard {
+                            if !drop_all {
+                                if in_result {
+                                    emit(QueryEvent::Rows {
+                                        rows: std::mem::take(&mut rows),
+                                        more: false,
+                                    });
+                                }
                                 emit(QueryEvent::Error(ServerMessage::from_error(&e)));
                             }
                             had_error = true;
@@ -296,7 +331,7 @@ pub(crate) async fn execute(
                         }
                         Some(Ok(SimpleQueryMessage::RowDescription(cols))) => {
                             in_result = true;
-                            if !discard {
+                            if !drop_all {
                                 emit(QueryEvent::ResultStart {
                                     columns: cols
                                         .iter()
@@ -310,7 +345,7 @@ pub(crate) async fn execute(
                             }
                         }
                         Some(Ok(SimpleQueryMessage::Row(row))) => {
-                            if discard {
+                            if drop_all || skip_rows {
                                 continue;
                             }
                             rows.push(row_values(&row));
@@ -319,40 +354,61 @@ pub(crate) async fn execute(
                                     rows: std::mem::take(&mut rows),
                                     more: !fetch_all,
                                 });
-                                if !fetch_all {
-                                    // Backpressure (D-019): stop reading until the UI asks.
+                                // Backpressure (D-019): stop reading until the UI asks.
+                                while !fetch_all {
                                     match rx.recv().await {
                                         Some(Request::FetchMore { run }) if run == req.run => {}
                                         Some(Request::FetchAll { run }) if run == req.run => {
                                             fetch_all = true;
                                         }
                                         Some(Request::Discard { run }) if run == req.run => {
-                                            cancel();
-                                            discard = true;
+                                            match ending(in_transaction, completed, false) {
+                                                Ending::Cancel => {
+                                                    canceller.cancel().await;
+                                                    drop_all = true;
+                                                }
+                                                Ending::Drain => {
+                                                    skip_rows = true;
+                                                    emit(QueryEvent::Info(DRAINING.to_owned()));
+                                                }
+                                            }
                                         }
+                                        // stale (an execution that has finished): keep
+                                        // waiting
                                         Some(
                                             Request::FetchMore { .. }
                                             | Request::FetchAll { .. }
                                             | Request::Discard { .. },
-                                        ) => {}
+                                        ) => continue,
+                                        // a new execution, close, ...: handled once this
+                                        // one has ended
                                         other => {
+                                            let closing =
+                                                matches!(other, None | Some(Request::Close));
+                                            if ending(in_transaction, completed, closing)
+                                                == Ending::Cancel
+                                            {
+                                                canceller.cancel().await;
+                                            }
                                             pending = Some(other.unwrap_or(Request::Close));
-                                            cancel();
-                                            discard = true;
+                                            drop_all = true;
                                         }
                                     }
+                                    break;
                                 }
                             }
                         }
                         Some(Ok(SimpleQueryMessage::CommandComplete(_))) => {
-                            if in_result && !discard {
+                            if in_result && !drop_all {
                                 emit(QueryEvent::Rows {
                                     rows: std::mem::take(&mut rows),
                                     more: false,
                                 });
                             }
                             in_result = false;
-                            if !discard {
+                            skip_rows = false;
+                            completed += 1;
+                            if !drop_all {
                                 let tag = stream
                                     .as_ref()
                                     .get_ref()
@@ -393,6 +449,19 @@ pub(crate) async fn execute(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// D-019: a paused result is cancelled only when nothing can be lost.
+    #[test]
+    fn closing_a_paused_result_cancels_only_a_lone_first_statement() {
+        assert_eq!(ending(false, 0, false), Ending::Cancel);
+        // a transaction is open (BEGIN, or auto commit off): a cancel would abort it
+        assert_eq!(ending(true, 0, false), Ending::Drain);
+        // `INSERT …; SELECT …`: a cancel would roll the INSERT back
+        assert_eq!(ending(false, 1, false), Ending::Drain);
+        assert_eq!(ending(true, 3, false), Ending::Drain);
+        // the connection closes next: reading the rest would only delay that
+        assert_eq!(ending(true, 2, true), Ending::Cancel);
+    }
 
     #[test]
     fn notification_reads_like_a_notice() {

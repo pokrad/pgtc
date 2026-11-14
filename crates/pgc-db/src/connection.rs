@@ -86,7 +86,8 @@ pub(crate) enum Request {
     FetchAll {
         run: u64,
     },
-    /// Ends a paused result: cancel and drop the remaining rows (D-019, D-042).
+    /// Ends a paused result: its statement is cancelled or, when that would abort a
+    /// transaction, its remaining rows are read and dropped (D-019, D-042).
     Discard {
         run: u64,
     },
@@ -254,7 +255,9 @@ impl ConnectionHandle {
         });
     }
 
-    /// Ends a paused result without reading its remaining rows into the UI.
+    /// Ends a paused result without reading its remaining rows into the UI: the
+    /// statement is cancelled when nothing can be lost, otherwise the connection reads
+    /// and drops the rows (D-019). [`QueryEvent::Finished`] follows when the run ends.
     pub fn discard(&self, run: u64) {
         let _ = self.tx.send(Request::Discard { run });
     }
@@ -270,20 +273,60 @@ impl ConnectionHandle {
     }
 }
 
+/// How long a cancel request sent in the background may take.
+const CANCEL_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Sends PostgreSQL's cancel request and waits until the server has closed the cancel
+/// connection: the request is then processed (vendored tokio-postgres, D-040).
+/// Failures and a missing answer after `timeout` are logged.
+async fn send_cancel(
+    token: CancelToken,
+    ssl_mode: SslMode,
+    root_cert: Option<&str>,
+    timeout: Duration,
+) {
+    let connector = match tls::connector(ssl_mode, root_cert) {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::warn!("cancel request: {e}");
+            return;
+        }
+    };
+    match tokio::time::timeout(timeout, token.cancel_query(connector)).await {
+        Ok(Ok(())) => {}
+        Ok(Err(e)) => tracing::warn!("cancel request failed: {e}"),
+        Err(_) => tracing::warn!("cancel request: no answer after {timeout:?}"),
+    }
+}
+
 /// Sends PostgreSQL's cancel request for the running query (D-019). Runs in the
 /// background; failures are logged.
 pub fn cancel_query(cancel: &Cancel, ssl_mode: SslMode, root_cert: Option<String>) {
     let token = cancel.0.clone();
     tokio::spawn(async move {
-        match tls::connector(ssl_mode, root_cert.as_deref()) {
-            Ok(connector) => {
-                if let Err(e) = token.cancel_query(connector).await {
-                    tracing::warn!("cancel request failed: {e}");
-                }
-            }
-            Err(e) => tracing::warn!("cancel request: {e}"),
-        }
+        send_cancel(token, ssl_mode, root_cert.as_deref(), CANCEL_TIMEOUT).await;
     });
+}
+
+/// The cancel request of a connection, for its own task: awaited, so the next request
+/// is sent only after the server has processed the cancel (D-019).
+pub(crate) struct Canceller {
+    token: CancelToken,
+    ssl_mode: SslMode,
+    root_cert: Option<String>,
+    timeout: Duration,
+}
+
+impl Canceller {
+    pub(crate) async fn cancel(&self) {
+        send_cancel(
+            self.token.clone(),
+            self.ssl_mode,
+            self.root_cert.as_deref(),
+            self.timeout,
+        )
+        .await;
+    }
 }
 
 /// Aborts the connection driver when the task ends (also when it is aborted).
@@ -429,13 +472,11 @@ async fn run(
         Ok(())
     });
     let _driver_guard = AbortOnDrop(driver.abort_handle());
-    let cancel_token = client.cancel_token();
-    let cancel = || {
-        cancel_query(
-            &Cancel(cancel_token.clone()),
-            params.ssl_mode,
-            params.ssl_root_cert.clone(),
-        )
+    let canceller = Canceller {
+        token: client.cancel_token(),
+        ssl_mode: params.ssl_mode,
+        root_cert: params.ssl_root_cert.clone(),
+        timeout: params.connect_timeout,
     };
 
     let version = match client
@@ -518,7 +559,7 @@ async fn run(
                 let run = req.run;
                 tracing::debug!(id, run, "execute");
                 let emit = |event| sink(DbEvent::Query { id, run, event });
-                pending = query::execute(&client, req, &mut rx, &cancel, &emit).await;
+                pending = query::execute(&client, req, &mut rx, &canceller, &emit).await;
             }
             // stale: the execution they belong to has finished
             Some(

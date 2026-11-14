@@ -60,6 +60,10 @@ pub struct Running {
     /// A batch arrived and the server waits for "fetch more" (D-019): the query is
     /// still open, but a new execution may start (it cancels this one).
     pub paused: bool,
+    /// The paused result was closed and the connection is ending it: cancelling its
+    /// statement, or reading the remaining rows when a cancel would abort a
+    /// transaction (D-019). Over when that statement has completed.
+    pub closing: bool,
     pub cancel_requested: Option<Instant>,
     /// The "close the connection?" question was asked.
     pub asked: bool,
@@ -206,6 +210,23 @@ impl QueryState {
         self.results.last().is_some_and(|r| r.more)
     }
 
+    /// Closes the paused result (D-019): the connection ends its statement; until
+    /// then the tab counts as running, so `Alt+Shift+C` is a real cancel.
+    pub fn close_paused(&mut self) {
+        let Some(conn) = self.conn.as_ref() else {
+            return;
+        };
+        conn.handle.discard(self.last_run);
+        if let Some(r) = self.running.as_mut() {
+            r.paused = false;
+            r.closing = true;
+        }
+        if let Some(rs) = self.results.last_mut() {
+            rs.more = false;
+            rs.fetching = false;
+        }
+    }
+
     /// Clears results and messages for a new execution; the first result set will be
     /// shown (D-019).
     pub fn start_run(&mut self, run: u64, sent: Sent) {
@@ -217,6 +238,7 @@ impl QueryState {
         self.running = Some(Running {
             started: Instant::now(),
             paused: false,
+            closing: false,
             cancel_requested: None,
             asked: false,
         });
@@ -240,6 +262,8 @@ impl QueryState {
                 self.results.push(rs);
             }
             QueryEvent::Rows { rows, more } => {
+                // a batch asked for before the result was closed does not pause again
+                let more = more && !self.running.is_some_and(|r| r.closing);
                 if let Some(rs) = self.results.last_mut() {
                     rs.push_rows(rows);
                     rs.more = more;
@@ -254,6 +278,10 @@ impl QueryState {
                 let word = tag.split_whitespace().next().unwrap_or("");
                 if matches!(word, "CREATE" | "ALTER" | "DROP" | "COMMENT") {
                     self.names.clear();
+                }
+                // the statement of a closed result has ended; the script goes on
+                if let Some(r) = self.running.as_mut() {
+                    r.closing = false;
                 }
                 self.push(MessageKind::Command, tag, None);
             }
@@ -525,6 +553,71 @@ mod tests {
         );
         q.apply(finished, &lines);
         assert!(!q.show_messages, "an empty grid stays on Results");
+    }
+
+    /// D-019: a closed paused result counts as running until its statement has ended
+    /// (so the cancel key is a real cancel), and a batch that was already on its way
+    /// does not pause it again.
+    #[tokio::test]
+    async fn closing_a_paused_result() {
+        let zero = |_: usize| 0;
+        let lines = LineMap {
+            line_of: &zero,
+            line_start: &zero,
+        };
+        let columns = || QueryEvent::ResultStart {
+            columns: vec![Column {
+                name: "a".into(),
+                type_oid: 23,
+            }],
+            title: None,
+        };
+        let batch = |more| QueryEvent::Rows {
+            rows: vec![vec![Some("1".into())]; 2],
+            more,
+        };
+        let mut q = QueryState::new(true, false);
+        q.conn = Some(QueryConn {
+            id: 1,
+            database: "db".into(),
+            handle: ConnectionHandle::detached(1),
+            cancel: None,
+            state: QueryConnState::Connected,
+            ssl_mode: SslMode::Prefer,
+            ssl_root_cert: None,
+        });
+        q.start_run(
+            1,
+            Sent {
+                offset: 0,
+                plpgsql_lines: None,
+            },
+        );
+        q.apply(columns(), &lines);
+        q.apply(batch(true), &lines);
+        assert!(q.paused() && !q.busy());
+
+        q.close_paused();
+        assert!(!q.paused(), "no more rows are offered");
+        assert!(q.busy(), "running until the connection has ended it");
+        assert!(q.running.unwrap().closing);
+        // a batch asked for before the result was closed
+        q.apply(batch(true), &lines);
+        assert!(!q.paused() && q.busy(), "it does not pause again");
+        assert_eq!(q.results[0].rows.len(), 4);
+
+        // the closed statement ends; the next result of the script pauses as usual
+        q.apply(batch(false), &lines);
+        q.apply(
+            QueryEvent::Command {
+                tag: "SELECT 500000".into(),
+            },
+            &lines,
+        );
+        assert!(!q.running.unwrap().closing);
+        q.apply(columns(), &lines);
+        q.apply(batch(true), &lines);
+        assert!(q.paused() && !q.busy());
     }
 
     #[test]

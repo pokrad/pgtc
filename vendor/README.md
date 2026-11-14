@@ -13,6 +13,9 @@ Changes (search for `pgtc patch`):
   `TransactionStatus::{Idle, InTransaction, Failed}`.
 - `src/simple_query.rs`: `SimpleQueryStream::command_tag()` (tag of the last
   CommandComplete, e.g. `INSERT 0 5`) and `SimpleColumn::type_oid()`.
+- `src/cancel_query_raw.rs`: after sending the cancel request, waits until the server
+  closes the connection (as libpq's `PQcancel`), so an awaited cancel cannot hit a
+  later statement (D-019).
 - `src/client.rs`: the `PathBuf` import is `#[cfg(unix)]` (unused-import warning on
   Windows).
 

@@ -325,15 +325,15 @@ impl App {
             self.status = "Cancelling export…".to_owned();
             return;
         }
+        if q.conn.is_some() && q.running.is_some_and(|r| r.paused) {
+            // a paused result: end it, the remaining rows are dropped (D-019)
+            q.close_paused();
+            self.status = "Closing the result…".to_owned();
+            return;
+        }
         let (Some(running), Some(conn)) = (q.running.as_mut(), q.conn.as_ref()) else {
             return;
         };
-        if running.paused {
-            // a paused result: end it, the remaining rows are dropped (D-019)
-            conn.handle.discard(q.last_run);
-            self.status = "Result closed".to_owned();
-            return;
-        }
         if let Some(cancel) = &conn.cancel {
             pgc_db::cancel_query(cancel, conn.ssl_mode, conn.ssl_root_cert.clone());
             running

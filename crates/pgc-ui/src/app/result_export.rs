@@ -218,11 +218,6 @@ impl App {
         // rows were taken from a still paused result: end it (D-042)
         let last = q.results.len().saturating_sub(1);
         let paused = q.results.get(e.set).is_some_and(|rs| rs.more) && e.set == last;
-        let discard = |q: &QueryState| {
-            if let Some(conn) = q.conn.as_ref() {
-                conn.handle.discard(q.last_run);
-            }
-        };
         match event {
             ExportEvent::Done { rows, .. } => {
                 if e.from_stream
@@ -242,7 +237,7 @@ impl App {
             }
             ExportEvent::Failed { error, .. } => {
                 if e.from_stream && paused {
-                    discard(q);
+                    q.close_paused();
                 }
                 q.info(format!("Export failed; {} was deleted.", e.path.display()));
                 if active {
@@ -256,7 +251,7 @@ The incomplete file was deleted."
             }
             ExportEvent::Aborted { .. } => {
                 if e.from_stream && paused {
-                    discard(q);
+                    q.close_paused();
                 }
                 let reason = e
                     .abort_reason
@@ -309,6 +304,8 @@ pub(super) fn take_export_rows(q: &mut QueryState, event: QueryEvent) -> Option<
                 }
                 None => q.drop_rows = false,
             }
+            // a result that is being closed does not pause again (D-019)
+            let more = more && !q.running.is_some_and(|r| r.closing);
             if let Some(rs) = q.results.last_mut() {
                 rs.more = more;
                 rs.fetching = false;

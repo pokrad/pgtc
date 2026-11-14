@@ -693,6 +693,10 @@ fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: 
             let secs = r.started.elapsed().as_secs_f64();
             if r.cancel_requested.is_some() {
                 right.push_str(&format!("Cancelling… {secs:.1} s  "));
+            } else if r.closing {
+                right.push_str(&format!(
+                    "Closing the result… {secs:.1} s (Alt+Shift+C cancels)  "
+                ));
             } else {
                 right.push_str(&format!("Executing… {secs:.1} s (Alt+Shift+C cancels)  "));
             }
