@@ -5,7 +5,6 @@ use pgc_core::ServerVersion;
 use pgc_core::settings::SavedConnection;
 use pgc_db::{ConnectionHandle, NodeRow};
 
-use crate::icons::Icon;
 use crate::objects::{ObjType, SERVER_GROUPS};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -215,7 +214,6 @@ pub struct RowText {
     pub depth: usize,
     /// `v` expanded, `>` expandable, ` ` leaf.
     pub marker: char,
-    pub icon: Option<Icon>,
     pub label: String,
 }
 
@@ -705,7 +703,6 @@ impl Tree {
                 RowText {
                     depth: 0,
                     marker: expand(s.expanded && s.state == ConnState::Connected),
-                    icon: Some(Icon::Server),
                     label: format!("{}{}", s.conn.name, state_suffix(s.state)),
                 }
             }
@@ -714,21 +711,17 @@ impl Tree {
                     return RowText {
                         depth: row.depth,
                         marker: ' ',
-                        icon: None,
                         label: String::new(),
                     };
                 };
-                let (icon, label) = match n.kind {
-                    NodeKind::Group(_) => {
-                        let label = match &n.children {
-                            Some(c) => format!("{} ({})", n.label, c.len()),
-                            None => n.label.clone(),
-                        };
-                        (Icon::Folder, label)
-                    }
-                    NodeKind::Object(t) => {
+                let label = match n.kind {
+                    NodeKind::Group(_) => match &n.children {
+                        Some(c) => format!("{} ({})", n.label, c.len()),
+                        None => n.label.clone(),
+                    },
+                    NodeKind::Object(_) => {
                         let suffix = n.conn.as_ref().map_or("", |c| state_suffix(c.state));
-                        (t.icon(), format!("{}{suffix}", n.label))
+                        format!("{}{suffix}", n.label)
                     }
                 };
                 RowText {
@@ -738,14 +731,12 @@ impl Tree {
                     } else {
                         ' '
                     },
-                    icon: Some(icon),
                     label,
                 }
             }
             RowKind::Loading(_) => RowText {
                 depth: row.depth,
                 marker: ' ',
-                icon: None,
                 label: "loading…".to_owned(),
             },
         }

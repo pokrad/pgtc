@@ -16,6 +16,7 @@ mod editing;
 mod files;
 mod find_object;
 mod focus;
+mod key_help;
 mod lookups;
 mod mouse;
 mod object_view;
@@ -1258,8 +1259,8 @@ impl App {
             Command::InstallTemplates => self.start_setup(false),
             Command::RunSetup => self.start_setup(true),
             Command::ShowTemplatesFolder => self.show_templates_folder(),
-            Command::Help => self.open_shortcuts(true),
-            Command::KeyboardShortcuts => self.open_shortcuts(false),
+            Command::Help => self.open_key_help(),
+            Command::KeyboardShortcuts => self.open_shortcuts(),
             Command::ThirdPartyLicences => self.open_licences(),
             Command::About => self.open_about(),
             Command::RefreshTree => self.refresh(),

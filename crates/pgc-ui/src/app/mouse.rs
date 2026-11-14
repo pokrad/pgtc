@@ -1,6 +1,6 @@
 //! Mouse input (D-016): pane borders, editor, results, tree, menus and dialogs.
 
-use crossterm::event::{KeyEvent, MouseButton, MouseEvent, MouseEventKind};
+use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::{Position, Rect};
 
 use super::{App, Focus};
@@ -210,12 +210,6 @@ impl App {
     }
 
     fn left_click(&mut self, p: Position, hits: &Hits) {
-        let fkey = hits
-            .fkeys
-            .iter()
-            .find(|(_, r)| r.contains(p))
-            .map(|(k, _)| *k);
-
         if let Some(dialog) = self.dialogs.last_mut() {
             if let Some((outer, _)) = &hits.dialog
                 && dialog.combo_click(*outer, hits.screen, p.x, p.y)
@@ -226,8 +220,6 @@ impl App {
             {
                 let event = dialog.click(i, areas[i], p.x, p.y);
                 self.dialog_event(event);
-            } else if let Some(k) = fkey {
-                self.dispatch(KeyEvent::new(k.code, k.mods));
             }
             return;
         }
@@ -282,8 +274,6 @@ impl App {
             } else {
                 Focus::Tabs
             };
-        } else if let Some(k) = fkey {
-            self.dispatch(KeyEvent::new(k.code, k.mods));
         } else if hits.tree.contains(p) {
             self.focus = Focus::Tree;
             if let Some(i) = self.tree_row_at(p, hits) {

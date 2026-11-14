@@ -74,7 +74,7 @@ macro_rules! commands {
                 match self { $(Command::$variant => $name),* }
             }
 
-            /// Short description (Help → Keyboard shortcuts).
+            /// Short description (Help → Keyboard shortcuts, `F1`).
             pub fn description(self) -> &'static str {
                 match self { $(Command::$variant => $desc),* }
             }
@@ -84,7 +84,7 @@ macro_rules! commands {
 
 commands! {
     // global
-    Help = "help", "Keyboard shortcuts of the focused frame";
+    Help = "help", "The keys that work now";
     Menu = "menu", "Open the menu bar";
     Quit = "quit", "Quit pgtc";
     SwitchPanel = "switch_panel", "Switch between the object tree and the right frame";
@@ -212,7 +212,7 @@ commands! {
     RunSetup = "run_setup", "Run setup";
     InstallTemplates = "install_templates", "Install templates";
     ShowTemplatesFolder = "show_templates_folder", "Show templates folder";
-    KeyboardShortcuts = "keyboard_shortcuts", "Keyboard shortcuts";
+    KeyboardShortcuts = "keyboard_shortcuts", "All keyboard shortcuts";
     ThirdPartyLicences = "third_party_licences", "Third-party licences";
     About = "about", "About pgtc";
 }

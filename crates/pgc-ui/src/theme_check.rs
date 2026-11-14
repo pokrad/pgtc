@@ -197,8 +197,7 @@ const READABLE: &[Role] = &[
     R::TabsActive,
     R::TabsInactive,
     R::StatusNormal,
-    R::FkeyNumber,
-    R::FkeyLabel,
+    R::StatusWindow,
     R::EditorText,
     R::EditorKeyword,
     R::EditorString,
@@ -243,7 +242,7 @@ const HIGHLIGHTS: &[(Role, Role)] = &[
     // selected item of a list / open combo list, drawn on the input colours
     (R::DialogFocus, R::DialogInput),
     (R::CoreSelectedUnfocused, R::DialogInput),
-    (R::FkeyLabel, R::FkeyNumber),
+    (R::StatusWindow, R::CoreNormal),
     (R::StatusNormal, R::CoreNormal),
     (R::MenuNormal, R::CoreNormal),
 ];

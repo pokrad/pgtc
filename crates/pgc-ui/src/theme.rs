@@ -65,8 +65,7 @@ roles! {
     TabsActiveUnfocused = "tabs.active_unfocused";
     TabsInactive = "tabs.inactive";
     StatusNormal = "status.normal";
-    FkeyNumber = "fkeybar.number";
-    FkeyLabel = "fkeybar.label";
+    StatusWindow = "status.window";
     EditorText = "editor.text";
     EditorKeyword = "editor.keyword";
     EditorString = "editor.string";

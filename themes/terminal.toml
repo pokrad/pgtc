@@ -41,10 +41,7 @@ inactive = "default on default"
 
 [status]
 normal = "default on default reversed"
-
-[fkeybar]
-number = "default on default"
-label = "default on default reversed"
+window = "default on default reversed"
 
 [editor]
 text = "default on default"

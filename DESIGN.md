@@ -1,7 +1,7 @@
 # pgtc — Design Decisions
 
 Living document. Every decision gets an ID (D-xxx), a short rationale and a status.
-Status values: **Accepted** · **Proposed** · **Open** · **Deferred**.
+Status values: **Accepted** · **Proposed** · **Open** · **Deferred** · **Withdrawn**.
 
 Short name / executable: **`pgtc`**. Long name: **Postgres terminal commander** (D-030).
 
@@ -57,35 +57,17 @@ desktop dependency.
     such as large result grids.
 - **Notes:** ratatui has no built-in multi-line text editor widget — see D-015.
 
-### D-005 — Icons and fonts: Nerd Fonts, two display modes
-- **Status:** Accepted
-- **Font:** The UI uses icon glyphs from **Nerd Fonts** (https://www.nerdfonts.com).
-  Any Nerd Font works (icons share the same code points).
-- **Background:**
-  - A terminal program cannot select, load or detect fonts — the font is chosen by the
-    user's terminal emulator, and there is no portable way to query it.
-  - Over SSH the font must be installed on the **client machine** (where the terminal
-    runs), not on the server running pgtc.
-  - Most modern terminals support **font fallback** (a glyph missing from the main font
-    is taken from another installed font): Linux terminals and macOS do it
-    automatically; Windows Terminal accepts a font list
-    (e.g. `"Cascadia Mono, Symbols Nerd Font Mono"`); WezTerm and Ghostty ship Nerd Font
-    symbols built in. The legacy Windows console (conhost) has no practical fallback.
-- **Display modes (only two):**
-  1. **Icons off** — **default**. Each icon is replaced by empty space of the same width,
-     so layout and alignment are unchanged.
-  2. **Icons on** — Nerd Font glyphs are shown.
-- **Switching modes:** no auto-detection. The user turns icons on/off in the
-  **Settings dialog**; the change applies immediately at runtime and is saved to the
-  configuration. The checkbox reads **"Show icons (needs a Nerd Font)"** and a **sample
-  row of icons** is drawn next to it: if the terminal shows icons, the font is fine; if
-  it shows boxes or question marks, there is no Nerd Font and icons should stay off.
-- **Rule:** Icons are decorative only. No information may be conveyed by an icon alone;
-  object types, states, etc. must also be clear from text, labels or grouping, so the
-  UI stays fully usable with icons off.
-- **No bundled fonts, no font installation** (D-047): pgtc does not ship, install or
-  configure fonts. As with other terminal tools (eza, lsd, yazi, lazygit), users who
-  want icons install a Nerd Font themselves and select it in their terminal.
+### D-005 — Icons and fonts (withdrawn)
+- **Status:** Withdrawn (2026-11-14, D-063)
+- **Was:** optional Nerd Font icons in the object tree and the tab strip, off by
+  default, switched on in the Settings dialog; with icons off each icon was empty
+  space of the same width.
+- **Now:** pgtc has **no icons** and needs no special font. Everything is plain text;
+  the two cells an icon took in tree rows and tab names are gone. The `ui.icons`
+  setting no longer exists (an old `settings.toml` that still has it loads normally,
+  the key is ignored).
+- **Rationale:** in use the icons had no real value, while costing a setting, a font
+  the user has to install on every client machine, and width in every tree row.
 
 ### D-006 — PostgreSQL client: tokio-postgres (async, tokio runtime)
 - **Status:** Accepted
@@ -127,7 +109,7 @@ desktop dependency.
 |------|----------|---------|
 | TLS | `rustls` (via `tokio-postgres-rustls`) | Encrypted connections to PostgreSQL; pure Rust, no OpenSSL/OS TLS dependency. |
 | Command-line arguments | `clap` | Argument parsing (e.g. `--setup`, connection arguments). |
-| Config files | `serde` + `toml` | Settings (icon mode, etc.) and saved connections. |
+| Config files | `serde` + `toml` | Settings and saved connections. |
 | Config/data folder paths | own code in `pgc-core` (D-039) | Per-OS locations: Windows `%APPDATA%`, Linux `~/.config` (XDG), macOS `~/Library/Application Support`. |
 | Error handling | `thiserror` + `anyhow` | `thiserror` for typed errors in library modules, `anyhow` for propagation in the application layer. |
 | Logging | `tracing` + `tracing-appender` | Structured logging to a file (a TUI cannot log to the screen). |
@@ -167,7 +149,7 @@ desktop dependency.
 ### D-009 — Main window layout
 - **Status:** Accepted
 - **Structure:** menu bar on top; below it a window split into a left and a right pane;
-  key-hint bar at the bottom (D-016).
+  the window status line at the bottom (D-063).
 
 ```
 +----------------------------------------------------------------+
@@ -184,7 +166,7 @@ desktop dependency.
 |             > customers   | );                                 |
 | > Server B                |                                    |
 +---------------------------+------------------------------------+
-| F1 Help F2 Menu F3 New tab ... F9 Menu bar F10 Quit (key hints) |
+| Window status line (messages)                                  |
 +----------------------------------------------------------------+
 ```
 
@@ -510,7 +492,7 @@ desktop dependency.
   - Server dashboard (D-057)
   - SQL profiler (D-058)
 - **Settings**
-  - Settings… — dialog with icons on/off (D-005), colour scheme, ... (contents: D-051)
+  - Settings… — dialog with colour scheme, ASCII frames, ... (contents: D-051)
   - Install templates — same as `--install-templates` (D-013)
   - Run setup — same as `--setup`: every installation step (D-047)
   - Show templates folder — displays the path of the templates folder (a terminal
@@ -521,8 +503,9 @@ desktop dependency.
     (user overrides show), grouped Everywhere · Object tree · Editor and object view ·
     Results · Dialogs and lists; each row is the key(s) and a short description of
     the command. Then "Other keys" (`Esc` + digit, `F9` + letter, `Alt` + letter),
-    "If a key does not work" (D-053) and the path of `keymap.toml`. The menu item opens it at the top; **`F1` opens it
-    scrolled to the section of the focused frame** (dialogs → Dialogs and lists).
+    "If a key does not work" (D-053) and the path of `keymap.toml`. This is the list
+    of **all** keys; **`F1` opens another window with only the keys that work now**
+    (D-063).
   - Third-party licences — the same kind of window: the pgAdmin SQL licence (D-010)
     with a *Used by* note (pgtc's catalog queries adapted from pgAdmin's SQL templates),
     then the licences of all Rust crates in the program, each licence text with the
@@ -552,9 +535,9 @@ desktop dependency.
   colour `tabs.active` **only while its part has the focus** — the tree's title while
   the tree is focused, the main tab while the right frame is, the Results / Messages /
   result-set label while the results are. Otherwise it has `tabs.active_unfocused`
-  (still apart from `tabs.inactive`), so one coloured strip shows where the focus is. The window status line under the
-  windows uses the window colour (`core.normal`), like mc's hint line, so it stands
-  apart from the key-hint bar. Dialogs, menus and combo lists keep
+  (still apart from `tabs.inactive`), so one coloured strip shows where the focus is. The window status line is the
+  bottom row of the screen, in its own colour `status.window` (the coloured line that
+  was the key-hint bar, D-063). Dialogs, menus and combo lists keep
   single-line frames. Same for every colour scheme.
 - **Combo boxes** (drop-downs) work the same in every dialog and in the developer
   template form (one shared implementation):
@@ -576,8 +559,7 @@ desktop dependency.
     colour **and are underlined** in the 16-colour schemes.
   - The text cursor is also drawn in reverse video (editor, dialog inputs), so it is
     visible whatever cursor colour the terminal uses.
-  - Scheme files use mc-like sections (core, dialog, menu, `fkey` for the key-hint
-    bar, editor, ...).
+  - Scheme files use mc-like sections (core, dialog, menu, status, editor, ...).
   - User schemes: `.toml` files in a user directory
     (e.g. Linux `~/.local/share/pgtc/themes`, equivalent per-OS paths via
     `pgc-core`, D-039), scanned at runtime. No scheme editor in the app — same rule as
@@ -640,42 +622,18 @@ desktop dependency.
 - **Licence:** mc is GPL-3.0 — only its look, layout and key conventions are reused,
   **no source code**.
 - **Screen:**
-  - Overall layout as in mc (menu bar, two panels, key-hint bar), **with one deliberate
-    difference: the right panel holds tabs** (default tab, object tabs, query tabs —
-    D-009). mc's right panel has no tabs.
+  - Overall layout as in mc (menu bar, two panels, one coloured line at the bottom),
+    **with one deliberate difference: the right panel holds tabs** (default tab, object
+    tabs, query tabs — D-009). mc's right panel has no tabs.
   - Menu bar always visible at the top (D-014).
-  - **Key-hint bar** at the bottom (in place of mc's `1Help 2Menu …` F-key bar): the
-    **most important keys of the focused frame, whatever the key is** — F-keys and
-    others alike, e.g. `F5 Exec  F7 Template  ^R Results  ^F Find  F6 Tree`.
-    - Each entry is the key (F-key number colour) followed by a short label, only as
-      wide as it needs; `Ctrl+` is shown as `^`. Entries that do not fit are left out
-      from the right, so the order is the priority.
-    - Which commands are shown is a fixed list per frame; the **keys come from the
-      active keymap** (user bindings show; an unbound command is left out). Commands
-      that cannot run now are hidden (e.g. *Cancel* only while a query runs, *Fetch
-      all* only while rows wait, `F8` *Delete* only on a server row).
-    - `F6` is labelled by where it goes (D-060): *Right* in the object tree, *Tree*
-      everywhere in the right frame.
-    - Lists: object tree — Help, Menu (`F2`), New tab (`F3`), New query, Refresh,
-      Search, Delete (`F8`, server rows), Right (`F6`), Menu bar (`F9`), Quit; query
-      editor — Help, Exec, Cancel, Template, psql (`F4`, D-054), Find, Results, Close
-      tab, Tree, Menu bar, Quit; read-only object view — Help, Find, Find next, Copy,
-      New query, Tree, Menu bar, Quit; results — Help, Exec, Cancel, Messages, Next
-      result (more than one set), Fetch all, Menu, Copy, Hide, Tree, Quit; dashboard
-      list (D-057) — Help, Menu, Refresh, Pause, Next list (`Alt+Right`), Idle, Cancel,
-      Terminate (Sessions), Edit (`Ctrl+E`), Close tab, Tree, Quit; profiler list
-      (D-058) — Help, Menu, Start/Stop, Pause, Filter, Clear, Edit, Close tab, Tree,
-      Quit; statement pane (D-059) — Help, Find, Find next, Copy, Edit, Hide (`Ctrl+R`),
-      Close tab, Tree, Quit; dialogs and the template form —
-      OK, Cancel, Next field, Toggle; Help windows (D-014) — `↑↓` Scroll, `PgUp/PgDn`
-      Page, Esc Close; open menu bar — `←→` Menus, Enter Choose, Esc Close (context
-      menu: Enter, Esc).
-    - A click on an entry presses its key; `Esc`+digit still works for F-keys.
+  - **No key-hint bar** (D-063). The bottom line (in place of mc's `1Help 2Menu …`
+    F-key bar) is the **window status line**; the keys are shown by `F1` (the keys that
+    work now) and by Help → Keyboard shortcuts (all keys).
 - **Keys (mc meanings, adapted):**
 
   | Key | mc | pgtc |
   |-----|----|-------------|
-  | `F1` | Help | Keyboard shortcuts of the focused frame (D-014 Help) |
+  | `F1` | Help | The keys that work now (D-063) |
   | `F2` | User menu | Context menu for the selected object |
   | `F3` | View | Show definition in a new tab |
   | `F4` | Edit | psql-style command line in a query tab (D-054) |
@@ -712,7 +670,7 @@ desktop dependency.
   - **Context keys** — meaning depends on the focused panel, e.g. `Ctrl+R`:
     - object tree: refresh tree (mc meaning);
     - query tab: show / hide the results pane (SSMS meaning).
-  - The **key-hint bar and menus always show the keys of the current context**.
+  - The **`F1` window and the menus always show the keys of the current context**.
   - Actions of another context are reached by switching focus (`Ctrl+Tab` / `F6`) or via the menu
     (e.g. View → Refresh object tree from a query tab).
 - **Configurable keymap:** built-in mc-style defaults; users can override keys in a
@@ -755,7 +713,7 @@ desktop dependency.
 | Crate | Contains | Depends on |
 |-------|----------|------------|
 | `pgtc` | Binary: command-line arguments (`clap`), startup, `--setup` / `--install-templates` | all |
-| `pgc-ui` | ratatui application: layout, object tree, tabs, menus, dialogs, key-hint bar, colour schemes, keymap | `pgc-editor`, `pgc-db`, `pgc-model`, `pgc-sql`, `pgc-core` |
+| `pgc-ui` | ratatui application: layout, object tree, tabs, menus, dialogs, colour schemes, keymap | `pgc-editor`, `pgc-db`, `pgc-model`, `pgc-sql`, `pgc-core` |
 | `pgc-editor` | SQL editor widget: ropey buffer, SQL lexer, editing keys (D-015) | ratatui, `pgc-core` |
 | `pgc-db` | Connections (tokio-postgres), `.pgpass`, catalog queries, object definitions, reading the structure model from a database | `pgc-sql`, `pgc-model`, `pgc-core` |
 | `pgc-sql` | Versioned template resolver, minijinja setup and filters, embedded SQL files (D-010), developer templates `.pgtemplate` (D-013) | `pgc-core` |
@@ -1137,7 +1095,7 @@ pgtc (binary)
   becomes `F1`..`F10` (`0` = `F10`). If nothing follows, `Esc` acts as `Esc` after the
   timeout; if another key follows, `Esc` is processed first, then that key.
 - **Mouse (basic, from Phase 1):** left click on menu titles and items, right-pane tabs,
-  dialog buttons / checkboxes / lists / inputs, key-hint bar entries and panes (focus).
+  dialog buttons / checkboxes / lists / inputs and panes (focus).
   Right click on the tree = context menu (`F2`). Mouse capture is on; terminals still
   allow text selection with `Shift`+drag.
 
@@ -1343,7 +1301,7 @@ pgtc (binary)
     its top frame line (the tab strip names the tab, D-014).
 - **Close mark:** every tab except the default tab shows a `×` at the right of its
   name; clicking it closes the tab exactly like `Ctrl+W` (same questions). It is a
-  plain character, shown with icons on or off (D-005).
+  plain character.
 - **Window status line:** only messages (e.g. *Saved …*, *Disconnected*, hints, the
   `Esc` digit prompt). It no longer shows tab state. After a run of the active tab it
   replaces *Executing…* with *Execution finished in …* / *Execution failed after … —
@@ -1412,7 +1370,7 @@ pgtc (binary)
   template error) are shown in the preview. *OK* inserts the SQL **at the cursor** of
   the tab's editor (replacing a selection); it is not executed.
 - **Window:** drawn like every dialog (margin of dialog colour, single frame, shadow),
-  as large as the screen between the menu bar and the F-key bar. Form on the left,
+  as large as the screen between the menu bar and the status line. Form on the left,
   preview on the right, divided by a vertical line joined to the frame (`┬ … ┴`); the
   window title is centred over the form, the preview has its title row (*Preview*)
   under its own line (`├───┤`). On narrow screens the preview is below the form,
@@ -1431,7 +1389,7 @@ pgtc (binary)
     skips only that step.
   - Menu entry (rule "every command-line action has a menu entry"): **Settings → Run
     setup**; the result of each step is shown in a message.
-- **Fonts are not bundled or installed** (D-005 updated): a terminal app cannot choose
+- **Fonts are not bundled or installed** (pgtc has no icons, D-005 withdrawn): a terminal app cannot choose
   the terminal's font, so installing fonts would still leave per-terminal, per-platform
   steps to the user. `--install-font` and Settings → Install fonts are removed.
 
@@ -1559,8 +1517,7 @@ pgtc (binary)
 - **Status:** Accepted (refines D-002, D-005, D-006, D-014, D-019, D-023, D-041)
 - **Settings dialog** (one column, groups separated by an empty row, fits a 24-row
   terminal):
-  - *Appearance:* Show icons (with the sample row, D-005), Colour scheme (combo,
-    D-014), **ASCII frames**.
+  - *Appearance:* Colour scheme (combo, D-014), **ASCII frames**.
   - *Tree and connections:* Connect timeout (s) (D-035), Show system objects (D-044).
   - *Query tabs:* Rows per batch (`query.batch_rows`, default 1,000, D-019), Cancel
     wait (s) (`query.cancel_wait_secs`, default 5, D-041), Auto commit and Auto
@@ -2033,6 +1990,40 @@ pgtc (binary)
 - Implementation order and implementation guidelines are kept in **`CLAUDE.md`**, not in
   this document.
 
+### D-063 — No icons, no key-hint bar; `F1` shows the keys that work now
+- **Status:** Accepted (withdraws D-005; changes D-009, D-014, D-016)
+- **Rationale:** in use, two features had no real value. Icons (D-005) only decorated.
+  The key-hint bar took a screen row and still could not list all keys.
+- **Icons removed:** no icon glyphs anywhere, no icons setting, no Nerd Font (D-005).
+- **Key-hint bar removed:** the screen is menu bar, the two windows, and **one bottom
+  row: the window status line** (messages such as *Saved …*, *Disconnected*, the `Esc`
+  digit prompt, D-043). It is drawn in the colour the bar had — theme role
+  **`status.window`** (replaces `fkeybar.number` / `fkeybar.label`; `status.normal`
+  stays the tab status row). The windows get the freed row. There is nothing to click
+  in the bottom row any more.
+- **`F1` — keys available now:** a Help window (scrolling text, Close) titled *Keys
+  available now*, listing **only the keys that do something in the current state**:
+  - first the keys of the **focused frame** under its name — *Object tree*, *Query
+    editor*, *Object view*, *Statement pane*, *Results*, *Messages*, *Server
+    dashboard*, *SQL profiler*, *Database statistics*; with a dialog open: *Dialogs
+    and lists*;
+  - then **Everywhere**: the global keys that reach their command here (a key the
+    frame uses for something else is not repeated; in a dialog only `F1`);
+  - then **Other keys**: `Esc` + digit, and `F9` + letter (in a dialog: `Alt` +
+    letter);
+  - a last line pointing to Help → Keyboard shortcuts.
+  - A key is left out when its command cannot run now: commands with a menu item
+    follow the menu's enabled state (e.g. *Execute* only in an idle query tab, *Cancel*
+    only while a query runs, *Refresh* only on a connected server, *Close tab* not on
+    the default tab); editing keys (cut, paste, undo, indent, …) only in an editable
+    editor; tree keys only when the tree has rows; `F8` only on a server row; `Enter`
+    in Messages only on an error with a line to jump to. A frame with no working key
+    has no section.
+  - Keys and descriptions come from the active keymap, as in the full list. `F1` does
+    not open a second window over a Help window.
+- **Help → Keyboard shortcuts** is unchanged: every bound key, grouped by context,
+  opened at the top (D-014).
+
 ---
 
 ## 3. Change log
@@ -2159,3 +2150,4 @@ pgtc (binary)
 | 2026-11-13 | D-061 accepted: vendored, patched crossterm 0.29.0 — `ESC` + escape sequence is the key with Alt (PuTTY's Alt+arrows); README PuTTY note. |
 | 2026-11-13 | D-062 accepted: database statistics tab — database rows only, `Alt+I` in the tree / context menu, own connection, summary boxes + Group / Statistic / Value list from `pg_stat_database` (version-dependent groups), refresh only on `F5`. |
 | 2026-11-14 | D-019 updated: closing a paused result cancels its statement only when nothing can be lost (no open transaction, first statement of the run) and waits for the cancel request before the next request; otherwise the remaining rows are read and dropped, status *Closing the result…*. D-040 updated: the patched cancel request waits until the server closes the cancel connection (as libpq). D-042 updated. |
+| 2026-11-14 | D-063 accepted: icons removed (D-005 withdrawn, `ui.icons` gone); key-hint bar removed — the bottom row is the window status line in the bar's colour (role `status.window` replaces `fkeybar.*`); `F1` opens *Keys available now* with only the keys that work in the current state, Help → Keyboard shortcuts still lists all keys. D-007, D-009, D-014, D-016, D-018, D-043, D-046, D-047, D-051 updated. |

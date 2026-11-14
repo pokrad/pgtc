@@ -42,10 +42,7 @@ inactive = "#a9b1d6 on #292e42"
 
 [status]
 normal = "#c0caf5 on #3b4261"
-
-[fkeybar]
-number = "#a9b1d6 on #16161e"
-label = "#c0caf5 on #3b4261"
+window = "#c0caf5 on #3b4261"
 
 [editor]
 text = "#c0caf5 on #1a1b26"

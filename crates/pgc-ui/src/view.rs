@@ -1,5 +1,5 @@
 //! Rendering of the main window (D-009, D-016): menu bar, tree pane, tabbed right pane,
-//! status line, F-key bar. Only reads the state; records click areas in [`Hits`].
+//! status line. Only reads the state; records click areas in [`Hits`].
 
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Position, Rect};
@@ -8,9 +8,7 @@ use ratatui::widgets::{Block, Paragraph};
 
 use pgc_editor::EditorStyles;
 
-use crate::app::{App, Focus, TabKind};
-use crate::icons::{Icon, icon};
-use crate::keys::KeyCombo;
+use crate::app::{App, Focus};
 use crate::menu::{self, MenuHits};
 use crate::theme::Role;
 use crate::tree::RowKind;
@@ -30,8 +28,6 @@ pub struct Hits {
     pub main: Rect,
     /// Close marks `×` of the tabs: (tab index, area) (D-043).
     pub tab_close: Vec<(usize, Rect)>,
-    /// Key-hint bar entries: the key a click presses.
-    pub fkeys: Vec<(KeyCombo, Rect)>,
     /// Outer area and widget areas of the top dialog.
     pub dialog: Option<(Rect, Vec<Rect>)>,
     /// The whole screen.
@@ -86,10 +82,9 @@ pub fn render(frame: &mut Frame, app: &App, hits: &mut Hits) {
     hits.screen = area;
     frame.render_widget(Block::new().style(app.theme.get(Role::CoreNormal)), area);
 
-    let [menu_row, main, status_row, fkey_row] = Layout::vertical([
+    let [menu_row, main, status_row] = Layout::vertical([
         Constraint::Length(1),
         Constraint::Fill(1),
-        Constraint::Length(1),
         Constraint::Length(1),
     ])
     .areas(area);
@@ -115,7 +110,6 @@ pub fn render(frame: &mut Frame, app: &App, hits: &mut Hits) {
         crate::completion::render(frame, p, at, area, &app.theme);
     }
     render_status(frame, app, status_row);
-    render_fkeys(frame, app, fkey_row, hits);
 
     menu::render_bar(
         frame,
@@ -274,8 +268,7 @@ fn render_tree(frame: &mut Frame, app: &App, area: Rect) -> Rect {
         .take(inner.height as usize)
         .map(|(i, row)| {
             let t = app.tree.row_text(*row);
-            let ic = t.icon.map_or("  ", |ic| icon(ic, app.settings.ui.icons));
-            let text = format!(" {}{} {}{}", "  ".repeat(t.depth), t.marker, ic, t.label);
+            let text = format!(" {}{} {}", "  ".repeat(t.depth), t.marker, t.label);
             let text: String = text.chars().take(width).collect();
             let style = if i == app.tree.cursor {
                 selected
@@ -330,21 +323,10 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
     let mut spans = Vec::new();
     let mut x = strip.x;
     for (i, tab) in app.tabs.iter().enumerate() {
-        let ic = match tab.kind() {
-            TabKind::Default | TabKind::Object => Icon::ObjectView,
-            TabKind::Query(_) => Icon::Query,
-            TabKind::Dashboard => Icon::Server,
-            TabKind::Profiler => Icon::Query,
-            TabKind::DbStats => Icon::Database,
-        };
         // every tab but the default one has a close mark (D-043)
         let closable = i > 0;
         let close = if closable { " ×" } else { "" };
-        let label = format!(
-            " {}{}{close} ",
-            icon(ic, app.settings.ui.icons),
-            tab.label()
-        );
+        let label = format!(" {}{close} ", tab.label());
         let width = label.chars().count() as u16;
         if closable {
             let cx = x + width - 2;
@@ -645,8 +627,8 @@ fn render_results(
 }
 
 fn render_status(frame: &mut Frame, app: &App, area: Rect) {
-    // window background, like mc's hint line: it must not run into the F-key bar (D-014)
-    let style = app.theme.get(Role::CoreNormal);
+    // the coloured bottom line of the screen (D-014)
+    let style = app.theme.get(Role::StatusWindow);
     let text = if app.esc_pending() {
         " Esc: press a digit for F1..F10".to_owned()
     } else {
@@ -732,28 +714,4 @@ fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: 
         Span::styled(right, style),
     ]);
     frame.render_widget(Paragraph::new(line), area);
-}
-
-/// Key-hint bar: the most important keys of the focused frame (D-016).
-fn render_fkeys(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
-    hits.fkeys.clear();
-    let number = app.theme.get(Role::FkeyNumber);
-    let label = app.theme.get(Role::FkeyLabel);
-    frame.render_widget(Block::new().style(label), area);
-    let mut spans = Vec::new();
-    let mut x = area.x;
-    for hint in app.key_hints() {
-        let key = hint.key_text();
-        let text = format!(" {} ", hint.label);
-        let width = (key.chars().count() + text.chars().count()) as u16;
-        // entries that do not fit are left out from the right
-        if x + width > area.right() {
-            break;
-        }
-        hits.fkeys.push((hint.key, Rect::new(x, area.y, width, 1)));
-        spans.push(Span::styled(key, number));
-        spans.push(Span::styled(text, label));
-        x += width;
-    }
-    frame.render_widget(Paragraph::new(Line::from(spans)), area);
 }

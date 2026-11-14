@@ -1,7 +1,5 @@
 //! Object types shown in the tree (D-036): group labels, SQL folders, children.
 
-use crate::icons::Icon;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ObjType {
     // server level
@@ -287,18 +285,6 @@ impl ObjType {
                 | T::Policy
                 | T::Partition
         )
-    }
-
-    pub fn icon(self) -> Icon {
-        match self {
-            T::Database => Icon::Database,
-            T::Table | T::Partition | T::ForeignTable => Icon::Table,
-            T::View | T::MatView => Icon::View,
-            T::Function | T::Procedure | T::TriggerFunction | T::Aggregate => Icon::Function,
-            T::Column => Icon::Column,
-            T::Role => Icon::Role,
-            _ => Icon::Object,
-        }
     }
 }
 

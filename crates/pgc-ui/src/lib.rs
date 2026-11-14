@@ -1,4 +1,4 @@
-//! Terminal UI (ratatui): layout, object tree, tabs, menus, dialogs, F-key bar, colour
+//! Terminal UI (ratatui): layout, object tree, tabs, menus, dialogs, colour
 //! schemes, keymap (D-009, D-014, D-016).
 
 mod app;
@@ -11,9 +11,7 @@ mod dialog;
 mod export;
 mod grid;
 mod help;
-mod hints;
 mod hotkey;
-mod icons;
 mod keymap;
 mod keys;
 mod menu;

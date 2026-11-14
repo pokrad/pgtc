@@ -35,7 +35,7 @@ order the first alpha is implemented.
   them through channels (D-006, D-011).
 - **User-supplied values go into SQL as bind parameters (`$1`, ...)**, never pasted into
   SQL text. Identifiers are quoted with the single `pgc-core` quoting implementation.
-- Icons are decorative only; with icons off they become empty space (D-005).
+- No icons, no key-hint bar (D-063).
 - No hard-coded list of server versions; use `ServerVersion` + feature table (D-011).
 - Keyboard first; every action reachable by keyboard; mouse optional (D-002, D-016).
 
@@ -99,7 +99,9 @@ dependencies.
   `double_border()` / `plain_border()` / `hline()` / `vline()` / `separator_ends()`, so
   the ASCII frames setting works (D-051).
 - **New commands** get a keymap name *and* a short description in the `commands!`
-  table of `keymap.rs`; the description is shown in Help → Keyboard shortcuts.
+  table of `keymap.rs`; the description is shown in Help → Keyboard shortcuts and in
+  the `F1` window. A command without a menu item also gets its "works now" rule in
+  `app/key_help.rs` (D-063).
 - **Deterministic output** for `.pgdef` and exports: stable ordering, pretty-printed (D-012).
 - Commands:
   - `cargo build` / `cargo build --release`
@@ -131,14 +133,14 @@ phase, small steps with a working state after each.
 
 ### Phase 1 — TUI shell (mc look)
 - ratatui + crossterm init/restore, panic hook, async event loop (tokio + channels).
-- Layout: menu bar, left tree pane, right tab area, status line, key-hint bar (D-009, D-016).
+- Layout: menu bar, left tree pane, right tab area, status line (D-009, D-016, D-063).
 - Theme system + **Classic** scheme (+ Dark, Light, Terminal default); user themes
   scanned from user dir (D-014).
 - Keymap with contexts + `keymap.toml` overrides; `Esc`+digit F-key substitute.
 - Menu bar (`F9`) with all menus from D-014 (unimplemented items disabled).
 - mc-style dialog framework (buttons, inputs, checkboxes, lists) — needed by everything
   after this.
-- Settings dialog skeleton (icons on/off, colour scheme); icons mode (D-005).
+- Settings dialog skeleton (colour scheme).
 - Tabs: default tab, open/close/next/previous.
 - **Result:** navigable empty application with working menu, dialogs, themes.
 

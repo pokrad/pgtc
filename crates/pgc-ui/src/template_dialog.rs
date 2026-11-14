@@ -714,7 +714,7 @@ impl TemplateForm {
     /// Where everything of the form is drawn on `screen`.
     pub fn layout(screen: Rect) -> Layout {
         // like every dialog (D-014): a margin of dialog colour around the frame and
-        // a shadow; as large as the screen between the menu bar and the F-key bar
+        // a shadow; as large as the screen between the menu bar and the status line
         let outer = Rect {
             x: screen.x,
             y: screen.y + 1,

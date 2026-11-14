@@ -80,9 +80,6 @@ impl App {
             "Settings",
             50,
             vec![
-                Widget::checkbox("icons", "Show &icons (needs a Nerd Font)", s.ui.icons),
-                Widget::label(&format!("    Sample: {}", crate::icons::sample())),
-                Widget::label("    Boxes or ? here: no Nerd Font."),
                 Widget::combo("scheme", "Colour &scheme:", names, selected, 22),
                 Widget::checkbox("ascii", "ASCII &frames (+ - |)", s.ui.ascii_frames),
                 Widget::label(""),
@@ -166,7 +163,6 @@ impl App {
         self.settings.query.cancel_wait_secs = wait;
         self.settings.query.auto_commit = dialog.checked("auto_commit");
         self.settings.query.auto_rollback = dialog.checked("auto_rollback");
-        self.settings.ui.icons = dialog.checked("icons");
         self.settings.ui.ascii_frames = dialog.checked("ascii");
         self.settings.query.ask_save = dialog.checked("ask_save");
         let clipboard = pgc_core::settings::ClipboardSettings {

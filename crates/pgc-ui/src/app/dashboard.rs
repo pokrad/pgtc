@@ -394,14 +394,7 @@ impl App {
             .flat_map(|l| crate::help::wrap(l, 100))
             .collect();
         let headers = vec![false; lines.len()];
-        let mut dialog = crate::help::viewer(
-            &title,
-            crate::help::Lines {
-                lines,
-                headers,
-                sections: Vec::new(),
-            },
-        );
+        let mut dialog = crate::help::viewer(&title, crate::help::Lines { lines, headers });
         dialog.fit_text(self.screen);
         self.dialogs.push(dialog);
     }

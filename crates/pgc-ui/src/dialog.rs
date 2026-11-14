@@ -813,23 +813,6 @@ impl Dialog {
         }
     }
 
-    /// Scrolls the text widget `id` so that line `line` is at the top.
-    pub fn scroll_text_to(&mut self, id: &str, line: usize) {
-        if let Some(WidgetKind::Text {
-            lines,
-            offset,
-            rows,
-            ..
-        }) = self
-            .widgets
-            .iter_mut()
-            .find(|w| w.id == id)
-            .map(|w| &mut w.kind)
-        {
-            *offset = line.min(lines.len().saturating_sub(*rows as usize));
-        }
-    }
-
     /// Top line of the text widget `id`.
     #[cfg(test)]
     pub fn text_offset(&self, id: &str) -> Option<usize> {
@@ -1460,7 +1443,7 @@ mod tests {
             40,
             vec![
                 Widget::field("name", "&Name:", "ab", 8),
-                Widget::checkbox("icons", "&Icons", false),
+                Widget::checkbox("flag", "&Flag", false),
                 Widget::list(
                     "scheme",
                     "&Scheme:",
@@ -1492,7 +1475,7 @@ mod tests {
         press(&mut d, "Tab");
         assert_eq!(d.focus, 1);
         press(&mut d, "Space");
-        assert!(d.checked("icons"));
+        assert!(d.checked("flag"));
         press(&mut d, "Shift+Tab");
         assert_eq!(d.focus, 0);
     }
@@ -1500,8 +1483,8 @@ mod tests {
     #[test]
     fn hotkeys_lists_and_choices() {
         let mut d = sample();
-        press(&mut d, "Alt+I");
-        assert!(d.checked("icons"));
+        press(&mut d, "Alt+F");
+        assert!(d.checked("flag"));
         assert_eq!(d.focus, 1);
         press(&mut d, "s"); // plain hotkey letter works outside inputs
         assert_eq!(d.focus, 2);

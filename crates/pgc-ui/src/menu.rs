@@ -338,7 +338,7 @@ pub fn render_entries(
                 };
                 let key = shortcuts[i].clone().unwrap_or_default();
                 let mut spans = vec![Span::styled(" ", st)];
-                // On/off items show their state as text (D-005: not only an icon).
+                // On/off items show their state as text.
                 let mark = match checked(*cmd) {
                     Some(true) => "[x] ",
                     Some(false) => "[ ] ",

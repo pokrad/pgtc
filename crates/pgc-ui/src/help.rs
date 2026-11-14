@@ -1,9 +1,11 @@
 //! Help menu (D-014, D-016): keyboard shortcuts from the active keymap, third-party
-//! licences, About pgtc.
+//! licences, About pgtc. The `F1` window (the keys that work now, D-063) is built in
+//! `app/key_help.rs` from the parts here.
 
 use crate::app::App;
 use crate::dialog::{Dialog, DialogKind, Widget};
 use crate::keymap::{Command, Context, Keymap};
+use crate::keys::KeyCombo;
 
 /// Licence text of the pgAdmin SQL templates (D-010).
 const PGADMIN_LICENCE: &str = include_str!("../../../THIRD_PARTY_LICENSES/pgadmin4-LICENSE.txt");
@@ -40,7 +42,7 @@ pub(crate) fn wrap(line: &str, width: usize) -> Vec<String> {
 }
 
 /// Sections of the shortcuts window, in order.
-const SECTIONS: [(Context, &str); 8] = [
+pub(crate) const SECTIONS: [(Context, &str); 8] = [
     (Context::Global, "Everywhere"),
     (Context::Tree, "Object tree"),
     (Context::Editor, "Editor and object view"),
@@ -51,11 +53,10 @@ const SECTIONS: [(Context, &str); 8] = [
     (Context::Dialog, "Dialogs and lists"),
 ];
 
-/// Text of the shortcuts window: lines, heading marks, first line of each section.
+/// Text of a Help window: lines and heading marks.
 pub struct Lines {
     pub lines: Vec<String>,
     pub headers: Vec<bool>,
-    pub sections: Vec<(Context, usize)>,
 }
 
 impl Lines {
@@ -63,60 +64,79 @@ impl Lines {
         Self {
             lines: Vec::new(),
             headers: Vec::new(),
-            sections: Vec::new(),
         }
     }
 
-    fn push(&mut self, line: String, header: bool) {
+    pub(crate) fn push(&mut self, line: String, header: bool) {
         self.lines.push(line);
         self.headers.push(header);
     }
 }
 
-/// Every bound key of `km`, grouped by context (D-016).
-pub fn shortcut_lines(km: &Keymap, keymap_file: &str) -> Lines {
-    let rows: Vec<(Context, String, &str)> = SECTIONS
+/// Rows of one section of a keys window: the key(s) and what they do.
+pub(crate) type KeyRows = Vec<(String, &'static str)>;
+
+/// Keys that are not commands of the keymap.
+pub(crate) const ESC_DIGIT: (&str, &str) = (
+    "Esc, digit",
+    "F1 … F10 (Esc 1 … Esc 0), for terminals without F-keys",
+);
+pub(crate) const MENU_LETTER: (&str, &str) = ("F9, letter", "Menu with that underlined letter");
+pub(crate) const FIELD_LETTER: (&str, &str) =
+    ("Alt+letter", "Dialog field with that underlined letter");
+
+/// The keys of one row, as shown: `Ctrl+C, Ctrl+Insert`.
+pub(crate) fn key_names(keys: &[KeyCombo]) -> String {
+    let names: Vec<String> = keys.iter().map(ToString::to_string).collect();
+    names.join(", ")
+}
+
+/// Titled sections of key rows as window text; sections without rows are left out.
+pub(crate) fn key_sections(sections: &[(&str, KeyRows)]) -> Lines {
+    let width = sections
         .iter()
-        .flat_map(|&(ctx, _)| {
-            Command::ALL.iter().filter_map(move |&cmd| {
-                let keys = km.keys_for(ctx, cmd);
-                (!keys.is_empty()).then(|| {
-                    let keys: Vec<String> = keys.iter().map(ToString::to_string).collect();
-                    (ctx, keys.join(", "), cmd.description())
-                })
-            })
-        })
-        .collect();
-    let width = rows
-        .iter()
-        .map(|(_, k, _)| k.chars().count())
+        .flat_map(|(_, rows)| rows)
+        .map(|(k, _)| k.chars().count())
         .max()
         .unwrap_or(0)
         .min(24);
-
     let mut out = Lines::new();
-    for (ctx, title) in SECTIONS {
+    for (title, rows) in sections {
+        if rows.is_empty() {
+            continue;
+        }
         if !out.lines.is_empty() {
             out.push(String::new(), false);
         }
-        out.sections.push((ctx, out.lines.len()));
-        out.push(title.to_owned(), true);
-        for (_, keys, desc) in rows.iter().filter(|(c, _, _)| *c == ctx) {
+        out.push((*title).to_owned(), true);
+        for (keys, desc) in rows {
             out.push(format!("  {keys:<width$}  {desc}"), false);
         }
     }
-    out.push(String::new(), false);
-    out.push("Other keys".to_owned(), true);
-    for (keys, desc) in [
-        (
-            "Esc, digit",
-            "F1 … F10 (Esc 1 … Esc 0), for terminals without F-keys",
-        ),
-        ("F9, letter", "Menu with that underlined letter"),
-        ("Alt+letter", "Dialog field with that underlined letter"),
-    ] {
-        out.push(format!("  {keys:<width$}  {desc}"), false);
-    }
+    out
+}
+
+/// Every bound key of `km`, grouped by context (D-016).
+pub fn shortcut_lines(km: &Keymap, keymap_file: &str) -> Lines {
+    let mut sections: Vec<(&str, KeyRows)> = SECTIONS
+        .iter()
+        .map(|&(ctx, title)| {
+            let rows = Command::ALL
+                .iter()
+                .filter_map(|&cmd| {
+                    let keys = km.keys_for(ctx, cmd);
+                    (!keys.is_empty()).then(|| (key_names(&keys), cmd.description()))
+                })
+                .collect();
+            (title, rows)
+        })
+        .collect();
+    let other = [ESC_DIGIT, MENU_LETTER, FIELD_LETTER]
+        .iter()
+        .map(|&(k, d)| (k.to_owned(), d))
+        .collect();
+    sections.push(("Other keys", other));
+    let mut out = key_sections(&sections);
     out.push(String::new(), false);
     // keys a terminal may keep for itself (D-053)
     out.push("If a key does not work".to_owned(), true);
@@ -195,33 +215,22 @@ pub(crate) fn viewer(title: &str, lines: Lines) -> Dialog {
 }
 
 impl App {
-    /// Help → Keyboard shortcuts (top), or `F1`: scrolled to the focused frame.
-    pub(crate) fn open_shortcuts(&mut self, from_f1: bool) {
-        if self
-            .dialogs
-            .last()
-            .is_some_and(|d| d.kind == DialogKind::Viewer)
-        {
+    /// Help → Keyboard shortcuts: every key of the active keymap.
+    pub(crate) fn open_shortcuts(&mut self) {
+        if self.viewer_open() {
             return;
         }
-        let section = if !self.dialogs.is_empty() || self.template.is_some() {
-            Context::Dialog
-        } else {
-            self.context().unwrap_or(Context::Global)
-        };
         let file = self.paths.keymap_file().display().to_string();
-        let lines = shortcut_lines(&self.keymap, &file);
-        let start = lines
-            .sections
-            .iter()
-            .find(|(c, _)| *c == section)
-            .map_or(0, |(_, l)| *l);
-        let mut d = viewer("Keyboard shortcuts", lines);
+        let mut d = viewer("Keyboard shortcuts", shortcut_lines(&self.keymap, &file));
         d.fit_text(self.screen);
-        if from_f1 {
-            d.scroll_text_to(TEXT_ID, start);
-        }
         self.dialogs.push(d);
+    }
+
+    /// A Help window is on top (`F1` does not stack a second one).
+    pub(crate) fn viewer_open(&self) -> bool {
+        self.dialogs
+            .last()
+            .is_some_and(|d| d.kind == DialogKind::Viewer)
     }
 
     /// Help → Third-party licences (D-017).
@@ -264,10 +273,9 @@ mod tests {
             "{text}"
         );
         assert!(text.contains("Ctrl+C, Ctrl+Insert"));
-        assert_eq!(l.sections.len(), 8);
-        let tree = l.sections[1].1;
-        assert_eq!(l.lines[tree], "Object tree");
+        let tree = l.lines.iter().position(|x| x == "Object tree").unwrap();
         assert!(l.headers[tree]);
+        assert_eq!(l.headers.iter().filter(|h| **h).count(), 11);
         assert!(text.ends_with("  keymap.toml"));
         assert!(
             text.contains(

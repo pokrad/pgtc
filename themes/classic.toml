@@ -41,10 +41,7 @@ inactive = "lightgray on blue"
 
 [status]
 normal = "black on cyan"
-
-[fkeybar]
-number = "white on black"
-label = "black on cyan"
+window = "black on cyan"
 
 [editor]
 text = "lightgray on blue"

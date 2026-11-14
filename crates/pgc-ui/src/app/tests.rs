@@ -202,9 +202,7 @@ fn ctrl_tab_switches_panel_tab_does_not() {
 fn settings_dialog_applies_and_saves() {
     let (mut a, _d) = app();
     a.run(Command::Settings);
-    key(&mut a, "Space"); // icons on
-    key(&mut a, "Alt+S"); // focus the colour scheme combo
-    key(&mut a, "Space"); // open it
+    key(&mut a, "Space"); // the colour scheme combo has the focus: open it
     key(&mut a, "Down"); // Dark
     key(&mut a, "Enter"); // pick it
     key(&mut a, "Alt+T");
@@ -213,7 +211,6 @@ fn settings_dialog_applies_and_saves() {
     typing(&mut a, "30");
     key(&mut a, "Enter");
     assert!(a.dialogs.is_empty());
-    assert!(a.settings.ui.icons);
     assert_eq!(a.theme.name, "Dark");
     let saved = Settings::load(&a.paths.settings_file()).unwrap();
     assert_eq!(saved.ui.color_scheme, "Dark");
@@ -546,12 +543,12 @@ fn ctrl_n_and_tab_status_bar_at_the_bottom() {
     a.query_mut().unwrap().results_visible = true;
     let screen = screen_text(&a);
     let rows: Vec<&str> = screen.lines().collect();
-    // rows from the bottom: F-key bar, window status line, frame, tab status
-    let bar = rows[rows.len() - 4];
+    // rows from the bottom: window status line, frame, tab status
+    let bar = rows[rows.len() - 3];
     assert!(bar.contains("║ No database"), "{screen}");
     assert!(bar.contains("Ln 1, Col 1 ║"), "{screen}");
-    assert!(rows[rows.len() - 5].contains("║╟───"), "{screen}");
-    assert!(rows[rows.len() - 3].contains("╝╚═══"), "{screen}");
+    assert!(rows[rows.len() - 4].contains("║╟───"), "{screen}");
+    assert!(rows[rows.len() - 2].contains("╝╚═══"), "{screen}");
     // the tab strip is the first row inside the right frame, a separator below it
     assert!(rows[1].contains("╗╔═══"), "{screen}");
     assert!(rows[2].contains("Query 2 ×"), "{screen}");
@@ -608,67 +605,98 @@ fn active_tabs_are_coloured_only_in_the_focused_frame() {
     assert_eq!(style_at(&a, "Query 1", 2), unfocused);
 }
 
+/// The text of the `F1` window for the current state.
+fn f1_text(a: &App) -> String {
+    a.key_help_lines().lines.join("\n")
+}
+
+/// `F1` lists only the keys that do something now (D-063).
 #[test]
-fn key_hint_bar_follows_the_focused_frame() {
+fn f1_lists_only_the_keys_that_work_now() {
     let (mut a, _d) = app();
-    let texts = |a: &App| -> Vec<String> {
-        a.key_hints()
-            .iter()
-            .map(|h| format!("{} {}", h.key_text(), h.label))
-            .collect()
-    };
-    // tree, nothing selected: no refresh / new query / delete
+    // tree without connections: none of its keys work, the global ones do
     a.focus = Focus::Tree;
-    let t = texts(&a);
-    assert_eq!(t.first().map(String::as_str), Some("F1 Help"), "{t:?}");
-    assert!(t.contains(&"F6 Right".to_owned()), "F6 preferred: {t:?}");
-    assert!(t.contains(&"Alt+S Search".to_owned()), "{t:?}");
-    assert!(
-        !t.iter()
-            .any(|x| x.contains("Refresh") || x.contains("Delete")),
-        "{t:?}"
-    );
-    // a server row: F8 deletes the saved connection
+    let t = f1_text(&a);
+    assert!(!t.contains("Object tree"), "{t}");
+    assert!(t.contains("Everywhere\n"), "{t}");
+    assert!(t.contains("Open the menu bar"), "{t}");
+    assert!(t.contains("Quit pgtc"), "{t}");
+    assert!(!t.contains("New query tab"), "no database selected: {t}");
+    assert!(!t.contains("Next tab"), "one tab only: {t}");
+    assert!(t.ends_with("All keys: Help → Keyboard shortcuts"), "{t}");
+    // a server row (not connected): F8 deletes it; nothing to refresh
     add_server(&mut a, "srv");
     key(&mut a, "Home");
-    assert!(texts(&a).contains(&"F8 Delete".to_owned()));
-    // query editor: Exec, no Cancel while idle; ^ for Ctrl
+    let t = f1_text(&a);
+    assert!(t.starts_with("Object tree\n"), "{t}");
+    assert!(t.contains("Delete the saved connection"), "{t}");
+    assert!(t.contains("Quick search"), "{t}");
+    assert!(!t.contains("Refresh the object tree"), "{t}");
+    assert!(!t.contains("Focus the object tree"), "already there: {t}");
+    // query editor: Execute, no Cancel while idle; editing keys
     a.new_query_tab(None);
     a.focus = Focus::Tabs;
-    let t = texts(&a);
-    assert!(t.contains(&"F5 Exec".to_owned()), "{t:?}");
-    assert!(t.contains(&"^R Results".to_owned()), "{t:?}");
-    assert!(t.contains(&"^W Close tab".to_owned()), "{t:?}");
-    assert!(!t.iter().any(|x| x.contains("Cancel")), "{t:?}");
+    let t = f1_text(&a);
+    assert!(t.starts_with("Query editor\n"), "{t}");
+    assert!(
+        t.lines()
+            .any(|l| l.starts_with("  F5 ") && l.contains("Execute"))
+    );
+    assert!(t.contains("Ctrl+V, Shift+Insert"), "{t}");
+    assert!(!t.contains("Cancel the running query"), "{t}");
+    assert!(!t.contains("Fetch all rows"), "{t}");
+    assert!(t.contains("Close the tab"), "{t}");
+    assert!(t.contains("Focus the object tree"), "{t}");
+    // the context key hides the global one: Ctrl+R is the results here
+    assert!(!t.contains("Refresh the object tree"), "{t}");
     // results
     a.focus = Focus::Results;
-    let t = texts(&a);
-    assert!(t.contains(&"Alt+M Messages".to_owned()), "{t:?}");
-    assert!(t.contains(&"F6 Tree".to_owned()), "{t:?}");
-    assert!(!t.iter().any(|x| x.contains("Fetch all")), "{t:?}");
-    // read-only object view
+    let t = f1_text(&a);
+    assert!(t.starts_with("Results\n"), "{t}");
+    assert!(t.contains("Switch between results and messages"), "{t}");
+    assert!(!t.contains("Paste"), "{t}");
+    // read-only object view: no editing keys, nothing to execute
     a.active_tab = 0;
     a.focus = Focus::Tabs;
-    let t = texts(&a);
-    assert!(t.contains(&"^F Find".to_owned()), "{t:?}");
-    assert!(!t.iter().any(|x| x.contains("Exec")), "{t:?}");
-    // the bar on screen
-    let screen = screen_text(&a);
-    let bar = screen.lines().last().unwrap();
-    assert!(
-        bar.starts_with("F1 Help ^F Find F3 Find next ^C Copy"),
-        "{bar}"
-    );
-    // menu open
-    key(&mut a, "F9");
-    assert_eq!(texts(&a), ["←→ Menus", "Enter Choose", "Esc Close"]);
-    a.menu = None;
-    // a dialog: OK / Cancel / Next field / Toggle
+    let t = f1_text(&a);
+    assert!(t.starts_with("Object view\n"), "{t}");
+    assert!(t.contains("Find / replace"), "{t}");
+    assert!(t.contains("Ctrl+C, Ctrl+Insert"), "{t}");
+    assert!(!t.contains("Paste"), "{t}");
+    assert!(!t.contains("Execute"), "{t}");
+    assert!(!t.contains("Close the tab"), "the default tab: {t}");
+    // a dialog: its keys and F1, not the menu or Quit
     a.open_connection_dialog(None);
-    assert_eq!(
-        texts(&a),
-        ["Enter OK", "Esc Cancel", "Tab Next field", "Space Toggle"]
+    let t = f1_text(&a);
+    assert!(t.starts_with("Dialogs and lists\n"), "{t}");
+    assert!(t.contains("Toggle the checkbox"), "{t}");
+    assert!(
+        t.contains("Dialog field with that underlined letter"),
+        "{t}"
     );
+    assert!(!t.contains("Quit pgtc"), "{t}");
+    assert!(!t.contains("Open the menu bar"), "{t}");
+}
+
+/// The window status line is the coloured bottom row of the screen (D-014).
+#[test]
+fn status_line_is_the_bottom_row() {
+    let (mut a, _d) = app();
+    a.status = "Saved x".into();
+    let screen = screen_text(&a);
+    let rows: Vec<&str> = screen.lines().collect();
+    assert!(rows[29].starts_with(" Saved x"), "{screen}");
+    assert!(
+        rows[28].starts_with("╚═"),
+        "the windows end above it: {screen}"
+    );
+    let mut terminal = ratatui::Terminal::new(ratatui::backend::TestBackend::new(100, 30)).unwrap();
+    terminal
+        .draw(|f| crate::view::render(f, &a, &mut Hits::default()))
+        .unwrap();
+    let cell = &terminal.backend().buffer()[(1, 29)];
+    let want = a.theme.get(Role::StatusWindow);
+    assert_eq!((Some(cell.fg), Some(cell.bg)), (want.fg, want.bg));
 }
 
 #[test]
@@ -683,29 +711,31 @@ fn help_menu_shortcuts_licences_about() {
     ] {
         assert!(a.is_enabled(cmd), "{cmd:?}");
     }
-    // F1 in the tree: the shortcuts window at the Object tree section
+    // F1 in the tree: only the keys that work now (D-063)
     a.focus = Focus::Tree;
     key(&mut a, "F1");
-    let d = a.dialogs.last().expect("shortcuts window");
+    let d = a.dialogs.last().expect("keys window");
     assert_eq!(d.kind, DialogKind::Viewer);
-    assert_eq!(d.title, "Keyboard shortcuts");
-    let top = d.text_offset("text").unwrap();
-    assert!(top > 0, "scrolled to the tree section");
+    assert_eq!(d.title, "Keys available now");
     let screen = screen_text(&a);
-    assert!(screen.contains("Object tree"), "{screen}");
-    assert!(screen.contains("Refresh the object tree"), "{screen}");
-    assert!(a.key_hints().iter().any(|h| h.label == "Scroll"));
-    // F1 again does not stack a second window; Down scrolls; Esc closes
+    assert!(screen.contains("Everywhere"), "{screen}");
+    assert!(screen.contains("Quit pgtc"), "{screen}");
+    assert!(!screen.contains("Refresh the object tree"), "{screen}");
+    // F1 again does not stack a second window
     key(&mut a, "F1");
     assert_eq!(a.dialogs.len(), 1);
-    key(&mut a, "Down");
-    assert_eq!(a.dialogs[0].text_offset("text"), Some(top + 1));
     // (Esc waits for an Esc+digit F-key; F10 closes a dialog at once)
     key(&mut a, "F10");
     assert!(a.dialogs.is_empty());
-    // the menu item opens it at the top
+    // the menu item lists every key; Down scrolls
     a.run(Command::KeyboardShortcuts);
+    assert_eq!(a.dialogs[0].title, "Keyboard shortcuts");
     assert_eq!(a.dialogs[0].text_offset("text"), Some(0));
+    let screen = screen_text(&a);
+    assert!(screen.contains("Object tree"), "{screen}");
+    assert!(screen.contains("Refresh the object tree"), "{screen}");
+    key(&mut a, "Down");
+    assert_eq!(a.dialogs[0].text_offset("text"), Some(1));
     a.dialogs.clear();
     // licences: pgAdmin first, then the crates
     a.run(Command::ThirdPartyLicences);
@@ -1032,13 +1062,9 @@ fn each_tab_shows_its_own_connection() {
     assert!(screen.contains("Ln 1, Col 10"), "{screen}");
     // the window status line only has messages
     a.status = "Saved x".into();
-    let last_rows: Vec<String> = screen_text(&a)
-        .lines()
-        .rev()
-        .take(2)
-        .map(str::to_owned)
-        .collect();
-    assert!(last_rows[1].trim() == "Saved x", "{last_rows:?}");
+    let screen = screen_text(&a);
+    let last_row = screen.lines().last().unwrap();
+    assert!(last_row.trim() == "Saved x", "{last_row:?}");
     // object tabs: where the object comes from, then read only
     a.active_tab = 0;
     assert!(screen_text(&a).contains(" read only"));
@@ -1407,10 +1433,6 @@ fn query_tab_layout_draws_results_and_messages() {
     assert!(text.contains("answer"), "{text}");
     assert!(text.contains("[null]"), "{text}");
     assert!(text.contains("2 rows loaded – more available"), "{text}");
-    assert!(
-        text.contains("F5 Exec "),
-        "F5 in the editor's key-hint bar: {text}"
-    );
     key(&mut a, "Alt+M");
     let text = screen_text(&a);
     assert!(text.contains("Messages (0)"), "{text}");
@@ -2614,15 +2636,17 @@ async fn dashboard_tab_refreshes_and_cancels() {
     // pause: no new timer after the next answers
     key(&mut a, "Ctrl+P");
     assert!(a.tabs[1].dashboard().unwrap().paused);
-    // Alt+Left / Right in the list switch its lists (D-060), also in the key-hint bar
-    let h: Vec<String> = a
-        .key_hints()
-        .iter()
-        .map(|h| format!("{} {}", h.key_text(), h.label))
-        .collect();
-    for want in ["F5 Refresh", "Alt+Right Next list", "F6 Tree"] {
-        assert!(h.contains(&want.to_owned()), "{want} in {h:?}");
+    // Alt+Left / Right in the list switch its lists (D-060), also in the F1 window
+    let h = f1_text(&a);
+    assert!(h.starts_with("Server dashboard\n"), "{h}");
+    for want in [
+        "Refresh the dashboard now",
+        "Next dashboard list",
+        "Switch between the object tree and the right frame",
+    ] {
+        assert!(h.contains(want), "{want} in {h}");
     }
+    assert!(!h.contains("Next tab"), "Alt+Right is the lists here: {h}");
     key(&mut a, "Alt+Right");
     assert_eq!(
         a.tabs[1].dashboard().unwrap().list,
@@ -2784,23 +2808,24 @@ async fn profiler_asks_reads_and_restores() {
     assert_eq!(a.focus, Focus::Tree);
     key(&mut a, "F6");
     assert_eq!(a.focus, Focus::Results);
-    let hints = |a: &App| -> Vec<String> {
-        a.key_hints()
-            .iter()
-            .map(|h| format!("{} {}", h.key_text(), h.label))
-            .collect()
-    };
-    let h = hints(&a);
-    for want in ["F5 Start/Stop", "^F Filter", "F6 Tree"] {
-        assert!(h.contains(&want.to_owned()), "list: {want} in {h:?}");
+    let h = f1_text(&a);
+    assert!(h.starts_with("SQL profiler\n"), "{h}");
+    for want in ["Start / stop the profiler", "Filter the profiler entries"] {
+        assert!(h.contains(want), "list: {want} in {h}");
     }
     key(&mut a, "Alt+Down");
     assert_eq!(a.focus, Focus::Tabs);
     assert_eq!(a.context(), Some(crate::keymap::Context::Editor));
-    let h = hints(&a);
-    for want in ["^F Find", "^E Edit", "^R Hide", "F6 Tree"] {
-        assert!(h.contains(&want.to_owned()), "pane: {want} in {h:?}");
+    let h = f1_text(&a);
+    assert!(h.starts_with("Statement pane\n"), "{h}");
+    for want in [
+        "Find / replace",
+        "Edit the shown definition",
+        "Show / hide the results",
+    ] {
+        assert!(h.contains(want), "pane: {want} in {h}");
     }
+    assert!(!h.contains("Paste"), "read only: {h}");
     // Ctrl+R hides the pane: the focus goes back to the list
     key(&mut a, "Ctrl+R");
     assert_eq!(a.focus, Focus::Results);

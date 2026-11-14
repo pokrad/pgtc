@@ -139,8 +139,6 @@ impl SavedConnection {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct UiSettings {
-    /// Nerd Font icons on/off; off by default (D-005).
-    pub icons: bool,
     /// Name of the colour scheme; `Classic` by default (D-014).
     pub color_scheme: String,
     /// Show system objects in the tree; off by default (D-036, D-044).
@@ -157,7 +155,6 @@ pub struct UiSettings {
 impl Default for UiSettings {
     fn default() -> Self {
         Self {
-            icons: false,
             color_scheme: "Classic".to_owned(),
             show_system_objects: false,
             tree_width: None,
@@ -313,7 +310,6 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let s = Settings::load(&dir.path().join("settings.toml")).unwrap();
         assert_eq!(s, Settings::default());
-        assert!(!s.ui.icons);
         assert_eq!(s.ui.color_scheme, "Classic");
         assert_eq!(s.query.batch_rows, 1000);
     }
@@ -323,7 +319,6 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("sub").join("settings.toml");
         let mut s = Settings::default();
-        s.ui.icons = true;
         s.ui.color_scheme = "Dark".into();
         s.export.csv_separator = CsvSeparator::Semicolon;
         s.export.csv_bom = true;
@@ -346,9 +341,9 @@ mod tests {
     fn partial_file_fills_defaults_and_ignores_unknown_keys() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("settings.toml");
-        std::fs::write(&path, "[ui]\nicons = true\nfuture_key = 1\n").unwrap();
+        std::fs::write(&path, "[ui]\nascii_frames = true\nfuture_key = 1\n").unwrap();
         let s = Settings::load(&path).unwrap();
-        assert!(s.ui.icons);
+        assert!(s.ui.ascii_frames);
         assert_eq!(s.ui.color_scheme, "Classic");
         assert_eq!(s.query, QuerySettings::default());
     }

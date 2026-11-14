@@ -26,7 +26,7 @@ tabs with SQL on the right, function keys, menus and dialogs.
 - **Database definition** export to a file and **sync** of another database to it
   (only the needed CREATE / ALTER statements, for review before running).
 - **Colour schemes** (Classic, Dark, Light, Terminal default, Tokyo Night, Dracula and
-  your own), configurable keys, optional Nerd Font icons.
+  your own), configurable keys.
 
 | Developer template: Create table | Developer templates (`F7`) |
 |---|---|
@@ -75,7 +75,7 @@ file; `PGHOST`, `PGUSER`, `PGPASSWORD` and the other libpq variables work as in 
 
 | Key | Action |
 |---|---|
-| `F1` | keyboard shortcuts of the focused panel |
+| `F1` | the keys that work right now (all keys: Help → Keyboard shortcuts) |
 | `F2` | context menu |
 | `F4` | psql-style commands |
 | `F5` | execute the selection or the whole script |
