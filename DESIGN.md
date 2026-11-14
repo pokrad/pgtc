@@ -2039,8 +2039,9 @@ pgtc (binary)
 - **File name:** a query tab with a file shows its full path in a **file bar**: one
   full-width row right above the editor, coloured like an inactive tab
   (`tabs.inactive`); never in the tab label. A path that does not fit is shortened
-  from the left (`…\work\report.sql`). A tab without a file has no bar (the editor
-  gets the row).
+  from the left (`…\work\report.sql`). While the text has unsaved changes the bar
+  shows ` *` after the path (`F:\work\report.sql *`). A tab without a file has no bar
+  (the editor gets the row).
 - **Tab status row** (D-043): one full-width bar in the status colour, no gap between
   its left and right parts.
 
@@ -2207,3 +2208,4 @@ pgtc (binary)
 | 2026-11-14 | D-064 accepted: Save SQL file (`Ctrl+S` in editor and results) writes to the tab's file without a dialog, else does Save as; new *Save SQL file as…* always asks for the file; the full path of the tab's file is shown in a full-width bar above the editor in the inactive-tab colour (shortened from the left, no bar without a file), not in the tab label; the tab status row (D-043) is one full-width bar too. D-014, D-041, D-049 updated. |
 | 2026-11-14 | D-065 accepted: commands in groups (General, Actions, File, Moving, Selecting, Editing, Clipboard and undo, Find, Results, Windows and tabs) — `F1` and Help → Keyboard shortcuts list the keys group by group, with subheadings in larger sections; `Ctrl+Y` deletes the line (or the selected lines), redo is `Ctrl+Shift+Z` / `Alt+Shift+Z`. D-015, D-053 updated. |
 | 2026-11-14 | D-066 accepted: results bar with *Messages* first at a fixed place, then one tab per result set (no *Results* tab, result tabs stay visible on Messages); only *Messages* without a result set; a run shows its first result set, a run without one ends on Messages, an error shows Messages. D-019, D-041 updated. |
+| 2026-11-14 | D-064 updated: the file bar shows ` *` after the path while the tab's text has unsaved changes. |

@@ -1057,6 +1057,51 @@ fn quitting_asks_about_each_unsaved_query_tab() {
     assert!(a.should_quit());
 }
 
+/// Quitting with a changed tab that has a file: Yes saves to that file, no dialog.
+#[test]
+fn quitting_saves_a_tab_with_a_file_without_asking_for_a_name() {
+    let (mut a, dir) = app();
+    let path = dir.path().join("known.sql");
+    std::fs::write(&path, "select 1;").unwrap();
+    a.open_path(path.clone());
+    typing(&mut a, " -- edited");
+    key(&mut a, "F10");
+    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::QuitSaveChanges);
+    key(&mut a, "y");
+    assert!(
+        a.dialogs.is_empty(),
+        "{:?}",
+        a.dialogs.iter().map(|d| d.kind).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        std::fs::read_to_string(&path).unwrap(),
+        " -- editedselect 1;"
+    );
+    assert!(a.should_quit());
+
+    // the same for a tab saved with Ctrl+S (name asked once), then edited
+    let (mut a, dir) = app();
+    a.file_dir = dir.path().to_path_buf();
+    a.new_query_tab(None);
+    typing(&mut a, "select 2;");
+    key(&mut a, "Ctrl+S");
+    key(&mut a, "Enter");
+    assert!(a.dialogs.is_empty());
+    typing(&mut a, " -- edited");
+    key(&mut a, "F10");
+    key(&mut a, "y");
+    assert!(
+        a.dialogs.is_empty(),
+        "{:?}",
+        a.dialogs.iter().map(|d| d.kind).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("query.sql")).unwrap(),
+        "select 2; -- edited"
+    );
+    assert!(a.should_quit());
+}
+
 /// A query tab bound to server `uid` / database `db` (no real connection).
 fn bound_tab(a: &mut App, uid: u64, db: &str, text: &str) -> u64 {
     a.tree.select_server(0);
@@ -1418,8 +1463,18 @@ fn save_and_open_sql_files_through_the_dialog() {
         bar.is_some_and(|i| lines[i + 1].contains("select 'čšž';")),
         "{screen}"
     );
+    assert!(
+        !lines[bar.unwrap()].contains(" *"),
+        "saved: no mark {screen}"
+    );
     // Ctrl+S with a file: written at once, no dialog (D-064)
     typing(&mut a, " -- more");
+    // unsaved changes: ` *` after the path
+    let screen = screen_text(&a);
+    assert!(
+        screen.lines().any(|l| l.contains(&format!("{tail} *"))),
+        "{screen}"
+    );
     key(&mut a, "Ctrl+S");
     assert!(a.dialogs.is_empty());
     assert_eq!(

@@ -217,10 +217,13 @@ fn separator(frame: &mut Frame, app: &App, row: Rect) {
 }
 
 /// The full path of a query tab's file in a bar above its editor, coloured like an
-/// inactive tab (D-064); shortened from the left when it does not fit.
-fn file_bar(frame: &mut Frame, app: &App, path: &str, row: Rect) {
+/// inactive tab (D-064); shortened from the left when it does not fit; ` *` after it
+/// while the text has unsaved changes.
+fn file_bar(frame: &mut Frame, app: &App, path: &str, modified: bool, row: Rect) {
     let width = row.width as usize;
-    let text = format!(" {}", shorten_left(path, width.saturating_sub(2)));
+    let mark = if modified { " *" } else { "" };
+    let room = width.saturating_sub(2 + mark.len());
+    let text = format!(" {}{mark}", shorten_left(path, room));
     frame.render_widget(
         Paragraph::new(format!("{text:<width$}")).style(app.theme.get(Role::TabsInactive)),
         row,
@@ -455,6 +458,7 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
                 frame,
                 app,
                 &file.display().to_string(),
+                tab.view.editor.modified(),
                 Rect { height: 1, ..inner },
             );
             Rect {
