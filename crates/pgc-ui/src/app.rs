@@ -376,6 +376,8 @@ pub struct App {
     pub search: Option<String>,
     /// The open autocomplete list (D-052).
     pub(crate) completion: Option<crate::completion::Popup>,
+    /// Time and place of the last left click, for double clicks (D-067).
+    last_click: Option<(std::time::Instant, ratatui::layout::Position)>,
     /// The open Find object dialog (D-055).
     find: Option<find_object::FindState>,
     find_seq: u64,
@@ -534,6 +536,7 @@ impl App {
             status,
             search: None,
             completion: None,
+            last_click: None,
             find: None,
             find_seq: 0,
             reveal: None,

@@ -8,6 +8,9 @@ use crate::keymap::Command;
 use crate::menu::{self, MenuEntry};
 use crate::view::Hits;
 
+/// Longest time between the two clicks of a double click (D-067).
+const DOUBLE_CLICK: std::time::Duration = std::time::Duration::from_millis(500);
+
 impl App {
     pub(super) fn on_mouse(&mut self, m: MouseEvent, hits: &Hits) {
         // any mouse action closes the autocomplete list (D-052)
@@ -208,7 +211,20 @@ impl App {
         (i < self.tree.rows().len()).then_some(i)
     }
 
+    /// A second left click at the same place within [`DOUBLE_CLICK`] (D-067); the
+    /// terminal reports only single clicks.
+    fn double_click(&mut self, p: Position) -> bool {
+        let now = std::time::Instant::now();
+        let double = self
+            .last_click
+            .is_some_and(|(t, at)| at == p && now.duration_since(t) <= DOUBLE_CLICK);
+        // a third click starts a new pair
+        self.last_click = if double { None } else { Some((now, p)) };
+        double
+    }
+
     fn left_click(&mut self, p: Position, hits: &Hits) {
+        let double = self.double_click(p);
         if let Some(dialog) = self.dialogs.last_mut() {
             if let Some((outer, _)) = &hits.dialog
                 && dialog.combo_click(*outer, hits.screen, p.x, p.y)
@@ -217,7 +233,7 @@ impl App {
             } else if let Some((_, areas)) = &hits.dialog
                 && let Some(i) = areas.iter().position(|a| a.contains(p))
             {
-                let event = dialog.click(i, areas[i], p.x, p.y);
+                let event = dialog.click(i, areas[i], p.x, p.y, double);
                 self.dialog_event(event);
             }
             return;

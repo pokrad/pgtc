@@ -2078,6 +2078,15 @@ pgtc (binary)
   sets; `Alt+M` switches between the shown result set and Messages; a click selects a
   tab.
 
+
+### D-067 — Double click in dialog lists
+- **Status:** Accepted (refines D-016, D-032, D-041)
+- A **double click on a row of a dialog list** selects it and acts as `Enter` (the
+  dialog's default button): in the open / save file dialogs a folder opens, a file is
+  chosen; in other dialogs with a list the same as `Enter` there.
+- Terminals report single clicks only: two left clicks **on the same cell within
+  500 ms** are a double click; a third click starts a new pair.
+
 ---
 
 ## 3. Change log
@@ -2209,3 +2218,4 @@ pgtc (binary)
 | 2026-11-14 | D-065 accepted: commands in groups (General, Actions, File, Moving, Selecting, Editing, Clipboard and undo, Find, Results, Windows and tabs) — `F1` and Help → Keyboard shortcuts list the keys group by group, with subheadings in larger sections; `Ctrl+Y` deletes the line (or the selected lines), redo is `Ctrl+Shift+Z` / `Alt+Shift+Z`. D-015, D-053 updated. |
 | 2026-11-14 | D-066 accepted: results bar with *Messages* first at a fixed place, then one tab per result set (no *Results* tab, result tabs stay visible on Messages); only *Messages* without a result set; a run shows its first result set, a run without one ends on Messages, an error shows Messages. D-019, D-041 updated. |
 | 2026-11-14 | D-064 updated: the file bar shows ` *` after the path while the tab's text has unsaved changes. |
+| 2026-11-14 | D-067 accepted: a double click on a dialog list row acts as `Enter` (file dialogs: open the folder / choose the file); two clicks on the same cell within 500 ms. |

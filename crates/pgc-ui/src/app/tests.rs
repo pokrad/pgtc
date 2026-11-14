@@ -1423,6 +1423,58 @@ fn split_is_dragged_by_the_results_bar() {
     assert_eq!(draw(&a).split.y, target);
 }
 
+/// Double clicks in the file dialog (D-067): a folder opens, a file is chosen.
+#[test]
+fn double_click_in_the_file_dialog() {
+    let (mut a, dir) = app();
+    let files = dir.path().join("sql");
+    std::fs::create_dir_all(files.join("sub")).unwrap();
+    std::fs::write(files.join("sub").join("pick.sql"), "x").unwrap();
+    a.file_dir = files.clone();
+    a.new_query_tab(None);
+    typing(&mut a, "select 1;");
+    a.run(Command::SaveFileAs);
+    // clicks on the listing row showing `text`
+    let click = |a: &mut App, text: &str, times: usize| {
+        let mut terminal =
+            ratatui::Terminal::new(ratatui::backend::TestBackend::new(100, 30)).unwrap();
+        let mut hits = Hits::default();
+        terminal
+            .draw(|f| crate::view::render(f, a, &mut hits))
+            .unwrap();
+        let screen = screen_text(a);
+        let (y, line) = screen
+            .lines()
+            .enumerate()
+            .find(|(_, l)| l.contains(&format!(" {text} ")))
+            .unwrap_or_else(|| panic!("{text}: {screen}"));
+        let col = line.find(text).map(|b| line[..b].chars().count()).unwrap() as u16;
+        for _ in 0..times {
+            a.on_mouse(
+                MouseEvent {
+                    kind: MouseEventKind::Down(MouseButton::Left),
+                    column: col,
+                    row: y as u16,
+                    modifiers: KeyModifiers::NONE,
+                },
+                &hits,
+            );
+        }
+    };
+    // a single click only selects
+    click(&mut a, "sub/", 1);
+    assert_eq!(a.file_dir, files);
+    assert_eq!(a.dialogs.last().unwrap().focused_id(), Some("files"));
+    a.last_click = None; // later, not a double click
+    // a double click opens the folder
+    click(&mut a, "sub/", 2);
+    assert_eq!(a.file_dir, files.join("sub"));
+    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::SaveFile);
+    // a double click on a file chooses it: Save asks before overwriting
+    click(&mut a, "pick.sql", 2);
+    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::ConfirmOverwrite);
+}
+
 #[test]
 fn file_paths_are_shortened_from_the_left() {
     use crate::view::shorten_left;

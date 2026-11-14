@@ -557,6 +557,18 @@ impl Dialog {
 
     // ---- keys ---------------------------------------------------------------------
 
+    /// The default button pressed (`Enter` outside a button).
+    fn default_button(&self) -> DialogEvent {
+        match self
+            .widgets
+            .iter()
+            .find(|w| matches!(w.kind, WidgetKind::Button { default: true }))
+        {
+            Some(w) => DialogEvent::Button(w.id),
+            None => DialogEvent::None,
+        }
+    }
+
     pub fn handle_key(&mut self, cmd: Option<Command>, ev: &KeyEvent) -> DialogEvent {
         // Ctrl+Enter: the default button from any field; an open combo list first
         // takes its highlighted item (D-016)
@@ -648,16 +660,10 @@ impl Dialog {
                 self.combo_set_open(true);
             }
             Command::Accept => {
-                let target = if self.widgets[self.focus].is_button() {
-                    Some(self.focus)
-                } else {
-                    self.widgets
-                        .iter()
-                        .position(|w| matches!(w.kind, WidgetKind::Button { default: true }))
-                };
-                if let Some(i) = target {
-                    return DialogEvent::Button(self.widgets[i].id);
+                if self.widgets[self.focus].is_button() {
+                    return DialogEvent::Button(self.widgets[self.focus].id);
                 }
+                return self.default_button();
             }
             Command::Cancel => return DialogEvent::Cancelled,
             Command::Toggle => return self.activate(self.focus),
@@ -1021,8 +1027,9 @@ impl Dialog {
 
     // ---- mouse --------------------------------------------------------------------
 
-    /// Left click at (`x`, `y`) inside widget `i` whose area is `area`.
-    pub fn click(&mut self, i: usize, area: Rect, x: u16, y: u16) -> DialogEvent {
+    /// Left click at (`x`, `y`) inside widget `i` whose area is `area`; `double`: the
+    /// second click of a double click, which on a list row acts as `Enter` (D-067).
+    pub fn click(&mut self, i: usize, area: Rect, x: u16, y: u16, double: bool) -> DialogEvent {
         if !self.widgets[i].focusable() {
             return DialogEvent::None;
         }
@@ -1035,11 +1042,16 @@ impl Dialog {
                 ..
             } => {
                 self.focus = i;
+                let mut on_row = false;
                 if y >= value.y {
                     let row = (y - value.y) as usize;
                     if *offset + row < items.len() {
                         *selected = *offset + row;
+                        on_row = true;
                     }
+                }
+                if double && on_row {
+                    return self.default_button();
                 }
                 DialogEvent::None
             }
@@ -1562,7 +1574,7 @@ mod tests {
         let screen = Rect::new(0, 0, 80, 25);
         let outer = d.area(screen);
         let field = d.widget_areas(outer)[0];
-        d.click(0, field, field.x + 12, field.y);
+        d.click(0, field, field.x + 12, field.y, false);
         assert!(d.combo_open());
         let list = d.combo_list_area(outer, screen).unwrap();
         assert!(
