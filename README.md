@@ -73,31 +73,16 @@ pgtc --help
 Passwords are read from (and optionally saved to) the standard PostgreSQL `.pgpass`
 file; `PGHOST`, `PGUSER`, `PGPASSWORD` and the other libpq variables work as in psql.
 
-| Key | Action |
-|---|---|
-| `F1` | the keys that work right now (all keys: Help → Keyboard shortcuts) |
-| `F2` | context menu |
-| `F4` | psql-style commands |
-| `F5` | execute the selection or the whole script |
-| `F6` / `Ctrl+Tab` | object tree ↔ right frame |
-| `F7` | generate SQL from a developer template |
-| `F9` | menu |
-| `F10` | quit |
-| `Alt+1` / `Alt+2` | object tree / right frame |
-| `Alt+Up` / `Alt+Down` | upper / lower part of the right frame (editor ↔ results) |
-| `Alt+Left` / `Alt+Right` | previous / next tab (in the results: result sets and Messages; nothing in the tree) |
-| `Ctrl+N` | new query tab |
-| `Ctrl+S` | save the query tab (asks for a file only the first time; *Save SQL file as…* in the File menu) |
-| `Ctrl+D` / `Ctrl+P` | server dashboard / SQL profiler (in the tree) |
-| `Alt+I` | database statistics (on a database row in the tree) |
-| `Ctrl+Space` / `Alt+/` | autocomplete |
-| `Ctrl+Y` | delete the line in the editor (redo is `Ctrl+Shift+Z` / `Alt+Shift+Z`) |
+**Keys:** pgtc is used like Midnight Commander — `F9` opens the menu, and **`F1`
+shows the keys that work right now** in the part of the window that has the focus
+(object tree, query editor, results, a dialog, …), grouped by what they do.
+Help → Keyboard shortcuts lists every key. All keys can be changed in `keymap.toml`
+(Help → Keyboard shortcuts shows where it is).
 
 `Esc` followed by a digit works as an F-key in terminals that do not pass F-keys
 through. Alt+arrows also work from PuTTY in its default setting (Alt sent as an `Esc`
 prefix); in PuTTY 0.77+ the xterm style for arrow keys with modifiers
-(Terminal → Keyboard) works as well. All keys can be changed in `keymap.toml` (Help → Keyboard shortcuts shows
-where it is).
+(Terminal → Keyboard) works as well.
 
 ## Status
 
