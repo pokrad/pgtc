@@ -304,8 +304,9 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::Tree, Command::EditInQueryTab, &["Ctrl+E"]),
     (Context::Tree, Command::FindObject, &["Ctrl+F"]),
     (Context::Tree, Command::SelectTopRows, &["Ctrl+B"]),
-    (Context::Tree, Command::Dashboard, &["Ctrl+D"]),
-    (Context::Tree, Command::SqlProfiler, &["Ctrl+P"]),
+    // Alt like Alt+I / Alt+S; the Ctrl keys stay as second keys (D-068)
+    (Context::Tree, Command::Dashboard, &["Alt+D", "Ctrl+D"]),
+    (Context::Tree, Command::SqlProfiler, &["Alt+P", "Ctrl+P"]),
     // Ctrl+I is Tab in most terminals, Alt+S quick search (D-062)
     (Context::Tree, Command::DbStats, &["Alt+I"]),
     (Context::Editor, Command::EditInQueryTab, &["Ctrl+E"]),
@@ -725,6 +726,15 @@ mod tests {
     fn dashboard_and_profiler_keys_in_the_tree() {
         // D-057, D-058: Ctrl+P keeps its meaning outside the tree
         let km = Keymap::default();
+        // D-068: Alt+D / Alt+P, the Ctrl keys as second keys
+        assert_eq!(
+            km.lookup(Context::Tree, k("Alt+D")),
+            Some(Command::Dashboard)
+        );
+        assert_eq!(
+            km.lookup(Context::Tree, k("Alt+P")),
+            Some(Command::SqlProfiler)
+        );
         assert_eq!(
             km.lookup(Context::Tree, k("Ctrl+D")),
             Some(Command::Dashboard)

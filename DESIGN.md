@@ -1773,7 +1773,8 @@ pgtc (binary)
 ### D-057 — Server dashboard tab
 - **Status:** Accepted (like pgAdmin's dashboard; refines D-009, D-014, D-016, D-043)
 - **Opening:** *Tools → Server dashboard* and the context menu of server rows,
-  database rows and every row inside a database; `Ctrl+D` in the tree (`dashboard`). Needs a
+  database rows and every row inside a database; `Alt+D` (also `Ctrl+D`, D-068) in the
+  tree (`dashboard`). Needs a
   connected server. A server row (or a server-level group / object) shows the **whole
   server**; a database or anything inside it shows **that database** (every query is
   filtered by the database name, a bind parameter). Opening it again for the same
@@ -1826,7 +1827,8 @@ pgtc (binary)
   file access, works over SSH. No sampling of `pg_stat_activity` (it misses short
   statements).
 - **Opening:** *Tools → SQL profiler* and the context menu of server and database rows
-  and `Ctrl+P` in the tree (`sql_profiler`; elsewhere `Ctrl+P` keeps its meaning —
+  and `Alt+P` (also `Ctrl+P`, D-068) in the tree (`sql_profiler`; elsewhere `Ctrl+P`
+  keeps its meaning —
   PL/pgSQL mode, pause); needs a connected server. One profiler tab per
   server (`Profiler: server`), with **its own connection** to the maintenance database;
   opened from a database row, its database filter is filled in. Opening it again
@@ -2087,6 +2089,16 @@ pgtc (binary)
 - Terminals report single clicks only: two left clicks **on the same cell within
   500 ms** are a double click; a third click starts a new pair.
 
+
+### D-068 — Alt keys for the tabs opened from the tree
+- **Status:** Accepted (refines D-057, D-058, D-062)
+- The tree opens its tabs with `Alt` + letter, like database statistics (`Alt+I`) and
+  quick search (`Alt+S`): **server dashboard `Alt+D`**, **SQL profiler `Alt+P`**.
+- `Ctrl+D` / `Ctrl+P` stay as second keys (macOS Terminal / iTerm2 without *Use
+  Option as Meta key*; habit). `Ctrl+P` keeps its meaning outside the tree (PL/pgSQL
+  mode, pause). No `Ctrl+I` for statistics: most terminals send it as `Tab`.
+- `F1` and Help → Keyboard shortcuts show the keys from the keymap.
+
 ---
 
 ## 3. Change log
@@ -2219,3 +2231,4 @@ pgtc (binary)
 | 2026-11-14 | D-066 accepted: results bar with *Messages* first at a fixed place, then one tab per result set (no *Results* tab, result tabs stay visible on Messages); only *Messages* without a result set; a run shows its first result set, a run without one ends on Messages, an error shows Messages. D-019, D-041 updated. |
 | 2026-11-14 | D-064 updated: the file bar shows ` *` after the path while the tab's text has unsaved changes. |
 | 2026-11-14 | D-067 accepted: a double click on a dialog list row acts as `Enter` (file dialogs: open the folder / choose the file); two clicks on the same cell within 500 ms. |
+| 2026-11-14 | D-068 accepted: server dashboard `Alt+D` and SQL profiler `Alt+P` in the tree (like `Alt+I`, `Alt+S`), `Ctrl+D` / `Ctrl+P` as second keys. D-057, D-058 updated. |
