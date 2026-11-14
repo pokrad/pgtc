@@ -3,7 +3,7 @@
 use pgc_db::DbError;
 use pgc_sql::RenderContext;
 
-use super::{App, Effect, TabKind, TextView};
+use super::{App, Effect, TabBody, TabKind, TextView};
 use crate::tree::{ConnState, RowKind, ServerSettings, Setting};
 
 /// Values longer than this are not padded to line up the sources.
@@ -95,7 +95,7 @@ impl App {
                 }
                 view.loading = true;
                 self.def_seq += 1;
-                vec![Effect::StartDefinitionTimer(self.def_seq)]
+                vec![Effect::Timer(super::Timer::Definition(self.def_seq))]
             }
             (_, Some(_)) => Vec::new(),
             (Some(row), None) => {
@@ -310,7 +310,7 @@ impl App {
             self.active_tab
         };
         let tab = &self.tabs[i];
-        if matches!(tab.kind, TabKind::Query(_)) {
+        if matches!(tab.kind(), TabKind::Query(_)) {
             return Err("");
         }
         if tab.view.loading {
@@ -370,13 +370,13 @@ impl App {
                     .map(|n| n.label.clone())
                     .unwrap_or_default();
                 view.loading = true;
-                let id = self.add_tab(TabKind::Object, view);
+                let id = self.add_tab(TabBody::Object, view);
                 self.request_definition(id, nid);
             }
             None => {
                 let (title, text) = self.info_text(row);
                 view.set_text(title, text);
-                self.add_tab(TabKind::Object, view);
+                self.add_tab(TabBody::Object, view);
             }
         }
         let (server, database) = self.selected_place();

@@ -7,14 +7,30 @@ use pgc_core::paths;
 use pgc_core::settings::{SavedConnection, SslMode};
 use pgc_db::conninfo::{PasswordPrompt, Resolved};
 use pgc_db::pgpass::{self, PgPassKey};
-use pgc_db::{ConnectParams, DbError, DbEvent};
+use pgc_db::{ConnId, ConnectParams, ConnectionHandle, DbError, DbEvent};
 
-use super::{App, Focus, Target};
+use super::{App, Focus, TabBody, Target};
+use crate::dashboard::{DashConn, OwnConn};
 use crate::dialog::{Dialog, DialogKind, Widget};
 use crate::objects::ObjType;
 use crate::tree::{ConnState, DbConn};
 
 const CONN_LABEL_WIDTH: u16 = 19;
+
+/// What an event meant for the connection of a dashboard, profiler or database
+/// statistics tab ([`App::monitor_event`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum MonitorEvent {
+    /// The tab is gone.
+    Gone,
+    Connected,
+    /// The connection could not be opened.
+    Failed,
+    /// The connection ended.
+    Closed,
+    /// Not about the connection (an answer to a request).
+    Other,
+}
 
 impl App {
     /// D-031: reuse an identical saved connection or save a new one, then connect.
@@ -90,26 +106,121 @@ impl App {
         self.connections.insert(id, Target::Server(uid));
     }
 
-    pub(super) fn connect_database(&mut self, nid: u64) {
+    /// Opens a connection to `database` on server `si` — with the session's password,
+    /// else the one in `.pgpass` — and records what it belongs to (D-011, D-035).
+    pub(super) fn open_connection(
+        &mut self,
+        si: usize,
+        database: &str,
+        target: Target,
+    ) -> ConnectionHandle {
         let timeout = self.timeout();
+        let server = &self.tree.servers[si];
+        let password = server
+            .password
+            .clone()
+            .or_else(|| Self::pgpass_password(&server.conn, database));
+        let params = ConnectParams::new(&server.conn, database, password, timeout);
+        self.next_conn += 1;
+        let id = self.next_conn;
+        self.connections.insert(id, target);
+        pgc_db::spawn(id, params, self.sink.clone())
+    }
+
+    pub(super) fn connect_database(&mut self, nid: u64) {
         let Some(si) = self.tree.server_of(nid) else {
             return;
         };
-        let s = &self.tree.servers[si];
-        let (uid, conn, password) = (s.uid, s.conn.clone(), s.password.clone());
-        let Some(node) = self.tree.node_mut(nid) else {
+        let uid = self.tree.servers[si].uid;
+        let Some(name) = self.tree.node(nid).map(|n| n.name.clone()) else {
             return;
         };
-        let name = node.name.clone();
-        let password = password.or_else(|| Self::pgpass_password(&conn, &name));
-        let params = ConnectParams::new(&conn, &name, password, timeout);
-        self.next_conn += 1;
-        let id = self.next_conn;
-        node.conn = Some(DbConn {
-            state: ConnState::Connecting,
-            handle: Some(pgc_db::spawn(id, params, self.sink.clone())),
-        });
-        self.connections.insert(id, Target::Database(uid, nid));
+        let handle = self.open_connection(si, &name, Target::Database(uid, nid));
+        if let Some(node) = self.tree.node_mut(nid) {
+            node.conn = Some(DbConn {
+                state: ConnState::Connecting,
+                handle: Some(handle),
+            });
+        }
+    }
+
+    /// The own connection of the dashboard, profiler or database statistics tab `tab`.
+    fn own_conn(&mut self, tab: u64) -> Option<OwnConn<'_>> {
+        match &mut self.tab_mut(tab)?.body {
+            TabBody::Dashboard(d) => Some(d.own_conn()),
+            TabBody::Profiler(p) => Some(p.own_conn()),
+            TabBody::DbStats(s) => Some(s.own_conn()),
+            TabBody::Default | TabBody::Object | TabBody::Query(..) => None,
+        }
+    }
+
+    /// Opens the own connection of monitor tab `tab` (D-011). False when the tab is
+    /// gone or its server is not connected (the tab then says so).
+    pub(super) fn monitor_connect(&mut self, tab: u64, target: Target) -> bool {
+        let Some(c) = self.own_conn(tab) else {
+            return false;
+        };
+        let (uid, database) = (c.uid, c.database.to_owned());
+        let server = self
+            .tree
+            .servers
+            .iter()
+            .position(|s| s.uid == uid && s.state == ConnState::Connected);
+        let Some(si) = server else {
+            if let Some(c) = self.own_conn(tab) {
+                *c.problem = Some("The server is not connected.".to_owned());
+            }
+            return false;
+        };
+        let handle = self.open_connection(si, &database, target);
+        if let Some(c) = self.own_conn(tab) {
+            *c.conn = Some(DashConn {
+                id: handle.id,
+                handle,
+                connected: false,
+            });
+            *c.problem = None;
+        }
+        true
+    }
+
+    /// The connection part of an event of monitor tab `tab`: keeps the tab's
+    /// connection, version and problem text up to date and says what happened.
+    pub(super) fn monitor_event(
+        &mut self,
+        conn: ConnId,
+        tab: u64,
+        event: &DbEvent,
+    ) -> MonitorEvent {
+        let Some(c) = self.own_conn(tab) else {
+            self.connections.remove(&conn);
+            return MonitorEvent::Gone;
+        };
+        match event {
+            DbEvent::Connected { version, .. } => {
+                *c.version = Some(*version);
+                if let Some(conn) = c.conn.as_mut() {
+                    conn.connected = true;
+                }
+                MonitorEvent::Connected
+            }
+            DbEvent::ConnectFailed { error, .. } => {
+                *c.conn = None;
+                *c.problem = Some(format!("Cannot connect: {error}"));
+                self.connections.remove(&conn);
+                MonitorEvent::Failed
+            }
+            DbEvent::Closed { error, .. } => {
+                *c.conn = None;
+                *c.problem = Some(match error {
+                    Some(e) => format!("Connection lost: {e}"),
+                    None => "Connection closed".to_owned(),
+                });
+                self.connections.remove(&conn);
+                MonitorEvent::Closed
+            }
+            _ => MonitorEvent::Other,
+        }
     }
 
     pub(super) fn disconnect_server(&mut self, uid: u64) {

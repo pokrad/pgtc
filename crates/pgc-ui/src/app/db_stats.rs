@@ -1,12 +1,12 @@
 //! The database statistics tab (D-062): opening it, its own connection, reading the
 //! statistics (only on `F5`), its keys.
 
-use pgc_db::{ConnId, ConnectParams, DbError, DbEvent};
+use pgc_db::{ConnId, DbError, DbEvent};
 use pgc_sql::RenderContext;
 use ratatui::layout::Position;
 
-use super::{App, Focus, Tab, TabKind, Target, TextView};
-use crate::dashboard::DashConn;
+use super::connections::MonitorEvent;
+use super::{App, Focus, Tab, TabBody, Target, TextView};
 use crate::db_stats::DbStats;
 use crate::keymap::Command;
 use crate::menu::{self, Popup};
@@ -18,15 +18,15 @@ const SQL_FOLDER: &str = "db_stats";
 impl App {
     /// The statistics of the active tab.
     pub(super) fn db_stats(&self) -> Option<&DbStats> {
-        self.tabs[self.active_tab].db_stats.as_ref()
+        self.tabs[self.active_tab].db_stats()
     }
 
     fn db_stats_mut(&mut self) -> Option<&mut DbStats> {
-        self.tabs[self.active_tab].db_stats.as_mut()
+        self.tabs[self.active_tab].db_stats_mut()
     }
 
     fn db_stats_of(&mut self, tab: u64) -> Option<&mut DbStats> {
-        self.tab_mut(tab).and_then(|t| t.db_stats.as_mut())
+        self.tab_mut(tab).and_then(|t| t.db_stats_mut())
     }
 
     /// Server (index) and database of a selected database row of a connected server.
@@ -49,8 +49,7 @@ impl App {
         let server = &self.tree.servers[si];
         let uid = server.uid;
         if let Some(i) = self.tabs.iter().position(|t| {
-            t.db_stats
-                .as_ref()
+            t.db_stats()
                 .is_some_and(|s| s.uid == uid && s.database == db)
         }) {
             self.active_tab = i;
@@ -59,11 +58,11 @@ impl App {
         }
         let label = format!("Stats: {} · {db}", server.conn.name);
         let view = TextView::new(true, self.tab_width());
-        let id = self.add_tab(TabKind::DbStats, view);
+        let stats = DbStats::new(uid, db.clone(), label);
+        let id = self.add_tab(TabBody::DbStats(Box::new(stats)), view);
         if let Some(t) = self.tab_mut(id) {
             t.server = Some(uid);
-            t.database = Some(db.clone());
-            t.db_stats = Some(DbStats::new(uid, db, label));
+            t.database = Some(db);
         }
         self.focus = Focus::Results;
         self.db_stats_connect(id);
@@ -71,81 +70,28 @@ impl App {
 
     /// Opens the tab's own connection to the database (D-011, D-062).
     fn db_stats_connect(&mut self, tab: u64) {
-        let timeout = self.timeout();
-        let Some(i) = self.tab_index(tab) else {
-            return;
-        };
-        let Some(s) = self.tabs[i].db_stats.as_ref() else {
-            return;
-        };
-        let (uid, database) = (s.uid, s.database.clone());
-        let Some(server) = self
-            .tree
-            .servers
-            .iter()
-            .find(|s| s.uid == uid && s.state == ConnState::Connected)
-        else {
-            if let Some(s) = self.tabs[i].db_stats.as_mut() {
-                s.problem = Some("The server is not connected.".to_owned());
-            }
-            return;
-        };
-        let password = server
-            .password
-            .clone()
-            .or_else(|| Self::pgpass_password(&server.conn, &database));
-        let params = ConnectParams::new(&server.conn, &database, password, timeout);
-        self.next_conn += 1;
-        let id = self.next_conn;
-        let handle = pgc_db::spawn(id, params, self.sink.clone());
-        self.connections.insert(id, Target::DbStats(tab));
-        if let Some(s) = self.tabs[i].db_stats.as_mut() {
-            s.conn = Some(DashConn {
-                id,
-                handle,
-                connected: false,
-            });
-            s.problem = None;
+        if self.monitor_connect(tab, Target::DbStats(tab))
+            && let Some(s) = self.db_stats_of(tab)
+        {
             s.error = None;
             s.key = None;
         }
     }
 
     pub(super) fn on_db_stats_event(&mut self, conn: ConnId, tab: u64, event: DbEvent) {
-        if self.db_stats_of(tab).is_none() {
-            self.connections.remove(&conn);
-            return;
-        }
-        match event {
-            DbEvent::Connected { version, .. } => {
+        match self.monitor_event(conn, tab, &event) {
+            MonitorEvent::Connected => self.db_stats_refresh(tab),
+            MonitorEvent::Closed => {
                 if let Some(s) = self.db_stats_of(tab) {
-                    s.version = Some(version);
-                    if let Some(c) = s.conn.as_mut() {
-                        c.connected = true;
-                    }
-                }
-                self.db_stats_refresh(tab);
-            }
-            DbEvent::ConnectFailed { error, .. } => {
-                self.connections.remove(&conn);
-                if let Some(s) = self.db_stats_of(tab) {
-                    s.conn = None;
-                    s.problem = Some(format!("Cannot connect: {error}"));
-                }
-            }
-            DbEvent::Closed { error, .. } => {
-                self.connections.remove(&conn);
-                if let Some(s) = self.db_stats_of(tab) {
-                    s.conn = None;
                     s.key = None;
-                    s.problem = Some(match error {
-                        Some(e) => format!("Connection lost: {e}"),
-                        None => "Connection closed".to_owned(),
-                    });
                 }
             }
-            DbEvent::Lookup { key, result, .. } => self.db_stats_loaded(tab, key, result),
-            _ => {}
+            MonitorEvent::Other => {
+                if let DbEvent::Lookup { key, result, .. } = event {
+                    self.db_stats_loaded(tab, key, result);
+                }
+            }
+            MonitorEvent::Gone | MonitorEvent::Failed => {}
         }
     }
 
@@ -154,7 +100,7 @@ impl App {
         let Some(i) = self.tab_index(tab) else {
             return;
         };
-        let Some(s) = self.tabs[i].db_stats.as_ref() else {
+        let Some(s) = self.tabs[i].db_stats() else {
             return;
         };
         let (Some(version), true, None) = (s.version, s.connected(), s.key) else {
@@ -170,7 +116,7 @@ impl App {
             .map_err(|e| e.to_string());
         self.next_key += 1;
         let key = self.next_key;
-        let Some(s) = self.tabs[i].db_stats.as_mut() else {
+        let Some(s) = self.tabs[i].db_stats_mut() else {
             return;
         };
         match sql {
@@ -329,7 +275,7 @@ impl App {
 
     /// `server · user@database` and when the values were read (D-043, D-062).
     pub(crate) fn db_stats_status(&self, tab: &Tab) -> Option<(String, String)> {
-        let s = tab.db_stats.as_ref()?;
+        let s = tab.db_stats()?;
         let place = self.place_label(s.uid, Some(&s.database));
         let left = match &s.conn {
             Some(c) if c.connected => place,

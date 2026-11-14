@@ -81,7 +81,7 @@ impl App {
     /// come, and autocomplete reads its names again on the next connection (D-052).
     pub(super) fn drop_tab_lookups(&mut self, tab: u64) {
         self.template_lookups.retain(|_, t| t.tab() != Some(tab));
-        if let Some(q) = self.tab_mut(tab).and_then(|t| t.query.as_mut()) {
+        if let Some(q) = self.tab_mut(tab).and_then(|t| t.query_mut()) {
             q.names.clear();
         }
     }

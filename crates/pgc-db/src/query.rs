@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 use tokio_postgres::error::ErrorPosition;
 use tokio_postgres::{Client, SimpleQueryMessage, SimpleQueryRow, TransactionStatus};
 
-use crate::connection::{Canceller, Request};
+use crate::connection::{Canceller, Request, bind};
 
 /// One execution (F5).
 #[derive(Debug, Clone)]
@@ -179,12 +179,7 @@ pub(crate) async fn catalog(
     for q in req.queries {
         let result = async {
             let stmt = client.prepare(&q.sql).await?;
-            let refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = q
-                .params
-                .iter()
-                .map(|p| p as &(dyn tokio_postgres::types::ToSql + Sync))
-                .collect();
-            let rows = client.query(&stmt, &refs).await?;
+            let rows = client.query(&stmt, &bind(&q.params)).await?;
             let mut values = Vec::with_capacity(rows.len());
             for row in &rows {
                 let mut v: Vec<Value> = Vec::with_capacity(row.len());

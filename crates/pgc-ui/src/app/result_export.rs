@@ -7,7 +7,7 @@ use pgc_core::settings::{CsvSeparator, ExportFormat};
 use pgc_db::QueryEvent;
 
 use super::App;
-use super::files::list_dir;
+use super::files::FileDialog;
 use crate::dialog::{Dialog, DialogKind, Widget};
 use crate::export::{ExportEvent, ExportOptions, ExportSink, ToWriter};
 use crate::query_tab::{ExportRun, QueryState};
@@ -35,10 +35,6 @@ impl App {
             bom: self.settings.export.csv_bom,
         });
         let name = name.unwrap_or_else(|| format!("result_{set}.{}", o.format.extension()));
-        let dir = self.file_dir.clone();
-        let entries = list_dir(&dir, o.format.extension());
-        let labels: Vec<String> = entries.iter().map(|e| e.0.clone()).collect();
-        let marks: Vec<bool> = entries.iter().map(|e| e.2).collect();
         let formats = ExportFormat::ALL
             .iter()
             .map(|f| f.label().to_owned())
@@ -57,14 +53,15 @@ impl App {
             CsvSeparator::Semicolon => 1,
             CsvSeparator::Tab => 2,
         };
-        self.dialogs.push(Dialog::new(
-            DialogKind::ExportFile,
-            "Export result",
-            70,
-            vec![
-                Widget::label(&format!("Folder: {}", dir.display())),
-                Widget::field("path", "&File name:", &name, 16),
-                Widget::list("files", "", labels, 0, 12).highlighted(marks),
+        let dialog = self.file_dialog(FileDialog {
+            kind: DialogKind::ExportFile,
+            title: "Export result",
+            ext: o.format.extension(),
+            name: &name,
+            label_width: 16,
+            list_rows: 12,
+            above: Vec::new(),
+            below: vec![
                 Widget::combo("format", "For&mat:", formats, format_index, 16),
                 Widget::combo(
                     "separator",
@@ -74,10 +71,10 @@ impl App {
                     16,
                 ),
                 Widget::checkbox("bom", "CSV with UTF-8 &BOM", o.bom),
-                Widget::button("ok", "&OK", true),
-                Widget::button("cancel", "&Cancel", false),
             ],
-        ));
+            pick: false,
+        });
+        self.dialogs.push(dialog);
     }
 
     /// The file name's extension follows the chosen format (D-042).
@@ -146,10 +143,7 @@ impl App {
     /// from the paused stream, then `Finish` (D-021). One batch at a time.
     pub(super) fn pump_export(&mut self, tab: u64) {
         let batch = self.settings.query.batch_rows.max(1) as usize;
-        let Some(q) = self
-            .tab_index(tab)
-            .and_then(|i| self.tabs[i].query.as_mut())
-        else {
+        let Some(q) = self.tab_index(tab).and_then(|i| self.tabs[i].query_mut()) else {
             return;
         };
         let last = q.results.len().saturating_sub(1);
@@ -194,8 +188,7 @@ impl App {
             | ExportEvent::Aborted { id } => *id,
         };
         let Some(i) = self.tabs.iter().position(|t| {
-            t.query
-                .as_ref()
+            t.query()
                 .and_then(|q| q.export.as_ref())
                 .is_some_and(|e| e.id == id)
         }) else {
@@ -203,7 +196,7 @@ impl App {
         };
         let tab = self.tabs[i].id;
         let active = i == self.active_tab;
-        let q = self.tabs[i].query.as_mut().expect("query tab");
+        let q = self.tabs[i].query_mut().expect("query tab");
         if let ExportEvent::Written { rows, .. } = event {
             if let Some(e) = q.export.as_mut() {
                 e.writing = false;

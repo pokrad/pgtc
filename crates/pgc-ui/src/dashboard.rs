@@ -250,6 +250,18 @@ pub struct DashConn {
     pub connected: bool,
 }
 
+/// What the dashboard, profiler and database statistics tabs have in common: their own
+/// connection (D-057, D-058, D-062).
+pub struct OwnConn<'a> {
+    /// Server uid and the database the connection goes to.
+    pub uid: u64,
+    pub database: &'a str,
+    pub conn: &'a mut Option<DashConn>,
+    pub version: &'a mut Option<ServerVersion>,
+    /// Why the tab has no connection.
+    pub problem: &'a mut Option<String>,
+}
+
 /// Cancel query / terminate session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Signal {
@@ -349,6 +361,17 @@ impl Dashboard {
 
     pub fn connected(&self) -> bool {
         self.conn.as_ref().is_some_and(|c| c.connected)
+    }
+
+    /// The tab's own connection, as the three monitor tabs share it.
+    pub fn own_conn(&mut self) -> OwnConn<'_> {
+        OwnConn {
+            uid: self.uid,
+            database: &self.conn_database,
+            conn: &mut self.conn,
+            version: &mut self.version,
+            problem: &mut self.problem,
+        }
     }
 
     pub fn interval_secs(&self) -> u64 {

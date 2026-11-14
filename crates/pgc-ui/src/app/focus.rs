@@ -51,13 +51,13 @@ impl App {
     /// `Alt+Down`: the lower part, shown first if it is hidden.
     pub(super) fn focus_lower(&mut self) {
         let tab = &mut self.tabs[self.active_tab];
-        if let Some(q) = tab.query.as_mut() {
+        if let Some(q) = tab.query_mut() {
             q.results_visible = true;
-        } else if tab.profiler.is_some() || tab.dashboard.as_ref().is_some_and(|d| d.has_pane()) {
-            if let Some(p) = tab.profiler.as_mut() {
+        } else if tab.profiler().is_some() || tab.dashboard().is_some_and(|d| d.has_pane()) {
+            if let Some(p) = tab.profiler_mut() {
                 p.pane.visible = true;
             }
-            if let Some(d) = tab.dashboard.as_mut() {
+            if let Some(d) = tab.dashboard_mut() {
                 d.pane.visible = true;
             }
         } else {

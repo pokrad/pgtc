@@ -30,8 +30,6 @@ mod theme_check;
 mod tree;
 mod view;
 
-use std::time::Duration;
-
 use anyhow::Result;
 use futures::StreamExt;
 use pgc_core::paths::Paths;
@@ -44,18 +42,6 @@ use crate::app::{App, Effect, Msg};
 use crate::view::Hits;
 
 pub use terminal::install_panic_hook;
-
-/// How long `Esc` waits for a digit (D-032).
-const ESC_TIMEOUT: Duration = Duration::from_secs(1);
-
-/// Status refresh / cancel-wait check interval while a query runs.
-const TICK: Duration = Duration::from_millis(250);
-
-/// Pause between background lexer slices (D-038).
-const SCAN_TICK: Duration = Duration::from_millis(5);
-
-/// How long the tree cursor must rest before the default tab loads (D-037).
-const DEFINITION_DELAY: Duration = Duration::from_millis(200);
 
 /// Runs the TUI until the user quits. The terminal is always restored.
 /// `startup` is the command-line connection (D-031), saved and connected at once.
@@ -116,18 +102,11 @@ async fn event_loop(
         }
         for effect in effects {
             match effect {
-                Effect::Tick => {
+                Effect::Timer(timer) => {
                     let tx = tx.clone();
                     tokio::spawn(async move {
-                        tokio::time::sleep(TICK).await;
-                        let _ = tx.send(Msg::Tick);
-                    });
-                }
-                Effect::ScanTick => {
-                    let tx = tx.clone();
-                    tokio::spawn(async move {
-                        tokio::time::sleep(SCAN_TICK).await;
-                        let _ = tx.send(Msg::ScanTick);
+                        tokio::time::sleep(timer.delay()).await;
+                        let _ = tx.send(timer.msg());
                     });
                 }
                 Effect::Osc52(text) => {
@@ -138,34 +117,6 @@ async fn event_loop(
                     ) {
                         tracing::warn!("OSC 52 copy failed: {e}");
                     }
-                }
-                Effect::StartFindTimer(seq) => {
-                    let tx = tx.clone();
-                    tokio::spawn(async move {
-                        tokio::time::sleep(DEFINITION_DELAY).await;
-                        let _ = tx.send(Msg::FindTimer(seq));
-                    });
-                }
-                Effect::StartDefinitionTimer(seq) => {
-                    let tx = tx.clone();
-                    tokio::spawn(async move {
-                        tokio::time::sleep(DEFINITION_DELAY).await;
-                        let _ = tx.send(Msg::DefinitionTimer(seq));
-                    });
-                }
-                Effect::StartTabTimer { tab, seq, after } => {
-                    let tx = tx.clone();
-                    tokio::spawn(async move {
-                        tokio::time::sleep(after).await;
-                        let _ = tx.send(Msg::TabTimer(tab, seq));
-                    });
-                }
-                Effect::StartEscTimer(seq) => {
-                    let tx = tx.clone();
-                    tokio::spawn(async move {
-                        tokio::time::sleep(ESC_TIMEOUT).await;
-                        let _ = tx.send(Msg::EscTimeout(seq));
-                    });
                 }
             }
         }

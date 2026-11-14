@@ -327,7 +327,8 @@ impl App {
         if now != f.seen {
             f.seen = now;
             self.find_seq += 1;
-            self.effects.push(Effect::StartFindTimer(self.find_seq));
+            self.effects
+                .push(Effect::Timer(super::Timer::Find(self.find_seq)));
         }
     }
 

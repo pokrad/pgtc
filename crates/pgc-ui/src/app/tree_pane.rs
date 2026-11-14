@@ -223,7 +223,7 @@ impl App {
             self.load_group(g);
         }
         // autocomplete reads the names again (D-052)
-        for q in self.tabs.iter_mut().filter_map(|t| t.query.as_mut()) {
+        for q in self.tabs.iter_mut().filter_map(|t| t.query_mut()) {
             q.names.clear();
         }
         self.status = "Refreshed".to_owned();

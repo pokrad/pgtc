@@ -9,6 +9,7 @@ use futures::StreamExt;
 use pgc_core::ServerVersion;
 use pgc_core::settings::{SavedConnection, SslMode};
 use tokio::sync::mpsc;
+use tokio_postgres::types::ToSql;
 use tokio_postgres::{AsyncMessage, CancelToken};
 
 use crate::query::{self, ExecuteRequest, QueryEvent, ServerMessage};
@@ -349,17 +350,18 @@ pub fn spawn(id: ConnId, params: ConnectParams, sink: EventSink) -> ConnectionHa
     }
 }
 
+/// `values` as bind parameters (`$1`, ...).
+pub(crate) fn bind<T: ToSql + Sync>(values: &[T]) -> Vec<&(dyn ToSql + Sync)> {
+    values.iter().map(|v| v as &(dyn ToSql + Sync)).collect()
+}
+
 async fn load_definition(
     client: &tokio_postgres::Client,
     sql: &str,
     params: &[u32],
 ) -> Result<String, DbError> {
-    let refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = params
-        .iter()
-        .map(|p| p as &(dyn tokio_postgres::types::ToSql + Sync))
-        .collect();
     let row = client
-        .query_opt(sql, &refs)
+        .query_opt(sql, &bind(params))
         .await
         .map_err(|e| DbError::from_pg(&e))?
         .ok_or_else(|| {
@@ -579,12 +581,8 @@ async fn lookup_params(
     sql: &str,
     params: &[Option<String>],
 ) -> Result<Vec<Vec<String>>, DbError> {
-    let refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = params
-        .iter()
-        .map(|p| p as &(dyn tokio_postgres::types::ToSql + Sync))
-        .collect();
     let rows = client
-        .query(sql, &refs)
+        .query(sql, &bind(params))
         .await
         .map_err(|e| DbError::from_pg(&e))?;
     rows.iter()

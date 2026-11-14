@@ -337,9 +337,8 @@ struct RebuildPlan {
 }
 
 /// Columns of a table; a partition has its parent's.
-fn effective_columns<'a>(db: &'a Database, schema: &str, t: &'a Table) -> Vec<&'a Column> {
+fn effective_columns<'a>(db: &'a Database, t: &'a Table) -> Vec<&'a Column> {
     let mut t = t;
-    let mut schema = schema.to_owned();
     for _ in 0..32 {
         let Some(p) = &t.partition_of else {
             break;
@@ -350,10 +349,8 @@ fn effective_columns<'a>(db: &'a Database, schema: &str, t: &'a Table) -> Vec<&'
         else {
             return Vec::new();
         };
-        schema = p.parent.schema.clone();
         t = parent;
     }
-    let _ = schema;
     t.columns.iter().collect()
 }
 
@@ -373,11 +370,11 @@ fn rebuild_plan(
     l: &Table,
     dropped: &BTreeSet<TableKey>,
 ) -> RebuildPlan {
-    let old: Vec<String> = effective_columns(live, schema, l)
+    let old: Vec<String> = effective_columns(live, l)
         .iter()
         .map(|c| c.name.clone())
         .collect();
-    let mut wanted = effective_columns(want, schema, t);
+    let mut wanted = effective_columns(want, t);
     if t.partition_of.is_none() {
         // the merged table (with the database-only columns)
         wanted = t.columns.iter().collect();
@@ -1136,30 +1133,44 @@ fn constraints(out: &mut Script, r: &ObjRef, q: &str, t: &Table, live: Option<&T
     }
 }
 
+/// Definition and comment of a part that is one whole statement (index, trigger,
+/// rule).
+type Stmt<'a> = (&'a str, &'a Option<String>);
+
+/// Creates the part when it is missing, drops and creates it again when its definition
+/// differs; then its comment. `what` names it for `DROP` and `COMMENT ON`
+/// (`INDEX s.i`, `TRIGGER t ON s.tbl`).
+fn statement_part(
+    out: &mut Script,
+    phase: u8,
+    key: &Key,
+    what: &str,
+    create: String,
+    want: Stmt<'_>,
+    have: Option<Stmt<'_>>,
+) {
+    match have {
+        None => out.push(phase, key.clone(), &[], create),
+        Some((definition, _)) if definition != want.0 => {
+            out.push(phase, key.clone(), &[], format!("DROP {what};"));
+            out.push(phase, key.clone(), &[], create);
+        }
+        Some(_) => {}
+    }
+    comment(out, phase, key, what, want.1, have.map(|h| h.1));
+}
+
 fn indexes(out: &mut Script, r: &ObjRef, schema: &str, want: &[Index], live: Option<&[Index]>) {
     for i in want {
-        let key = Key::Part(r.clone(), format!("index {}", i.name));
         let have = live.and_then(|l| l.iter().find(|h| h.name == i.name));
-        match have {
-            None => out.push(5, key.clone(), &[], format!("{};", i.definition)),
-            Some(h) if h.definition != i.definition => {
-                out.push(
-                    5,
-                    key.clone(),
-                    &[],
-                    format!("DROP INDEX {};", qn(schema, &i.name)),
-                );
-                out.push(5, key.clone(), &[], format!("{};", i.definition));
-            }
-            Some(_) => {}
-        }
-        comment(
+        statement_part(
             out,
             5,
-            &key,
+            &Key::Part(r.clone(), format!("index {}", i.name)),
             &format!("INDEX {}", qn(schema, &i.name)),
-            &i.comment,
-            have.map(|h| &h.comment),
+            format!("{};", i.definition),
+            (&i.definition, &i.comment),
+            have.map(|h| (h.definition.as_str(), &h.comment)),
         );
     }
 }
@@ -1175,54 +1186,28 @@ fn triggers_rules(
     live: Option<Parts<'_>>,
 ) {
     for t in triggers {
-        let key = Key::Part(r.clone(), format!("trigger {}", t.name));
         let have = live.and_then(|l| l.0.iter().find(|h| h.name == t.name));
-        match have {
-            None => out.push(6, key.clone(), &[], format!("{};", t.definition)),
-            Some(h) if h.definition != t.definition => {
-                out.push(
-                    6,
-                    key.clone(),
-                    &[],
-                    format!("DROP TRIGGER {} ON {q};", qi(&t.name)),
-                );
-                out.push(6, key.clone(), &[], format!("{};", t.definition));
-            }
-            Some(_) => {}
-        }
-        comment(
+        statement_part(
             out,
             6,
-            &key,
+            &Key::Part(r.clone(), format!("trigger {}", t.name)),
             &format!("TRIGGER {} ON {q}", qi(&t.name)),
-            &t.comment,
-            have.map(|h| &h.comment),
+            format!("{};", t.definition),
+            (&t.definition, &t.comment),
+            have.map(|h| (h.definition.as_str(), &h.comment)),
         );
     }
     for u in rules {
-        let key = Key::Part(r.clone(), format!("rule {}", u.name));
         let have = live.and_then(|l| l.1.iter().find(|h| h.name == u.name));
-        let create = u.definition.trim_end().to_owned();
-        match have {
-            None => out.push(6, key.clone(), &[], create),
-            Some(h) if h.definition != u.definition => {
-                out.push(
-                    6,
-                    key.clone(),
-                    &[],
-                    format!("DROP RULE {} ON {q};", qi(&u.name)),
-                );
-                out.push(6, key.clone(), &[], create);
-            }
-            Some(_) => {}
-        }
-        comment(
+        statement_part(
             out,
             6,
-            &key,
+            &Key::Part(r.clone(), format!("rule {}", u.name)),
             &format!("RULE {} ON {q}", qi(&u.name)),
-            &u.comment,
-            have.map(|h| &h.comment),
+            // pg_get_ruledef ends with its own semicolon
+            u.definition.trim_end().to_owned(),
+            (&u.definition, &u.comment),
+            have.map(|h| (h.definition.as_str(), &h.comment)),
         );
     }
 }

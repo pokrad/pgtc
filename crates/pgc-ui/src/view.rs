@@ -330,7 +330,7 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
     let mut spans = Vec::new();
     let mut x = strip.x;
     for (i, tab) in app.tabs.iter().enumerate() {
-        let ic = match &tab.kind {
+        let ic = match tab.kind() {
             TabKind::Default | TabKind::Object => Icon::ObjectView,
             TabKind::Query(_) => Icon::Query,
             TabKind::Dashboard => Icon::Server,
@@ -373,7 +373,7 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
     frame.render_widget(Paragraph::new(Line::from(spans)), strip);
 
     // Database statistics tab: boxes and the list (D-062)
-    if let Some(s) = &tab.db_stats {
+    if let Some(s) = tab.db_stats() {
         let focused = app.focus == Focus::Results;
         hits.db_stats = crate::db_stats::render(frame, s, inner, &app.theme, focused, &|f, r| {
             separator(f, app, r)
@@ -383,7 +383,7 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
     }
     // Dashboard / profiler tab: the list on top, the statement pane (the tab's
     // read-only editor) below (D-057, D-058, D-059)
-    let inner = if tab.dashboard.is_some() || tab.profiler.is_some() {
+    let inner = if tab.dashboard().is_some() || tab.profiler().is_some() {
         let pane = app.pane_shown() && inner.height >= 12;
         let (list_area, pane_area) = if pane {
             let pane_h = (inner.height as u32 * app.pane_percent() as u32 / 100) as u16;
@@ -403,13 +403,13 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
             (inner, None)
         };
         let focused = app.focus == Focus::Results;
-        if let Some(d) = &tab.dashboard {
+        if let Some(d) = tab.dashboard() {
             hits.dashboard =
                 crate::dashboard::render(frame, d, list_area, &app.theme, focused, &|f, r| {
                     separator(f, app, r)
                 });
             hits.grid = hits.dashboard.grid;
-        } else if let Some(p) = &tab.profiler {
+        } else if let Some(p) = tab.profiler() {
             hits.profiler =
                 crate::profiler::render(frame, p, list_area, &app.theme, focused, &|f, r| {
                     separator(f, app, r)
@@ -437,7 +437,7 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
     };
     let view = &tab.view;
     // Query tab: editor on top, results below (D-019)
-    let inner = match &tab.query {
+    let inner = match tab.query() {
         Some(q) if q.results_visible && inner.height >= 8 => {
             let results_h = (inner.height as u32 * q.results_percent as u32 / 100) as u16;
             // separator, labels, separator and at least one row
@@ -675,7 +675,7 @@ fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: 
     } else {
         left.push_str(&app.tab_connection_label(tab));
     }
-    if let Some(q) = &tab.query {
+    if let Some(q) = tab.query() {
         match q.tx {
             pgc_db::TxStatus::Idle => {}
             pgc_db::TxStatus::InTransaction => left.push_str(" · Transaction open"),
@@ -711,7 +711,7 @@ fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: 
             right.push_str(&format!("{}  ", f.text()));
         }
     }
-    if tab.dashboard.is_none() && tab.profiler.is_none() {
+    if tab.dashboard().is_none() && tab.profiler().is_none() {
         let (line, col) = tab.view.editor.cursor_line_col();
         right.push_str(&format!("Ln {}, Col {} ", line + 1, col + 1));
     }

@@ -32,6 +32,7 @@ mod top_rows;
 mod tree_pane;
 
 use std::collections::HashMap;
+use std::time::Duration;
 
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use pgc_core::paths::Paths;
@@ -48,8 +49,8 @@ use self::editing::editor_action;
 use self::lookups::LookupTarget;
 use self::templates::Picker;
 use crate::clipboard::Clipboard;
-use crate::dialog::{Dialog, DialogEvent, DialogKind};
-use crate::export::{ExportEvent, ExportOptions, ExportSink};
+use crate::dialog::{Dialog, DialogEvent, DialogKind, Payload};
+use crate::export::{ExportEvent, ExportSink};
 use crate::keymap::{Command, Context, Keymap};
 use crate::keys::KeyCombo;
 use crate::menu::{self, MenuDef, MenuEvent, MenuState, Popup};
@@ -84,24 +85,59 @@ pub enum Msg {
 /// Side effects requested by `update`, carried out by the event loop.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Effect {
-    /// Send `Msg::EscTimeout(seq)` after the Esc timeout.
-    StartEscTimer(u64),
-    /// Send `Msg::DefinitionTimer(seq)` after the definition delay.
-    StartDefinitionTimer(u64),
-    /// Send `Msg::FindTimer(seq)` after the same delay (D-055).
-    StartFindTimer(u64),
-    /// Send `Msg::ScanTick` soon.
-    ScanTick,
-    /// Send `Msg::Tick` after the tick interval.
-    Tick,
+    /// Send the timer's message after its delay.
+    Timer(Timer),
     /// Put this text into the terminal's clipboard with OSC 52 (D-023).
     Osc52(String),
-    /// Send `Msg::TabTimer(tab, seq)` after `after` (D-057, D-058).
-    StartTabTimer {
-        tab: u64,
-        seq: u64,
-        after: std::time::Duration,
-    },
+}
+
+/// A message the event loop sends back after a delay.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Timer {
+    /// `Msg::EscTimeout(seq)` after the Esc timeout (D-032).
+    Esc(u64),
+    /// `Msg::DefinitionTimer(seq)` after the definition delay (D-037).
+    Definition(u64),
+    /// `Msg::FindTimer(seq)` after the same delay (D-055).
+    Find(u64),
+    /// `Msg::ScanTick` soon (D-038).
+    Scan,
+    /// `Msg::Tick` after the tick interval (D-041).
+    Tick,
+    /// `Msg::TabTimer(tab, seq)` after `after` (D-057, D-058).
+    Tab { tab: u64, seq: u64, after: Duration },
+}
+
+/// How long `Esc` waits for a digit (D-032).
+const ESC_TIMEOUT: Duration = Duration::from_secs(1);
+/// Status refresh / cancel-wait check interval while a query runs.
+const TICK: Duration = Duration::from_millis(250);
+/// Pause between background lexer slices (D-038).
+const SCAN_TICK: Duration = Duration::from_millis(5);
+/// How long the tree cursor must rest before the default tab loads (D-037).
+const DEFINITION_DELAY: Duration = Duration::from_millis(200);
+
+impl Timer {
+    pub fn delay(self) -> Duration {
+        match self {
+            Timer::Esc(_) => ESC_TIMEOUT,
+            Timer::Definition(_) | Timer::Find(_) => DEFINITION_DELAY,
+            Timer::Scan => SCAN_TICK,
+            Timer::Tick => TICK,
+            Timer::Tab { after, .. } => after,
+        }
+    }
+
+    pub fn msg(self) -> Msg {
+        match self {
+            Timer::Esc(seq) => Msg::EscTimeout(seq),
+            Timer::Definition(seq) => Msg::DefinitionTimer(seq),
+            Timer::Find(seq) => Msg::FindTimer(seq),
+            Timer::Scan => Msg::ScanTick,
+            Timer::Tick => Msg::Tick,
+            Timer::Tab { tab, seq, .. } => Msg::TabTimer(tab, seq),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -177,61 +213,126 @@ impl TextView {
     }
 }
 
+/// What a tab holds, by its kind (D-009).
+#[derive(Debug)]
+pub enum TabBody {
+    /// The default object tab.
+    Default,
+    /// An object opened with "Show in new tab" (F3).
+    Object,
+    /// Query tab number `.0`: connection, results, messages (D-019).
+    Query(u32, Box<QueryState>),
+    /// A server dashboard (D-057).
+    Dashboard(Box<crate::dashboard::Dashboard>),
+    /// An SQL profiler (D-058).
+    Profiler(Box<crate::profiler::Profiler>),
+    /// Database statistics (D-062).
+    DbStats(Box<crate::db_stats::DbStats>),
+}
+
 #[derive(Debug)]
 pub struct Tab {
     /// Stable id (definition answers are matched by it).
     pub id: u64,
-    pub kind: TabKind,
+    pub body: TabBody,
     /// Object tabs: the server whose object they show (closed with it, D-043); the
     /// default tab: the server of the selected tree row.
     pub server: Option<u64>,
     /// Object and default tabs: the database of the shown object, for the tab status.
     pub database: Option<String>,
     pub view: TextView,
-    /// Query tabs: connection, results, messages (D-019).
-    pub query: Option<QueryState>,
-    /// Dashboard tabs (D-057).
-    pub dashboard: Option<crate::dashboard::Dashboard>,
-    /// Profiler tabs (D-058).
-    pub profiler: Option<crate::profiler::Profiler>,
-    /// Database statistics tabs (D-062).
-    pub db_stats: Option<crate::db_stats::DbStats>,
     /// The lower part (results, statement pane) had the focus last (`Alt+2`, D-060).
     pub lower_focused: bool,
 }
 
 impl Tab {
+    pub fn kind(&self) -> TabKind {
+        match &self.body {
+            TabBody::Default => TabKind::Default,
+            TabBody::Object => TabKind::Object,
+            TabBody::Query(n, _) => TabKind::Query(*n),
+            TabBody::Dashboard(_) => TabKind::Dashboard,
+            TabBody::Profiler(_) => TabKind::Profiler,
+            TabBody::DbStats(_) => TabKind::DbStats,
+        }
+    }
+
+    /// Query tabs: connection, results, messages (D-019).
+    pub fn query(&self) -> Option<&QueryState> {
+        match &self.body {
+            TabBody::Query(_, q) => Some(q),
+            _ => None,
+        }
+    }
+
+    pub fn query_mut(&mut self) -> Option<&mut QueryState> {
+        match &mut self.body {
+            TabBody::Query(_, q) => Some(q),
+            _ => None,
+        }
+    }
+
+    /// Dashboard tabs (D-057).
+    pub fn dashboard(&self) -> Option<&crate::dashboard::Dashboard> {
+        match &self.body {
+            TabBody::Dashboard(d) => Some(d),
+            _ => None,
+        }
+    }
+
+    pub fn dashboard_mut(&mut self) -> Option<&mut crate::dashboard::Dashboard> {
+        match &mut self.body {
+            TabBody::Dashboard(d) => Some(d),
+            _ => None,
+        }
+    }
+
+    /// Profiler tabs (D-058).
+    pub fn profiler(&self) -> Option<&crate::profiler::Profiler> {
+        match &self.body {
+            TabBody::Profiler(p) => Some(p),
+            _ => None,
+        }
+    }
+
+    pub fn profiler_mut(&mut self) -> Option<&mut crate::profiler::Profiler> {
+        match &mut self.body {
+            TabBody::Profiler(p) => Some(p),
+            _ => None,
+        }
+    }
+
+    /// Database statistics tabs (D-062).
+    pub fn db_stats(&self) -> Option<&crate::db_stats::DbStats> {
+        match &self.body {
+            TabBody::DbStats(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn db_stats_mut(&mut self) -> Option<&mut crate::db_stats::DbStats> {
+        match &mut self.body {
+            TabBody::DbStats(s) => Some(s),
+            _ => None,
+        }
+    }
+
     /// Label in the tab strip.
     pub fn label(&self) -> String {
-        match &self.kind {
-            TabKind::Default => "Default".to_owned(),
-            TabKind::Object => self.view.title.clone(),
-            TabKind::Dashboard => self
-                .dashboard
-                .as_ref()
-                .map(|d| d.label.clone())
-                .unwrap_or_default(),
-            TabKind::Profiler => self
-                .profiler
-                .as_ref()
-                .map(|p| p.label.clone())
-                .unwrap_or_default(),
-            TabKind::DbStats => self
-                .db_stats
-                .as_ref()
-                .map(|s| s.label.clone())
-                .unwrap_or_default(),
-            TabKind::Query(n) => {
-                let q = self.query.as_ref();
+        match &self.body {
+            TabBody::Default => "Default".to_owned(),
+            TabBody::Object => self.view.title.clone(),
+            TabBody::Dashboard(d) => d.label.clone(),
+            TabBody::Profiler(p) => p.label.clone(),
+            TabBody::DbStats(s) => s.label.clone(),
+            TabBody::Query(n, q) => {
                 let name = q
-                    .and_then(|q| q.file.as_ref())
+                    .file
+                    .as_ref()
                     .and_then(|f| f.file_name())
                     .map(|f| f.to_string_lossy().into_owned())
                     .unwrap_or_else(|| format!("Query {n}"));
-                format!(
-                    "{name}{}",
-                    q.map(QueryState::label_suffix).unwrap_or_default()
-                )
+                format!("{name}{}", q.label_suffix())
             }
         }
     }
@@ -300,9 +401,8 @@ pub struct App {
     tick_scheduled: bool,
     /// Grid area of the active query tab (rows incl. header, columns).
     grid_size: (usize, usize),
-    /// Directory shown in the file dialog; a save waiting for overwrite confirmation.
+    /// Directory shown in the file dialogs.
     file_dir: std::path::PathBuf,
-    pending_save: Option<std::path::PathBuf>,
     /// What to do once a "Save changes?" save has succeeded (D-019).
     after_save: Option<AfterSave>,
     /// Quitting: tabs whose unsaved text the user chose not to save (D-019).
@@ -321,15 +421,11 @@ pub struct App {
     template_lookups: HashMap<u64, LookupTarget>,
     row_choices: HashMap<(String, String), Vec<Choice>>,
     row_edit: Option<(usize, Option<usize>)>,
-    /// Result export (D-042): events from writer threads, last id, a target waiting
-    /// for overwrite confirmation, grid area (anchor of the results context menu).
+    /// Result export (D-042): events from writer threads, last id, grid area (anchor
+    /// of the results context menu).
     export_sink: Option<ExportSink>,
     next_export: u64,
-    pending_export: Option<(std::path::PathBuf, ExportOptions)>,
-    /// Database (server uid, name) of an open definition file dialog, and a path
-    /// waiting for overwrite confirmation (D-048).
-    definition_target: Option<(u64, String)>,
-    pending_definition: Option<std::path::PathBuf>,
+    /// Definition exports / loads reading a database's structure (D-048).
     jobs: HashMap<ConnId, StructureJob>,
     grid_area: Rect,
     /// Quitting / disconnecting waits for COMMITs to finish.
@@ -427,14 +523,10 @@ impl App {
             tree,
             tabs: vec![Tab {
                 id: 0,
-                kind: TabKind::Default,
+                body: TabBody::Default,
                 server: None,
                 database: None,
                 view: TextView::new(true, tab_width),
-                query: None,
-                dashboard: None,
-                profiler: None,
-                db_stats: None,
                 lower_focused: false,
             }],
             active_tab: 0,
@@ -458,7 +550,6 @@ impl App {
             tick_scheduled: false,
             grid_size: (0, 0),
             file_dir: std::env::current_dir().unwrap_or_default(),
-            pending_save: None,
             after_save: None,
             bulk: None,
             split_drag: false,
@@ -470,9 +561,6 @@ impl App {
             row_edit: None,
             export_sink: None,
             next_export: 0,
-            pending_export: None,
-            definition_target: None,
-            pending_definition: None,
             jobs: HashMap::new(),
             grid_area: Rect::default(),
             bulk_pending: None,
@@ -519,13 +607,13 @@ impl App {
             Focus::Tree => Some(Context::Tree),
             // dashboard / profiler: the list has the results focus, the statement pane
             // the editor focus (D-059)
-            Focus::Results if self.tabs[self.active_tab].dashboard.is_some() => {
+            Focus::Results if self.tabs[self.active_tab].dashboard().is_some() => {
                 Some(Context::Dashboard)
             }
-            Focus::Results if self.tabs[self.active_tab].profiler.is_some() => {
+            Focus::Results if self.tabs[self.active_tab].profiler().is_some() => {
                 Some(Context::Profiler)
             }
-            Focus::Results if self.tabs[self.active_tab].db_stats.is_some() => {
+            Focus::Results if self.tabs[self.active_tab].db_stats().is_some() => {
                 Some(Context::DbStats)
             }
             Focus::Tabs => Some(Context::Editor),
@@ -788,15 +876,15 @@ impl App {
         effects.append(&mut self.effects);
         if !self.scan_scheduled && self.tabs.iter().any(|t| t.view.editor.needs_scan()) {
             self.scan_scheduled = true;
-            effects.push(Effect::ScanTick);
+            effects.push(Effect::Timer(Timer::Scan));
         }
         let running = self
             .tabs
             .iter()
-            .any(|t| t.query.as_ref().is_some_and(QueryState::busy));
+            .any(|t| t.query().is_some_and(QueryState::busy));
         if running && !self.tick_scheduled {
             self.tick_scheduled = true;
-            effects.push(Effect::Tick);
+            effects.push(Effect::Timer(Timer::Tick));
         }
         if self.focus == Focus::Results
             && !self.list_tab()
@@ -850,7 +938,7 @@ impl App {
         if combo == KeyCombo::plain(KeyCode::Esc) {
             self.esc_seq += 1;
             self.esc_pending = true;
-            return vec![Effect::StartEscTimer(self.esc_seq)];
+            return vec![Effect::Timer(Timer::Esc(self.esc_seq))];
         }
         self.dispatch(ev);
         Vec::new()
@@ -877,9 +965,12 @@ impl App {
                 self.run(Command::Help);
                 return;
             }
-            // F4 list: arrows and pages move in the list while typing in the input
-            // Find object: arrows and pages move in the list while typing (D-055)
-            if dialog.kind == DialogKind::FindObject {
+            // F4 list (D-054) and Find object (D-055): arrows and pages move in the
+            // list while typing in the input
+            if matches!(
+                dialog.kind,
+                DialogKind::FindObject | DialogKind::PsqlCommand
+            ) {
                 let page = dialog.list_rows_of("list").max(1) as isize;
                 let step = match cmd {
                     Some(Command::Up) => Some(-1),
@@ -890,20 +981,7 @@ impl App {
                 };
                 if let Some(step) = step {
                     dialog.list_step("list", step);
-                    return;
-                }
-            }
-            if dialog.kind == DialogKind::PsqlCommand {
-                let page = dialog.list_rows_of("list").max(1) as isize;
-                let step = match cmd {
-                    Some(Command::Up) => Some(-1),
-                    Some(Command::Down) => Some(1),
-                    Some(Command::PageUp) => Some(-page),
-                    Some(Command::PageDown) => Some(page),
-                    _ => None,
-                };
-                if let Some(step) = step {
-                    dialog.list_step("list", step);
+                    // (only the F4 list reacts; the next `update` would do it anyway)
                     self.sync_psql_dialog();
                     return;
                 }
@@ -1047,8 +1125,8 @@ impl App {
             Command::Execute => self.execute(),
             Command::CancelQuery => self.cancel_query(),
             Command::FetchAll => self.fetch_all(),
-            Command::Commit => self.send_simple("COMMIT", None),
-            Command::Rollback => self.send_simple("ROLLBACK", None),
+            Command::Commit => self.send_simple(self.active_tab, "COMMIT", None),
+            Command::Rollback => self.send_simple(self.active_tab, "ROLLBACK", None),
             Command::ToggleAutoCommit => self.toggle_query(|q| {
                 q.auto_commit = !q.auto_commit;
                 format!("Auto commit {}", on_off(q.auto_commit))
@@ -1169,14 +1247,12 @@ impl App {
             Command::ExportDefinition => {
                 if let Some(target) = self.selected_database() {
                     let initial = format!("{}.pgdef", target.1);
-                    self.definition_target = Some(target);
-                    self.open_definition_dialog(true, &initial);
+                    self.open_definition_dialog(true, &initial, target);
                 }
             }
             Command::LoadDefinition => {
                 if let Some(target) = self.selected_database() {
-                    self.definition_target = Some(target);
-                    self.open_definition_dialog(false, "");
+                    self.open_definition_dialog(false, "", target);
                 }
             }
             Command::InstallTemplates => self.start_setup(false),
@@ -1251,30 +1327,30 @@ impl App {
 
     // ---- tabs --------------------------------------------------------------------
 
-    fn add_tab(&mut self, kind: TabKind, view: TextView) -> u64 {
+    fn add_tab(&mut self, body: TabBody, view: TextView) -> u64 {
         self.next_tab += 1;
         let id = self.next_tab;
-        let query = matches!(kind, TabKind::Query(_)).then(|| {
-            QueryState::new(
-                self.settings.query.auto_commit,
-                self.settings.query.auto_rollback,
-            )
-        });
         self.tabs.push(Tab {
             id,
-            kind,
+            body,
             server: None,
             database: None,
             view,
-            query,
-            dashboard: None,
-            profiler: None,
-            db_stats: None,
             lower_focused: false,
         });
         self.active_tab = self.tabs.len() - 1;
         self.focus = Focus::Tabs;
         id
+    }
+
+    /// A new query tab (the next number) showing `view`; not connected yet.
+    fn add_query_tab(&mut self, view: TextView) -> u64 {
+        self.next_query += 1;
+        let state = QueryState::new(
+            self.settings.query.auto_commit,
+            self.settings.query.auto_rollback,
+        );
+        self.add_tab(TabBody::Query(self.next_query, Box::new(state)), view)
     }
 
     fn tab_mut(&mut self, id: u64) -> Option<&mut Tab> {
@@ -1283,11 +1359,11 @@ impl App {
 
     /// Query state of the active tab.
     fn query(&self) -> Option<&QueryState> {
-        self.tabs[self.active_tab].query.as_ref()
+        self.tabs[self.active_tab].query()
     }
 
     fn query_mut(&mut self) -> Option<&mut QueryState> {
-        self.tabs[self.active_tab].query.as_mut()
+        self.tabs[self.active_tab].query_mut()
     }
 
     /// Runs `f` on the active query tab; a non-empty result goes to the status line.
@@ -1392,19 +1468,24 @@ impl App {
                         self.definition_dialog_done(dialog);
                     }
                     (DialogKind::ConfirmDefinitionOverwrite, "yes") => {
-                        if let Some(path) = self.pending_definition.take() {
-                            self.start_job(JobKind::Export(path));
+                        if let Payload::Database {
+                            uid,
+                            database,
+                            path: Some(path),
+                        } = dialog.payload
+                        {
+                            self.start_job(JobKind::Export(path), (uid, database));
                         }
                     }
                     (DialogKind::TemplatePicker, "ok") => self.template_chosen(dialog),
                     (DialogKind::TemplateRow, "ok") => self.row_done(dialog),
                     (DialogKind::ConfirmExportOverwrite, "yes") => {
-                        if let Some((path, options)) = self.pending_export.take() {
+                        if let Payload::Export(path, options) = dialog.payload {
                             self.start_export(path, options);
                         }
                     }
                     (DialogKind::ConfirmOverwrite, "yes") => {
-                        if let Some(path) = self.pending_save.take() {
+                        if let Payload::Path(path) = dialog.payload {
                             self.save_to(path);
                         }
                     }

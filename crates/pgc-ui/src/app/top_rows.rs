@@ -49,7 +49,7 @@ impl App {
         tab.view.editor.set_text(&sql);
         tab.view.editor.set_modified(true);
         let id = tab.id;
-        let Some(q) = tab.query.as_mut() else {
+        let Some(q) = tab.query_mut() else {
             return;
         };
         if q.conn.is_none() {

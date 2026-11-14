@@ -581,6 +581,17 @@ impl Profiler {
         self.conn.as_ref().is_some_and(|c| c.connected)
     }
 
+    /// The tab's own connection, as the three monitor tabs share it.
+    pub fn own_conn(&mut self) -> crate::dashboard::OwnConn<'_> {
+        crate::dashboard::OwnConn {
+            uid: self.uid,
+            database: &self.conn_database,
+            conn: &mut self.conn,
+            version: &mut self.version,
+            problem: &mut self.problem,
+        }
+    }
+
     /// Settings changed by Start must still be put back.
     pub fn needs_restore(&self) -> bool {
         !self.applied.is_empty()

@@ -3,12 +3,13 @@
 
 use std::time::Duration;
 
-use pgc_db::{ConnId, ConnectParams, DbError, DbEvent};
+use pgc_db::{ConnId, DbError, DbEvent};
 use pgc_sql::RenderContext;
 use ratatui::layout::Position;
 
-use super::{App, Effect, Focus, Tab, TabKind, Target, TextView};
-use crate::dashboard::{DashConn, Dashboard, List, Session, Signal};
+use super::connections::MonitorEvent;
+use super::{App, Effect, Focus, Tab, TabBody, Target, TextView};
+use crate::dashboard::{Dashboard, List, Session, Signal};
 use crate::dialog::{Dialog, DialogKind};
 use crate::keymap::Command;
 use crate::menu::{self, MenuEntry, Popup};
@@ -20,15 +21,15 @@ const SQL_FOLDER: &str = "dashboard";
 impl App {
     /// The dashboard of the active tab.
     pub(super) fn dashboard(&self) -> Option<&Dashboard> {
-        self.tabs[self.active_tab].dashboard.as_ref()
+        self.tabs[self.active_tab].dashboard()
     }
 
     fn dashboard_mut(&mut self) -> Option<&mut Dashboard> {
-        self.tabs[self.active_tab].dashboard.as_mut()
+        self.tabs[self.active_tab].dashboard_mut()
     }
 
     fn dashboard_of(&mut self, tab: u64) -> Option<&mut Dashboard> {
-        self.tab_mut(tab).and_then(|t| t.dashboard.as_mut())
+        self.tab_mut(tab).and_then(|t| t.dashboard_mut())
     }
 
     /// Server (index) and database filter for a dashboard of the tree selection: a
@@ -56,8 +57,7 @@ impl App {
         let server = &self.tree.servers[si];
         let uid = server.uid;
         if let Some(i) = self.tabs.iter().position(|t| {
-            t.dashboard
-                .as_ref()
+            t.dashboard()
                 .is_some_and(|d| d.uid == uid && d.database == db)
         }) {
             self.active_tab = i;
@@ -71,11 +71,11 @@ impl App {
         };
         let conn_db = db.clone().unwrap_or_else(|| server.conn.database.clone());
         let view = TextView::new(true, self.tab_width());
-        let id = self.add_tab(TabKind::Dashboard, view);
+        let dashboard = Dashboard::new(uid, db.clone(), conn_db, label);
+        let id = self.add_tab(TabBody::Dashboard(Box::new(dashboard)), view);
         if let Some(t) = self.tab_mut(id) {
             t.server = Some(uid);
-            t.database = db.clone();
-            t.dashboard = Some(Dashboard::new(uid, db, conn_db, label));
+            t.database = db;
         }
         self.focus = Focus::Results;
         self.dashboard_connect(id);
@@ -83,41 +83,9 @@ impl App {
 
     /// Opens the dashboard's own connection (D-011, D-057).
     fn dashboard_connect(&mut self, tab: u64) {
-        let timeout = self.timeout();
-        let Some(i) = self.tab_index(tab) else {
-            return;
-        };
-        let Some(d) = self.tabs[i].dashboard.as_ref() else {
-            return;
-        };
-        let (uid, database) = (d.uid, d.conn_database.clone());
-        let Some(server) = self
-            .tree
-            .servers
-            .iter()
-            .find(|s| s.uid == uid && s.state == ConnState::Connected)
-        else {
-            if let Some(d) = self.tabs[i].dashboard.as_mut() {
-                d.problem = Some("The server is not connected.".to_owned());
-            }
-            return;
-        };
-        let password = server
-            .password
-            .clone()
-            .or_else(|| Self::pgpass_password(&server.conn, &database));
-        let params = ConnectParams::new(&server.conn, &database, password, timeout);
-        self.next_conn += 1;
-        let id = self.next_conn;
-        let handle = pgc_db::spawn(id, params, self.sink.clone());
-        self.connections.insert(id, Target::Dashboard(tab));
-        if let Some(d) = self.tabs[i].dashboard.as_mut() {
-            d.conn = Some(DashConn {
-                id,
-                handle,
-                connected: false,
-            });
-            d.problem = None;
+        if self.monitor_connect(tab, Target::Dashboard(tab))
+            && let Some(d) = self.dashboard_of(tab)
+        {
             d.error = None;
             d.stats_key = None;
             d.list_key = None;
@@ -126,39 +94,14 @@ impl App {
     }
 
     pub(super) fn on_dashboard_event(&mut self, conn: ConnId, tab: u64, event: DbEvent) {
-        if self.dashboard_of(tab).is_none() {
-            self.connections.remove(&conn);
-            return;
-        }
-        match event {
-            DbEvent::Connected { version, .. } => {
-                if let Some(d) = self.dashboard_of(tab) {
-                    d.version = Some(version);
-                    if let Some(c) = d.conn.as_mut() {
-                        c.connected = true;
-                    }
-                }
-                self.dashboard_refresh(tab, true);
-            }
-            DbEvent::ConnectFailed { error, .. } => {
-                self.connections.remove(&conn);
-                if let Some(d) = self.dashboard_of(tab) {
-                    d.conn = None;
-                    d.problem = Some(format!("Cannot connect: {error}"));
+        match self.monitor_event(conn, tab, &event) {
+            MonitorEvent::Connected => self.dashboard_refresh(tab, true),
+            MonitorEvent::Other => {
+                if let DbEvent::Lookup { key, result, .. } = event {
+                    self.dashboard_loaded(tab, key, result);
                 }
             }
-            DbEvent::Closed { error, .. } => {
-                self.connections.remove(&conn);
-                if let Some(d) = self.dashboard_of(tab) {
-                    d.conn = None;
-                    d.problem = Some(match error {
-                        Some(e) => format!("Connection lost: {e}"),
-                        None => "Connection closed".to_owned(),
-                    });
-                }
-            }
-            DbEvent::Lookup { key, result, .. } => self.dashboard_loaded(tab, key, result),
-            _ => {}
+            MonitorEvent::Gone | MonitorEvent::Failed | MonitorEvent::Closed => {}
         }
     }
 
@@ -182,7 +125,7 @@ impl App {
         let Some(i) = self.tab_index(tab) else {
             return;
         };
-        let Some(d) = self.tabs[i].dashboard.as_ref() else {
+        let Some(d) = self.tabs[i].dashboard() else {
             return;
         };
         let (Some(version), true) = (d.version, d.connected()) else {
@@ -214,7 +157,7 @@ impl App {
                 Err(e) => error = Some(e),
             }
         }
-        let Some(d) = self.tabs[i].dashboard.as_mut() else {
+        let Some(d) = self.tabs[i].dashboard_mut() else {
             return;
         };
         let Some(conn) = d.conn.as_ref() else {
@@ -294,11 +237,11 @@ impl App {
             return;
         }
         d.timer_seq += 1;
-        let effect = Effect::StartTabTimer {
+        let effect = Effect::Timer(super::Timer::Tab {
             tab,
             seq: d.timer_seq,
             after: Duration::from_secs(d.interval_secs()),
-        };
+        });
         self.effects.push(effect);
     }
 
@@ -500,7 +443,7 @@ impl App {
         let Some(i) = self.tab_index(tab) else {
             return;
         };
-        let Some(version) = self.tabs[i].dashboard.as_ref().and_then(|d| d.version) else {
+        let Some(version) = self.tabs[i].dashboard().and_then(|d| d.version) else {
             return;
         };
         let sql = match self.render_dashboard_sql(version, signal.file()) {
@@ -512,7 +455,7 @@ impl App {
         };
         self.next_key += 1;
         let key = self.next_key;
-        let Some(d) = self.tabs[i].dashboard.as_mut() else {
+        let Some(d) = self.tabs[i].dashboard_mut() else {
             return;
         };
         let Some((asked, session)) = d.asking.take().filter(|(s, _)| *s == signal) else {
@@ -652,7 +595,7 @@ impl App {
 
     /// `server · user@database` and the refresh state of a dashboard tab (D-043).
     pub(crate) fn dashboard_status(&self, tab: &Tab) -> Option<(String, String)> {
-        let d = tab.dashboard.as_ref()?;
+        let d = tab.dashboard()?;
         let place = self.place_label(d.uid, Some(&d.conn_database));
         let left = match (&d.conn, &d.problem) {
             (Some(c), _) if c.connected => place,

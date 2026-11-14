@@ -1,13 +1,11 @@
 //! Database definition export and load (D-012, D-048): the file dialog and the job
 //! that reads the structure on its own connection.
 
-use std::path::Path;
+use pgc_db::{ConnId, DbEvent};
 
-use pgc_db::{ConnId, ConnectParams, DbEvent};
-
-use super::files::list_dir;
-use super::{App, TabKind, Target, TextView};
-use crate::dialog::{Dialog, DialogKind, Widget};
+use super::files::{FileDialog, Picked};
+use super::{App, Target, TextView};
+use crate::dialog::{Dialog, DialogKind, Payload, Widget};
 use crate::tree::RowKind;
 
 /// A definition export or load running on its own connection (D-048).
@@ -36,107 +34,86 @@ impl App {
         Some((self.tree.servers[row.server].uid, node.name.clone()))
     }
 
-    pub(super) fn open_definition_dialog(&mut self, save: bool, initial: &str) {
-        let dir = self.file_dir.clone();
-        let entries = list_dir(&dir, "pgdef");
-        let labels: Vec<String> = entries.iter().map(|e| e.0.clone()).collect();
-        let marks: Vec<bool> = entries.iter().map(|e| e.2).collect();
-        let database = self
-            .definition_target
-            .as_ref()
-            .map(|t| t.1.clone())
-            .unwrap_or_default();
+    /// The file dialog of a definition export (`save`) or load for `target`: server
+    /// uid and database (D-048).
+    pub(super) fn open_definition_dialog(&mut self, save: bool, name: &str, target: (u64, String)) {
         let (kind, title) = if save {
             (DialogKind::SaveDefinition, "Export database definition")
         } else {
             (DialogKind::OpenDefinition, "Load database definition")
         };
-        let mut dialog = Dialog::new(
-            kind,
-            title,
-            70,
-            vec![
-                Widget::label(&format!("Database: {database}")),
-                Widget::label(&format!("Folder: {}", dir.display())),
-                Widget::field("path", "&File name:", initial, 12),
-                Widget::list("files", "", labels, 0, 14).highlighted(marks),
-                Widget::button("ok", "&OK", true),
-                Widget::button("cancel", "&Cancel", false),
-            ],
-        );
-        if !save {
-            dialog.focus_on("files");
-        }
+        let (uid, database) = target;
+        let dialog = self
+            .file_dialog(FileDialog {
+                kind,
+                title,
+                ext: "pgdef",
+                name,
+                label_width: 12,
+                list_rows: 14,
+                above: vec![Widget::label(&format!("Database: {database}"))],
+                below: Vec::new(),
+                pick: !save,
+            })
+            .with_payload(Payload::Database {
+                uid,
+                database,
+                path: None,
+            });
         self.dialogs.push(dialog);
     }
 
     pub(super) fn definition_dialog_done(&mut self, dialog: Dialog) {
         let save = dialog.kind == DialogKind::SaveDefinition;
-        let dir = self.file_dir.clone();
-        let chosen = if dialog.focused_id() == Some("files") {
-            let entries = list_dir(&dir, "pgdef");
-            dialog
-                .selected("files")
-                .and_then(|i| entries.get(i))
-                .map(|e| e.0.trim_end_matches('/').to_owned())
-                .unwrap_or_default()
-        } else {
-            dialog.text("path").unwrap_or("").trim().to_owned()
-        };
-        if chosen.is_empty() {
-            self.dialogs.push(dialog);
+        let Payload::Database { uid, database, .. } = dialog.payload.clone() else {
             return;
-        }
-        let path = if chosen == ".." {
-            dir.parent().map(Path::to_path_buf).unwrap_or(dir)
-        } else {
-            dir.join(&chosen)
         };
-        if path.is_dir() {
-            self.file_dir = path;
-            let initial = dialog.text("path").unwrap_or("").to_owned();
-            self.open_definition_dialog(save, if save { &initial } else { "" });
-            return;
-        }
+        let path = match self.picked(&dialog) {
+            Picked::Nothing => {
+                self.dialogs.push(dialog);
+                return;
+            }
+            Picked::Folder => {
+                let name = dialog.text("path").unwrap_or("");
+                self.open_definition_dialog(save, if save { name } else { "" }, (uid, database));
+                return;
+            }
+            Picked::File(path) => path,
+        };
         if save {
             if path.exists() {
-                self.pending_definition = Some(path.clone());
-                self.dialogs.push(Dialog::confirm(
-                    DialogKind::ConfirmDefinitionOverwrite,
-                    "Export database definition",
-                    &format!("{} exists. Overwrite it?", path.display()),
-                ));
+                let text = format!("{} exists. Overwrite it?", path.display());
+                self.dialogs.push(
+                    Dialog::confirm(
+                        DialogKind::ConfirmDefinitionOverwrite,
+                        "Export database definition",
+                        &text,
+                    )
+                    .with_payload(Payload::Database {
+                        uid,
+                        database,
+                        path: Some(path),
+                    }),
+                );
             } else {
-                self.start_job(JobKind::Export(path));
+                self.start_job(JobKind::Export(path), (uid, database));
             }
         } else {
             match pgc_model::file::load(&path) {
-                Ok(model) => self.start_job(JobKind::Load(Box::new(model))),
+                Ok(model) => self.start_job(JobKind::Load(Box::new(model)), (uid, database)),
                 Err(e) => self.error(&format!("Cannot load {}:\n{e}", path.display())),
             }
         }
     }
 
-    /// Opens a connection to the target database for the job; the structure is read
-    /// once it is connected.
-    pub(super) fn start_job(&mut self, kind: JobKind) {
-        let Some((uid, database)) = self.definition_target.take() else {
-            return;
-        };
+    /// Opens a connection to the database for the job; the structure is read once it
+    /// is connected.
+    pub(super) fn start_job(&mut self, kind: JobKind, (uid, database): (u64, String)) {
         let Some(si) = self.tree.index_of(uid) else {
             return;
         };
-        let timeout = self.timeout();
-        let server = &self.tree.servers[si];
-        let password = server
-            .password
-            .clone()
-            .or_else(|| Self::pgpass_password(&server.conn, &database));
-        let params = ConnectParams::new(&server.conn, &database, password, timeout);
-        self.next_conn += 1;
-        let id = self.next_conn;
-        let handle = pgc_db::spawn(id, params, self.sink.clone());
-        self.connections.insert(id, Target::Structure);
+        let handle = self.open_connection(si, &database, Target::Structure);
+        let id = handle.id;
         self.status = format!("Reading the structure of {database}…");
         self.jobs.insert(
             id,
@@ -229,9 +206,8 @@ impl App {
                     // review in a query tab of that database; never run automatically
                     let mut view = TextView::new(false, self.tab_width());
                     view.load(script);
-                    self.next_query += 1;
-                    let id = self.add_tab(TabKind::Query(self.next_query), view);
-                    if let Some(q) = self.tab_index(id).and_then(|i| self.tabs[i].query.as_mut()) {
+                    let id = self.add_query_tab(view);
+                    if let Some(q) = self.tab_index(id).and_then(|i| self.tabs[i].query_mut()) {
                         q.binding = Some((job.uid, job.database.clone()));
                     }
                     self.bind_query_tab(id);

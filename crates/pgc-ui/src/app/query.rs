@@ -1,10 +1,10 @@
 //! Query tabs (D-011, D-019, D-020, D-041): their connections, running statements,
 //! transactions, cancel, and the tab's connection label (D-043).
 
-use pgc_db::{ConnId, ConnectParams, DbEvent, ExecuteRequest, TxStatus};
+use pgc_db::{ConnId, DbEvent, ExecuteRequest, TxStatus};
 
 use super::result_export::take_export_rows;
-use super::{App, Tab, TabKind, Target, TextView};
+use super::{App, Tab, TabBody, Target, TextView};
 use crate::dialog::{Dialog, DialogKind};
 use crate::export::ToWriter;
 use crate::query_tab::{AfterRun, LineMap, QueryConn, QueryConnState, Sent};
@@ -28,10 +28,8 @@ impl App {
     /// A new, empty query tab bound to `binding` (server uid, database), or to the
     /// tree selection's database.
     pub(super) fn new_query_tab(&mut self, binding: Option<(u64, String)>) {
-        self.next_query += 1;
-        let n = self.next_query;
         let view = TextView::new(false, self.tab_width());
-        let id = self.add_tab(TabKind::Query(n), view);
+        let id = self.add_query_tab(view);
         if let Some(q) = self.query_mut() {
             q.binding = binding;
         }
@@ -45,34 +43,25 @@ impl App {
         };
         // reconnect to the same database if the tab had one
         let previous = self.tabs[i]
-            .query
-            .as_ref()
+            .query()
             .and_then(|q| q.binding.clone())
             .and_then(|(uid, db)| self.tree.index_of(uid).map(|s| (s, db)))
             .filter(|(s, _)| self.tree.servers[*s].state == ConnState::Connected);
         let Some((si, database)) = previous.or_else(|| self.query_target()) else {
-            if let Some(q) = self.tabs[i].query.as_mut() {
+            if let Some(q) = self.tabs[i].query_mut() {
                 q.info("Not connected — select a database in the tree, then press F5.");
             }
             return;
         };
-        let timeout = self.timeout();
         let server = &self.tree.servers[si];
-        let password = server
-            .password
-            .clone()
-            .or_else(|| Self::pgpass_password(&server.conn, &database));
-        let params = ConnectParams::new(&server.conn, &database, password, timeout);
         let (uid, ssl_mode, root) = (
             server.uid,
             server.conn.ssl_mode,
             server.conn.ssl_root_cert.clone(),
         );
-        self.next_conn += 1;
-        let id = self.next_conn;
-        let handle = pgc_db::spawn(id, params, self.sink.clone());
-        self.connections.insert(id, Target::Query(tab));
-        if let Some(q) = self.tabs[i].query.as_mut() {
+        let handle = self.open_connection(si, &database, Target::Query(tab));
+        let id = handle.id;
+        if let Some(q) = self.tabs[i].query_mut() {
             q.binding = Some((uid, database.clone()));
             q.conn = Some(QueryConn {
                 id,
@@ -92,8 +81,8 @@ impl App {
             self.connections.remove(&conn);
             return;
         };
-        let Tab { view, query, .. } = &mut self.tabs[i];
-        let Some(q) = query.as_mut() else {
+        let Tab { view, body, .. } = &mut self.tabs[i];
+        let TabBody::Query(_, q) = body else {
             return;
         };
         match event {
@@ -157,7 +146,7 @@ impl App {
         let Some(i) = self.tab_index(tab) else {
             return;
         };
-        let Some(q) = self.tabs[i].query.as_mut() else {
+        let Some(q) = self.tabs[i].query_mut() else {
             return;
         };
         let after = q.after_run.take();
@@ -179,64 +168,21 @@ impl App {
 
     /// F5: the selection, or the whole text, as one request (D-019, D-020).
     pub(super) fn execute(&mut self) {
-        let Some(q) = self.query() else {
-            return;
-        };
-        if q.conn.is_none() {
-            let id = self.tabs[self.active_tab].id;
-            self.bind_query_tab(id);
-            if self.query().is_some_and(|q| q.conn.is_none()) {
-                self.status = "Select a database in the tree first".to_owned();
-                return;
-            }
+        self.execute_tab(self.tabs[self.active_tab].id);
+    }
+
+    /// The window status line, when tab `i` is the one shown.
+    fn tab_status(&mut self, i: usize, text: &str) {
+        if i == self.active_tab {
+            self.status = text.to_owned();
         }
-        let q = self.query().expect("query tab");
-        if q.busy() {
-            self.status = "A query is already running".to_owned();
-            return;
-        }
-        if q.export.is_some() {
-            self.status = "An export is running".to_owned();
-            return;
-        }
-        if !q.connected() {
-            self.status = "Still connecting…".to_owned();
-            return;
-        }
-        let editor = &self.tabs[self.active_tab].view.editor;
-        let (text, offset) = match editor.selection() {
-            Some((a, _)) => (editor.selected_text().unwrap_or_default(), a),
-            None => (editor.text(), 0),
-        };
-        if text.trim().is_empty() {
-            return;
-        }
-        let (sql, plpgsql_lines) = if self.query().is_some_and(|q| q.plpgsql) {
-            match crate::query_tab::wrap_plpgsql(&text) {
-                Ok((sql, n)) => (sql, Some(n)),
-                Err(e) => {
-                    self.error(&e);
-                    return;
-                }
-            }
-        } else {
-            (text, None)
-        };
-        self.send_query(
-            sql,
-            Sent {
-                offset,
-                plpgsql_lines,
-            },
-            true,
-        );
     }
 
     /// The tab's connection is open: runs what waited for it (D-056).
     pub(super) fn run_queued(&mut self, tab: u64) {
         let queued = self
             .tab_index(tab)
-            .and_then(|i| self.tabs[i].query.as_mut())
+            .and_then(|i| self.tabs[i].query_mut())
             .is_some_and(|q| std::mem::take(&mut q.run_on_connect));
         if queued {
             self.execute_tab(tab);
@@ -248,22 +194,67 @@ impl App {
         let Some(i) = self.tab_index(tab) else {
             return;
         };
-        let previous = self.active_tab;
-        let status = self.status.clone();
-        self.active_tab = i;
-        self.execute();
-        self.active_tab = previous.min(self.tabs.len() - 1);
-        if previous != i {
-            self.status = status;
+        let Some(q) = self.tabs[i].query() else {
+            return;
+        };
+        if q.conn.is_none() {
+            self.bind_query_tab(tab);
         }
+        let Some(q) = self.tabs[i].query() else {
+            return;
+        };
+        let problem = if q.conn.is_none() {
+            Some("Select a database in the tree first")
+        } else if q.busy() {
+            Some("A query is already running")
+        } else if q.export.is_some() {
+            Some("An export is running")
+        } else if !q.connected() {
+            Some("Still connecting…")
+        } else {
+            None
+        };
+        if let Some(problem) = problem {
+            self.tab_status(i, problem);
+            return;
+        }
+        let plpgsql = q.plpgsql;
+        let editor = &self.tabs[i].view.editor;
+        let (text, offset) = match editor.selection() {
+            Some((a, _)) => (editor.selected_text().unwrap_or_default(), a),
+            None => (editor.text(), 0),
+        };
+        if text.trim().is_empty() {
+            return;
+        }
+        let (sql, plpgsql_lines) = if plpgsql {
+            match crate::query_tab::wrap_plpgsql(&text) {
+                Ok((sql, n)) => (sql, Some(n)),
+                Err(e) => {
+                    self.error(&e);
+                    return;
+                }
+            }
+        } else {
+            (text, None)
+        };
+        self.send_query(
+            i,
+            sql,
+            Sent {
+                offset,
+                plpgsql_lines,
+            },
+            true,
+        );
     }
 
-    /// Sends `sql` for the active query tab.
-    fn send_query(&mut self, sql: String, sent: Sent, use_modes: bool) {
+    /// Sends `sql` for the query tab at index `i`.
+    fn send_query(&mut self, i: usize, sql: String, sent: Sent, use_modes: bool) {
         self.next_run += 1;
         let run = self.next_run;
         let batch_rows = self.settings.query.batch_rows.max(1) as usize;
-        let Some(q) = self.query_mut() else {
+        let Some(q) = self.tabs[i].query_mut() else {
             return;
         };
         let Some(conn) = q.conn.as_ref() else {
@@ -278,18 +269,19 @@ impl App {
         };
         conn.handle.execute(request);
         q.start_run(run, sent);
-        self.status = "Executing…".to_owned();
+        self.tab_status(i, "Executing…");
     }
 
-    /// COMMIT / ROLLBACK in the active query tab (D-019).
-    pub(super) fn send_simple(&mut self, sql: &str, after: Option<AfterRun>) {
-        let Some(q) = self.query() else {
+    /// COMMIT / ROLLBACK in the query tab at index `i` (D-019).
+    pub(super) fn send_simple(&mut self, i: usize, sql: &str, after: Option<AfterRun>) {
+        let Some(q) = self.tabs[i].query() else {
             return;
         };
         if !q.connected() || q.busy() {
             return;
         }
         self.send_query(
+            i,
             sql.to_owned(),
             Sent {
                 offset: 0,
@@ -297,19 +289,15 @@ impl App {
             },
             false,
         );
-        if let Some(q) = self.query_mut() {
+        if let Some(q) = self.tabs[i].query_mut() {
             q.after_run = after;
         }
     }
 
     pub(super) fn finish_transaction(&mut self, tab: u64, after: AfterRun) {
-        let Some(i) = self.tab_index(tab) else {
-            return;
-        };
-        let previous = self.active_tab;
-        self.active_tab = i;
-        self.send_simple("COMMIT", Some(after));
-        self.active_tab = previous.min(self.tabs.len() - 1);
+        if let Some(i) = self.tab_index(tab) {
+            self.send_simple(i, "COMMIT", Some(after));
+        }
     }
 
     /// Alt+Shift+C: PostgreSQL's cancel request (D-019).
@@ -349,7 +337,7 @@ impl App {
             std::time::Duration::from_secs(u64::from(self.settings.query.cancel_wait_secs.max(1)));
         let mut ask = Vec::new();
         for tab in &mut self.tabs {
-            if let Some(r) = tab.query.as_mut().and_then(|q| q.running.as_mut())
+            if let Some(r) = tab.query_mut().and_then(|q| q.running.as_mut())
                 && !r.asked
                 && r.cancel_requested.is_some_and(|t| t.elapsed() >= wait)
             {
@@ -374,7 +362,7 @@ impl App {
         let Some(i) = self.tab_index(tab) else {
             return;
         };
-        if let Some(q) = self.tabs[i].query.as_mut()
+        if let Some(q) = self.tabs[i].query_mut()
             && let Some(conn) = q.conn.take()
         {
             conn.handle.abort();
@@ -388,7 +376,7 @@ impl App {
 
     /// Where a query tab is connected: `server · user@database` or its state (D-043).
     pub fn tab_connection_label(&self, tab: &Tab) -> String {
-        let Some(q) = &tab.query else {
+        let Some(q) = tab.query() else {
             // object and default tabs: where the object comes from, then read only
             return match tab.server {
                 Some(uid) => format!(

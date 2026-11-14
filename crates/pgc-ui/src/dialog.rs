@@ -13,7 +13,10 @@ use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Clear, Paragraph};
 
+use std::path::PathBuf;
+
 use crate::combo::{self, ComboList, ListEvent};
+use crate::export::ExportOptions;
 use crate::hotkey::HotText;
 use crate::keymap::Command;
 use crate::theme::{Role, Theme};
@@ -340,11 +343,31 @@ pub enum DialogEvent {
     Button(&'static str),
 }
 
+/// Caller data a dialog carries until it is answered. It goes with the dialog, so a
+/// cancelled question leaves nothing behind.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum Payload {
+    #[default]
+    None,
+    /// The file a question is about (overwrite it?).
+    Path(PathBuf),
+    /// Result export (D-042): the file and the chosen options.
+    Export(PathBuf, ExportOptions),
+    /// Definition export / load (D-048): server uid and database, and the file a
+    /// question is about.
+    Database {
+        uid: u64,
+        database: String,
+        path: Option<PathBuf>,
+    },
+}
+
 #[derive(Debug, Clone)]
 pub struct Dialog {
     pub kind: DialogKind,
     /// Caller data, e.g. the server the dialog is about.
     pub tag: u64,
+    pub payload: Payload,
     pub title: String,
     pub widgets: Vec<Widget>,
     pub focus: usize,
@@ -362,6 +385,7 @@ impl Dialog {
         Self {
             kind,
             tag: 0,
+            payload: Payload::None,
             title: title.to_owned(),
             widgets,
             focus,
@@ -372,6 +396,11 @@ impl Dialog {
 
     pub fn with_tag(mut self, tag: u64) -> Self {
         self.tag = tag;
+        self
+    }
+
+    pub fn with_payload(mut self, payload: Payload) -> Self {
+        self.payload = payload;
         self
     }
 

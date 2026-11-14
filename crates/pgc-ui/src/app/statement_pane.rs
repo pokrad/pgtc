@@ -4,7 +4,7 @@
 //! In these tabs the list has the results focus (`Focus::Results`) and the pane the
 //! editor focus (`Focus::Tabs`), so the pane gets every editor key for free.
 
-use super::{App, Focus};
+use super::{App, Focus, TabBody};
 use crate::dashboard::Pane;
 use crate::tree::ConnState;
 
@@ -12,30 +12,28 @@ impl App {
     /// The active tab is a dashboard or profiler tab (a list with a statement pane).
     pub(crate) fn list_tab(&self) -> bool {
         let t = &self.tabs[self.active_tab];
-        t.dashboard.is_some() || t.profiler.is_some()
+        t.dashboard().is_some() || t.profiler().is_some()
     }
 
     fn pane(&self) -> Option<Pane> {
         let t = &self.tabs[self.active_tab];
-        t.dashboard
-            .as_ref()
+        t.dashboard()
             .map(|d| d.pane)
-            .or_else(|| t.profiler.as_ref().map(|p| p.pane))
+            .or_else(|| t.profiler().map(|p| p.pane))
     }
 
     fn pane_mut(&mut self) -> Option<&mut Pane> {
-        let t = &mut self.tabs[self.active_tab];
-        match (t.dashboard.as_mut(), t.profiler.as_mut()) {
-            (Some(d), _) => Some(&mut d.pane),
-            (None, Some(p)) => Some(&mut p.pane),
-            (None, None) => None,
+        match &mut self.tabs[self.active_tab].body {
+            TabBody::Dashboard(d) => Some(&mut d.pane),
+            TabBody::Profiler(p) => Some(&mut p.pane),
+            _ => None,
         }
     }
 
     /// The pane is drawn: visible, and part of the shown list (dashboard: Sessions).
     pub(crate) fn pane_shown(&self) -> bool {
         let t = &self.tabs[self.active_tab];
-        let applies = t.profiler.is_some() || t.dashboard.as_ref().is_some_and(|d| d.has_pane());
+        let applies = t.profiler().is_some() || t.dashboard().is_some_and(|d| d.has_pane());
         applies && self.pane().is_some_and(|p| p.visible)
     }
 
@@ -47,10 +45,9 @@ impl App {
     /// Statement (with its comments) and database of the row under the list cursor.
     fn list_statement(&self) -> Option<(String, String)> {
         let t = &self.tabs[self.active_tab];
-        t.dashboard
-            .as_ref()
+        t.dashboard()
             .and_then(|d| d.statement())
-            .or_else(|| t.profiler.as_ref().and_then(|p| p.statement()))
+            .or_else(|| t.profiler().and_then(|p| p.statement()))
     }
 
     /// Puts the statement of the list cursor's row into the pane (unchanged text keeps

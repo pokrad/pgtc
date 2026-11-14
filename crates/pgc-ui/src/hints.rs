@@ -203,17 +203,17 @@ impl App {
             match self.focus {
                 Focus::Tree => (Context::Tree, TREE),
                 // dashboard / profiler: the list has the results focus (D-059)
-                Focus::Results if self.tabs[self.active_tab].dashboard.is_some() => {
+                Focus::Results if self.tabs[self.active_tab].dashboard().is_some() => {
                     (Context::Dashboard, DASHBOARD)
                 }
-                Focus::Results if self.tabs[self.active_tab].profiler.is_some() => {
+                Focus::Results if self.tabs[self.active_tab].profiler().is_some() => {
                     (Context::Profiler, PROFILER)
                 }
-                Focus::Results if self.tabs[self.active_tab].db_stats.is_some() => {
+                Focus::Results if self.tabs[self.active_tab].db_stats().is_some() => {
                     (Context::DbStats, DB_STATS)
                 }
                 Focus::Results => (Context::Results, RESULTS),
-                Focus::Tabs if self.tabs[self.active_tab].query.is_some() => {
+                Focus::Tabs if self.tabs[self.active_tab].query().is_some() => {
                     (Context::Editor, QUERY_EDITOR)
                 }
                 Focus::Tabs if self.list_tab() => (Context::Editor, PANE),
@@ -278,7 +278,7 @@ impl App {
             C::NextResult => self
                 .tabs
                 .get(self.active_tab)
-                .and_then(|t| t.query.as_ref())
+                .and_then(|t| t.query())
                 .is_some_and(|q| !q.show_messages && q.results.len() > 1),
             _ => true,
         }

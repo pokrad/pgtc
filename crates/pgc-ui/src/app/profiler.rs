@@ -4,17 +4,16 @@
 
 use std::time::Duration;
 
-use pgc_db::{ConnId, ConnectParams, DbError, DbEvent};
+use pgc_db::{ConnId, DbError, DbEvent};
 use pgc_sql::RenderContext;
 use ratatui::layout::Position;
 
-use super::{App, Effect, Focus, Tab, TabKind, Target, TextView};
-use crate::dashboard::DashConn;
+use super::connections::MonitorEvent;
+use super::{App, Effect, Focus, Tab, TabBody, Target, TextView};
 use crate::dialog::{Dialog, DialogKind, Widget};
 use crate::keymap::Command;
 use crate::menu::{self, MenuEntry, Popup};
 use crate::profiler::{AfterRestore, Check, LogReader, Phase, Profiler, READ_CHUNK};
-use crate::tree::ConnState;
 use crate::view::Hits;
 
 const SQL_FOLDER: &str = "profiler";
@@ -41,15 +40,15 @@ fn from_hex(text: &str) -> Vec<u8> {
 
 impl App {
     pub(super) fn profiler(&self) -> Option<&Profiler> {
-        self.tabs[self.active_tab].profiler.as_ref()
+        self.tabs[self.active_tab].profiler()
     }
 
     fn profiler_mut(&mut self) -> Option<&mut Profiler> {
-        self.tabs[self.active_tab].profiler.as_mut()
+        self.tabs[self.active_tab].profiler_mut()
     }
 
     fn profiler_of(&mut self, tab: u64) -> Option<&mut Profiler> {
-        self.tab_mut(tab).and_then(|t| t.profiler.as_mut())
+        self.tab_mut(tab).and_then(|t| t.profiler_mut())
     }
 
     /// Tools → SQL profiler: one tab per server; from a database row its database is
@@ -64,7 +63,7 @@ impl App {
         if let Some(i) = self
             .tabs
             .iter()
-            .position(|t| t.profiler.as_ref().is_some_and(|p| p.uid == uid))
+            .position(|t| t.profiler().is_some_and(|p| p.uid == uid))
         {
             self.active_tab = i;
             // the list first (D-059)
@@ -74,51 +73,19 @@ impl App {
         let label = format!("Profiler: {}", server.conn.name);
         let conn_db = server.conn.database.clone();
         let view = TextView::new(true, self.tab_width());
-        let id = self.add_tab(TabKind::Profiler, view);
+        let profiler = Profiler::new(uid, conn_db, label, db);
+        let id = self.add_tab(TabBody::Profiler(Box::new(profiler)), view);
         if let Some(t) = self.tab_mut(id) {
             t.server = Some(uid);
-            t.profiler = Some(Profiler::new(uid, conn_db, label, db));
         }
         self.focus = Focus::Results;
         self.profiler_connect(id);
     }
 
     fn profiler_connect(&mut self, tab: u64) {
-        let timeout = self.timeout();
-        let Some(i) = self.tab_index(tab) else {
-            return;
-        };
-        let Some(p) = self.tabs[i].profiler.as_ref() else {
-            return;
-        };
-        let (uid, database) = (p.uid, p.conn_database.clone());
-        let Some(server) = self
-            .tree
-            .servers
-            .iter()
-            .find(|s| s.uid == uid && s.state == ConnState::Connected)
-        else {
-            if let Some(p) = self.tabs[i].profiler.as_mut() {
-                p.problem = Some("The server is not connected.".to_owned());
-            }
-            return;
-        };
-        let password = server
-            .password
-            .clone()
-            .or_else(|| Self::pgpass_password(&server.conn, &database));
-        let params = ConnectParams::new(&server.conn, &database, password, timeout);
-        self.next_conn += 1;
-        let id = self.next_conn;
-        let handle = pgc_db::spawn(id, params, self.sink.clone());
-        self.connections.insert(id, Target::Profiler(tab));
-        if let Some(p) = self.tabs[i].profiler.as_mut() {
-            p.conn = Some(DashConn {
-                id,
-                handle,
-                connected: false,
-            });
-            p.problem = None;
+        if self.monitor_connect(tab, Target::Profiler(tab))
+            && let Some(p) = self.profiler_of(tab)
+        {
             p.error = None;
             p.read_key = None;
             p.step_keys.clear();
@@ -127,38 +94,13 @@ impl App {
     }
 
     pub(super) fn on_profiler_event(&mut self, conn: ConnId, tab: u64, event: DbEvent) {
-        if self.profiler_of(tab).is_none() {
-            self.connections.remove(&conn);
-            return;
-        }
-        match event {
-            DbEvent::Connected { version, .. } => {
-                if let Some(p) = self.profiler_of(tab) {
-                    p.version = Some(version);
-                    if let Some(c) = p.conn.as_mut() {
-                        c.connected = true;
-                    }
-                }
-            }
-            DbEvent::ConnectFailed { error, .. } => {
-                self.connections.remove(&conn);
-                if let Some(p) = self.profiler_of(tab) {
-                    p.conn = None;
-                    p.problem = Some(format!("Cannot connect: {error}"));
-                }
-            }
-            DbEvent::Closed { error, .. } => {
-                self.connections.remove(&conn);
+        match self.monitor_event(conn, tab, &event) {
+            MonitorEvent::Closed => {
                 let Some(p) = self.profiler_of(tab) else {
                     return;
                 };
-                p.conn = None;
                 p.read_key = None;
                 p.step_keys.clear();
-                p.problem = Some(match error {
-                    Some(e) => format!("Connection lost: {e}"),
-                    None => "Connection closed".to_owned(),
-                });
                 let quitting = p.after_restore == AfterRestore::Quit;
                 p.phase = Phase::Stopped;
                 let lost: Vec<String> = p.applied.drain(..).map(|c| c.restore_sql()).collect();
@@ -169,8 +111,12 @@ impl App {
                     self.maybe_quit_after_restore();
                 }
             }
-            DbEvent::Lookup { key, result, .. } => self.profiler_loaded(tab, key, result),
-            _ => {}
+            MonitorEvent::Other => {
+                if let DbEvent::Lookup { key, result, .. } = event {
+                    self.profiler_loaded(tab, key, result);
+                }
+            }
+            MonitorEvent::Gone | MonitorEvent::Connected | MonitorEvent::Failed => {}
         }
     }
 
@@ -526,11 +472,11 @@ impl App {
             return;
         };
         p.timer_seq += 1;
-        let effect = Effect::StartTabTimer {
+        let effect = Effect::Timer(super::Timer::Tab {
             tab,
             seq: p.timer_seq,
             after,
-        };
+        });
         self.effects.push(effect);
     }
 
@@ -788,7 +734,7 @@ impl App {
 
     /// `server · user@database` and the profiler state (D-043, D-058).
     pub(crate) fn profiler_status(&self, tab: &Tab) -> Option<(String, String)> {
-        let p = tab.profiler.as_ref()?;
+        let p = tab.profiler()?;
         let place = self.place_label(p.uid, Some(&p.conn_database));
         let left = match &p.conn {
             Some(c) if c.connected => place,
@@ -829,8 +775,7 @@ impl App {
             .tabs
             .iter()
             .filter(|t| {
-                t.profiler
-                    .as_ref()
+                t.profiler()
                     .is_some_and(|p| p.needs_restore() && p.connected())
             })
             .map(|t| t.id)
@@ -850,11 +795,10 @@ impl App {
         if !self.quit_after_restore {
             return;
         }
-        let waiting = self.tabs.iter().any(|t| {
-            t.profiler
-                .as_ref()
-                .is_some_and(|p| p.phase == Phase::Restoring)
-        });
+        let waiting = self
+            .tabs
+            .iter()
+            .any(|t| t.profiler().is_some_and(|p| p.phase == Phase::Restoring));
         if !waiting {
             self.quit = true;
         }

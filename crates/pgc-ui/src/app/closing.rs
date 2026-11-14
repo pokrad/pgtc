@@ -3,7 +3,7 @@
 
 use pgc_db::TxStatus;
 
-use super::{App, Focus, Tab};
+use super::{App, Focus, Tab, TabBody};
 use crate::dialog::{Dialog, DialogKind};
 use crate::query_tab::AfterRun;
 
@@ -33,7 +33,7 @@ impl App {
             return;
         };
         let tab = &self.tabs[i];
-        let Some(q) = tab.query.as_ref() else {
+        let Some(q) = tab.query() else {
             self.close_tab(id);
             return;
         };
@@ -74,7 +74,7 @@ impl App {
             return;
         };
         self.active_tab = i;
-        let file = self.tabs[i].query.as_ref().and_then(|q| q.file.clone());
+        let file = self.tabs[i].query().and_then(|q| q.file.clone());
         self.after_save = Some(then);
         match file {
             Some(path) => self.save_to(path),
@@ -92,22 +92,21 @@ impl App {
         let tab = self.tabs.remove(i);
         self.pending_defs.retain(|_, t| *t != tab.id);
         self.template_lookups.retain(|_, t| t.tab() != Some(tab.id));
-        if let Some(conn) = tab.query.and_then(|q| q.conn) {
+        let conn = match tab.body {
+            TabBody::Default | TabBody::Object => None,
             // dropping the connection rolls back an open transaction (D-019)
-            conn.handle.abort();
-            self.connections.remove(&conn.id);
-        }
-        if let Some(conn) = tab.dashboard.and_then(|d| d.conn) {
-            conn.handle.abort();
-            self.connections.remove(&conn.id);
-        }
-        if let Some(conn) = tab.db_stats.and_then(|s| s.conn) {
-            conn.handle.abort();
-            self.connections.remove(&conn.id);
-        }
-        // changed logging settings are put back first (D-058)
-        if let Some(p) = tab.profiler {
-            self.close_profiler_conn(p);
+            TabBody::Query(_, q) => q.conn.map(|c| (c.id, c.handle)),
+            TabBody::Dashboard(d) => d.conn.map(|c| (c.id, c.handle)),
+            TabBody::DbStats(s) => s.conn.map(|c| (c.id, c.handle)),
+            // changed logging settings are put back first (D-058)
+            TabBody::Profiler(p) => {
+                self.close_profiler_conn(*p);
+                None
+            }
+        };
+        if let Some((id, handle)) = conn {
+            handle.abort();
+            self.connections.remove(&id);
         }
         self.active_tab = self.active_tab.min(self.tabs.len() - 1);
         if self.focus == Focus::Results {
@@ -119,8 +118,7 @@ impl App {
         self.tabs
             .iter()
             .filter(|t| {
-                t.query
-                    .as_ref()
+                t.query()
                     .is_some_and(|q| q.connected() && q.tx != TxStatus::Idle)
             })
             .map(|t| t.id)
@@ -138,8 +136,7 @@ impl App {
             Bulk::Quit => true,
             Bulk::Disconnect(uid) | Bulk::Delete(uid) => {
                 t.server == Some(uid)
-                    || t.query
-                        .as_ref()
+                    || t.query()
                         .and_then(|q| q.binding.as_ref())
                         .is_some_and(|(s, _)| *s == uid)
             }
@@ -161,7 +158,7 @@ impl App {
         };
         if self.settings.query.ask_save
             && let Some(i) = self.tabs.iter().position(|t| {
-                t.query.is_some()
+                t.query().is_some()
                     && Self::in_bulk(b, t)
                     && t.view.editor.modified()
                     && !skip.contains(&t.id)
@@ -253,8 +250,7 @@ impl App {
         };
         let waiting = self.tabs.iter().any(|t| {
             Self::in_bulk(b, t)
-                && t.query
-                    .as_ref()
+                && t.query()
                     .is_some_and(|q| q.after_run == Some(AfterRun::Bulk) || q.busy())
         });
         if !waiting {

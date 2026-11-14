@@ -129,7 +129,7 @@ impl App {
             return;
         };
         let tab = self.tabs[i].id;
-        let Some(q) = self.tabs[i].query.as_ref() else {
+        let Some(q) = self.tabs[i].query() else {
             return;
         };
         if !q.connected() {
@@ -191,7 +191,7 @@ impl App {
             self.completion = None;
             return;
         };
-        let Some(q) = self.tabs[i].query.as_ref() else {
+        let Some(q) = self.tabs[i].query() else {
             self.completion = None;
             return;
         };
@@ -250,8 +250,7 @@ impl App {
         }
         let tab = self.tabs[i].id;
         let Some(version) = self.tabs[i]
-            .query
-            .as_ref()
+            .query()
             .and_then(|q| q.binding.as_ref())
             .and_then(|(uid, _)| self.tree.servers.iter().find(|s| s.uid == *uid))
             .and_then(|s| s.version)
@@ -264,7 +263,7 @@ impl App {
         };
         let objects_sql = self.sql.render("completion", "objects.sql", render);
         let columns_sql = self.sql.render("completion", "columns.sql", render);
-        let Some(q) = self.tabs[i].query.as_mut() else {
+        let Some(q) = self.tabs[i].query_mut() else {
             return;
         };
         let Some(handle) = q.conn.as_ref().map(|c| c.handle.clone()) else {
@@ -319,7 +318,7 @@ impl App {
         let Some(i) = self.tab_index(tab) else {
             return;
         };
-        let Some(q) = self.tabs[i].query.as_mut() else {
+        let Some(q) = self.tabs[i].query_mut() else {
             return;
         };
         if q.names.generation != generation {

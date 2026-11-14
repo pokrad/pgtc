@@ -170,32 +170,29 @@ fn obj_ref(
 /// Records that `from` depends on `to` (objects that are not in the model, e.g.
 /// extension members, are skipped).
 fn add_dependency(s: &mut Schema, from: &ObjRef, to: ObjRef) {
+    /// The dependency list of the object of `items` that `is` picks.
+    fn deps_of<T>(
+        items: &mut [T],
+        is: impl Fn(&T) -> bool,
+        deps: impl for<'a> Fn(&'a mut T) -> &'a mut Vec<ObjRef>,
+    ) -> Option<&mut Vec<ObjRef>> {
+        items.iter_mut().find(|t| is(t)).map(deps)
+    }
+    let name = from.name.as_str();
     let list = match from.kind {
-        ObjKind::Type => s
-            .types
-            .iter_mut()
-            .find(|t| t.name == from.name)
-            .map(|t| &mut t.depends_on),
-        ObjKind::Table => s
-            .tables
-            .iter_mut()
-            .find(|t| t.name == from.name)
-            .map(|t| &mut t.depends_on),
-        ObjKind::View => s
-            .views
-            .iter_mut()
-            .find(|t| t.name == from.name)
-            .map(|t| &mut t.depends_on),
-        ObjKind::MaterializedView => s
-            .materialized_views
-            .iter_mut()
-            .find(|t| t.name == from.name)
-            .map(|t| &mut t.depends_on),
-        ObjKind::Function => s
-            .functions
-            .iter_mut()
-            .find(|f| f.name == from.name && Some(&f.args) == from.args.as_ref())
-            .map(|f| &mut f.depends_on),
+        ObjKind::Type => deps_of(&mut s.types, |t| t.name == name, |t| &mut t.depends_on),
+        ObjKind::Table => deps_of(&mut s.tables, |t| t.name == name, |t| &mut t.depends_on),
+        ObjKind::View => deps_of(&mut s.views, |t| t.name == name, |t| &mut t.depends_on),
+        ObjKind::MaterializedView => deps_of(
+            &mut s.materialized_views,
+            |t| t.name == name,
+            |t| &mut t.depends_on,
+        ),
+        ObjKind::Function => deps_of(
+            &mut s.functions,
+            |f| f.name == name && Some(&f.args) == from.args.as_ref(),
+            |f| &mut f.depends_on,
+        ),
         ObjKind::Sequence => None,
     };
     if let Some(list) = list {

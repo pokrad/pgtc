@@ -1,6 +1,6 @@
 //! Database layer: connection tasks (tokio-postgres, D-006, D-011), TLS (D-033),
-//! `.pgpass` (D-008), command-line connection parameters (D-031). Catalog queries and
-//! object definitions follow in Phases 3 and 4.
+//! `.pgpass` (D-008), command-line connection parameters (D-031), query execution
+//! (D-019), object definitions (D-037) and the structure model (D-048).
 
 pub mod connection;
 pub mod conninfo;

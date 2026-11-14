@@ -1,57 +1,65 @@
 //! SQL files (D-041): the open / save dialog, loading a file into a new query tab,
 //! saving a query tab.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::closing::AfterSave;
 use super::result_export::export_options;
-use super::{App, TabKind, TextView};
-use crate::dialog::{Dialog, DialogKind, Widget};
+use super::{App, TextView};
+use crate::dialog::{Dialog, DialogKind, Payload, Widget};
+
+/// Layout of a file dialog (D-041): the folder's listing with a name input.
+pub(super) struct FileDialog<'a> {
+    pub kind: DialogKind,
+    pub title: &'a str,
+    /// Files with this extension are highlighted.
+    pub ext: &'a str,
+    /// Text of the name input.
+    pub name: &'a str,
+    pub label_width: u16,
+    pub list_rows: u16,
+    /// Widgets above the folder line and below the listing.
+    pub above: Vec<Widget>,
+    pub below: Vec<Widget>,
+    /// The listing has the focus (dialogs that open a file).
+    pub pick: bool,
+}
+
+/// What was chosen in a file dialog.
+pub(super) enum Picked {
+    Nothing,
+    /// A folder: it is the dialogs' folder now.
+    Folder,
+    File(PathBuf),
+}
 
 impl App {
-    pub(super) fn open_file_dialog(&mut self, save: bool) {
-        let dir = self.file_dir.clone();
-        let initial = if save {
-            self.query()
-                .and_then(|q| q.file.as_ref())
-                .and_then(|f| f.file_name())
-                .map(|f| f.to_string_lossy().into_owned())
-                .unwrap_or_else(|| "query.sql".to_owned())
-        } else {
-            String::new()
-        };
-        let entries = list_dir(&dir, "sql");
-        let labels: Vec<String> = entries.iter().map(|e| e.0.clone()).collect();
-        let marks: Vec<bool> = entries.iter().map(|e| e.2).collect();
-        let (kind, title) = if save {
-            (DialogKind::SaveFile, "Save SQL file")
-        } else {
-            (DialogKind::OpenFile, "Open SQL file")
-        };
-        let mut dialog = Dialog::new(
-            kind,
-            title,
-            70,
-            vec![
-                Widget::label(&format!("Folder: {}", dir.display())),
-                Widget::field("path", "&File name:", &initial, 12),
-                Widget::list("files", "", labels, 0, 14).highlighted(marks),
-                Widget::button("ok", "&OK", true),
-                Widget::button("cancel", "&Cancel", false),
-            ],
-        );
-        if !save {
+    /// The mc-style file dialog for the current folder (D-041).
+    pub(super) fn file_dialog(&self, f: FileDialog<'_>) -> Dialog {
+        let dir = &self.file_dir;
+        let entries = list_dir(dir, f.ext);
+        let labels = entries.iter().map(|e| e.0.clone()).collect();
+        let marks = entries.iter().map(|e| e.2).collect();
+        let mut widgets = f.above;
+        widgets.push(Widget::label(&format!("Folder: {}", dir.display())));
+        widgets.push(Widget::field("path", "&File name:", f.name, f.label_width));
+        widgets.push(Widget::list("files", "", labels, 0, f.list_rows).highlighted(marks));
+        widgets.extend(f.below);
+        widgets.push(Widget::button("ok", "&OK", true));
+        widgets.push(Widget::button("cancel", "&Cancel", false));
+        let mut dialog = Dialog::new(f.kind, f.title, 70, widgets);
+        if f.pick {
             dialog.focus_on("files");
         }
-        self.dialogs.push(dialog);
+        dialog
     }
 
-    pub(super) fn file_dialog_done(&mut self, dialog: Dialog) {
-        let save = dialog.kind == DialogKind::SaveFile;
-        let export = dialog.kind == DialogKind::ExportFile;
+    /// The choice made in a file dialog: the selected entry of the listing when it has
+    /// the focus, else the typed name. A folder becomes the dialogs' folder.
+    pub(super) fn picked(&mut self, dialog: &Dialog) -> Picked {
         let dir = self.file_dir.clone();
         let chosen = if dialog.focused_id() == Some("files") {
-            let entries = list_dir(&dir, "sql");
+            let entries = list_dir(&dir, "");
             dialog
                 .selected("files")
                 .and_then(|i| entries.get(i))
@@ -61,8 +69,7 @@ impl App {
             dialog.text("path").unwrap_or("").trim().to_owned()
         };
         if chosen.is_empty() {
-            self.dialogs.push(dialog);
-            return;
+            return Picked::Nothing;
         }
         let path = if chosen == ".." {
             dir.parent().map(Path::to_path_buf).unwrap_or(dir)
@@ -71,35 +78,82 @@ impl App {
         };
         if path.is_dir() {
             self.file_dir = path;
-            if export {
-                let name = dialog.text("path").unwrap_or("").to_owned();
-                let options = export_options(&dialog);
-                self.open_export_dialog(Some(name), Some(options));
-            } else {
-                self.open_file_dialog(save);
-            }
-            return;
+            Picked::Folder
+        } else {
+            Picked::File(path)
         }
+    }
+
+    pub(super) fn open_file_dialog(&mut self, save: bool) {
+        let name = if save {
+            self.query()
+                .and_then(|q| q.file.as_ref())
+                .and_then(|f| f.file_name())
+                .map(|f| f.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "query.sql".to_owned())
+        } else {
+            String::new()
+        };
+        let (kind, title) = if save {
+            (DialogKind::SaveFile, "Save SQL file")
+        } else {
+            (DialogKind::OpenFile, "Open SQL file")
+        };
+        let dialog = self.file_dialog(FileDialog {
+            kind,
+            title,
+            ext: "sql",
+            name: &name,
+            label_width: 12,
+            list_rows: 14,
+            above: Vec::new(),
+            below: Vec::new(),
+            pick: !save,
+        });
+        self.dialogs.push(dialog);
+    }
+
+    pub(super) fn file_dialog_done(&mut self, dialog: Dialog) {
+        let save = dialog.kind == DialogKind::SaveFile;
+        let export = dialog.kind == DialogKind::ExportFile;
+        let path = match self.picked(&dialog) {
+            Picked::Nothing => {
+                self.dialogs.push(dialog);
+                return;
+            }
+            Picked::Folder => {
+                if export {
+                    let name = dialog.text("path").unwrap_or("").to_owned();
+                    let options = export_options(&dialog);
+                    self.open_export_dialog(Some(name), Some(options));
+                } else {
+                    self.open_file_dialog(save);
+                }
+                return;
+            }
+            Picked::File(path) => path,
+        };
+        let overwrite = format!("{} exists. Overwrite it?", path.display());
         if export {
             let options = export_options(&dialog);
             if path.exists() {
-                self.pending_export = Some((path.clone(), options));
-                self.dialogs.push(Dialog::confirm(
-                    DialogKind::ConfirmExportOverwrite,
-                    "Export result",
-                    &format!("{} exists. Overwrite it?", path.display()),
-                ));
+                self.dialogs.push(
+                    Dialog::confirm(
+                        DialogKind::ConfirmExportOverwrite,
+                        "Export result",
+                        &overwrite,
+                    )
+                    .with_payload(Payload::Export(path, options)),
+                );
             } else {
                 self.start_export(path, options);
             }
         } else if save {
             if path.exists() {
-                self.pending_save = Some(path.clone());
-                self.dialogs.push(Dialog::confirm(
-                    DialogKind::ConfirmOverwrite,
-                    "Save",
-                    &format!("{} exists. Overwrite it?", path.display()),
-                ));
+                self.dialogs.push(
+                    Dialog::confirm(DialogKind::ConfirmOverwrite, "Save", &overwrite)
+                        .with_payload(Payload::Path(path)),
+                );
             } else {
                 self.save_to(path);
             }
@@ -124,9 +178,8 @@ impl App {
         };
         let mut view = TextView::new(false, self.tab_width());
         view.load(text);
-        self.next_query += 1;
-        let id = self.add_tab(TabKind::Query(self.next_query), view);
-        if let Some(q) = self.tabs.last_mut().and_then(|t| t.query.as_mut()) {
+        let id = self.add_query_tab(view);
+        if let Some(q) = self.tabs.last_mut().and_then(|t| t.query_mut()) {
             q.file = Some(path.clone());
         }
         self.bind_query_tab(id);

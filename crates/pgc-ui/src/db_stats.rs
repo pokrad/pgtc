@@ -140,6 +140,17 @@ impl DbStats {
         self.conn.as_ref().is_some_and(|c| c.connected)
     }
 
+    /// The tab's own connection, as the three monitor tabs share it.
+    pub fn own_conn(&mut self) -> crate::dashboard::OwnConn<'_> {
+        crate::dashboard::OwnConn {
+            uid: self.uid,
+            database: &self.database,
+            conn: &mut self.conn,
+            version: &mut self.version,
+            problem: &mut self.problem,
+        }
+    }
+
     /// New rows of `stats.sql`; the cursor stays on the same statistic.
     pub fn apply_rows(&mut self, rows: &[Vec<String>]) {
         let stats: Vec<Stat> = rows.iter().filter_map(|r| Stat::from_row(r)).collect();

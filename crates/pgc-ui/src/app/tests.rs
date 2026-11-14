@@ -49,7 +49,7 @@ fn key(app: &mut App, k: &str) -> Vec<Effect> {
 /// A lone Esc: the key plus its timeout (Esc+digit wait, D-016).
 fn esc(app: &mut App) {
     for e in key(app, "Esc") {
-        if let Effect::StartEscTimer(n) = e {
+        if let Effect::Timer(Timer::Esc(n)) = e {
             app.update(Msg::EscTimeout(n), &Hits::default());
         }
     }
@@ -152,7 +152,7 @@ fn steps_are_shown_in_one_message() {
 #[test]
 fn esc_digit_is_fkey() {
     let (mut a, _d) = app();
-    assert_eq!(key(&mut a, "Esc"), vec![Effect::StartEscTimer(1)]);
+    assert_eq!(key(&mut a, "Esc"), vec![Effect::Timer(Timer::Esc(1))]);
     key(&mut a, "9"); // F9 opens the menu
     assert!(a.menu.is_some());
     key(&mut a, "Esc");
@@ -178,7 +178,7 @@ fn tabs_open_switch_close() {
     assert_eq!(a.tabs.len(), 3, "default tab is not closed");
     key(&mut a, "Alt+Left");
     key(&mut a, "Ctrl+W");
-    let kinds: Vec<TabKind> = a.tabs.iter().map(|t| t.kind.clone()).collect();
+    let kinds: Vec<TabKind> = a.tabs.iter().map(|t| t.kind()).collect();
     assert_eq!(kinds, vec![TabKind::Default, TabKind::Query(1)]);
 }
 
@@ -293,7 +293,7 @@ fn notify_shows_in_messages() {
         }),
         &Hits::default(),
     );
-    let q = a.tabs[a.active_tab].query.as_ref().unwrap();
+    let q = a.tabs[a.active_tab].query().unwrap();
     assert!(
         q.messages
             .iter()
@@ -752,7 +752,7 @@ fn default_tab_follows_the_tree() {
     let effects = key(&mut a, "Down");
     assert!(matches!(
         effects.as_slice(),
-        [Effect::StartDefinitionTimer(_)]
+        [Effect::Timer(Timer::Definition(_))]
     ));
     assert!(a.tabs[0].view.loading);
     assert_eq!(a.tabs[0].view.title, "app");
@@ -768,7 +768,7 @@ fn default_tab_follows_the_tree() {
     key(&mut a, "Up");
     key(&mut a, "F3");
     assert_eq!(a.tabs.len(), 2);
-    assert_eq!(a.tabs[1].kind, TabKind::Object);
+    assert_eq!(a.tabs[1].kind(), TabKind::Object);
     assert_eq!(a.focus, Focus::Tabs);
     let label = a.tab_connection_label(&a.tabs[1]);
     assert!(
@@ -1829,14 +1829,11 @@ async fn ctrl_e_edits_the_definition_in_a_new_query_tab() {
     key(&mut a, "Ctrl+E");
     assert_eq!(a.tabs.len(), 2);
     let tab = &a.tabs[a.active_tab];
-    assert!(matches!(tab.kind, TabKind::Query(_)));
+    assert!(matches!(tab.kind(), TabKind::Query(_)));
     assert_eq!(tab.view.editor.text(), def);
     assert!(tab.view.editor.modified(), "unsaved text");
     assert!(!tab.view.editor.read_only());
-    assert_eq!(
-        tab.query.as_ref().unwrap().binding,
-        Some((uid, "shop".to_owned()))
-    );
+    assert_eq!(tab.query().unwrap().binding, Some((uid, "shop".to_owned())));
     // in a query tab Ctrl+E does nothing
     a.run(Command::EditInQueryTab);
     assert_eq!(a.tabs.len(), 2);
@@ -1906,7 +1903,7 @@ async fn alt_i_opens_the_database_statistics() {
     a.focus = Focus::Tree;
     key(&mut a, "Alt+I");
     assert_eq!(a.tabs.len(), 2);
-    assert_eq!(a.tabs[1].kind, TabKind::DbStats);
+    assert_eq!(a.tabs[1].kind(), TabKind::DbStats);
     assert_eq!(a.tabs[1].label(), "Stats: srv · shop");
     assert_eq!(a.context(), Some(crate::keymap::Context::DbStats));
     // the same database again: the open tab
@@ -1918,7 +1915,7 @@ async fn alt_i_opens_the_database_statistics() {
 
     // pretend the connection is open (a detached handle keeps the requests)
     let conn = {
-        let s = a.tabs[1].db_stats.as_mut().unwrap();
+        let s = a.tabs[1].db_stats_mut().unwrap();
         let c = s.conn.as_mut().unwrap();
         c.handle.abort();
         c.handle = pgc_db::ConnectionHandle::detached(c.id);
@@ -1927,10 +1924,10 @@ async fn alt_i_opens_the_database_statistics() {
         c.id
     };
     a.db_stats_refresh(tab);
-    let k = a.tabs[1].db_stats.as_ref().unwrap().key.unwrap();
+    let k = a.tabs[1].db_stats().unwrap().key.unwrap();
     // F5 while a read is on its way sends nothing more
     key(&mut a, "F5");
-    assert_eq!(a.tabs[1].db_stats.as_ref().unwrap().key, Some(k));
+    assert_eq!(a.tabs[1].db_stats().unwrap().key, Some(k));
     let r = |key: &str, label: &str, kind: &str, value: &str| -> Vec<String> {
         [key, "Database", label, kind, value]
             .iter()
@@ -1951,7 +1948,7 @@ async fn alt_i_opens_the_database_statistics() {
         },
     );
     {
-        let s = a.tabs[1].db_stats.as_ref().unwrap();
+        let s = a.tabs[1].db_stats().unwrap();
         assert_eq!(s.key, None);
         assert_eq!(s.grid.rows.len(), 2);
         let (_, right) = a.db_stats_status(&a.tabs[1]).unwrap();
@@ -1959,7 +1956,7 @@ async fn alt_i_opens_the_database_statistics() {
     }
     // F5 reads again
     key(&mut a, "F5");
-    assert!(a.tabs[1].db_stats.as_ref().unwrap().key.is_some());
+    assert!(a.tabs[1].db_stats().unwrap().key.is_some());
     // closed with the tab
     key(&mut a, "Ctrl+W");
     assert_eq!(a.tabs.len(), 1);
@@ -2082,14 +2079,14 @@ async fn ctrl_b_selects_the_top_rows_of_the_relation() {
     let tab_id = tab.id;
     assert_eq!(tab.view.editor.text(), orders_sql);
     assert!(tab.view.editor.modified(), "unsaved text");
-    let q = tab.query.as_ref().unwrap();
+    let q = tab.query().unwrap();
     assert_eq!(q.binding, Some((uid, "shop".to_owned())));
     assert!(
         q.run_on_connect && q.running.is_none(),
         "waits for the connection"
     );
     // the connection opens (no real one behind it) while another tab is active
-    let q = a.tabs[1].query.as_mut().unwrap();
+    let q = a.tabs[1].query_mut().unwrap();
     q.conn = Some(QueryConn {
         id: 99,
         database: "shop".into(),
@@ -2102,11 +2099,11 @@ async fn ctrl_b_selects_the_top_rows_of_the_relation() {
     a.active_tab = 0;
     a.run_queued(tab_id);
     assert_eq!(a.active_tab, 0, "the active tab stays");
-    let q = a.tabs[1].query.as_ref().unwrap();
+    let q = a.tabs[1].query().unwrap();
     assert!(!q.run_on_connect && q.running.is_some(), "executed");
     // only once
     a.run_queued(tab_id);
-    assert!(!a.tabs[1].query.as_ref().unwrap().run_on_connect);
+    assert!(!a.tabs[1].query().unwrap().run_on_connect);
 }
 
 /// Find object (D-055): scopes of tree rows, the dialog's search, and opening the tree
@@ -2525,7 +2522,7 @@ async fn dashboard_tab_refreshes_and_cancels() {
     assert!(a.is_enabled(Command::Dashboard));
     a.run(Command::Dashboard);
     assert_eq!(a.tabs.len(), 2);
-    assert_eq!(a.tabs[1].kind, TabKind::Dashboard);
+    assert_eq!(a.tabs[1].kind(), TabKind::Dashboard);
     assert_eq!(a.tabs[1].label(), "Dashboard: a");
     assert_eq!(a.context(), Some(crate::keymap::Context::Dashboard));
     // the same server again: the open tab
@@ -2537,7 +2534,7 @@ async fn dashboard_tab_refreshes_and_cancels() {
 
     // pretend the connection is open (a detached handle keeps the requests)
     let conn = {
-        let d = a.tabs[1].dashboard.as_mut().unwrap();
+        let d = a.tabs[1].dashboard_mut().unwrap();
         let c = d.conn.as_mut().unwrap();
         c.handle.abort();
         c.handle = pgc_db::ConnectionHandle::detached(c.id);
@@ -2547,7 +2544,7 @@ async fn dashboard_tab_refreshes_and_cancels() {
     };
     a.dashboard_refresh(tab, true);
     let (stats, list) = {
-        let d = a.tabs[1].dashboard.as_ref().unwrap();
+        let d = a.tabs[1].dashboard().unwrap();
         (d.stats_key.unwrap(), d.list_key.unwrap().0)
     };
     let stats_row = |t: &str| -> Vec<String> {
@@ -2582,7 +2579,7 @@ async fn dashboard_tab_refreshes_and_cancels() {
     );
     assert!(matches!(
         a.effects.last(),
-        Some(Effect::StartTabTimer { tab: t, after, .. })
+        Some(Effect::Timer(Timer::Tab { tab: t, after, .. }))
             if *t == tab && *after == std::time::Duration::from_secs(2)
     ));
     let screen = screen_text(&a);
@@ -2597,10 +2594,10 @@ async fn dashboard_tab_refreshes_and_cancels() {
     assert_eq!(d.kind, DialogKind::ConfirmCancelBackend);
     assert!(d.widgets[0].label.text.contains("PID 4242 (bob on db)"));
     key(&mut a, "n");
-    assert!(a.tabs[1].dashboard.as_ref().unwrap().signal_key.is_none());
+    assert!(a.tabs[1].dashboard().unwrap().signal_key.is_none());
     a.run(Command::CancelBackend);
     key(&mut a, "y");
-    let signal = a.tabs[1].dashboard.as_ref().unwrap().signal_key.clone();
+    let signal = a.tabs[1].dashboard().unwrap().signal_key.clone();
     let (k, _, s) = signal.expect("sent");
     assert_eq!(s.pid, "4242");
     a.on_dashboard_event(
@@ -2616,7 +2613,7 @@ async fn dashboard_tab_refreshes_and_cancels() {
 
     // pause: no new timer after the next answers
     key(&mut a, "Ctrl+P");
-    assert!(a.tabs[1].dashboard.as_ref().unwrap().paused);
+    assert!(a.tabs[1].dashboard().unwrap().paused);
     // Alt+Left / Right in the list switch its lists (D-060), also in the key-hint bar
     let h: Vec<String> = a
         .key_hints()
@@ -2628,12 +2625,12 @@ async fn dashboard_tab_refreshes_and_cancels() {
     }
     key(&mut a, "Alt+Right");
     assert_eq!(
-        a.tabs[1].dashboard.as_ref().unwrap().list,
+        a.tabs[1].dashboard().unwrap().list,
         crate::dashboard::List::Locks
     );
     key(&mut a, "Alt+Left");
     assert_eq!(
-        a.tabs[1].dashboard.as_ref().unwrap().list,
+        a.tabs[1].dashboard().unwrap().list,
         crate::dashboard::List::Sessions
     );
     assert_eq!(a.active_tab, 1);
@@ -2674,12 +2671,12 @@ async fn profiler_asks_reads_and_restores() {
     a.server_connected(uid, pgc_core::ServerVersion(170002));
     key(&mut a, "Home");
     a.run(Command::SqlProfiler);
-    assert_eq!(a.tabs[1].kind, TabKind::Profiler);
+    assert_eq!(a.tabs[1].kind(), TabKind::Profiler);
     assert_eq!(a.tabs[1].label(), "Profiler: a");
     assert_eq!(a.context(), Some(crate::keymap::Context::Profiler));
     let tab = a.tabs[1].id;
     let conn = {
-        let p = a.tabs[1].profiler.as_mut().unwrap();
+        let p = a.tabs[1].profiler_mut().unwrap();
         let c = p.conn.as_mut().unwrap();
         c.handle.abort();
         c.handle = pgc_db::ConnectionHandle::detached(c.id);
@@ -2688,7 +2685,7 @@ async fn profiler_asks_reads_and_restores() {
         c.id
     };
     fn prof(a: &App) -> &crate::profiler::Profiler {
-        a.tabs[1].profiler.as_ref().unwrap()
+        a.tabs[1].profiler().unwrap()
     }
 
     // F5: check → question listing the changes
@@ -2747,9 +2744,9 @@ async fn profiler_asks_reads_and_restores() {
     assert_eq!(prof(&a).offset, 500);
     assert!(matches!(
         a.effects.last(),
-        Some(Effect::StartTabTimer { .. })
+        Some(Effect::Timer(Timer::Tab { .. }))
     ));
-    let Some(Effect::StartTabTimer { seq, .. }) = a.effects.pop() else {
+    let Some(Effect::Timer(Timer::Tab { seq, .. })) = a.effects.pop() else {
         unreachable!()
     };
     a.update(Msg::TabTimer(tab, seq), &Hits::default());
@@ -2815,7 +2812,7 @@ async fn profiler_asks_reads_and_restores() {
     assert_eq!(a.tabs.len(), 3);
     assert_eq!(a.tabs[2].view.editor.text(), "SELECT 1");
     assert_eq!(
-        a.tabs[2].query.as_ref().unwrap().binding,
+        a.tabs[2].query().unwrap().binding,
         Some((uid, "shop".to_owned()))
     );
     let id = a.tabs[2].id;
