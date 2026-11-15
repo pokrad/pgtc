@@ -20,7 +20,7 @@ right, function keys, menus and dialogs.
   notices, cancel, transactions, PL/pgSQL mode.
 - **psql-style commands** (`F4`) — psql's `\dt`, `\d table`, `\df`, `\du`, … typed without the
   backslash (`dt`, `d table`, …), plus pgtc's own `gts` / `gti` / `gtu` / `gtd` to generate SELECT / INSERT / UPDATE / DELETE for a
-  table.
+  table, and `gtc` for a PL/pgSQL cursor loop over it.
 - **Server dashboard** (`Alt+D`) — live graphs, a summary of the server's health
   (sessions, oldest transaction, the session holding back vacuum, replication),
   sessions with blocking, running VACUUM / CREATE INDEX progress, locks; cancel or

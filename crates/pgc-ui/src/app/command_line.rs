@@ -394,9 +394,11 @@ impl App {
         };
         let text = crate::psql::generate(what, &table) + "\n";
         self.tabs[i].view.editor.apply(Action::Insert(text));
-        self.status = format!(
-            "Generated for {}.{} — fill in the [values]",
-            table.schema, table.name
-        );
+        let todo = if what == crate::psql::Gen::Cursor {
+            "write the loop body at PROCESS THE ROW HERE"
+        } else {
+            "fill in the [values]"
+        };
+        self.status = format!("Generated for {}.{} — {todo}", table.schema, table.name);
     }
 }

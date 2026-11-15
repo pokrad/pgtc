@@ -930,7 +930,7 @@ fn psql_window_lists_every_command() {
     );
     assert!(!screen.contains("\\dt"), "no psql backslash: {screen}");
     assert!(screen.contains(" pgtc "), "{screen}");
-    assert!(screen.contains("gtd"), "the whole list fits: {screen}");
+    assert!(screen.contains("gtc"), "the whole list fits: {screen}");
     // Down: the next command goes into the input (with a space for its argument)
     key(&mut a, "Down");
     assert_eq!(a.dialogs[0].text("cmd"), Some("l "));

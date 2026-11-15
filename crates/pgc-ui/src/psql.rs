@@ -1,6 +1,6 @@
 //! psql-style commands (D-054): the command list, the parser (with psql patterns),
 //! the catalog queries of a command and pgtc's generate commands (`gts` / `gti` /
-//! `gtu` / `gtd`). Commands are psql's backslash commands, typed without the backslash.
+//! `gtu` / `gtd` / `gtc`). Commands are psql's backslash commands, typed without the backslash.
 
 use pgc_core::quote::quote_ident;
 use pgc_db::CatalogQuery;
@@ -82,6 +82,12 @@ pub const GENERATE: &[Row] = &[
         "generate DELETE (inserted at the cursor)",
         SELECTABLE,
     ),
+    (
+        "gtc",
+        "table",
+        "generate PL/pgSQL cursor loop (inserted at the cursor)",
+        SELECTABLE,
+    ),
 ];
 
 /// Modifiers: `+` (more columns), `S` (system objects).
@@ -93,6 +99,7 @@ pub enum Gen {
     Insert,
     Update,
     Delete,
+    Cursor,
 }
 
 /// A schema-qualified or plain name, folded like PostgreSQL.
@@ -133,7 +140,10 @@ pub fn list_rows() -> Vec<Option<(&'static str, &'static str, &'static str)>> {
 
 /// A generate command typed without its table: the input waits for the name.
 pub fn needs_table(input: &str) -> bool {
-    matches!(without_backslash(input), "gts" | "gti" | "gtu" | "gtd")
+    matches!(
+        without_backslash(input),
+        "gts" | "gti" | "gtu" | "gtd" | "gtc"
+    )
 }
 
 /// The typed text without surrounding spaces and a leading psql backslash.
@@ -203,11 +213,12 @@ pub fn parse(input: &str) -> Result<Cmd, String> {
         "" => return Err("Type a command, e.g. dt — ? lists them".to_owned()),
         "?" => return Ok(Cmd::Help),
         "conninfo" => return Ok(Cmd::ConnInfo),
-        "gts" | "gti" | "gtu" | "gtd" => {
+        "gts" | "gti" | "gtu" | "gtd" | "gtc" => {
             let what = match word {
                 "gts" => Gen::Select,
                 "gti" => Gen::Insert,
                 "gtu" => Gen::Update,
+                "gtc" => Gen::Cursor,
                 _ => Gen::Delete,
             };
             let Some(arg) = arg else {
@@ -704,8 +715,50 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
             lines.push((format!("DELETE FROM {table}"), String::new()));
             where_lines(&mut lines, ";");
         }
+        Gen::Cursor => return cursor_loop(&table, t),
     }
     aligned(&lines)
+}
+
+/// `gtc`: a bound cursor over every column and an OPEN / FETCH loop (D-054). No `DO`
+/// wrapper: it runs in PL/pgSQL mode (D-020) and fits into a function body.
+fn cursor_loop(table: &str, t: &GenTable) -> String {
+    let mut out = vec![
+        "DECLARE".to_owned(),
+        "    cur CURSOR FOR".to_owned(),
+        "        SELECT".to_owned(),
+    ];
+    let n = t.columns.len();
+    for (i, c) in t.columns.iter().enumerate() {
+        let comma = if i + 1 < n { "," } else { "" };
+        out.push(format!("            {}{comma}", quote_ident(&c.name)));
+    }
+    out.push(format!("        FROM {table};"));
+    out.push("    rec record;".to_owned());
+    out.push("BEGIN".to_owned());
+    out.push("    OPEN cur;".to_owned());
+    out.push("    LOOP".to_owned());
+    out.push("        FETCH cur INTO rec;".to_owned());
+    out.push("        EXIT WHEN NOT FOUND;".to_owned());
+    let fields: Vec<String> = t
+        .columns
+        .iter()
+        .map(|c| format!("rec.{}", quote_ident(&c.name)))
+        .collect();
+    let width = fields.iter().map(|f| f.chars().count()).max().unwrap_or(0);
+    for (f, c) in fields.iter().zip(&t.columns) {
+        let pad = width - f.chars().count();
+        out.push(format!(
+            "        -- {f}{}  {}",
+            " ".repeat(pad),
+            type_comment(c)
+        ));
+    }
+    out.push("        --PROCESS THE ROW HERE".to_owned());
+    out.push("    END LOOP;".to_owned());
+    out.push("    CLOSE cur;".to_owned());
+    out.push("END;".to_owned());
+    out.join("\n")
 }
 
 #[cfg(test)]
@@ -843,8 +896,8 @@ mod tests {
         let m: Vec<&str> = matching("d").iter().map(|c| c.0).collect();
         assert!(m.contains(&"dt") && m.contains(&"d") && !m.contains(&"l"));
         let m: Vec<&str> = matching("gt").iter().map(|c| c.0).collect();
-        assert_eq!(m, ["gts", "gti", "gtu", "gtd"]);
-        assert_eq!(matching("\\gt").len(), 4);
+        assert_eq!(m, ["gts", "gti", "gtu", "gtd", "gtc"]);
+        assert_eq!(matching("\\gt").len(), 5);
         assert_eq!(matching("dt+ x").len(), 1);
     }
 
@@ -867,6 +920,47 @@ mod tests {
             generate(Gen::Delete, &t),
             "DELETE FROM public.orders\nWHERE id = [id];  -- primary key: integer"
         );
+    }
+
+    #[test]
+    fn generate_cursor_loop() {
+        assert_eq!(
+            parse("gtc sales.\"Order Items\""),
+            Ok(Cmd::Generate {
+                what: Gen::Cursor,
+                table: (Some("sales".into()), "Order Items".into())
+            })
+        );
+        assert!(needs_table("gtc"));
+        let mut t = orders();
+        t.columns.push(col("Due Date", "date", false));
+        let expected = [
+            "DECLARE",
+            "    cur CURSOR FOR",
+            "        SELECT",
+            "            id,",
+            "            customer_id,",
+            "            note,",
+            "            total,",
+            "            \"Due Date\"",
+            "        FROM public.orders;",
+            "    rec record;",
+            "BEGIN",
+            "    OPEN cur;",
+            "    LOOP",
+            "        FETCH cur INTO rec;",
+            "        EXIT WHEN NOT FOUND;",
+            "        -- rec.id           integer, NOT NULL",
+            "        -- rec.customer_id  integer, NOT NULL",
+            "        -- rec.note         text",
+            "        -- rec.total        numeric",
+            "        -- rec.\"Due Date\"   date",
+            "        --PROCESS THE ROW HERE",
+            "    END LOOP;",
+            "    CLOSE cur;",
+            "END;",
+        ];
+        assert_eq!(generate(Gen::Cursor, &t), expected.join("\n"));
     }
 
     #[test]

@@ -1656,7 +1656,7 @@ pgtc (binary)
   - `d` / `d+`, `dp` — tables, views, materialized views, foreign tables, sequences;
   - `dt` / `dv` / `dm` / `ds` — tables / views / materialized views / sequences;
     combined letters add up (`dtv` → tables and views; `E` foreign tables, `i` nothing);
-  - `gts`, `gti`, `gtu`, `gtd` — tables, views, foreign tables;
+  - `gts`, `gti`, `gtu`, `gtd`, `gtc` — tables, views, foreign tables;
   - all others — nothing (*No suggestions*).
   Names come from the query tab's name cache (*loading…* until it is read; nothing is
   read while a result runs or is paused). Names on the search path are offered as
@@ -1709,6 +1709,12 @@ pgtc (binary)
     without one, on a unique constraint whose columns are all `NOT NULL` (comment says
     so); without either, `WHERE [condition]  -- no primary key: write a condition`.
     UPDATE sets every other column except generated and identity `ALWAYS` ones.
+  - `gtc` *table* — a PL/pgSQL cursor scan: `DECLARE` a bound cursor `cur` over
+    `SELECT` of every column (as `gts`) and `rec record`, then `BEGIN OPEN cur; LOOP
+    FETCH cur INTO rec; EXIT WHEN NOT FOUND; … END LOOP; CLOSE cur; END;` — no `DO`
+    wrapper, so it runs in a PL/pgSQL-mode tab (D-020) and fits into a function body.
+    Inside the loop one comment line per field (`-- rec.id  integer, NOT NULL`) and the
+    comment `--PROCESS THE ROW HERE` (no placeholder: the block runs as generated).
 
 ### D-055 — Find object in the tree (`Ctrl+F`)
 - **Status:** Accepted (refines D-009, D-036)
@@ -2370,3 +2376,4 @@ pgtc (binary)
 | 2026-11-15 | D-057 updated (ideas from pg_activity, no code or SQL taken): summary strip (uptime, database size and growth, cache hit / rollback ratio, temporary files; session states; workers, WAL, slots), duration mode query / transaction / backend (`Alt+T`), sessions ordered by duration with parallel workers under their leader, xmin / leader PID / query ID columns, duration colours from 1 s / 10 s, Blocking list, tagging with `Insert` (`Esc` clears) for cancel / terminate of several sessions, 0.5 s refresh step; roles `dashboard.blocking`, `.slow`, `.very_slow`, `.idle_in_transaction`, `.tagged`. D-059 updated (statement pane for the Blocking list). |
 | 2026-11-15 | D-054 updated: autocomplete in the `F4` input — only on `Ctrl+Space` / `Alt+/` (never by itself), for the argument; each command has its own list of object kinds (`d` / `dp`: tables, views, materialized views, foreign tables, sequences; `dt` / `dv` / `dm` / `ds` their kinds, combined letters add up; `gts`–`gtd`: tables, views, foreign tables; the others none); names from the tab's cache (D-052), schema-qualified when not on the search path. D-052 updated. |
 | 2026-11-15 | D-057 updated (ideas from pgCenter, no code or SQL taken): cheap queries only; summary strip of four lines — server role, oldest transaction, longest query, oldest xmin and its PID, deadlocks / conflicts / checksum failures per refresh (above 0 in `dashboard.very_slow`), a Replication line with standby lag and the WAL kept by slots; Sessions columns xmin age and transaction ID; Progress list (`pg_stat_progress_*`). D-059 updated (statement pane for the Progress list). |
+| 2026-11-15 | D-054 updated: generate command `gtc` *table* — PL/pgSQL `DECLARE` of a bound cursor `cur` over every column and `rec record`, then an `OPEN` / `FETCH` / `EXIT WHEN NOT FOUND` / `CLOSE` loop with one comment per field and the comment `--PROCESS THE ROW HERE`; no `DO` wrapper (D-020); autocomplete as `gts`. |
