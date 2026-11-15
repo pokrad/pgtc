@@ -5,10 +5,12 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use pgc_core::places::Place;
 use pgc_model::Database;
 
 use super::closing::AfterSave;
 use super::definition::JobKind;
+use super::files::list_dir;
 use super::{App, TextView};
 use crate::dialog::Dialog;
 
@@ -42,6 +44,32 @@ pub(super) enum FileJob {
         want: Box<Database>,
         live: Box<Database>,
     },
+    /// File dialogs (D-070): the listing of `dir`; files with the extension `ext` are
+    /// highlighted.
+    ListDir { seq: u64, dir: PathBuf, ext: String },
+    /// File dialogs: the places; `current` is the folder of the tab's file.
+    Places { seq: u64, current: Option<PathBuf> },
+    /// File dialogs: what the chosen `path` is.
+    Probe { seq: u64, path: PathBuf },
+}
+
+/// A listing for a file dialog.
+pub enum Listing {
+    /// (name, is directory, highlighted), as [`list_dir`] gives it.
+    Folder(Vec<(String, bool, bool)>),
+    Places(Vec<Place>),
+}
+
+/// What a path chosen in a file dialog is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PathState {
+    Folder,
+    /// Not there, and its folder (given) is not there either.
+    NoFolder(PathBuf),
+    /// A file, or a name for a new one.
+    File {
+        exists: bool,
+    },
 }
 
 /// The outcome of a [`FileJob`]; errors are texts for the user.
@@ -72,6 +100,14 @@ pub enum FileEvent {
         /// `None`: the structures already match.
         script: Option<String>,
     },
+    /// The listing request `seq` of a file dialog asked for.
+    Listed { seq: u64, listing: Listing },
+    /// What the path chosen in a file dialog is.
+    Probed {
+        seq: u64,
+        path: PathBuf,
+        state: PathState,
+    },
 }
 
 impl std::fmt::Debug for FileEvent {
@@ -83,6 +119,8 @@ impl std::fmt::Debug for FileEvent {
             FileEvent::DefinitionLoaded { .. } => "DefinitionLoaded",
             FileEvent::DefinitionSaved { .. } => "DefinitionSaved",
             FileEvent::SyncScript { .. } => "SyncScript",
+            FileEvent::Listed { .. } => "Listed",
+            FileEvent::Probed { .. } => "Probed",
         })
     }
 }
@@ -165,6 +203,45 @@ impl FileJob {
                 database,
                 script: pgc_model::sync::sync_script(&want, &live),
             },
+            FileJob::ListDir { seq, dir, ext } => FileEvent::Listed {
+                seq,
+                listing: Listing::Folder(list_dir(&dir, &ext)),
+            },
+            FileJob::Places { seq, current } => {
+                let mut places = pgc_core::places::places();
+                if let Some(dir) = current.filter(|d| d.is_dir()) {
+                    // after the home folder
+                    let at = usize::from(places.first().is_some_and(|p| p.name == "~"));
+                    places.insert(
+                        at,
+                        Place {
+                            name: dir.display().to_string(),
+                            path: dir,
+                            note: "Current file".to_owned(),
+                        },
+                    );
+                }
+                FileEvent::Listed {
+                    seq,
+                    listing: Listing::Places(places),
+                }
+            }
+            FileJob::Probe { seq, path } => {
+                let state = if path.is_dir() {
+                    PathState::Folder
+                } else {
+                    match path
+                        .parent()
+                        .filter(|p| !p.as_os_str().is_empty() && !p.is_dir())
+                    {
+                        Some(parent) => PathState::NoFolder(parent.to_path_buf()),
+                        None => PathState::File {
+                            exists: path.exists(),
+                        },
+                    }
+                };
+                FileEvent::Probed { seq, path, state }
+            }
         }
     }
 }
@@ -283,6 +360,8 @@ impl App {
                     self.error(&e);
                 }
             },
+            FileEvent::Listed { seq, listing } => self.file_listing_loaded(seq, listing),
+            FileEvent::Probed { seq, path, state } => self.path_probed(seq, path, state),
             FileEvent::SyncScript {
                 uid,
                 database,

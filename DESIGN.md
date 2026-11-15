@@ -2372,8 +2372,12 @@ pgtc (binary)
   and building the sync script run in the background (*Comparing …*).
 - Not moved: `settings.toml`, `.pgpass`, `keymap.toml`, the templates folder and the
   profiler's restore file (small, local files).
-- Not moved in this step: the folder listings and path checks of the file dialogs
-  (D-070); they still read the folder directly.
+- **File dialogs (D-070):** a dialog opens at once with the row *Reading…*; the
+  listing of the folder, or the places (drives, volumes), fills in when it is read. A
+  chosen or typed path is checked in the background too (is it a folder, does its
+  folder exist, is there a file already): the dialog stays until the answer is there,
+  then it shows the folder, the error, or goes on with the file. An answer for a
+  dialog that was closed meanwhile is ignored.
 
 ---
 
@@ -2522,3 +2526,4 @@ pgtc (binary)
 | 2026-11-15 | D-071 accepted: closing a tab ends its connection with Terminate (a running statement is cancelled first); dropped after 3 seconds without an end; on quit all connections are ended and pgtc waits up to 1 second. D-012 updated: `.pgdef` starts with `"format": 1`; a file without it is format 1, a higher number is refused, unknown fields are ignored. |
 | 2026-11-15 | D-070 updated: `Esc` and the *Cancel* button of a file dialog both leave the places, so the next file dialog shows the folder (the button did not). |
 | 2026-11-15 | D-072 accepted: opening and saving SQL files, reading / writing `.pgdef` and building the sync script run in the background; a save takes the text at that moment, the tab stays editable and keeps its "modified" mark if it changed meanwhile; file dialog listings are not moved yet. D-058 updated: changed logging settings are recorded in `profiler_restore.toml`; when that server connects and the settings are still changed, pgtc asks to put them back (Yes / Not now / Forget). |
+| 2026-11-15 | D-072 updated: the file dialogs no longer read the file system themselves — the folder listing, the places and the check of a chosen path run in the background; the dialog opens with *Reading…* and stays while a path is checked. |

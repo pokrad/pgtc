@@ -1034,7 +1034,7 @@ async fn definition_export_and_load_against_a_real_server() {
         assert!(matches!(d.kind, DialogKind::OpenDefinition { .. }));
         d.set_text("path", "pgtc_test_ui_src.pgdef");
         d.focus_on("path");
-        a.definition_dialog_done(d, crate::dialog::Button::Ok);
+        a.file_dialog_done(d, crate::dialog::Button::Ok);
     };
     let tabs = a.tabs.len();
     load(&mut a);

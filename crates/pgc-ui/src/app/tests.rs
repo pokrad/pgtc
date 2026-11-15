@@ -4042,3 +4042,93 @@ async fn profiler_notes_its_changes_until_they_are_restored() {
     assert!(!prof(&a).needs_restore());
     assert!(!note.exists());
 }
+
+/// File dialogs read nothing themselves (D-072): the dialog opens with *Reading…*,
+/// the listing and the places follow, and a chosen path is checked in the background
+/// while the dialog stays.
+#[tokio::test]
+async fn file_dialogs_list_and_check_in_the_background() {
+    let (mut a, dir) = app();
+    let (tx, rx) = std::sync::mpsc::channel();
+    a.set_file_sink(Arc::new(move |e| {
+        let _ = tx.send(e);
+    }));
+    let next = |a: &mut App| {
+        let e = rx
+            .recv_timeout(std::time::Duration::from_secs(10))
+            .expect("file event");
+        a.update(Msg::File(e), &Hits::default());
+    };
+    let rows = |a: &App| -> String {
+        let d = a.dialogs.last().unwrap();
+        let mut d = d.clone();
+        let mut out = Vec::new();
+        loop {
+            let row = d.selected_item("files").unwrap_or("").to_owned();
+            if out.last() == Some(&row) {
+                break;
+            }
+            out.push(row);
+            d.list_step("files", 1);
+        }
+        out.join("|")
+    };
+    let files = dir.path().join("sql");
+    std::fs::create_dir_all(files.join("sub")).unwrap();
+    std::fs::write(files.join("a.sql"), "select 1;").unwrap();
+    a.files.dir = files.clone();
+    let sep = std::path::MAIN_SEPARATOR;
+
+    // the dialog is there at once; its listing is not
+    a.open_file_dialog(false);
+    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::OpenFile);
+    assert_eq!(rows(&a), "Reading…");
+    // nothing to choose yet
+    key(&mut a, "Enter");
+    assert_eq!(a.dialogs.len(), 1);
+    assert_eq!(a.tabs.len(), 1);
+    next(&mut a);
+    assert_eq!(rows(&a), format!("..{sep}|sub{sep}|a.sql"));
+
+    // a folder: the dialog stays while it is checked, then shows the folder
+    key(&mut a, "Down");
+    key(&mut a, "Enter");
+    assert_eq!(a.files.dir, files, "not known to be a folder yet");
+    assert_eq!(a.dialogs.len(), 1);
+    next(&mut a);
+    assert_eq!(a.files.dir, files.join("sub"));
+    assert_eq!(rows(&a), "Reading…");
+    next(&mut a);
+    assert_eq!(rows(&a), format!("..{sep}"));
+
+    // the places are read the same way
+    key(&mut a, "Alt+P");
+    assert!(a.files.places.as_ref().is_some_and(Vec::is_empty));
+    assert_eq!(rows(&a), "Reading…");
+    next(&mut a);
+    assert!(a.files.places.as_ref().is_some_and(|p| !p.is_empty()));
+    assert!(rows(&a).starts_with(&format!("..{sep}|")), "{}", rows(&a));
+
+    // closed before the answer: the answer is not waited for
+    esc(&mut a);
+    a.files.dir = files.clone();
+    a.open_file_dialog(false);
+    esc(&mut a);
+    assert!(a.dialogs.is_empty());
+    next(&mut a);
+    assert!(a.dialogs.is_empty());
+
+    // a typed path in a folder that is not there: checked, then the error
+    a.open_file_dialog(true);
+    next(&mut a);
+    for _ in 0.."query.sql".len() {
+        key(&mut a, "Backspace");
+    }
+    typing(&mut a, "nowhere/x.sql");
+    key(&mut a, "Enter");
+    assert_eq!(a.dialogs.len(), 1, "still being checked");
+    next(&mut a);
+    assert_eq!(a.dialogs.len(), 2);
+    let text = a.dialogs.last().unwrap().widgets[0].label.text.clone();
+    assert!(text.contains("does not exist"), "{text}");
+}

@@ -1,11 +1,15 @@
-//! SQL files (D-041): the open / save dialog, loading a file into a new query tab,
-//! saving a query tab.
+//! The file dialogs (D-041, D-070): the folder's listing with a name input, for SQL
+//! files, result exports and database definitions. Nothing here touches the file
+//! system: the listing, the places and the check of a chosen path are read in the
+//! background (D-072).
 
 use std::path::{Component, MAIN_SEPARATOR, Path, PathBuf};
 
 use pgc_core::places::Place;
 
 use super::App;
+use super::definition::JobKind;
+use super::file_jobs::{FileJob, Listing, PathState};
 use super::result_export::export_options;
 use crate::dialog::{Button, Dialog, DialogKind, Widget};
 
@@ -26,33 +30,40 @@ pub(super) struct FileDialog<'a> {
     pub pick: bool,
 }
 
-/// What was chosen in a file dialog.
-pub(super) enum Picked {
+/// What was chosen in a file dialog (nothing is looked up yet).
+enum Picked {
     Nothing,
-    /// A folder: it is the dialogs' folder now.
+    /// The dialogs' folder (or the places) changed: the dialog is shown again.
     Folder,
-    File(PathBuf),
-    /// A path in a folder that does not exist: the message to show (D-070).
-    Invalid(String),
+    /// A path: a folder to go to or a file — the background finds out.
+    Path(PathBuf),
+}
+
+/// The only row of a listing that is still being read.
+const READING: &str = "Reading…";
+
+/// The dialog is one of the file dialogs.
+pub(super) fn is_file_dialog(kind: &DialogKind) -> bool {
+    matches!(
+        kind,
+        DialogKind::OpenFile
+            | DialogKind::SaveFile
+            | DialogKind::ExportFile
+            | DialogKind::SaveDefinition { .. }
+            | DialogKind::OpenDefinition { .. }
+    )
 }
 
 impl App {
-    /// The mc-style file dialog for the current folder, or for the places (D-041,
-    /// D-070).
-    pub(super) fn file_dialog(&self, f: FileDialog<'_>) -> Dialog {
-        let (folder, labels, marks) = match &self.files.places {
-            Some(places) => {
-                let mut labels = vec![format!("..{MAIN_SEPARATOR}")];
-                labels.extend(place_labels(places));
-                let marks = vec![false; labels.len()];
-                ("Places".to_owned(), labels, marks)
-            }
-            None => {
-                let entries = list_dir(&self.files.dir, f.ext);
-                let labels = entries.iter().map(|e| e.0.clone()).collect();
-                let marks = entries.iter().map(|e| e.2).collect();
-                (self.files.dir.display().to_string(), labels, marks)
-            }
+    /// Opens the mc-style file dialog for the current folder, or for the places
+    /// (D-041, D-070). It shows at once; its listing follows from the background
+    /// (D-072).
+    pub(super) fn open_listing_dialog(&mut self, f: FileDialog<'_>) {
+        let places = self.files.places.is_some();
+        let folder = if places {
+            "Places".to_owned()
+        } else {
+            self.files.dir.display().to_string()
         };
         let mut widgets = f.above;
         widgets.push(Widget::label(&format!("Folder: {folder}")));
@@ -62,52 +73,102 @@ impl App {
             f.name,
             f.label_width,
         ));
-        widgets.push(Widget::list("files", "", labels, 0, f.list_rows).highlighted(marks));
+        widgets.push(Widget::list(
+            "files",
+            "",
+            vec![READING.to_owned()],
+            0,
+            f.list_rows,
+        ));
         widgets.extend(f.below);
         widgets.push(Widget::button(Button::Ok, "&OK", true));
         widgets.push(Widget::button(Button::Places, "&Places", false));
         widgets.push(Widget::button(Button::Cancel, "&Cancel", false));
         let mut dialog = Dialog::new(f.kind, f.title, 70, widgets);
-        if f.pick || self.files.places.is_some() {
+        if f.pick || places {
             dialog.focus_on("files");
         }
-        dialog
+        self.dialogs.push(dialog);
+
+        self.files.seq += 1;
+        let seq = self.files.seq;
+        self.files.listing = Some(seq);
+        self.files.probing = None;
+        let job = if places {
+            FileJob::Places {
+                seq,
+                current: self
+                    .query()
+                    .and_then(|q| q.file.as_ref())
+                    .and_then(|f| f.parent())
+                    .map(Path::to_path_buf),
+            }
+        } else {
+            FileJob::ListDir {
+                seq,
+                dir: self.files.dir.clone(),
+                ext: f.ext.to_owned(),
+            }
+        };
+        self.start_file_job(job);
+    }
+
+    /// The listing request `seq` asked for is read: it fills the open file dialog.
+    pub(super) fn file_listing_loaded(&mut self, seq: u64, listing: Listing) {
+        if self.files.listing != Some(seq) {
+            return;
+        }
+        self.files.listing = None;
+        let (labels, marks) = match listing {
+            Listing::Places(places) => {
+                let mut labels = vec![format!("..{MAIN_SEPARATOR}")];
+                labels.extend(place_labels(&places));
+                let marks = vec![false; labels.len()];
+                self.files.places = Some(places);
+                (labels, marks)
+            }
+            Listing::Folder(entries) => (
+                entries.iter().map(|e| e.0.clone()).collect(),
+                entries.iter().map(|e| e.2).collect(),
+            ),
+        };
+        if let Some(d) = self
+            .dialogs
+            .iter_mut()
+            .rev()
+            .find(|d| is_file_dialog(&d.kind))
+        {
+            d.set_list("files", labels, marks, 0);
+        }
+    }
+
+    /// A file dialog closed without a choice: the next one shows the folder again
+    /// (D-070), and what was being read for this one is not waited for.
+    pub(super) fn file_dialog_closed(&mut self) {
+        self.files.places = None;
+        self.files.listing = None;
+        self.files.probing = None;
     }
 
     /// The listing shows the places (D-070): home, the folder of the tab's file, then
-    /// the drives / volumes.
+    /// the drives / volumes. They are read when the dialog opens again.
     fn show_places(&mut self) {
-        let mut places = pgc_core::places::places();
-        let file_dir = self
-            .query()
-            .and_then(|q| q.file.as_ref())
-            .and_then(|f| f.parent())
-            .filter(|d| d.is_dir())
-            .map(Path::to_path_buf);
-        if let Some(dir) = file_dir {
-            let at = usize::from(places.first().is_some_and(|p| p.name == "~"));
-            places.insert(
-                at,
-                Place {
-                    name: dir.display().to_string(),
-                    path: dir,
-                    note: "Current file".to_owned(),
-                },
-            );
-        }
-        self.files.places = Some(places);
+        self.files.places = Some(Vec::new());
     }
 
     /// The choice made in a file dialog with `button`: the selected entry of the
-    /// listing when it has the focus, else the typed name or path. A folder becomes
-    /// the dialogs' folder (D-070).
-    pub(super) fn picked(&mut self, dialog: &Dialog, button: Button) -> Picked {
+    /// listing when it has the focus, else the typed name or path (D-070).
+    fn picked(&mut self, dialog: &Dialog, button: Button) -> Picked {
         if button == Button::Places {
             self.show_places();
             return Picked::Folder;
         }
         let dir = self.files.dir.clone();
-        let path = if dialog.focused_id() == Some("files") {
+        if dialog.focused_id() == Some("files") {
+            // still being read: there is nothing to choose yet
+            if self.files.listing.is_some() {
+                return Picked::Nothing;
+            }
             let Some(i) = dialog.selected("files") else {
                 return Picked::Nothing;
             };
@@ -118,8 +179,6 @@ impl App {
                 }
                 return Picked::Folder;
             }
-            // the row as the user sees it: the folder may have changed since it was
-            // listed
             let Some(name) = dialog
                 .selected_item("files")
                 .map(|n| n.trim_end_matches(MAIN_SEPARATOR))
@@ -134,27 +193,14 @@ impl App {
                 }
                 return Picked::Folder;
             }
-            dir.join(name)
+            Picked::Path(dir.join(name))
         } else {
             let text = dialog.text("path").unwrap_or("").trim();
             if text.is_empty() {
                 return Picked::Nothing;
             }
-            resolve(&dir, text, pgc_core::paths::home_dir().as_deref())
-        };
-        if path.is_dir() {
-            self.files.dir = path;
-            self.files.places = None;
-            return Picked::Folder;
+            Picked::Path(resolve(&dir, text, pgc_core::paths::home_dir().as_deref()))
         }
-        if let Some(parent) = path
-            .parent()
-            .filter(|p| !p.as_os_str().is_empty() && !p.is_dir())
-        {
-            return Picked::Invalid(format!("The folder {} does not exist.", parent.display()));
-        }
-        self.files.places = None;
-        Picked::File(path)
     }
 
     /// Save (D-064): to the tab's file without a dialog, else Save as.
@@ -171,7 +217,6 @@ impl App {
             .query()
             .and_then(|q| q.file.as_ref())
             .and_then(|f| f.parent())
-            .filter(|d| d.is_dir())
         {
             self.files.dir = dir.to_path_buf();
         }
@@ -193,7 +238,7 @@ impl App {
         } else {
             (DialogKind::OpenFile, "Open SQL file")
         };
-        let dialog = self.file_dialog(FileDialog {
+        self.open_listing_dialog(FileDialog {
             kind,
             title,
             ext: "sql",
@@ -204,58 +249,127 @@ impl App {
             below: Vec::new(),
             pick: !save,
         });
-        self.dialogs.push(dialog);
     }
 
+    /// OK or Places in a file dialog. A chosen path is checked in the background
+    /// (D-072): the dialog stays until [`Self::path_probed`] has the answer.
     pub(super) fn file_dialog_done(&mut self, dialog: Dialog, button: Button) {
-        let save = dialog.kind == DialogKind::SaveFile;
-        let export = dialog.kind == DialogKind::ExportFile;
-        let path = match self.picked(&dialog, button) {
-            Picked::Nothing => {
+        match self.picked(&dialog, button) {
+            Picked::Nothing => self.dialogs.push(dialog),
+            Picked::Folder => self.reopen_file_dialog(&dialog),
+            Picked::Path(path) => {
                 self.dialogs.push(dialog);
-                return;
+                self.files.seq += 1;
+                let seq = self.files.seq;
+                self.files.probing = Some(seq);
+                self.start_file_job(FileJob::Probe { seq, path });
             }
-            Picked::Invalid(text) => {
-                self.dialogs.push(dialog);
-                self.error(&text);
-                return;
-            }
-            Picked::Folder => {
-                if export {
-                    let name = dialog.text("path").unwrap_or("").to_owned();
-                    let options = export_options(&dialog);
-                    self.open_export_dialog(Some(name), Some(options));
-                } else {
-                    self.open_file_dialog(save);
-                }
-                return;
-            }
-            Picked::File(path) => path,
+        }
+    }
+
+    /// What the path chosen in the open file dialog is: a folder becomes the dialogs'
+    /// folder, a path in a folder that does not exist is an error (D-070), anything
+    /// else is the file.
+    pub(super) fn path_probed(&mut self, seq: u64, path: PathBuf, state: PathState) {
+        if self.files.probing != Some(seq) {
+            return;
+        }
+        self.files.probing = None;
+        // the dialog it was chosen in must still be the one in front
+        if !self.dialogs.last().is_some_and(|d| is_file_dialog(&d.kind)) {
+            return;
+        }
+        let Some(dialog) = self.dialogs.pop() else {
+            return;
         };
-        let overwrite = format!("{} exists. Overwrite it?", path.display());
-        if export {
-            let options = export_options(&dialog);
-            if path.exists() {
-                self.dialogs.push(Dialog::confirm(
-                    DialogKind::ConfirmExportOverwrite { path, options },
-                    "Export result",
-                    &overwrite,
-                ));
-            } else {
-                self.start_export(path, options);
+        match state {
+            PathState::Folder => {
+                self.files.dir = path;
+                self.files.places = None;
+                self.reopen_file_dialog(&dialog);
             }
-        } else if save {
-            if path.exists() {
+            PathState::NoFolder(parent) => {
+                self.dialogs.push(dialog);
+                self.error(&format!("The folder {} does not exist.", parent.display()));
+            }
+            PathState::File { exists } => {
+                self.files.places = None;
+                self.files.listing = None;
+                self.file_chosen(dialog, path, exists);
+            }
+        }
+    }
+
+    /// The same dialog again for the folder (or the places) the dialogs show now,
+    /// keeping what the user had entered.
+    fn reopen_file_dialog(&mut self, dialog: &Dialog) {
+        let name = dialog.text("path").unwrap_or("").to_owned();
+        match &dialog.kind {
+            DialogKind::ExportFile => {
+                let options = export_options(dialog);
+                self.open_export_dialog(Some(name), Some(options));
+            }
+            DialogKind::SaveFile => self.open_file_dialog(true),
+            DialogKind::OpenFile => self.open_file_dialog(false),
+            DialogKind::SaveDefinition { server, database } => {
+                self.open_definition_dialog(true, &name, (*server, database.clone()));
+            }
+            DialogKind::OpenDefinition { server, database } => {
+                self.open_definition_dialog(false, "", (*server, database.clone()));
+            }
+            _ => {}
+        }
+    }
+
+    /// A file is chosen in `dialog`; `exists`: it is there already (writing asks
+    /// before it overwrites).
+    fn file_chosen(&mut self, dialog: Dialog, path: PathBuf, exists: bool) {
+        let overwrite = format!("{} exists. Overwrite it?", path.display());
+        match dialog.kind.clone() {
+            DialogKind::ExportFile => {
+                let options = export_options(&dialog);
+                if exists {
+                    self.dialogs.push(Dialog::confirm(
+                        DialogKind::ConfirmExportOverwrite { path, options },
+                        "Export result",
+                        &overwrite,
+                    ));
+                } else {
+                    self.start_export(path, options);
+                }
+            }
+            DialogKind::SaveFile if exists => {
                 self.dialogs.push(Dialog::confirm(
                     DialogKind::ConfirmOverwrite { path },
                     "Save",
                     &overwrite,
                 ));
-            } else {
-                self.save_to(path);
             }
-        } else {
-            self.open_path(path);
+            DialogKind::SaveFile => self.save_to(path),
+            DialogKind::OpenFile => self.open_path(path),
+            DialogKind::SaveDefinition { server, database } if exists => {
+                self.dialogs.push(Dialog::confirm(
+                    DialogKind::ConfirmDefinitionOverwrite {
+                        server,
+                        database,
+                        path,
+                    },
+                    "Export database definition",
+                    &overwrite,
+                ));
+            }
+            DialogKind::SaveDefinition { server, database } => {
+                self.start_job(JobKind::Export(path), (server, database));
+            }
+            DialogKind::OpenDefinition { server, database } => {
+                self.status = format!("Reading {}…", path.display());
+                self.start_file_job(FileJob::LoadDefinition {
+                    path,
+                    uid: server,
+                    database,
+                });
+            }
+            _ => {}
         }
     }
 }

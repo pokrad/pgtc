@@ -553,6 +553,9 @@ impl App {
             files: FileDialogState {
                 dir: pgc_core::places::start_dir(),
                 places: None,
+                seq: 0,
+                listing: None,
+                probing: None,
             },
             closing: Closing::default(),
             esc: EscState::default(),
@@ -1417,7 +1420,7 @@ impl App {
                     | DialogKind::SaveFile
                     | DialogKind::ExportFile
                     | DialogKind::SaveDefinition { .. }
-                    | DialogKind::OpenDefinition { .. } => self.files.places = None,
+                    | DialogKind::OpenDefinition { .. } => self.file_dialog_closed(),
                     _ => {}
                 }
             }
@@ -1435,7 +1438,7 @@ impl App {
                         | DialogKind::SaveDefinition { .. }
                         | DialogKind::OpenDefinition { .. },
                         Button::Cancel,
-                    ) => self.files.places = None,
+                    ) => self.file_dialog_closed(),
                     (DialogKind::ConfirmProfilerRestore { server }, Button::Yes) => {
                         self.run_profiler_restore(server);
                     }
@@ -1508,15 +1511,13 @@ impl App {
                         self.send_signal(tab, crate::dashboard::Signal::Terminate);
                     }
                     (
-                        DialogKind::OpenFile | DialogKind::SaveFile | DialogKind::ExportFile,
+                        DialogKind::OpenFile
+                        | DialogKind::SaveFile
+                        | DialogKind::ExportFile
+                        | DialogKind::SaveDefinition { .. }
+                        | DialogKind::OpenDefinition { .. },
                         Button::Ok | Button::Places,
                     ) => self.file_dialog_done(dialog, id),
-                    (
-                        DialogKind::SaveDefinition { .. } | DialogKind::OpenDefinition { .. },
-                        Button::Ok | Button::Places,
-                    ) => {
-                        self.definition_dialog_done(dialog, id);
-                    }
                     (
                         DialogKind::ConfirmDefinitionOverwrite {
                             server,

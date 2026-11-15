@@ -4,9 +4,9 @@
 use pgc_db::{ConnId, DbEvent};
 
 use super::file_jobs::FileJob;
-use super::files::{FileDialog, Picked};
+use super::files::FileDialog;
 use super::{App, Target};
-use crate::dialog::{Button, Dialog, DialogKind, Widget};
+use crate::dialog::{DialogKind, Widget};
 use crate::tree::RowKind;
 
 /// A definition export or load running on its own connection (D-048).
@@ -51,7 +51,7 @@ impl App {
                 "Load database definition",
             )
         };
-        let dialog = self.file_dialog(FileDialog {
+        self.open_listing_dialog(FileDialog {
             kind,
             title,
             ext: "pgdef",
@@ -62,55 +62,6 @@ impl App {
             below: Vec::new(),
             pick: !save,
         });
-        self.dialogs.push(dialog);
-    }
-
-    pub(super) fn definition_dialog_done(&mut self, dialog: Dialog, button: Button) {
-        let (save, uid, database) = match &dialog.kind {
-            DialogKind::SaveDefinition { server, database } => (true, *server, database.clone()),
-            DialogKind::OpenDefinition { server, database } => (false, *server, database.clone()),
-            _ => return,
-        };
-        let path = match self.picked(&dialog, button) {
-            Picked::Nothing => {
-                self.dialogs.push(dialog);
-                return;
-            }
-            Picked::Invalid(text) => {
-                self.dialogs.push(dialog);
-                self.error(&text);
-                return;
-            }
-            Picked::Folder => {
-                let name = dialog.text("path").unwrap_or("");
-                self.open_definition_dialog(save, if save { name } else { "" }, (uid, database));
-                return;
-            }
-            Picked::File(path) => path,
-        };
-        if save {
-            if path.exists() {
-                let text = format!("{} exists. Overwrite it?", path.display());
-                self.dialogs.push(Dialog::confirm(
-                    DialogKind::ConfirmDefinitionOverwrite {
-                        server: uid,
-                        database,
-                        path,
-                    },
-                    "Export database definition",
-                    &text,
-                ));
-            } else {
-                self.start_job(JobKind::Export(path), (uid, database));
-            }
-        } else {
-            self.status = format!("Reading {}…", path.display());
-            self.start_file_job(FileJob::LoadDefinition {
-                path,
-                uid,
-                database,
-            });
-        }
     }
 
     /// Opens a connection to the database for the job; the structure is read once it

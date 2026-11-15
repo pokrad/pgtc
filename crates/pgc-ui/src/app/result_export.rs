@@ -53,7 +53,7 @@ impl App {
             CsvSeparator::Semicolon => 1,
             CsvSeparator::Tab => 2,
         };
-        let dialog = self.file_dialog(FileDialog {
+        self.open_listing_dialog(FileDialog {
             kind: DialogKind::ExportFile,
             title: "Export result",
             ext: o.format.extension(),
@@ -74,7 +74,6 @@ impl App {
             ],
             pick: false,
         });
-        self.dialogs.push(dialog);
     }
 
     /// The file name's extension follows the chosen format (D-042).

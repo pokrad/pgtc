@@ -44,8 +44,15 @@ pub(super) struct MouseState {
 pub(super) struct FileDialogState {
     /// Directory shown in the file dialogs.
     pub(super) dir: PathBuf,
-    /// The dialogs show the places instead of `dir`.
+    /// The dialogs show the places instead of `dir` (empty until they are read).
     pub(super) places: Option<Vec<Place>>,
+    /// Number of the newest request to the background (D-072); an answer with an
+    /// older number is not waited for any more.
+    pub(super) seq: u64,
+    /// The listing the open dialog waits for.
+    pub(super) listing: Option<u64>,
+    /// The chosen path that is being checked.
+    pub(super) probing: Option<u64>,
 }
 
 /// Closing tabs, quitting, disconnecting (D-019, D-043): the questions on their way
