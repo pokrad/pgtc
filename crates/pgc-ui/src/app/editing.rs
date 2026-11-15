@@ -4,7 +4,7 @@
 use pgc_editor::{Action, Editor, Motion, SearchOptions};
 
 use super::{App, Effect};
-use crate::dialog::{Dialog, DialogKind, Widget};
+use crate::dialog::{Button, Dialog, DialogKind, Widget};
 use crate::keymap::Command;
 
 impl App {
@@ -57,18 +57,18 @@ impl App {
             Widget::checkbox("case", "Case &sensitive", opts.case_sensitive),
             Widget::checkbox("words", "W&hole words", opts.whole_words),
             Widget::checkbox("regex", "Regular e&xpression", opts.regex),
-            Widget::button("find", "Fi&nd", true),
+            Widget::button(Button::Find, "Fi&nd", true),
         ];
         if !read_only {
-            widgets.push(Widget::button("replace", "&Replace", false));
-            widgets.push(Widget::button("all", "Replace &all", false));
+            widgets.push(Widget::button(Button::Replace, "&Replace", false));
+            widgets.push(Widget::button(Button::ReplaceAll, "Replace &all", false));
         }
-        widgets.push(Widget::button("cancel", "&Cancel", false));
+        widgets.push(Widget::button(Button::Cancel, "&Cancel", false));
         self.dialogs
             .push(Dialog::new(DialogKind::Find, "Find", 60, widgets));
     }
 
-    pub(super) fn find_dialog_done(&mut self, dialog: Dialog, button: &str) {
+    pub(super) fn find_dialog_done(&mut self, dialog: Dialog, button: Button) {
         let opts = SearchOptions {
             text: dialog.text("find").unwrap_or("").to_owned(),
             case_sensitive: dialog.checked("case"),
@@ -86,15 +86,15 @@ impl App {
         }
         self.last_search = Some((opts.clone(), replacement.clone()));
         match button {
-            "find" => self.find_again(true),
-            "replace" => {
+            Button::Find => self.find_again(true),
+            Button::Replace => {
                 if self.editor().selection_matches(&opts) {
                     self.confirm_replace();
                 } else {
                     self.replace_next(false);
                 }
             }
-            "all" => self.replace_all(),
+            Button::ReplaceAll => self.replace_all(),
             _ => {}
         }
     }
@@ -137,25 +137,25 @@ impl App {
             "Replace",
             "Replace this occurrence?",
             &[
-                ("replace", "&Replace"),
-                ("all", "A&ll"),
-                ("skip", "&Skip"),
-                ("cancel", "&Cancel"),
+                (Button::Replace, "&Replace"),
+                (Button::ReplaceAll, "A&ll"),
+                (Button::Skip, "&Skip"),
+                (Button::Cancel, "&Cancel"),
             ],
         ));
     }
 
-    pub(super) fn replace_confirm_done(&mut self, button: &str) {
+    pub(super) fn replace_confirm_done(&mut self, button: Button) {
         let Some((opts, replacement)) = self.last_search.clone() else {
             return;
         };
         match button {
-            "replace" => {
+            Button::Replace => {
                 self.editor().replace_selected(&opts, &replacement);
                 self.replace_next(true);
             }
-            "skip" => self.replace_next(true),
-            "all" => self.replace_all(),
+            Button::Skip => self.replace_next(true),
+            Button::ReplaceAll => self.replace_all(),
             _ => {}
         }
     }

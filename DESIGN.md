@@ -2320,6 +2320,8 @@ pgtc (binary)
   missing folder falls back to the home folder, then to the current directory. Not
   the current directory of the shell pgtc was started from.
 - The folder is remembered only while pgtc runs (not saved).
+- Closing a file dialog without a choice (`Esc` or the *Cancel* button) leaves the
+  places: the next file dialog shows the folder again.
 - The place lists are computed in `pgc-core` (D-039); `windows-sys` becomes a
   Windows-only dependency of `pgc-core` too (D-069).
 
@@ -2484,3 +2486,4 @@ pgtc (binary)
 | 2026-11-15 | D-054 updated: generate command `gtv` *table* [*table* …] — `CREATE VIEW <schema>.[view_name]` over one or more tables, aliases `T1`, `T2`, …, every column (`AS table_column` for a name an earlier table already has), joins in the order typed on a foreign key to an earlier table (first by name, others in a comment; `LEFT JOIN` when the earlier table holds a nullable foreign key), `ON 1=1` with a comment without one; the variables + `SELECT INTO` command is `gtsi`. |
 | 2026-11-15 | D-019 updated: positions of messages — errors and notices map to editor line and column from `position`, from `CONTEXT … inline_code_block line N` of the running `DO` (also in SQL mode), with the column from PostgreSQL's internal position and query; psql-style `LINE n:` line with `^` caret in the message (copied too); `Enter` / double click jump and select the token; positions only clamped after edits; `Ctrl+A` + copy copies all messages; Messages context menu *Jump to line*, *Copy message*, *Copy all messages*. D-020 updated. |
 | 2026-11-15 | D-071 accepted: closing a tab ends its connection with Terminate (a running statement is cancelled first); dropped after 3 seconds without an end; on quit all connections are ended and pgtc waits up to 1 second. D-012 updated: `.pgdef` starts with `"format": 1`; a file without it is format 1, a higher number is refused, unknown fields are ignored. |
+| 2026-11-15 | D-070 updated: `Esc` and the *Cancel* button of a file dialog both leave the places, so the next file dialog shows the folder (the button did not). |

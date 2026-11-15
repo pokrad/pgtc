@@ -3,7 +3,7 @@
 //! `app/key_help.rs` from the parts here.
 
 use crate::app::App;
-use crate::dialog::{Dialog, DialogKind, Widget};
+use crate::dialog::{Button, Dialog, DialogKind, Widget};
 use crate::keymap::{Command, Context, Group, Keymap};
 use crate::keys::KeyCombo;
 
@@ -227,7 +227,7 @@ pub(crate) fn viewer(title: &str, lines: Lines) -> Dialog {
         width,
         vec![
             Widget::text(TEXT_ID, lines.lines, lines.headers),
-            Widget::button("ok", "&Close", true),
+            Widget::button(Button::Ok, "&Close", true),
         ],
     )
 }

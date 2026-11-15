@@ -10,7 +10,7 @@ use ratatui::layout::Position;
 
 use super::connections::MonitorEvent;
 use super::{App, Effect, Focus, TabBody, Target, TextView};
-use crate::dialog::{Dialog, DialogKind, Widget};
+use crate::dialog::{Button, Dialog, DialogKind, Widget};
 use crate::keymap::Command;
 use crate::menu::{self, MenuEntry, Popup};
 use crate::profiler::{AfterRestore, Check, LogReader, Phase, Profiler, READ_CHUNK};
@@ -229,10 +229,11 @@ impl App {
              changed. Logging every statement adds load on a busy server.\n\n\
              Change them?"
         );
-        self.dialogs.push(
-            Dialog::confirm(DialogKind::ConfirmProfilerSettings, "SQL profiler", &text)
-                .with_tag(tab),
-        );
+        self.dialogs.push(Dialog::confirm(
+            DialogKind::ConfirmProfilerSettings { tab },
+            "SQL profiler",
+            &text,
+        ));
     }
 
     /// The question about the settings was answered.
@@ -583,27 +584,24 @@ impl App {
         };
         let f = p.filter.clone();
         let lw = FILTER_LABEL_WIDTH;
-        self.dialogs.push(
-            Dialog::new(
-                DialogKind::ProfilerFilter,
-                "Filter",
-                56,
-                vec![
-                    Widget::field("user", "&User:", &f.user, lw),
-                    Widget::field("database", "&Database:", &f.database, lw),
-                    Widget::field("pid", "&PID:", &f.pid, lw),
-                    Widget::field("application", "&Application:", &f.application, lw),
-                    Widget::field("text", "&Text contains:", &f.text, lw),
-                    Widget::label("Empty fields match everything."),
-                    Widget::button("ok", "&OK", true),
-                    Widget::button("cancel", "&Cancel", false),
-                ],
-            )
-            .with_tag(tab),
-        );
+        self.dialogs.push(Dialog::new(
+            DialogKind::ProfilerFilter { tab },
+            "Filter",
+            56,
+            vec![
+                Widget::field("user", "&User:", &f.user, lw),
+                Widget::field("database", "&Database:", &f.database, lw),
+                Widget::field("pid", "&PID:", &f.pid, lw),
+                Widget::field("application", "&Application:", &f.application, lw),
+                Widget::field("text", "&Text contains:", &f.text, lw),
+                Widget::label("Empty fields match everything."),
+                Widget::button(Button::Ok, "&OK", true),
+                Widget::button(Button::Cancel, "&Cancel", false),
+            ],
+        ));
     }
 
-    pub(super) fn apply_profiler_filter(&mut self, dialog: &Dialog) {
+    pub(super) fn apply_profiler_filter(&mut self, dialog: &Dialog, tab: u64) {
         let text = |id: &str| dialog.text(id).unwrap_or("").trim().to_owned();
         let filter = crate::profiler::Filter {
             user: text("user"),
@@ -612,7 +610,7 @@ impl App {
             application: text("application"),
             text: text("text"),
         };
-        if let Some(p) = self.profiler_of(dialog.tag) {
+        if let Some(p) = self.profiler_of(tab) {
             p.filter = filter;
             p.rebuild();
         }

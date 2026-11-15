@@ -5,7 +5,7 @@ use pgc_db::{ConnId, DbEvent, ExecuteRequest, TxStatus};
 
 use super::result_export::take_export_rows;
 use super::{App, Tab, TabBody, Target, TextView};
-use crate::dialog::{Dialog, DialogKind};
+use crate::dialog::{Button, Dialog, DialogKind};
 use crate::export::ToWriter;
 use crate::query_tab::{AfterRun, LineMap, MessageKind, QueryConn, QueryConnState, Sent};
 use crate::tree::{ConnState, RowKind};
@@ -353,12 +353,11 @@ impl App {
         for id in ask {
             self.dialogs.push(
                 Dialog::confirm_buttons(
-                    DialogKind::CancelWait,
+                    DialogKind::CancelWait { tab: id },
                     "Cancel",
                     "The server did not react to the cancel request.\nClose this query tab's connection?",
-                    &[("close", "&Close connection"), ("wait", "&Keep waiting")],
-                )
-                .with_tag(id),
+                    &[(Button::Close, "&Close connection"), (Button::Wait, "&Keep waiting")],
+                ),
             );
         }
     }

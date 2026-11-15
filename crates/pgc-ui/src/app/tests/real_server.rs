@@ -93,8 +93,8 @@ async fn psql_commands_against_a_real_server() {
     let run = |a: &mut App, text: &str| {
         key(a, "F4");
         assert_eq!(
-            a.dialogs.last().map(|d| d.kind),
-            Some(DialogKind::PsqlCommand)
+            a.dialogs.last().map(|d| &d.kind),
+            Some(&DialogKind::PsqlCommand)
         );
         typing(a, text);
         key(a, "Enter");
@@ -1013,7 +1013,7 @@ async fn definition_export_and_load_against_a_real_server() {
     key(&mut a, "e");
     assert!(a.popup.is_none());
     let d = a.dialogs.last().unwrap();
-    assert_eq!(d.kind, DialogKind::SaveDefinition);
+    assert!(matches!(d.kind, DialogKind::SaveDefinition { .. }));
     assert_eq!(d.text("path"), Some("pgtc_test_ui_src.pgdef"));
     key(&mut a, "Alt+O");
     assert!(a.dialogs.is_empty());
@@ -1031,10 +1031,10 @@ async fn definition_export_and_load_against_a_real_server() {
         a.tree.select(find(a, "pgtc_test_ui_dst").unwrap());
         a.run(Command::LoadDefinition);
         let mut d = a.dialogs.pop().unwrap();
-        assert_eq!(d.kind, DialogKind::OpenDefinition);
+        assert!(matches!(d.kind, DialogKind::OpenDefinition { .. }));
         d.set_text("path", "pgtc_test_ui_src.pgdef");
         d.focus_on("path");
-        a.definition_dialog_done(d, "ok");
+        a.definition_dialog_done(d, crate::dialog::Button::Ok);
     };
     let tabs = a.tabs.len();
     load(&mut a);

@@ -7,7 +7,7 @@ use pgc_sql::RenderContext;
 
 use super::lookups::LookupTarget;
 use super::{App, CONNECTION_BUSY};
-use crate::dialog::{Dialog, DialogKind, Widget};
+use crate::dialog::{Button, Dialog, DialogKind, Widget};
 use crate::keymap::Command;
 use crate::query_tab::Sent;
 
@@ -42,8 +42,8 @@ impl App {
                 Widget::field("cmd", "&Command:", text, 10),
                 Widget::label(""),
                 Widget::list("list", "", items, 0, rows.len() as u16).highlighted(marks),
-                Widget::button("ok", "&Run", true),
-                Widget::button("cancel", "Ca&ncel", false),
+                Widget::button(Button::Ok, "&Run", true),
+                Widget::button(Button::Cancel, "Ca&ncel", false),
             ],
         );
         d.fit_text(self.frame.screen);

@@ -105,10 +105,10 @@ fn install_templates_asks_before_overwriting() {
     std::fs::write(&file, "changed").unwrap();
     // the folder exists: asked; No (the focused default of the question) keeps it
     a.run(Command::InstallTemplates);
-    assert_eq!(
+    assert!(matches!(
         a.dialogs.last().unwrap().kind,
-        DialogKind::ConfirmTemplatesOverwrite
-    );
+        DialogKind::ConfirmTemplatesOverwrite { .. }
+    ));
     key(&mut a, "n");
     assert_eq!(std::fs::read_to_string(&file).unwrap(), "changed");
     assert!(
@@ -178,8 +178,9 @@ fn tabs_open_switch_close() {
     assert_eq!(a.tabs.len(), 3, "default tab is not closed");
     key(&mut a, "Alt+Left");
     key(&mut a, "Ctrl+W");
-    let kinds: Vec<TabKind> = a.tabs.iter().map(|t| t.kind()).collect();
-    assert_eq!(kinds, vec![TabKind::Default, TabKind::Query(1)]);
+    assert_eq!(a.tabs.len(), 2);
+    assert!(matches!(a.tabs[0].body, TabBody::Default));
+    assert!(matches!(a.tabs[1].body, TabBody::Query(1, _)));
 }
 
 #[test]
@@ -322,7 +323,7 @@ fn menu_runs_enabled_items_only() {
     assert!(a.menu.is_some());
     key(&mut a, "n"); // File → New connection…
     assert!(a.menu.is_none());
-    assert_eq!(a.dialogs[0].kind, DialogKind::Connection);
+    assert!(matches!(a.dialogs[0].kind, DialogKind::Connection { .. }));
 }
 
 #[test]
@@ -831,7 +832,7 @@ fn default_tab_follows_the_tree() {
     key(&mut a, "Up");
     key(&mut a, "F3");
     assert_eq!(a.tabs.len(), 2);
-    assert_eq!(a.tabs[1].kind(), TabKind::Object);
+    assert!(matches!(a.tabs[1].body, TabBody::Object));
     assert_eq!(a.focus, Focus::Tabs);
     let label = a.tab_connection_label(&a.tabs[1]);
     assert!(
@@ -994,7 +995,10 @@ fn closing_an_unsaved_query_tab_asks_to_save() {
     a.new_query_tab(None);
     typing(&mut a, "select 1;");
     key(&mut a, "Ctrl+W");
-    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::SaveChanges);
+    assert!(matches!(
+        a.dialogs.last().unwrap().kind,
+        DialogKind::SaveChanges { .. }
+    ));
     esc(&mut a);
     assert!(a.dialogs.is_empty());
     assert_eq!(a.tabs.len(), 2);
@@ -1041,7 +1045,10 @@ fn quitting_asks_about_each_unsaved_query_tab() {
     a.new_query_tab(None); // unchanged: never asked about
     // Cancel stops quitting
     a.request_quit();
-    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::QuitSaveChanges);
+    assert!(matches!(
+        a.dialogs.last().unwrap().kind,
+        DialogKind::QuitSaveChanges { .. }
+    ));
     assert_eq!(a.active_tab, 1);
     esc(&mut a);
     assert!(a.dialogs.is_empty());
@@ -1050,7 +1057,10 @@ fn quitting_asks_about_each_unsaved_query_tab() {
     // No for the first tab, Yes (save as query.sql) for the second: then quits
     a.request_quit();
     key(&mut a, "n");
-    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::QuitSaveChanges);
+    assert!(matches!(
+        a.dialogs.last().unwrap().kind,
+        DialogKind::QuitSaveChanges { .. }
+    ));
     assert_eq!(a.active_tab, 2);
     assert!(!a.should_quit());
     key(&mut a, "y");
@@ -1072,12 +1082,15 @@ fn quitting_saves_a_tab_with_a_file_without_asking_for_a_name() {
     a.open_path(path.clone());
     typing(&mut a, " -- edited");
     key(&mut a, "F10");
-    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::QuitSaveChanges);
+    assert!(matches!(
+        a.dialogs.last().unwrap().kind,
+        DialogKind::QuitSaveChanges { .. }
+    ));
     key(&mut a, "y");
     assert!(
         a.dialogs.is_empty(),
         "{:?}",
-        a.dialogs.iter().map(|d| d.kind).collect::<Vec<_>>()
+        a.dialogs.iter().map(|d| &d.kind).collect::<Vec<_>>()
     );
     assert_eq!(
         std::fs::read_to_string(&path).unwrap(),
@@ -1099,7 +1112,7 @@ fn quitting_saves_a_tab_with_a_file_without_asking_for_a_name() {
     assert!(
         a.dialogs.is_empty(),
         "{:?}",
-        a.dialogs.iter().map(|d| d.kind).collect::<Vec<_>>()
+        a.dialogs.iter().map(|d| &d.kind).collect::<Vec<_>>()
     );
     assert_eq!(
         std::fs::read_to_string(dir.path().join("query.sql")).unwrap(),
@@ -1167,7 +1180,7 @@ fn disconnect_closes_the_servers_tabs() {
     a.tree.select_server(a_uid);
     a.run(Command::Disconnect);
     let d = a.dialogs.last().unwrap();
-    assert_eq!(d.kind, DialogKind::QuitSaveChanges);
+    assert!(matches!(d.kind, DialogKind::QuitSaveChanges { .. }));
     assert_eq!(d.title, "Disconnect");
     assert_eq!(a.tabs[a.active_tab].id, unsaved);
     esc(&mut a);
@@ -1235,7 +1248,10 @@ fn tab_close_mark() {
     // changed tab: the same question as Ctrl+W
     let (h, _) = hits(&a);
     click(&mut a, h.tab_close[0].1, &h);
-    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::SaveChanges);
+    assert!(matches!(
+        a.dialogs.last().unwrap().kind,
+        DialogKind::SaveChanges { .. }
+    ));
 }
 
 #[test]
@@ -1283,7 +1299,7 @@ fn ask_save_setting() {
     assert!(
         a.dialogs.is_empty(),
         "{:?}",
-        a.dialogs.last().map(|d| d.kind)
+        a.dialogs.last().map(|d| &d.kind)
     );
     assert!(!a.settings.query.ask_save);
     a.new_query_tab(None);
@@ -1379,10 +1395,10 @@ fn export_dialog_and_loaded_rows() {
         Some("result_1.json")
     );
     key(&mut a, "Alt+O");
-    assert_eq!(
+    assert!(matches!(
         a.dialogs.last().unwrap().kind,
-        DialogKind::ConfirmExportOverwrite
-    );
+        DialogKind::ConfirmExportOverwrite { .. }
+    ));
     key(&mut a, "n");
     assert!(a.dialogs.is_empty());
     assert!(a.query().unwrap().export.is_none());
@@ -1479,7 +1495,10 @@ fn double_click_in_the_file_dialog() {
     assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::SaveFile);
     // a double click on a file chooses it: Save asks before overwriting
     click(&mut a, "pick.sql", 2);
-    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::ConfirmOverwrite);
+    assert!(matches!(
+        a.dialogs.last().unwrap().kind,
+        DialogKind::ConfirmOverwrite { .. }
+    ));
 }
 
 #[test]
@@ -1558,6 +1577,13 @@ fn places_in_the_file_dialog() {
     key(&mut a, "Alt+P");
     assert!(a.files.places.is_some());
     esc(&mut a);
+    assert!(a.dialogs.is_empty());
+    assert!(a.files.places.is_none());
+    // the Cancel button does the same as Esc
+    a.open_file_dialog(false);
+    key(&mut a, "Alt+P");
+    assert!(a.files.places.is_some());
+    key(&mut a, "Alt+C");
     assert!(a.dialogs.is_empty());
     assert!(a.files.places.is_none());
 }
@@ -1654,7 +1680,10 @@ fn save_and_open_sql_files_through_the_dialog() {
     assert_eq!(a.dialogs[0].kind, DialogKind::SaveFile);
     assert_eq!(a.files.dir, files);
     key(&mut a, "Enter");
-    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::ConfirmOverwrite);
+    assert!(matches!(
+        a.dialogs.last().unwrap().kind,
+        DialogKind::ConfirmOverwrite { .. }
+    ));
     key(&mut a, "Enter");
     assert!(a.dialogs.is_empty());
     // Save as under another name: the tab belongs to the new file
@@ -1681,7 +1710,7 @@ fn save_and_open_sql_files_through_the_dialog() {
     assert!(
         a.dialogs.is_empty(),
         "{:?}",
-        a.dialogs.last().map(|d| d.kind)
+        a.dialogs.last().map(|d| &d.kind)
     );
     assert_eq!(a.editor().text(), "select 'čšž'; -- more");
     assert_eq!(a.tabs.len(), 3);
@@ -1865,7 +1894,10 @@ fn password_required_opens_login_and_auth_failure_reopens_it() {
         }),
         &Hits::default(),
     );
-    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::Login);
+    assert!(matches!(
+        a.dialogs.last().unwrap().kind,
+        DialogKind::Login { .. }
+    ));
     a.dialogs.clear();
     let id = fake_connecting(&mut a, uid);
     a.update(
@@ -1876,8 +1908,7 @@ fn password_required_opens_login_and_auth_failure_reopens_it() {
         &Hits::default(),
     );
     let d = a.dialogs.last().unwrap();
-    assert_eq!(d.kind, DialogKind::Login);
-    assert_eq!(d.tag, uid);
+    assert_eq!(d.kind, DialogKind::Login { server: uid });
     assert_eq!(a.tree.servers[0].state, ConnState::Disconnected);
 }
 
@@ -1886,7 +1917,7 @@ fn connection_dialog_validates_and_edits() {
     let (mut a, _d) = app();
     let uid = add_server(&mut a, "old");
     a.run(Command::EditConnection);
-    assert_eq!(a.dialogs[0].kind, DialogKind::Connection);
+    assert!(matches!(a.dialogs[0].kind, DialogKind::Connection { .. }));
     key(&mut a, "Alt+P");
     typing(&mut a, "x");
     key(&mut a, "Enter");
@@ -1921,7 +1952,10 @@ fn delete_connection_with_confirmation() {
     add_server(&mut a, "b");
     key(&mut a, "Down");
     key(&mut a, "F8");
-    assert_eq!(a.dialogs[0].kind, DialogKind::ConfirmDelete);
+    assert!(matches!(
+        a.dialogs[0].kind,
+        DialogKind::ConfirmDelete { .. }
+    ));
     key(&mut a, "n");
     assert_eq!(a.tree.servers.len(), 2);
     key(&mut a, "F8");
@@ -1946,10 +1980,13 @@ fn deleting_a_connection_closes_its_tabs_like_disconnect() {
     // the questions of disconnecting come first; Cancel keeps everything
     a.tree.select_server(a_uid);
     a.run(Command::DeleteConnection);
-    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::ConfirmDelete);
+    assert!(matches!(
+        a.dialogs.last().unwrap().kind,
+        DialogKind::ConfirmDelete { .. }
+    ));
     key(&mut a, "Enter");
     let d = a.dialogs.last().unwrap();
-    assert_eq!(d.kind, DialogKind::QuitSaveChanges);
+    assert!(matches!(d.kind, DialogKind::QuitSaveChanges { .. }));
     assert_eq!(d.title, "Delete connection");
     assert_eq!(a.tabs[a.active_tab].id, unsaved);
     esc(&mut a);
@@ -2088,7 +2125,7 @@ fn context_menu_runs_commands() {
     assert!(a.popup.is_some());
     key(&mut a, "e"); // Edit connection…
     assert!(a.popup.is_none());
-    assert_eq!(a.dialogs[0].kind, DialogKind::Connection);
+    assert!(matches!(a.dialogs[0].kind, DialogKind::Connection { .. }));
 }
 
 /// Ctrl+P switches PL/pgSQL mode of the active query tab, from the editor and from
@@ -2280,7 +2317,7 @@ async fn ctrl_e_edits_the_definition_in_a_new_query_tab() {
     key(&mut a, "Ctrl+E");
     assert_eq!(a.tabs.len(), 2);
     let tab = &a.tabs[a.active_tab];
-    assert!(matches!(tab.kind(), TabKind::Query(_)));
+    assert!(tab.query().is_some());
     assert_eq!(tab.view.editor.text(), def);
     assert!(tab.view.editor.modified(), "unsaved text");
     assert!(!tab.view.editor.read_only());
@@ -2354,7 +2391,7 @@ async fn alt_i_opens_the_database_statistics() {
     a.focus = Focus::Tree;
     key(&mut a, "Alt+I");
     assert_eq!(a.tabs.len(), 2);
-    assert_eq!(a.tabs[1].kind(), TabKind::DbStats);
+    assert!(a.tabs[1].db_stats().is_some());
     assert_eq!(a.tabs[1].label(), "Stats: srv · shop");
     assert_eq!(a.context(), Some(crate::keymap::Context::DbStats));
     // the same database again: the open tab
@@ -2973,7 +3010,7 @@ async fn dashboard_tab_refreshes_and_cancels() {
     assert!(a.is_enabled(Command::Dashboard));
     a.run(Command::Dashboard);
     assert_eq!(a.tabs.len(), 2);
-    assert_eq!(a.tabs[1].kind(), TabKind::Dashboard);
+    assert!(a.tabs[1].dashboard().is_some());
     assert_eq!(a.tabs[1].label(), "Dashboard: a");
     assert_eq!(a.context(), Some(crate::keymap::Context::Dashboard));
     // the same server again: the open tab
@@ -3064,7 +3101,7 @@ async fn dashboard_tab_refreshes_and_cancels() {
     // cancel query: asked first, No does nothing, Yes sends it
     a.run(Command::CancelBackend);
     let d = a.dialogs.last().unwrap();
-    assert_eq!(d.kind, DialogKind::ConfirmCancelBackend);
+    assert!(matches!(d.kind, DialogKind::ConfirmCancelBackend { .. }));
     assert!(d.widgets[0].label.text.contains("PID 4242 (bob on db)"));
     key(&mut a, "n");
     assert!(a.tabs[1].dashboard().unwrap().signals.pending.is_empty());
@@ -3160,7 +3197,7 @@ async fn profiler_asks_reads_and_restores() {
     a.server_connected(uid, pgc_core::ServerVersion(170002));
     key(&mut a, "Home");
     a.run(Command::SqlProfiler);
-    assert_eq!(a.tabs[1].kind(), TabKind::Profiler);
+    assert!(a.tabs[1].profiler().is_some());
     assert_eq!(a.tabs[1].label(), "Profiler: a");
     assert_eq!(a.context(), Some(crate::keymap::Context::Profiler));
     let tab = a.tabs[1].id;
@@ -3189,7 +3226,7 @@ async fn profiler_asks_reads_and_restores() {
         vec![vec!["on", "stderr", "default", "-1", "default", "99"]],
     );
     let d = a.dialogs.last().unwrap();
-    assert_eq!(d.kind, DialogKind::ConfirmProfilerSettings);
+    assert!(matches!(d.kind, DialogKind::ConfirmProfilerSettings { .. }));
     let text = &d.widgets[0].label.text;
     assert!(
         text.contains("log_destination = 'stderr,jsonlog'"),
@@ -3312,7 +3349,10 @@ async fn profiler_asks_reads_and_restores() {
 
     // the filter dialog
     key(&mut a, "Ctrl+F");
-    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::ProfilerFilter);
+    assert!(matches!(
+        a.dialogs.last().unwrap().kind,
+        DialogKind::ProfilerFilter { .. }
+    ));
     typing(&mut a, "eve");
     key(&mut a, "Alt+O");
     assert_eq!(prof(&a).grid.rows.len(), 1);
@@ -3483,7 +3523,10 @@ async fn closing_with_commit_needs_a_real_commit() {
     let commit_on_close = |a: &mut App| {
         a.query_mut().unwrap().tx = TxStatus::InTransaction;
         a.run(Command::CloseTab);
-        assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::CloseTransaction);
+        assert!(matches!(
+            a.dialogs.last().unwrap().kind,
+            DialogKind::CloseTransaction { .. }
+        ));
         key(a, "m");
         assert!(a.dialogs.is_empty());
         assert!(a.query().unwrap().busy(), "COMMIT was sent");

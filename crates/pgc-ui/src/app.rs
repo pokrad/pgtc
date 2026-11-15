@@ -51,7 +51,7 @@ use self::editing::editor_action;
 use self::lookups::LookupTarget;
 use self::state::{Closing, EscState, FileDialogState, LastFrame, MouseState, TemplateState};
 use crate::clipboard::Clipboard;
-use crate::dialog::{Dialog, DialogEvent, DialogKind, Payload};
+use crate::dialog::{Button, Dialog, DialogEvent, DialogKind};
 use crate::export::{ExportEvent, ExportSink};
 use crate::keymap::{Command, Context, Keymap};
 use crate::keys::KeyCombo;
@@ -150,23 +150,6 @@ pub enum Focus {
     Results,
 }
 
-/// Kinds of tabs in the right pane (D-009).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TabKind {
-    /// The default object tab; always present, cannot be closed; follows the tree.
-    Default,
-    /// An object opened with "Show in new tab" (F3).
-    Object,
-    /// Query tab number `n`.
-    Query(u32),
-    /// A server dashboard (D-057).
-    Dashboard,
-    /// An SQL profiler (D-058).
-    Profiler,
-    /// Database statistics (D-062).
-    DbStats,
-}
-
 /// Content of a tab: an editor (D-038), read-only for object views (D-037).
 #[derive(Debug)]
 pub struct TextView {
@@ -214,7 +197,7 @@ impl TextView {
     }
 }
 
-/// What a tab holds, by its kind (D-009).
+/// The kinds of tabs in the right pane and what each holds (D-009).
 #[derive(Debug)]
 pub enum TabBody {
     /// The default object tab.
@@ -247,17 +230,6 @@ pub struct Tab {
 }
 
 impl Tab {
-    pub fn kind(&self) -> TabKind {
-        match &self.body {
-            TabBody::Default => TabKind::Default,
-            TabBody::Object => TabKind::Object,
-            TabBody::Query(n, _) => TabKind::Query(*n),
-            TabBody::Dashboard(_) => TabKind::Dashboard,
-            TabBody::Profiler(_) => TabKind::Profiler,
-            TabBody::DbStats(_) => TabKind::DbStats,
-        }
-    }
-
     /// Query tabs: connection, results, messages (D-019).
     pub fn query(&self) -> Option<&QueryState> {
         match &self.body {
@@ -1422,13 +1394,13 @@ impl App {
                     return;
                 };
                 match d.kind {
-                    DialogKind::ConfirmProfilerSettings => self.profiler_answer(d.tag, false),
+                    DialogKind::ConfirmProfilerSettings { tab } => self.profiler_answer(tab, false),
                     // the next file dialog starts in the folder again (D-070)
                     DialogKind::OpenFile
                     | DialogKind::SaveFile
                     | DialogKind::ExportFile
-                    | DialogKind::SaveDefinition
-                    | DialogKind::OpenDefinition => self.files.places = None,
+                    | DialogKind::SaveDefinition { .. }
+                    | DialogKind::OpenDefinition { .. } => self.files.places = None,
                     _ => {}
                 }
             }
@@ -1436,41 +1408,55 @@ impl App {
                 let Some(dialog) = self.dialogs.pop() else {
                     return;
                 };
-                match (dialog.kind, id) {
-                    (DialogKind::Settings, "ok") => self.apply_settings(dialog),
-                    (DialogKind::FindObject, "ok") => self.find_chosen(dialog),
-                    (DialogKind::PsqlCommand, "ok") => {
+                match (dialog.kind.clone(), id) {
+                    // Cancel in a file dialog, as Esc: the next one starts in the
+                    // folder again (D-070)
+                    (
+                        DialogKind::OpenFile
+                        | DialogKind::SaveFile
+                        | DialogKind::ExportFile
+                        | DialogKind::SaveDefinition { .. }
+                        | DialogKind::OpenDefinition { .. },
+                        Button::Cancel,
+                    ) => self.files.places = None,
+                    (DialogKind::Settings, Button::Ok) => self.apply_settings(dialog),
+                    (DialogKind::FindObject, Button::Ok) => self.find_chosen(dialog),
+                    (DialogKind::PsqlCommand, Button::Ok) => {
                         let text = dialog.text("cmd").unwrap_or("").to_owned();
                         self.run_psql(dialog, &text);
                     }
-                    (DialogKind::Connection, "ok") => self.apply_connection(dialog),
-                    (DialogKind::Login, "ok") => self.apply_login(&dialog),
-                    // as disconnecting: questions first, then the server's tabs close
-                    (DialogKind::ConfirmDelete, "yes") => {
-                        self.request_bulk(Bulk::Delete(dialog.tag));
+                    (DialogKind::Connection { server }, Button::Ok) => {
+                        self.apply_connection(dialog, server)
                     }
-                    (DialogKind::Find, "cancel") => {}
+                    (DialogKind::Login { server }, Button::Ok) => self.apply_login(&dialog, server),
+                    // as disconnecting: questions first, then the server's tabs close
+                    (DialogKind::ConfirmDelete { server }, Button::Yes) => {
+                        self.request_bulk(Bulk::Delete(server));
+                    }
+                    (DialogKind::Find, Button::Cancel) => {}
                     (DialogKind::Find, button) => self.find_dialog_done(dialog, button),
                     (DialogKind::ReplaceConfirm, button) => self.replace_confirm_done(button),
-                    (DialogKind::SaveChanges, "yes") => {
-                        self.save_before(dialog.tag, AfterSave::Close(dialog.tag));
+                    (DialogKind::SaveChanges { tab }, Button::Yes) => {
+                        self.save_before(tab, AfterSave::Close(tab));
                     }
-                    (DialogKind::QuitSaveChanges, "yes") => {
-                        self.save_before(dialog.tag, AfterSave::Bulk);
+                    (DialogKind::QuitSaveChanges { tab }, Button::Yes) => {
+                        self.save_before(tab, AfterSave::Bulk);
                     }
-                    (DialogKind::QuitSaveChanges, "no") => {
+                    (DialogKind::QuitSaveChanges { tab }, Button::No) => {
                         if let Some((b, skip)) = self.closing.bulk.as_mut() {
-                            skip.push(dialog.tag);
+                            skip.push(tab);
                             let b = *b;
                             self.request_bulk(b);
                         }
                     }
-                    (DialogKind::SaveChanges, "no") => self.request_close_tab(dialog.tag, false),
-                    (DialogKind::CloseTransaction, "commit") => {
-                        self.finish_transaction(dialog.tag, AfterRun::CloseTab);
+                    (DialogKind::SaveChanges { tab }, Button::No) => {
+                        self.request_close_tab(tab, false)
                     }
-                    (DialogKind::CloseTransaction, "rollback") => self.close_tab(dialog.tag),
-                    (DialogKind::QuitTransactions, "commit") => {
+                    (DialogKind::CloseTransaction { tab }, Button::Commit) => {
+                        self.finish_transaction(tab, AfterRun::CloseTab);
+                    }
+                    (DialogKind::CloseTransaction { tab }, Button::Rollback) => self.close_tab(tab),
+                    (DialogKind::QuitTransactions, Button::Commit) => {
                         if let Some((b, _)) = self.closing.bulk.take() {
                             self.closing.bulk_pending = Some(b);
                             for id in self.bulk_transactions(b) {
@@ -1479,55 +1465,52 @@ impl App {
                             self.maybe_finish_bulk();
                         }
                     }
-                    (DialogKind::QuitTransactions, "rollback") => {
+                    (DialogKind::QuitTransactions, Button::Rollback) => {
                         // closing the connections rolls the transactions back
                         if let Some((b, _)) = self.closing.bulk.take() {
                             self.finish_bulk(b);
                         }
                     }
-                    (DialogKind::CancelWait, "close") => self.abort_query_conn(dialog.tag),
-                    (DialogKind::ConfirmCancelBackend, "yes") => {
-                        self.send_signal(dialog.tag, crate::dashboard::Signal::Cancel);
+                    (DialogKind::CancelWait { tab }, Button::Close) => self.abort_query_conn(tab),
+                    (DialogKind::ConfirmCancelBackend { tab }, Button::Yes) => {
+                        self.send_signal(tab, crate::dashboard::Signal::Cancel);
                     }
-                    (DialogKind::ConfirmProfilerSettings, button) => {
-                        self.profiler_answer(dialog.tag, button == "yes");
+                    (DialogKind::ConfirmProfilerSettings { tab }, button) => {
+                        self.profiler_answer(tab, button == Button::Yes);
                     }
-                    (DialogKind::ProfilerFilter, "ok") => self.apply_profiler_filter(&dialog),
-                    (DialogKind::ConfirmTerminateBackend, "yes") => {
-                        self.send_signal(dialog.tag, crate::dashboard::Signal::Terminate);
+                    (DialogKind::ProfilerFilter { tab }, Button::Ok) => {
+                        self.apply_profiler_filter(&dialog, tab);
+                    }
+                    (DialogKind::ConfirmTerminateBackend { tab }, Button::Yes) => {
+                        self.send_signal(tab, crate::dashboard::Signal::Terminate);
                     }
                     (
                         DialogKind::OpenFile | DialogKind::SaveFile | DialogKind::ExportFile,
-                        "ok" | "places",
+                        Button::Ok | Button::Places,
                     ) => self.file_dialog_done(dialog, id),
-                    (DialogKind::SaveDefinition | DialogKind::OpenDefinition, "ok" | "places") => {
+                    (
+                        DialogKind::SaveDefinition { .. } | DialogKind::OpenDefinition { .. },
+                        Button::Ok | Button::Places,
+                    ) => {
                         self.definition_dialog_done(dialog, id);
                     }
-                    (DialogKind::ConfirmDefinitionOverwrite, "yes") => {
-                        if let Payload::Database {
-                            uid,
+                    (
+                        DialogKind::ConfirmDefinitionOverwrite {
+                            server,
                             database,
-                            path: Some(path),
-                        } = dialog.payload
-                        {
-                            self.start_job(JobKind::Export(path), (uid, database));
-                        }
+                            path,
+                        },
+                        Button::Yes,
+                    ) => self.start_job(JobKind::Export(path), (server, database)),
+                    (DialogKind::TemplatePicker, Button::Ok) => self.template_chosen(dialog),
+                    (DialogKind::TemplateRow, Button::Ok) => self.row_done(dialog),
+                    (DialogKind::ConfirmExportOverwrite { path, options }, Button::Yes) => {
+                        self.start_export(path, options);
                     }
-                    (DialogKind::TemplatePicker, "ok") => self.template_chosen(dialog),
-                    (DialogKind::TemplateRow, "ok") => self.row_done(dialog),
-                    (DialogKind::ConfirmExportOverwrite, "yes") => {
-                        if let Payload::Export(path, options) = dialog.payload {
-                            self.start_export(path, options);
-                        }
-                    }
-                    (DialogKind::ConfirmOverwrite, "yes") => {
-                        if let Payload::Path(path) = dialog.payload {
-                            self.save_to(path);
-                        }
-                    }
+                    (DialogKind::ConfirmOverwrite { path }, Button::Yes) => self.save_to(path),
                     // No: the other setup steps still run (templates are kept)
-                    (DialogKind::ConfirmTemplatesOverwrite, b) => {
-                        self.finish_setup(dialog.tag == 1, b == "yes");
+                    (DialogKind::ConfirmTemplatesOverwrite { all_steps }, b) => {
+                        self.finish_setup(all_steps, b == Button::Yes);
                     }
                     _ => {}
                 }
@@ -1535,10 +1518,12 @@ impl App {
         }
         // a save for closing / quitting that was cancelled or failed: the tab stays
         // open, quitting stops
-        let saving = self
-            .dialogs
-            .iter()
-            .any(|d| matches!(d.kind, DialogKind::SaveFile | DialogKind::ConfirmOverwrite));
+        let saving = self.dialogs.iter().any(|d| {
+            matches!(
+                d.kind,
+                DialogKind::SaveFile | DialogKind::ConfirmOverwrite { .. }
+            )
+        });
         if !saving {
             self.closing.after_save = None;
         }
@@ -1546,7 +1531,7 @@ impl App {
             && !self.dialogs.iter().any(|d| {
                 matches!(
                     d.kind,
-                    DialogKind::QuitSaveChanges | DialogKind::QuitTransactions
+                    DialogKind::QuitSaveChanges { .. } | DialogKind::QuitTransactions
                 )
             })
         {

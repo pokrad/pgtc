@@ -8,7 +8,7 @@ use pgc_core::places::Place;
 use super::closing::AfterSave;
 use super::result_export::export_options;
 use super::{App, TextView};
-use crate::dialog::{Dialog, DialogKind, Payload, Widget};
+use crate::dialog::{Button, Dialog, DialogKind, Widget};
 
 /// Layout of a file dialog (D-041): the folder's listing with a name input.
 pub(super) struct FileDialog<'a> {
@@ -65,9 +65,9 @@ impl App {
         ));
         widgets.push(Widget::list("files", "", labels, 0, f.list_rows).highlighted(marks));
         widgets.extend(f.below);
-        widgets.push(Widget::button("ok", "&OK", true));
-        widgets.push(Widget::button("places", "&Places", false));
-        widgets.push(Widget::button("cancel", "&Cancel", false));
+        widgets.push(Widget::button(Button::Ok, "&OK", true));
+        widgets.push(Widget::button(Button::Places, "&Places", false));
+        widgets.push(Widget::button(Button::Cancel, "&Cancel", false));
         let mut dialog = Dialog::new(f.kind, f.title, 70, widgets);
         if f.pick || self.files.places.is_some() {
             dialog.focus_on("files");
@@ -102,8 +102,8 @@ impl App {
     /// The choice made in a file dialog with `button`: the selected entry of the
     /// listing when it has the focus, else the typed name or path. A folder becomes
     /// the dialogs' folder (D-070).
-    pub(super) fn picked(&mut self, dialog: &Dialog, button: &str) -> Picked {
-        if button == "places" {
+    pub(super) fn picked(&mut self, dialog: &Dialog, button: Button) -> Picked {
+        if button == Button::Places {
             self.show_places();
             return Picked::Folder;
         }
@@ -208,7 +208,7 @@ impl App {
         self.dialogs.push(dialog);
     }
 
-    pub(super) fn file_dialog_done(&mut self, dialog: Dialog, button: &str) {
+    pub(super) fn file_dialog_done(&mut self, dialog: Dialog, button: Button) {
         let save = dialog.kind == DialogKind::SaveFile;
         let export = dialog.kind == DialogKind::ExportFile;
         let path = match self.picked(&dialog, button) {
@@ -237,23 +237,21 @@ impl App {
         if export {
             let options = export_options(&dialog);
             if path.exists() {
-                self.dialogs.push(
-                    Dialog::confirm(
-                        DialogKind::ConfirmExportOverwrite,
-                        "Export result",
-                        &overwrite,
-                    )
-                    .with_payload(Payload::Export(path, options)),
-                );
+                self.dialogs.push(Dialog::confirm(
+                    DialogKind::ConfirmExportOverwrite { path, options },
+                    "Export result",
+                    &overwrite,
+                ));
             } else {
                 self.start_export(path, options);
             }
         } else if save {
             if path.exists() {
-                self.dialogs.push(
-                    Dialog::confirm(DialogKind::ConfirmOverwrite, "Save", &overwrite)
-                        .with_payload(Payload::Path(path)),
-                );
+                self.dialogs.push(Dialog::confirm(
+                    DialogKind::ConfirmOverwrite { path },
+                    "Save",
+                    &overwrite,
+                ));
             } else {
                 self.save_to(path);
             }

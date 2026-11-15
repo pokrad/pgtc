@@ -453,29 +453,28 @@ impl App {
         };
         let (kind, title, text) = match signal {
             Signal::Cancel if one => (
-                DialogKind::ConfirmCancelBackend,
+                DialogKind::ConfirmCancelBackend { tab },
                 "Cancel query",
                 format!("Cancel the running query of {who}?"),
             ),
             Signal::Cancel => (
-                DialogKind::ConfirmCancelBackend,
+                DialogKind::ConfirmCancelBackend { tab },
                 "Cancel queries",
                 format!("Cancel the running queries of {who}?"),
             ),
             Signal::Terminate if one => (
-                DialogKind::ConfirmTerminateBackend,
+                DialogKind::ConfirmTerminateBackend { tab },
                 "Terminate session",
                 format!("Terminate {who}?\nIts open transaction is rolled back."),
             ),
             Signal::Terminate => (
-                DialogKind::ConfirmTerminateBackend,
+                DialogKind::ConfirmTerminateBackend { tab },
                 "Terminate sessions",
                 format!("Terminate {who}?\nTheir open transactions are rolled back."),
             ),
         };
         d.asking = Some((signal, targets));
-        self.dialogs
-            .push(Dialog::confirm(kind, title, &text).with_tag(tab));
+        self.dialogs.push(Dialog::confirm(kind, title, &text));
     }
 
     /// Yes on the cancel / terminate question: sends the signal.

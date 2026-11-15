@@ -2,7 +2,7 @@
 //! setup steps and the templates folders (D-047).
 
 use super::App;
-use crate::dialog::{Dialog, DialogKind, Widget};
+use crate::dialog::{Button, Dialog, DialogKind, Widget};
 use crate::setup;
 use crate::theme::Theme;
 
@@ -44,10 +44,11 @@ impl App {
                 } else {
                     "Install templates"
                 };
-                self.dialogs.push(
-                    Dialog::confirm(DialogKind::ConfirmTemplatesOverwrite, title, &q)
-                        .with_tag(u64::from(all_steps)),
-                );
+                self.dialogs.push(Dialog::confirm(
+                    DialogKind::ConfirmTemplatesOverwrite { all_steps },
+                    title,
+                    &q,
+                ));
             }
             None => self.finish_setup(all_steps, true),
         }
@@ -114,8 +115,8 @@ impl App {
                     "OSC &52 clipboard (terminal, SSH)",
                     s.clipboard.osc52,
                 ),
-                Widget::button("ok", "&OK", true),
-                Widget::button("cancel", "&Cancel", false),
+                Widget::button(Button::Ok, "&OK", true),
+                Widget::button(Button::Cancel, "&Cancel", false),
             ],
         ));
     }

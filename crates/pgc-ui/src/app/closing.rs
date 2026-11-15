@@ -4,7 +4,7 @@
 use pgc_db::{ConnectionHandle, TxStatus};
 
 use super::{App, Focus, Tab, TabBody};
-use crate::dialog::{Dialog, DialogKind};
+use crate::dialog::{Button, Dialog, DialogKind};
 use crate::query_tab::{AfterRun, QueryConn};
 
 /// What follows a save asked for by "Save changes?" (D-019).
@@ -39,29 +39,27 @@ impl App {
         };
         if ask_save && self.settings.query.ask_save && tab.view.editor.modified() {
             let text = format!("{} has unsaved changes. Save them?", tab.label());
-            self.dialogs.push(
-                Dialog::confirm_buttons(
-                    DialogKind::SaveChanges,
-                    "Close query tab",
-                    &text,
-                    &[("yes", "&Yes"), ("no", "&No"), ("cancel", "&Cancel")],
-                )
-                .with_tag(id),
-            );
+            self.dialogs.push(Dialog::confirm_buttons(
+                DialogKind::SaveChanges { tab: id },
+                "Close query tab",
+                &text,
+                &[
+                    (Button::Yes, "&Yes"),
+                    (Button::No, "&No"),
+                    (Button::Cancel, "&Cancel"),
+                ],
+            ));
         } else if q.tx != TxStatus::Idle && q.connected() {
-            self.dialogs.push(
-                Dialog::confirm_buttons(
-                    DialogKind::CloseTransaction,
-                    "Close query tab",
-                    "This query tab has an open transaction.",
-                    &[
-                        ("commit", "Co&mmit"),
-                        ("rollback", "&Rollback"),
-                        ("cancel", "&Cancel"),
-                    ],
-                )
-                .with_tag(id),
-            );
+            self.dialogs.push(Dialog::confirm_buttons(
+                DialogKind::CloseTransaction { tab: id },
+                "Close query tab",
+                "This query tab has an open transaction.",
+                &[
+                    (Button::Commit, "Co&mmit"),
+                    (Button::Rollback, "&Rollback"),
+                    (Button::Cancel, "&Cancel"),
+                ],
+            ));
         } else {
             self.close_tab(id);
         }
@@ -172,15 +170,16 @@ impl App {
             let tab = &self.tabs[i];
             let text = format!("{} has unsaved changes. Save them?", tab.label());
             let id = tab.id;
-            self.dialogs.push(
-                Dialog::confirm_buttons(
-                    DialogKind::QuitSaveChanges,
-                    title,
-                    &text,
-                    &[("yes", "&Yes"), ("no", "&No"), ("cancel", "&Cancel")],
-                )
-                .with_tag(id),
-            );
+            self.dialogs.push(Dialog::confirm_buttons(
+                DialogKind::QuitSaveChanges { tab: id },
+                title,
+                &text,
+                &[
+                    (Button::Yes, "&Yes"),
+                    (Button::No, "&No"),
+                    (Button::Cancel, "&Cancel"),
+                ],
+            ));
             return;
         }
         let open = self.bulk_transactions(b).len();
@@ -200,9 +199,9 @@ impl App {
             title,
             &text,
             &[
-                ("commit", "Co&mmit all"),
-                ("rollback", "&Rollback all"),
-                ("cancel", "&Cancel"),
+                (Button::Commit, "Co&mmit all"),
+                (Button::Rollback, "&Rollback all"),
+                (Button::Cancel, "&Cancel"),
             ],
         ));
     }

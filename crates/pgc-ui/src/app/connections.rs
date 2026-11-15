@@ -11,7 +11,7 @@ use pgc_db::{ConnId, ConnectParams, ConnectionHandle, DbError, DbEvent};
 
 use super::{App, Focus, Target};
 use crate::dashboard::DashConn;
-use crate::dialog::{Dialog, DialogKind, Widget};
+use crate::dialog::{Button, Dialog, DialogKind, Widget};
 use crate::objects::ObjType;
 use crate::tree::{ConnState, DbConn};
 
@@ -453,7 +453,7 @@ impl App {
             "New connection"
         };
         let dialog = Dialog::new(
-            DialogKind::Connection,
+            DialogKind::Connection { server: uid },
             title,
             64,
             vec![
@@ -473,15 +473,14 @@ impl App {
                     conn.ssl_root_cert.as_deref().unwrap_or(""),
                     lw,
                 ),
-                Widget::button("ok", "&OK", true),
-                Widget::button("cancel", "&Cancel", false),
+                Widget::button(Button::Ok, "&OK", true),
+                Widget::button(Button::Cancel, "&Cancel", false),
             ],
-        )
-        .with_tag(uid.unwrap_or(0));
+        );
         self.dialogs.push(dialog);
     }
 
-    pub(super) fn apply_connection(&mut self, dialog: Dialog) {
+    pub(super) fn apply_connection(&mut self, dialog: Dialog, server: Option<u64>) {
         let text = |id: &str| dialog.text(id).unwrap_or("").trim().to_owned();
         let port = match text("port").parse::<u16>() {
             Ok(p) if p > 0 => p,
@@ -529,7 +528,7 @@ impl App {
             .map(str::to_owned);
         let save = dialog.checked("save");
 
-        if dialog.tag == 0 {
+        let Some(server) = server else {
             let uid = self.tree.add(conn);
             if let Some(node) = self.tree.by_uid(uid) {
                 node.password = password;
@@ -539,7 +538,9 @@ impl App {
             self.tree.select_server(uid);
             self.focus = Focus::Tree;
             self.connect_server(uid);
-        } else if let Some(node) = self.tree.by_uid(dialog.tag) {
+            return;
+        };
+        if let Some(node) = self.tree.by_uid(server) {
             let connected = node.state != ConnState::Disconnected;
             node.conn = conn;
             if password.is_some() {
@@ -566,27 +567,23 @@ impl App {
         if let Some(e) = &error {
             text = format!("{e}\n\n{text}");
         }
-        self.dialogs.push(
-            Dialog::new(
-                DialogKind::Login,
-                "Login",
-                60,
-                vec![
-                    Widget::label(&text),
-                    Widget::label(""),
-                    Widget::field("password", "&Password:", "", 11).masked(),
-                    Widget::checkbox("save", "&Save password", false),
-                    Widget::button("ok", "&OK", true),
-                    Widget::button("cancel", "&Cancel", false),
-                ],
-            )
-            .with_tag(uid),
-        );
+        self.dialogs.push(Dialog::new(
+            DialogKind::Login { server: uid },
+            "Login",
+            60,
+            vec![
+                Widget::label(&text),
+                Widget::label(""),
+                Widget::field("password", "&Password:", "", 11).masked(),
+                Widget::checkbox("save", "&Save password", false),
+                Widget::button(Button::Ok, "&OK", true),
+                Widget::button(Button::Cancel, "&Cancel", false),
+            ],
+        ));
         self.status = "Password required".to_owned();
     }
 
-    pub(super) fn apply_login(&mut self, dialog: &Dialog) {
-        let uid = dialog.tag;
+    pub(super) fn apply_login(&mut self, dialog: &Dialog, uid: u64) {
         let password = dialog.text("password").unwrap_or("").to_owned();
         let save = dialog.checked("save");
         if let Some(node) = self.tree.by_uid(uid) {
@@ -602,9 +599,11 @@ impl App {
         };
         let text = format!("Delete connection \"{}\"?", node.conn.name);
         let uid = node.uid;
-        self.dialogs.push(
-            Dialog::confirm(DialogKind::ConfirmDelete, "Delete connection", &text).with_tag(uid),
-        );
+        self.dialogs.push(Dialog::confirm(
+            DialogKind::ConfirmDelete { server: uid },
+            "Delete connection",
+            &text,
+        ));
     }
 
     /// Removes a server from the tree and the settings; its tabs and connections are

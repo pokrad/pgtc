@@ -6,7 +6,7 @@ use pgc_sql::devtemplate::{self, ParamType, ParamValue, QualName, TemplateLibrar
 
 use super::lookups::LookupTarget;
 use super::{App, CONNECTION_BUSY, Focus};
-use crate::dialog::{Dialog, DialogKind, Widget};
+use crate::dialog::{Button, Dialog, DialogKind, Widget};
 use crate::template_dialog::{Choice, FormEvent, TemplateForm};
 use crate::tree::RowKind;
 
@@ -73,8 +73,8 @@ impl App {
                 Widget::field("search", "&Search:", "", 9),
                 Widget::list("items", "", Vec::new(), 0, 14),
                 Widget::label_id("desc", " "),
-                Widget::button("ok", "&OK", true),
-                Widget::button("cancel", "&Cancel", false),
+                Widget::button(Button::Ok, "&OK", true),
+                Widget::button(Button::Cancel, "&Cancel", false),
             ],
         ));
         self.sync_picker();
@@ -363,8 +363,8 @@ impl App {
                 }
             }
         }
-        widgets.push(Widget::button("ok", "&OK", true));
-        widgets.push(Widget::button("cancel", "&Cancel", false));
+        widgets.push(Widget::button(Button::Ok, "&OK", true));
+        widgets.push(Widget::button(Button::Cancel, "&Cancel", false));
         let title = if row.is_some() { "Edit row" } else { "Add row" };
         self.templates.row_edit = Some((field, row));
         self.dialogs.push(Dialog::new(

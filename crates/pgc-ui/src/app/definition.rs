@@ -5,7 +5,7 @@ use pgc_db::{ConnId, DbEvent};
 
 use super::files::{FileDialog, Picked};
 use super::{App, Target, TextView};
-use crate::dialog::{Dialog, DialogKind, Payload, Widget};
+use crate::dialog::{Button, Dialog, DialogKind, Widget};
 use crate::tree::RowKind;
 
 /// A definition export or load running on its own connection (D-048).
@@ -37,36 +37,38 @@ impl App {
     /// The file dialog of a definition export (`save`) or load for `target`: server
     /// uid and database (D-048).
     pub(super) fn open_definition_dialog(&mut self, save: bool, name: &str, target: (u64, String)) {
+        let (server, database) = target;
+        let label = Widget::label(&format!("Database: {database}"));
         let (kind, title) = if save {
-            (DialogKind::SaveDefinition, "Export database definition")
+            (
+                DialogKind::SaveDefinition { server, database },
+                "Export database definition",
+            )
         } else {
-            (DialogKind::OpenDefinition, "Load database definition")
+            (
+                DialogKind::OpenDefinition { server, database },
+                "Load database definition",
+            )
         };
-        let (uid, database) = target;
-        let dialog = self
-            .file_dialog(FileDialog {
-                kind,
-                title,
-                ext: "pgdef",
-                name,
-                label_width: 15,
-                list_rows: 14,
-                above: vec![Widget::label(&format!("Database: {database}"))],
-                below: Vec::new(),
-                pick: !save,
-            })
-            .with_payload(Payload::Database {
-                uid,
-                database,
-                path: None,
-            });
+        let dialog = self.file_dialog(FileDialog {
+            kind,
+            title,
+            ext: "pgdef",
+            name,
+            label_width: 15,
+            list_rows: 14,
+            above: vec![label],
+            below: Vec::new(),
+            pick: !save,
+        });
         self.dialogs.push(dialog);
     }
 
-    pub(super) fn definition_dialog_done(&mut self, dialog: Dialog, button: &str) {
-        let save = dialog.kind == DialogKind::SaveDefinition;
-        let Payload::Database { uid, database, .. } = dialog.payload.clone() else {
-            return;
+    pub(super) fn definition_dialog_done(&mut self, dialog: Dialog, button: Button) {
+        let (save, uid, database) = match &dialog.kind {
+            DialogKind::SaveDefinition { server, database } => (true, *server, database.clone()),
+            DialogKind::OpenDefinition { server, database } => (false, *server, database.clone()),
+            _ => return,
         };
         let path = match self.picked(&dialog, button) {
             Picked::Nothing => {
@@ -88,18 +90,15 @@ impl App {
         if save {
             if path.exists() {
                 let text = format!("{} exists. Overwrite it?", path.display());
-                self.dialogs.push(
-                    Dialog::confirm(
-                        DialogKind::ConfirmDefinitionOverwrite,
-                        "Export database definition",
-                        &text,
-                    )
-                    .with_payload(Payload::Database {
-                        uid,
+                self.dialogs.push(Dialog::confirm(
+                    DialogKind::ConfirmDefinitionOverwrite {
+                        server: uid,
                         database,
-                        path: Some(path),
-                    }),
-                );
+                        path,
+                    },
+                    "Export database definition",
+                    &text,
+                ));
             } else {
                 self.start_job(JobKind::Export(path), (uid, database));
             }

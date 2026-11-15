@@ -3,7 +3,7 @@
 use pgc_db::DbError;
 use pgc_sql::RenderContext;
 
-use super::{App, Effect, TabBody, TabKind, TextView};
+use super::{App, Effect, TabBody, TextView};
 use crate::tree::{ConnState, RowKind, ServerSettings, Setting};
 
 /// Values longer than this are not padded to line up the sources.
@@ -310,7 +310,7 @@ impl App {
             self.active_tab
         };
         let tab = &self.tabs[i];
-        if matches!(tab.kind(), TabKind::Query(_)) {
+        if tab.query().is_some() {
             return Err("");
         }
         if tab.view.loading {

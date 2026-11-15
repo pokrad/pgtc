@@ -8,7 +8,7 @@ use pgc_db::DbError;
 use pgc_sql::RenderContext;
 
 use super::{App, Effect, Focus};
-use crate::dialog::{Dialog, DialogKind, Widget};
+use crate::dialog::{Button, Dialog, DialogKind, Widget};
 use crate::objects::ObjType;
 use crate::tree::{ConnState, NodeKind, RowKind};
 
@@ -284,8 +284,8 @@ impl App {
                     row_text("Database", "Schema", "Name", "Type")
                 )),
                 Widget::list("list", "", Vec::new(), 0, rows),
-                Widget::button("ok", "&OK", true),
-                Widget::button("cancel", "Ca&ncel", false),
+                Widget::button(Button::Ok, "&OK", true),
+                Widget::button(Button::Cancel, "Ca&ncel", false),
             ],
         ));
         self.find = Some(FindState {

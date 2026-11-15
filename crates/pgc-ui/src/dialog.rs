@@ -21,53 +21,96 @@ use crate::hotkey::HotText;
 use crate::keymap::Command;
 use crate::theme::{Role, Theme};
 
-/// What the dialog is for; the app uses it (and [`Dialog::tag`]) to handle the result.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// What a dialog is for, with the caller's data it is about (a server, a tab, a file);
+/// the app handles the result by it. The data goes with the dialog, so a cancelled
+/// question leaves nothing behind.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DialogKind {
     Message,
     Settings,
-    Connection,
-    Login,
-    ConfirmDelete,
+    /// New connection (`server` is `None`) or Edit connection (D-035).
+    Connection {
+        server: Option<u64>,
+    },
+    Login {
+        server: u64,
+    },
+    ConfirmDelete {
+        server: u64,
+    },
     Find,
     ReplaceConfirm,
     /// Close a query tab with unsaved text (D-019).
-    SaveChanges,
+    SaveChanges {
+        tab: u64,
+    },
     /// Quit with a query tab with unsaved text (D-019).
-    QuitSaveChanges,
+    QuitSaveChanges {
+        tab: u64,
+    },
     /// Close a query tab with an open transaction (D-019).
-    CloseTransaction,
+    CloseTransaction {
+        tab: u64,
+    },
     /// Quit with open transactions (D-019).
     QuitTransactions,
     /// The server did not react to a cancel request (D-041).
-    CancelWait,
+    CancelWait {
+        tab: u64,
+    },
     OpenFile,
     SaveFile,
-    ConfirmOverwrite,
+    ConfirmOverwrite {
+        path: PathBuf,
+    },
     /// Export result (D-042).
     ExportFile,
-    ConfirmExportOverwrite,
+    ConfirmExportOverwrite {
+        path: PathBuf,
+        options: ExportOptions,
+    },
     /// Developer templates (D-046): the picker and a row of a list parameter.
     TemplatePicker,
     TemplateRow,
-    /// Export / load database definition (D-048).
-    SaveDefinition,
-    OpenDefinition,
-    ConfirmDefinitionOverwrite,
-    /// Install templates into an existing templates folder (D-013).
-    ConfirmTemplatesOverwrite,
+    /// Export / load database definition (D-048): server uid and database.
+    SaveDefinition {
+        server: u64,
+        database: String,
+    },
+    OpenDefinition {
+        server: u64,
+        database: String,
+    },
+    ConfirmDefinitionOverwrite {
+        server: u64,
+        database: String,
+        path: PathBuf,
+    },
+    /// Install templates into an existing templates folder (D-013); `all_steps`: as
+    /// part of Run setup (D-047).
+    ConfirmTemplatesOverwrite {
+        all_steps: bool,
+    },
     /// Help windows: scrolling text with a Close button (D-014).
     Viewer,
     /// psql-style command line (D-054).
     PsqlCommand,
     /// Find object in the tree (D-055).
     FindObject,
-    /// Dashboard: cancel query / terminate session of a session (D-057).
-    ConfirmCancelBackend,
-    ConfirmTerminateBackend,
-    /// SQL profiler: change the logging settings? and the filter (D-058).
-    ConfirmProfilerSettings,
-    ProfilerFilter,
+    /// Dashboard tab `tab`: cancel query / terminate session of a session (D-057).
+    ConfirmCancelBackend {
+        tab: u64,
+    },
+    ConfirmTerminateBackend {
+        tab: u64,
+    },
+    /// SQL profiler tab `tab`: change the logging settings? and the filter (D-058).
+    ConfirmProfilerSettings {
+        tab: u64,
+    },
+    ProfilerFilter {
+        tab: u64,
+    },
 }
 
 /// A `&'static str` for a dynamic widget id (template parameter names). Each distinct
@@ -121,6 +164,7 @@ pub enum WidgetKind {
     },
     Button {
         default: bool,
+        button: Button,
     },
     /// Read-only text that scrolls (Help windows). `headers` lines are drawn in the
     /// hotkey colour.
@@ -258,11 +302,19 @@ impl Widget {
         }
     }
 
-    pub fn button(id: &'static str, label: &str, default: bool) -> Self {
+    pub fn button(button: Button, label: &str, default: bool) -> Self {
         Self {
-            id,
+            id: button.id(),
             label: HotText::new(label),
-            kind: WidgetKind::Button { default },
+            kind: WidgetKind::Button { default, button },
+        }
+    }
+
+    /// Which button the widget is, if it is one.
+    fn button_of(&self) -> Option<Button> {
+        match self.kind {
+            WidgetKind::Button { button, .. } => Some(button),
+            _ => None,
         }
     }
 
@@ -322,7 +374,7 @@ impl Widget {
 
     fn button_text(&self) -> (String, String) {
         match self.kind {
-            WidgetKind::Button { default: true } => ("[< ".into(), " >]".into()),
+            WidgetKind::Button { default: true, .. } => ("[< ".into(), " >]".into()),
             _ => ("[ ".into(), " ]".into()),
         }
     }
@@ -339,35 +391,58 @@ pub enum DialogEvent {
     None,
     /// Closed with Esc / F10 / Cancel.
     Cancelled,
-    /// Button with this id pressed.
-    Button(&'static str),
+    /// This button was pressed.
+    Button(Button),
 }
 
-/// Caller data a dialog carries until it is answered. It goes with the dialog, so a
-/// cancelled question leaves nothing behind.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub enum Payload {
-    #[default]
-    None,
-    /// The file a question is about (overwrite it?).
-    Path(PathBuf),
-    /// Result export (D-042): the file and the chosen options.
-    Export(PathBuf, ExportOptions),
-    /// Definition export / load (D-048): server uid and database, and the file a
-    /// question is about.
-    Database {
-        uid: u64,
-        database: String,
-        path: Option<PathBuf>,
-    },
+/// The buttons of the dialogs. What a button means depends on the dialog it is in
+/// ([`DialogKind`]); its text is given where the dialog is built.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Button {
+    Ok,
+    Cancel,
+    Yes,
+    No,
+    /// Open transactions when a tab closes or pgtc quits (D-019).
+    Commit,
+    Rollback,
+    /// The server did not react to a cancel request (D-041): close the connection, or
+    /// keep waiting.
+    Close,
+    Wait,
+    /// File dialogs: show the places (D-070).
+    Places,
+    /// Find / replace (D-038).
+    Find,
+    Replace,
+    ReplaceAll,
+    Skip,
+}
+
+impl Button {
+    /// The widget id of the button (for the focus and the tests).
+    pub fn id(self) -> &'static str {
+        match self {
+            Button::Ok => "ok",
+            Button::Cancel => "cancel",
+            Button::Yes => "yes",
+            Button::No => "no",
+            Button::Commit => "commit",
+            Button::Rollback => "rollback",
+            Button::Close => "close",
+            Button::Wait => "wait",
+            Button::Places => "places",
+            Button::Find => "find",
+            Button::Replace => "replace",
+            Button::ReplaceAll => "all",
+            Button::Skip => "skip",
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct Dialog {
     pub kind: DialogKind,
-    /// Caller data, e.g. the server the dialog is about.
-    pub tag: u64,
-    pub payload: Payload,
     pub title: String,
     pub widgets: Vec<Widget>,
     pub focus: usize,
@@ -384,24 +459,12 @@ impl Dialog {
         let focus = widgets.iter().position(Widget::focusable).unwrap_or(0);
         Self {
             kind,
-            tag: 0,
-            payload: Payload::None,
             title: title.to_owned(),
             widgets,
             focus,
             width,
             error: false,
         }
-    }
-
-    pub fn with_tag(mut self, tag: u64) -> Self {
-        self.tag = tag;
-        self
-    }
-
-    pub fn with_payload(mut self, payload: Payload) -> Self {
-        self.payload = payload;
-        self
     }
 
     /// A message box with an OK button.
@@ -412,7 +475,7 @@ impl Dialog {
             DialogKind::Message,
             title,
             width,
-            vec![Widget::label(text), Widget::button("ok", "&OK", true)],
+            vec![Widget::label(text), Widget::button(Button::Ok, "&OK", true)],
         );
         d.error = error;
         d
@@ -428,8 +491,8 @@ impl Dialog {
             width,
             vec![
                 Widget::label(text),
-                Widget::button("yes", "&Yes", true),
-                Widget::button("no", "&No", false),
+                Widget::button(Button::Yes, "&Yes", true),
+                Widget::button(Button::No, "&No", false),
             ],
         );
         d.error = true;
@@ -442,7 +505,7 @@ impl Dialog {
         kind: DialogKind,
         title: &str,
         text: &str,
-        buttons: &[(&'static str, &str)],
+        buttons: &[(Button, &str)],
     ) -> Self {
         let width = text.lines().map(|l| l.chars().count()).max().unwrap_or(0) as u16;
         let buttons_width: u16 = buttons
@@ -451,8 +514,8 @@ impl Dialog {
             .sum();
         let width = width.max(buttons_width).max(24) + CHROME_X;
         let mut widgets = vec![Widget::label(text)];
-        for (i, (id, label)) in buttons.iter().enumerate() {
-            widgets.push(Widget::button(id, label, i == 0));
+        for (i, (button, label)) in buttons.iter().enumerate() {
+            widgets.push(Widget::button(*button, label, i == 0));
         }
         let mut d = Self::new(kind, title, width, widgets);
         d.focus = 1;
@@ -584,9 +647,10 @@ impl Dialog {
         match self
             .widgets
             .iter()
-            .find(|w| matches!(w.kind, WidgetKind::Button { default: true }))
+            .find(|w| matches!(w.kind, WidgetKind::Button { default: true, .. }))
+            .and_then(Widget::button_of)
         {
-            Some(w) => DialogEvent::Button(w.id),
+            Some(button) => DialogEvent::Button(button),
             None => DialogEvent::None,
         }
     }
@@ -601,9 +665,10 @@ impl Dialog {
             return match self
                 .widgets
                 .iter()
-                .find(|w| matches!(w.kind, WidgetKind::Button { default: true }))
+                .find(|w| matches!(w.kind, WidgetKind::Button { default: true, .. }))
+                .and_then(Widget::button_of)
             {
-                Some(w) => DialogEvent::Button(w.id),
+                Some(button) => DialogEvent::Button(button),
                 None => DialogEvent::None,
             };
         }
@@ -682,8 +747,8 @@ impl Dialog {
                 self.combo_set_open(true);
             }
             Command::Accept => {
-                if self.widgets[self.focus].is_button() {
-                    return DialogEvent::Button(self.widgets[self.focus].id);
+                if let Some(button) = self.widgets[self.focus].button_of() {
+                    return DialogEvent::Button(button);
                 }
                 return self.default_button();
             }
@@ -720,7 +785,7 @@ impl Dialog {
         let w = &mut self.widgets[i];
         match &mut w.kind {
             WidgetKind::Checkbox { checked } => *checked = !*checked,
-            WidgetKind::Button { .. } => return DialogEvent::Button(w.id),
+            WidgetKind::Button { button, .. } => return DialogEvent::Button(*button),
             WidgetKind::Combo { .. } if was_focused => self.combo_set_open(true),
             _ => {}
         }
@@ -1486,8 +1551,8 @@ mod tests {
                     2,
                 ),
                 Widget::combo("mode", "&Mode:", vec!["x".into(), "y".into()], 0, 8),
-                Widget::button("ok", "&OK", true),
-                Widget::button("cancel", "&Cancel", false),
+                Widget::button(Button::Ok, "&OK", true),
+                Widget::button(Button::Cancel, "&Cancel", false),
             ],
         )
     }
@@ -1535,16 +1600,16 @@ mod tests {
         press(&mut d, "Enter");
         assert_eq!(d.selected("mode"), Some(0));
         press(&mut d, "Tab"); // Enter on the combo would open its list again
-        assert_eq!(press(&mut d, "Enter"), DialogEvent::Button("ok"));
-        assert_eq!(press(&mut d, "c"), DialogEvent::Button("cancel"));
+        assert_eq!(press(&mut d, "Enter"), DialogEvent::Button(Button::Ok));
+        assert_eq!(press(&mut d, "c"), DialogEvent::Button(Button::Cancel));
         assert_eq!(press(&mut d, "Esc"), DialogEvent::Cancelled);
         // Ctrl+Enter: the default button from anywhere, also with a combo list open
         d.focus = d.widgets.iter().position(|w| w.id == "cancel").unwrap();
-        assert_eq!(press(&mut d, "Ctrl+Enter"), DialogEvent::Button("ok"));
+        assert_eq!(press(&mut d, "Ctrl+Enter"), DialogEvent::Button(Button::Ok));
         d.focus = d.widgets.iter().position(|w| w.id == "mode").unwrap();
         press(&mut d, "Space");
         press(&mut d, "Down");
-        assert_eq!(press(&mut d, "Ctrl+Enter"), DialogEvent::Button("ok"));
+        assert_eq!(press(&mut d, "Ctrl+Enter"), DialogEvent::Button(Button::Ok));
         assert!(!d.combo_open());
         assert_eq!(d.selected("mode"), Some(1));
     }
@@ -1563,7 +1628,7 @@ mod tests {
                     0,
                     10,
                 ),
-                Widget::button("ok", "&OK", true),
+                Widget::button(Button::Ok, "&OK", true),
             ],
         );
         press(&mut d, "Right"); // closed: Left/Right change the value
@@ -1591,7 +1656,7 @@ mod tests {
         assert!(d.combo_open());
         press(&mut d, "Tab"); // closes the list and moves on
         assert!(!d.combo_open());
-        assert_eq!(press(&mut d, "Enter"), DialogEvent::Button("ok"));
+        assert_eq!(press(&mut d, "Enter"), DialogEvent::Button(Button::Ok));
         // mouse: open with a click on the field, pick the first row
         let screen = Rect::new(0, 0, 80, 25);
         let outer = d.area(screen);
