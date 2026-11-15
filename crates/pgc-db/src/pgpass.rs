@@ -61,9 +61,11 @@ fn escape(value: &str) -> String {
     value.replace('\\', "\\\\").replace(':', "\\:")
 }
 
-/// Returns `text` with the entry for `key` set to `password`: a line with exactly the
-/// same host, port, database and user is replaced, otherwise a line is appended.
-/// Other lines and comments are kept.
+/// Returns `text` with the entry for `key` set to `password`, so that [`lookup`] finds
+/// it: a line with exactly the same host, port, database and user is replaced; when a
+/// wildcard line matches `key` before it (the first matching line wins), the entry is
+/// put in front of that line instead. Without a matching line it is appended. Other
+/// lines and comments are kept.
 pub fn upsert(text: &str, key: PgPassKey<'_>, password: &str) -> String {
     let port = key.port.to_string();
     let new_line = format!(
@@ -74,25 +76,31 @@ pub fn upsert(text: &str, key: PgPassKey<'_>, password: &str) -> String {
         escape(key.username),
         escape(password)
     );
-    let mut replaced = false;
-    let mut lines: Vec<String> = text
-        .lines()
-        .map(|line| {
-            if !replaced
-                && let Some([h, p, d, u, _]) = parse_line(line)
-                && h == key.host
-                && p == port
-                && d == key.database
-                && u == key.username
-            {
-                replaced = true;
-                return new_line.clone();
-            }
-            line.to_owned()
+    let mut lines: Vec<String> = text.lines().map(str::to_owned).collect();
+    let fields: Vec<Option<[String; 5]>> = lines.iter().map(|l| parse_line(l)).collect();
+    let exact = fields.iter().position(|f| {
+        f.as_ref().is_some_and(|[h, p, d, u, _]| {
+            h == key.host && *p == port && d == key.database && u == key.username
         })
-        .collect();
-    if !replaced {
-        lines.push(new_line);
+    });
+    let first_match = fields.iter().position(|f| {
+        f.as_ref().is_some_and(|[h, p, d, u, _]| {
+            field_matches(h, key.host)
+                && field_matches(p, &port)
+                && field_matches(d, key.database)
+                && field_matches(u, key.username)
+        })
+    });
+    match (first_match, exact) {
+        (Some(m), Some(e)) if m == e => lines[e] = new_line,
+        // a wildcard line comes first: the entry goes in front of it
+        (Some(m), exact) => {
+            if let Some(e) = exact {
+                lines.remove(e);
+            }
+            lines.insert(m, new_line);
+        }
+        (None, _) => lines.push(new_line),
     }
     let mut out = lines.join("\n");
     out.push('\n');
@@ -207,9 +215,18 @@ mod tests {
             lookup(&t, key("h:x", 5432, "d", "u")).as_deref(),
             Some("p:w")
         );
-        // A wildcard line is not "the same" entry: appended, not replaced.
-        let t = upsert("*:5432:d:u:old\n", key("h", 5432, "d", "u"), "p");
-        assert_eq!(t, "*:5432:d:u:old\nh:5432:d:u:p\n");
+        // A wildcard line is not "the same" entry: it is kept, and the new entry goes
+        // in front of it, because the first matching line wins.
+        let k = key("h", 5432, "d", "u");
+        let t = upsert("*:5432:d:u:old\n", k, "p");
+        assert_eq!(t, "h:5432:d:u:p\n*:5432:d:u:old\n");
+        assert_eq!(lookup(&t, k).as_deref(), Some("p"));
+        // an exact line after the wildcard was never used: it moves to the front
+        let t = upsert("# c\n*:5432:d:u:old\nh:5432:d:u:stale\n", k, "p");
+        assert_eq!(t, "# c\nh:5432:d:u:p\n*:5432:d:u:old\n");
+        // an exact line before the wildcard is replaced where it is
+        let t = upsert("h:5432:d:u:stale\n*:*:*:*:any\n", k, "p");
+        assert_eq!(t, "h:5432:d:u:p\n*:*:*:*:any\n");
     }
 
     #[test]

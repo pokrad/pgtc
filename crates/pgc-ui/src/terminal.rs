@@ -59,10 +59,11 @@ pub fn enter() -> io::Result<Tui> {
     }
 }
 
-/// Restores the terminal. Safe to call several times; does nothing if not active.
-pub fn leave() {
+/// Restores the terminal. Safe to call several times; does nothing (and returns
+/// false) if not active.
+pub fn leave() -> bool {
     if !ACTIVE.swap(false, Ordering::SeqCst) {
-        return;
+        return false;
     }
     let mut out = stdout();
     // Errors are ignored: we do our best to restore, and there is nobody to report to.
@@ -77,15 +78,25 @@ pub fn leave() {
         crossterm::cursor::Show
     );
     let _ = disable_raw_mode();
+    true
 }
 
 /// Installs a panic hook that restores the terminal before the panic message is
 /// printed. Call this first thing in `main`.
+///
+/// A panic on the main thread unwinds out of `main` as usual. A panic anywhere else
+/// (a connection task, a timer, an export thread) would leave the UI loop running
+/// on a terminal that is no longer in raw mode, so the process ends there.
 pub fn install_panic_hook() {
     let previous = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
-        leave();
+        let was_active = leave();
         tracing::error!("panic: {info}");
         previous(info);
+        if was_active && std::thread::current().name() != Some("main") {
+            // the log is written by a background thread: give it a moment
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            std::process::exit(101);
+        }
     }));
 }

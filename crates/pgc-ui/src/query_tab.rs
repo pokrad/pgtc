@@ -260,6 +260,31 @@ impl QueryState {
         }
     }
 
+    /// The tab's connection is gone (lost, or closed after a cancel without reaction):
+    /// nothing runs any more, a paused result has no more rows, and an export that
+    /// still needed rows from the stream is aborted — its file would be incomplete
+    /// (D-042).
+    pub fn connection_gone(&mut self) {
+        self.conn = None;
+        self.running = None;
+        self.tx = TxStatus::Idle;
+        self.drop_rows = false;
+        let last = self.results.len().saturating_sub(1);
+        if let Some(e) = self.export.as_mut() {
+            let from_stream = e.awaiting_rows
+                || (e.set == last && self.results.get(e.set).is_some_and(|rs| rs.more));
+            e.awaiting_rows = false;
+            if from_stream && e.abort_reason.is_none() {
+                e.abort_reason = Some("The connection was lost during the export".to_owned());
+                let _ = e.writer.send(crate::export::ToWriter::Abort);
+            }
+        }
+        if let Some(rs) = self.results.last_mut() {
+            rs.more = false;
+            rs.fetching = false;
+        }
+    }
+
     /// Clears results and messages for a new execution; the first result set will be
     /// shown (D-019).
     pub fn start_run(&mut self, run: u64, sent: Sent) {

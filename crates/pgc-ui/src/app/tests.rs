@@ -3420,3 +3420,294 @@ fn direct_keys_for_the_frames() {
         Some(Command::SelectWordLeft)
     );
 }
+
+/// A connected query tab (no real connection behind it) on connection `conn`.
+fn connected_tab(a: &mut App, conn: ConnId) -> u64 {
+    a.new_query_tab(None);
+    let tab = a.tabs[a.active_tab].id;
+    let q = a.query_mut().unwrap();
+    q.conn = Some(QueryConn {
+        id: conn,
+        database: "shop".into(),
+        handle: pgc_db::ConnectionHandle::detached(conn),
+        cancel: None,
+        state: QueryConnState::Connected,
+        ssl_mode: SslMode::default(),
+        ssl_root_cert: None,
+    });
+    a.connections.insert(conn, Target::Query(tab));
+    tab
+}
+
+/// The events that end the tab's running statement: an error or a command tag, then
+/// the end of the run with an idle session.
+fn end_run(a: &mut App, conn: ConnId, tab: u64, outcome: Result<&str, &str>) {
+    let run = a.next_run;
+    let event = match outcome {
+        Ok(tag) => pgc_db::QueryEvent::Command {
+            tag: tag.to_owned(),
+        },
+        Err(message) => pgc_db::QueryEvent::Error(pgc_db::ServerMessage {
+            severity: "ERROR".into(),
+            message: message.to_owned(),
+            ..Default::default()
+        }),
+    };
+    for event in [
+        event,
+        pgc_db::QueryEvent::Finished {
+            elapsed: std::time::Duration::from_millis(1),
+            status: TxStatus::Idle,
+        },
+    ] {
+        a.on_query_event(
+            conn,
+            tab,
+            DbEvent::Query {
+                id: conn,
+                run,
+                event,
+            },
+        );
+    }
+}
+
+/// "Commit" when a tab closes (D-019): the tab closes only when the server answered
+/// COMMIT. A failed transaction answers ROLLBACK and a deferred constraint fails the
+/// COMMIT itself: the tab then stays, with the reason in Messages.
+#[tokio::test]
+async fn closing_with_commit_needs_a_real_commit() {
+    let (mut a, _d) = app();
+    let tab = connected_tab(&mut a, 99);
+    let commit_on_close = |a: &mut App| {
+        a.query_mut().unwrap().tx = TxStatus::InTransaction;
+        a.run(Command::CloseTab);
+        assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::CloseTransaction);
+        key(a, "m");
+        assert!(a.dialogs.is_empty());
+        assert!(a.query().unwrap().busy(), "COMMIT was sent");
+    };
+
+    // the transaction had failed: COMMIT rolls it back
+    commit_on_close(&mut a);
+    end_run(&mut a, 99, tab, Ok("ROLLBACK"));
+    assert!(a.tab_index(tab).is_some(), "the tab stays");
+    assert!(a.status.contains("not committed"), "{}", a.status);
+    assert!(a.query().unwrap().on_messages());
+
+    // the COMMIT itself fails (a deferred constraint)
+    commit_on_close(&mut a);
+    end_run(&mut a, 99, tab, Err("violates foreign key constraint"));
+    assert!(a.tab_index(tab).is_some(), "the tab stays");
+    assert!(a.status.contains("not committed"), "{}", a.status);
+
+    // committed: the tab closes
+    commit_on_close(&mut a);
+    end_run(&mut a, 99, tab, Ok("COMMIT"));
+    assert!(a.tab_index(tab).is_none());
+}
+
+/// "Commit all" when quitting (D-043): a transaction that was not committed stops
+/// the quit; so does a connection lost before the COMMIT was answered.
+#[tokio::test]
+async fn quitting_with_commit_all_needs_real_commits() {
+    let (mut a, _d) = app();
+    let tab = connected_tab(&mut a, 99);
+    let commit_all = |a: &mut App| {
+        a.query_mut().unwrap().tx = TxStatus::InTransaction;
+        key(a, "F10");
+        assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::QuitTransactions);
+        key(a, "m");
+        assert!(a.dialogs.is_empty());
+        assert!(!a.should_quit(), "waits for the COMMIT");
+    };
+
+    commit_all(&mut a);
+    end_run(&mut a, 99, tab, Ok("ROLLBACK"));
+    assert!(!a.should_quit());
+    assert_eq!(a.bulk_pending, None);
+    assert!(a.status.contains("not committed"), "{}", a.status);
+
+    // committed: quits
+    commit_all(&mut a);
+    end_run(&mut a, 99, tab, Ok("COMMIT"));
+    assert!(a.should_quit());
+
+    // the connection is lost while the COMMIT is on its way
+    let (mut a, _d) = app();
+    let tab = connected_tab(&mut a, 99);
+    commit_all(&mut a);
+    a.on_query_event(
+        99,
+        tab,
+        DbEvent::Closed {
+            id: 99,
+            error: Some(DbError::Other("server closed the connection".into())),
+        },
+    );
+    assert!(!a.should_quit());
+    assert_eq!(a.bulk_pending, None);
+    let q = a.query().unwrap();
+    assert!(q.conn.is_none() && !q.busy());
+    // nothing is open any more: F10 quits
+    key(&mut a, "F10");
+    assert!(a.should_quit());
+}
+
+/// An export that still needs rows from the paused result ends when the tab's
+/// connection is lost: the incomplete file is deleted and the tab is free again
+/// (D-042).
+#[tokio::test]
+async fn export_ends_when_the_connection_is_lost() {
+    let (mut a, dir, rx) = export_app();
+    let tab = connected_tab(&mut a, 99);
+    a.query_mut()
+        .unwrap()
+        .start_run(1, Sent::new(0, "select 1"));
+    a.next_run = 1;
+    for event in [
+        pgc_db::QueryEvent::ResultStart {
+            columns: vec![pgc_db::Column {
+                name: "id".into(),
+                type_oid: 23,
+            }],
+            title: None,
+        },
+        pgc_db::QueryEvent::Rows {
+            rows: vec![vec![Some("1".into())]; 2],
+            more: true,
+        },
+    ] {
+        a.on_query_event(
+            99,
+            tab,
+            DbEvent::Query {
+                id: 99,
+                run: 1,
+                event,
+            },
+        );
+    }
+    assert!(a.query().unwrap().paused());
+
+    let path = dir.path().join("out.csv");
+    a.start_export(
+        path.clone(),
+        crate::export::ExportOptions {
+            format: ExportFormat::Csv,
+            separator: pgc_core::settings::CsvSeparator::Comma,
+            bom: false,
+        },
+    );
+    // the rows of the grid are written; the next batch is asked from the stream
+    let written = rx
+        .recv_timeout(std::time::Duration::from_secs(10))
+        .expect("export event");
+    a.update(Msg::Export(written), &Hits::default());
+    assert!(a.query().unwrap().export.as_ref().unwrap().awaiting_rows);
+
+    a.on_query_event(
+        99,
+        tab,
+        DbEvent::Closed {
+            id: 99,
+            error: Some(DbError::Other("server closed the connection".into())),
+        },
+    );
+    finish_export(&mut a, &rx);
+    let q = a.query().unwrap();
+    assert!(q.export.is_none());
+    assert!(!q.paused(), "no more rows are offered");
+    assert!(
+        q.messages
+            .iter()
+            .any(|m| m.text.contains("The connection was lost during the export")),
+        "{:?}",
+        q.messages
+    );
+    assert!(!path.exists(), "the incomplete file is deleted");
+}
+
+/// A UTF-8 byte order mark at the start of an SQL file is not part of the text sent
+/// to the server.
+#[test]
+fn opening_a_file_drops_the_byte_order_mark() {
+    let (mut a, dir) = app();
+    let path = dir.path().join("bom.sql");
+    std::fs::write(&path, "\u{feff}select 1;\n").unwrap();
+    a.open_path(path.clone());
+    assert_eq!(a.editor().text(), "select 1;\n");
+    assert!(!a.editor().modified());
+    assert_eq!(a.query().unwrap().file, Some(path));
+}
+
+/// Quitting while the profiler cannot put the logging settings back (D-058): the
+/// quit stops and the message with the statements to run is shown.
+#[tokio::test]
+async fn profiler_restore_failure_stops_the_quit() {
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    key(&mut a, "Home");
+    a.run(Command::SqlProfiler);
+    let tab = a.tabs[1].id;
+    let conn = {
+        let p = a.tabs[1].profiler_mut().unwrap();
+        let c = p.conn.as_mut().unwrap();
+        c.handle.abort();
+        c.handle = pgc_db::ConnectionHandle::detached(c.id);
+        c.connected = true;
+        p.version = Some(pgc_core::ServerVersion(170002));
+        c.id
+    };
+    fn prof(a: &App) -> &crate::profiler::Profiler {
+        a.tabs[1].profiler().unwrap()
+    }
+    // start: check, Yes, the settings are changed
+    key(&mut a, "F5");
+    let k = prof(&a).step_keys[0];
+    profiler_answer(
+        &mut a,
+        conn,
+        tab,
+        k,
+        vec![vec!["on", "stderr", "default", "-1", "default", "99"]],
+    );
+    key(&mut a, "y");
+    for k in prof(&a).step_keys.clone() {
+        profiler_answer(&mut a, conn, tab, k, vec![]);
+    }
+    assert!(prof(&a).needs_restore());
+
+    // F10: the first statement of the restore fails
+    key(&mut a, "F10");
+    assert_eq!(prof(&a).phase, crate::profiler::Phase::Restoring);
+    let keys = prof(&a).step_keys.clone();
+    a.on_profiler_event(
+        conn,
+        tab,
+        DbEvent::Lookup {
+            id: conn,
+            key: keys[0],
+            result: Err(DbError::Other("ERROR: permission denied".into())),
+        },
+    );
+    for k in &keys[1..] {
+        profiler_answer(&mut a, conn, tab, *k, vec![]);
+    }
+    assert!(!a.should_quit(), "the message must be seen");
+    let d = a.dialogs.last().expect("the message");
+    let text = &d.widgets[0].label.text;
+    assert!(text.contains("could not be put back"), "{text}");
+    assert!(
+        text.contains("ALTER SYSTEM RESET log_destination"),
+        "{text}"
+    );
+    assert!(text.contains("pg_reload_conf()"), "{text}");
+    // read, then F10 quits
+    key(&mut a, "Enter");
+    assert!(a.dialogs.is_empty());
+    key(&mut a, "F10");
+    assert!(a.should_quit());
+}

@@ -7,7 +7,7 @@ use super::result_export::take_export_rows;
 use super::{App, Tab, TabBody, Target, TextView};
 use crate::dialog::{Dialog, DialogKind};
 use crate::export::ToWriter;
-use crate::query_tab::{AfterRun, LineMap, QueryConn, QueryConnState, Sent};
+use crate::query_tab::{AfterRun, LineMap, MessageKind, QueryConn, QueryConnState, Sent};
 use crate::tree::{ConnState, RowKind};
 
 impl App {
@@ -124,13 +124,15 @@ impl App {
             DbEvent::Notice { notice, .. } => q.notice(&notice, &lines),
             DbEvent::Closed { error, .. } => {
                 self.connections.remove(&conn);
-                q.conn = None;
-                q.running = None;
-                q.tx = TxStatus::Idle;
+                q.connection_gone();
                 q.info(match error {
                     Some(e) => format!("Connection lost: {e}"),
                     None => "Connection closed".to_owned(),
                 });
+                // a COMMIT sent for quitting / disconnecting will not be answered
+                if q.after_run.take() == Some(AfterRun::Bulk) {
+                    self.bulk_pending = None;
+                }
                 self.drop_tab_lookups(tab);
             }
             DbEvent::Lookup { key, result, .. } => self.lookup_loaded(key, result),
@@ -155,10 +157,28 @@ impl App {
                 None => String::new(),
             };
         }
+        // the COMMIT sent for closing / quitting went through: no error and the tag is
+        // COMMIT (in a failed transaction the server answers ROLLBACK, D-019)
+        let committed = q.finished.is_some_and(|f| !f.failed)
+            && q.tx == TxStatus::Idle
+            && q.messages
+                .iter()
+                .rev()
+                .find(|m| m.kind == MessageKind::Command)
+                .is_some_and(|m| m.text == "COMMIT");
         match after {
-            Some(AfterRun::CloseTab) if q.tx == TxStatus::Idle => self.close_tab(tab),
-            Some(AfterRun::Bulk) => self.maybe_finish_bulk(),
-            _ => {}
+            Some(AfterRun::CloseTab) if committed => self.close_tab(tab),
+            Some(AfterRun::Bulk) if committed => self.maybe_finish_bulk(),
+            // nothing was committed: the tab stays, with the reason in Messages, and
+            // quitting / disconnecting stops
+            Some(_) => {
+                q.show_messages = true;
+                q.results_visible = true;
+                self.bulk_pending = None;
+                self.active_tab = i;
+                self.status = "The transaction was not committed — see Messages".to_owned();
+            }
+            None => {}
         }
     }
 
@@ -352,8 +372,7 @@ impl App {
         {
             conn.handle.abort();
             self.connections.remove(&conn.id);
-            q.running = None;
-            q.tx = TxStatus::Idle;
+            q.connection_gone();
             q.info("Connection closed (the server did not react to the cancel request)");
         }
         self.drop_tab_lookups(tab);

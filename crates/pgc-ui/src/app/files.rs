@@ -272,6 +272,11 @@ impl App {
                 return;
             }
         };
+        // a UTF-8 byte order mark is not part of the SQL (the server would reject it)
+        let text = match text.strip_prefix('\u{feff}') {
+            Some(rest) => rest.to_owned(),
+            None => text,
+        };
         let mut view = TextView::new(false, self.tab_width());
         view.load(text);
         let id = self.add_query_tab(view);

@@ -360,7 +360,9 @@ impl App {
 
     fn restore_failed(&mut self, statements: &[String], why: &str) {
         let list: String = statements.iter().map(|s| format!("  {s};\n")).collect();
-        tracing::error!("logging settings not restored: {why}");
+        tracing::error!("logging settings not restored: {why}; to run as a superuser:\n{list}");
+        // quitting stops, so that this message is seen (F10 quits then)
+        self.quit_after_restore = false;
         self.error(&format!(
             "The logging settings could not be put back ({why}).\n\
              Run as a superuser:\n\n{list}  SELECT pg_reload_conf();"

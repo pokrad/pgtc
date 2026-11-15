@@ -6,7 +6,8 @@
 //! 0. schemas, 1. extensions,
 //! 2. types, sequences, functions, tables, views, materialized views — topologically
 //!    sorted by `depends_on` (and partition parents),
-//! 3. data of re-created tables, 4. foreign keys and `OWNED BY`, 5. indexes,
+//! 3. data of re-created tables, 4. indexes (a foreign key may reference columns that
+//!    only a unique index covers), 5. foreign keys and `OWNED BY`,
 //! 6. triggers, rules, policies, row security, 7. the copies of re-created tables
 //!    (commented-out `DROP TABLE`).
 //!
@@ -229,7 +230,7 @@ pub fn sync_script(want: &Database, live: &Database) -> Option<String> {
             .map_or(d.owner.clone(), |s| s.owned_by.clone());
         if let Some(o) = owner {
             out.push(
-                4,
+                5,
                 Key::Part(obj(ObjKind::Sequence, &d.schema, &d.name), "owned".into()),
                 &[],
                 format!(
@@ -848,7 +849,7 @@ fn sequence(out: &mut Script, schema: &str, s: &Sequence, live: Option<&Sequence
             None => "NONE".to_owned(),
         };
         out.push(
-            4,
+            5,
             Key::Part(r.clone(), "owned".into()),
             &[],
             format!("ALTER SEQUENCE {q} OWNED BY {owner};"),
@@ -1094,7 +1095,7 @@ fn constraints(out: &mut Script, r: &ObjRef, q: &str, t: &Table, live: Option<&T
         let have = live.and_then(|l| l.constraints.iter().find(|h| h.name == c.name));
         let fk = c.kind == ConstraintKind::ForeignKey;
         let (phase, key) = if fk {
-            (4, Key::Part(r.clone(), format!("fk {}", c.name)))
+            (5, Key::Part(r.clone(), format!("fk {}", c.name)))
         } else {
             (2, Key::Obj(r.clone()))
         };
@@ -1165,7 +1166,7 @@ fn indexes(out: &mut Script, r: &ObjRef, schema: &str, want: &[Index], live: Opt
         let have = live.and_then(|l| l.iter().find(|h| h.name == i.name));
         statement_part(
             out,
-            5,
+            4,
             &Key::Part(r.clone(), format!("index {}", i.name)),
             &format!("INDEX {}", qn(schema, &i.name)),
             format!("{};", i.definition),
@@ -1434,6 +1435,11 @@ mod tests {
                 references: None,
                 comment: None,
             }],
+            indexes: vec![Index {
+                name: "z_m_key".into(),
+                definition: "CREATE UNIQUE INDEX z_m_key ON app.z_table USING btree (m)".into(),
+                comment: None,
+            }],
             ..Default::default()
         });
         s.types.push(Type {
@@ -1453,6 +1459,8 @@ mod tests {
         assert!(at("CREATE TYPE app.mood") < at("CREATE TABLE app.z_table"));
         assert!(at("CREATE TABLE app.z_table") < at("CREATE VIEW app.a_view"));
         assert!(at("CREATE VIEW app.a_view") < at("ADD CONSTRAINT fk FOREIGN KEY"));
+        // a foreign key may reference columns that only a unique index covers
+        assert!(at("CREATE UNIQUE INDEX z_m_key") < at("ADD CONSTRAINT fk FOREIGN KEY"));
         assert!(!text.contains("check_function_bodies"), "no functions");
     }
 

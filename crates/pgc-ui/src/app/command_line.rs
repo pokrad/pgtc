@@ -25,11 +25,12 @@ impl App {
     /// The F4 window: input, then the list of all commands.
     pub(super) fn psql_dialog(&mut self, text: &str) -> Dialog {
         let rows = crate::psql::list_rows();
+        let line = self.theme.hline();
         let items: Vec<String> = rows
             .iter()
             .map(|r| match r {
                 Some((c, args, desc)) => format!("{c:<11}{args:<10}{desc}"),
-                None => format!("{:─<20} pgtc {:─<44}", "", ""),
+                None => format!("{} pgtc {}", line.repeat(20), line.repeat(44)),
             })
             .collect();
         let marks = rows.iter().map(Option::is_none).collect();
