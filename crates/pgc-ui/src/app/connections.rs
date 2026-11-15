@@ -248,6 +248,8 @@ impl App {
             // a server's configuration settings (D-037)
             (Target::Server(uid), DbEvent::Lookup { key, result, .. })
                 if self.settings_loaded(uid, key, &result) => {}
+            (Target::Server(uid), DbEvent::Lookup { key, result, .. })
+                if self.profiler_restore_loaded(uid, key, &result) => {}
             // Find object searches run on tree connections (D-055)
             (_, DbEvent::Lookup { key, result, .. }) => self.find_loaded(key, result),
             (_, DbEvent::Query { .. } | DbEvent::Notice { .. } | DbEvent::Model { .. }) => {}
@@ -383,6 +385,8 @@ impl App {
         {
             self.expand_node(databases);
         }
+        // logging settings the profiler left changed on this server (D-058)
+        self.check_profiler_restore(uid);
     }
 
     fn save_pgpass(conn: &SavedConnection, password: &str) -> Result<(), DbError> {

@@ -93,6 +93,12 @@ dependencies.
   requests in via `mpsc`, results / notices / status out via a channel to the UI.
   Keep the `CancelToken` outside the task so cancel works while a query runs.
 - **Rendering:** render only what is visible (tree rows, editor lines, grid cells).
+- **File work (D-072):** reading or writing a user's file (SQL files, `.pgdef`) and
+  anything that may take long (building a sync script) is a `FileJob` in
+  `pgc-ui/src/app/file_jobs.rs`: it runs in the background and its `FileEvent` comes
+  back as a message. Do not call `std::fs` for such files in a handler. Small local
+  files of pgtc itself (`settings.toml`, `.pgpass`, `keymap.toml`,
+  `profiler_restore.toml`) are written in place, with `pgc_core::fsutil::atomic_write`.
 - **Embedding:** SQL, templates, themes embedded at compile time
   (`include_str!` / `include_bytes!` / `include_dir`).
 - **Per-OS paths:** only through `pgc-core` (own code, D-039); never build

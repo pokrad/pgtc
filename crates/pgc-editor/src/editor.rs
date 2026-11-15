@@ -205,6 +205,8 @@ pub struct Editor {
     read_only: bool,
     tab_width: usize,
     modified: bool,
+    /// Counts the changes of the text (edits, undo, redo, a new text).
+    revision: u64,
     lex: RefCell<LexCache>,
 }
 
@@ -229,6 +231,7 @@ impl Editor {
             read_only,
             tab_width: tab_width.max(1),
             modified: false,
+            revision: 0,
             lex: RefCell::new(LexCache::default()),
         }
     }
@@ -260,6 +263,12 @@ impl Editor {
         self.modified = modified;
     }
 
+    /// A number that changes whenever the text does: the same number means the same
+    /// text (a save taken at one revision is current while the number stays, D-072).
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+
     pub fn tab_width(&self) -> usize {
         self.tab_width
     }
@@ -279,6 +288,7 @@ impl Editor {
         self.undo.clear();
         self.redo.clear();
         self.modified = false;
+        self.revision += 1;
         *self.lex.borrow_mut() = LexCache::default();
     }
 
@@ -611,6 +621,7 @@ impl Editor {
         let line = self.rope.char_to_line(start);
         self.lex.borrow_mut().invalidate_from(line);
         self.modified = true;
+        self.revision += 1;
         if let Some(group) = self.undo.last_mut() {
             group.edits.push(Edit {
                 at: start,
@@ -803,6 +814,7 @@ impl Editor {
         }
         (self.cursor, self.anchor) = group.before;
         self.modified = true;
+        self.revision += 1;
         self.redo.push(group);
     }
 
@@ -819,6 +831,7 @@ impl Editor {
         }
         (self.cursor, self.anchor) = group.after;
         self.modified = true;
+        self.revision += 1;
         self.undo.push(group);
     }
 

@@ -111,6 +111,11 @@ pub enum DialogKind {
     ProfilerFilter {
         tab: u64,
     },
+    /// Logging settings the profiler left changed on server `server`: put them back?
+    /// (D-058)
+    ConfirmProfilerRestore {
+        server: u64,
+    },
 }
 
 /// A `&'static str` for a dynamic widget id (template parameter names). Each distinct
@@ -417,6 +422,8 @@ pub enum Button {
     Replace,
     ReplaceAll,
     Skip,
+    /// Settings the profiler left changed (D-058): drop the note about them.
+    Forget,
 }
 
 impl Button {
@@ -436,6 +443,7 @@ impl Button {
             Button::Replace => "replace",
             Button::ReplaceAll => "all",
             Button::Skip => "skip",
+            Button::Forget => "forget",
         }
     }
 }

@@ -19,6 +19,7 @@ mod message_pos;
 mod monitor;
 mod objects;
 mod profiler;
+mod profiler_restore;
 mod psql;
 mod query_tab;
 pub mod setup;
@@ -55,6 +56,10 @@ pub async fn run(paths: Paths, settings: Settings, startup: Option<Resolved>) ->
     let export_tx = tx.clone();
     app.set_export_sink(std::sync::Arc::new(move |event| {
         let _ = export_tx.send(Msg::Export(event));
+    }));
+    let file_tx = tx.clone();
+    app.set_file_sink(std::sync::Arc::new(move |event| {
+        let _ = file_tx.send(Msg::File(event));
     }));
     let mut tui = terminal::enter()?;
     let result = event_loop(&mut tui, &mut app, tx, rx).await;

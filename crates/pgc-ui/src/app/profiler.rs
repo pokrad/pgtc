@@ -120,7 +120,7 @@ impl App {
         }
     }
 
-    fn render_profiler_sql(
+    pub(super) fn render_profiler_sql(
         &self,
         version: pgc_core::ServerVersion,
         file: &str,
@@ -332,6 +332,9 @@ impl App {
             Phase::Applying => {
                 // whatever went through is put back by Stop
                 p.applied = std::mem::take(&mut p.planned);
+                // ... and noted until then, in case pgtc ends without it (D-058)
+                let (uid, applied) = (p.uid, p.applied.clone());
+                self.record_profiler_changes(uid, &applied);
                 if let Some(e) = error {
                     self.error(&format!(
                         "Cannot change the logging settings — this needs a superuser\n\
@@ -346,9 +349,11 @@ impl App {
                 let restore: Vec<String> = p.applied.drain(..).map(|c| c.restore_sql()).collect();
                 p.phase = Phase::Stopped;
                 let quitting = p.after_restore == AfterRestore::Quit;
+                let uid = p.uid;
                 if let Some(e) = error {
                     self.restore_failed(&restore, &e);
                 } else {
+                    self.forget_profiler_changes(uid);
                     self.status = "Profiler stopped; logging settings restored".to_owned();
                 }
                 if quitting {

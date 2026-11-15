@@ -2051,6 +2051,21 @@ pgtc (binary)
   are the server's own setting values, quoted with the `pgc-core` quoting.
 - **Later:** export of the entries (D-042), statements inside functions (`auto_explain`
   / `pgaudit`), managed services' log APIs.
+- **Settings left changed:** when Start changes logging settings, pgtc records it in
+  `<data>/profiler_restore.toml`: server host and port, the time, and for each setting
+  what was set and how to put it back. The entry is removed when the settings are
+  restored. No passwords are stored.
+  - When a server with an entry connects in the tree, pgtc reads the current values.
+    If they are no longer what the profiler set, the entry is dropped silently.
+  - If they are still changed, pgtc asks: *pgtc ended without putting back these
+    logging settings on <server> (changed <date>): … Put them back now?* — **Yes** runs
+    the restore and a configuration reload on that connection; **Not now** asks again
+    at the next connect; **Forget** removes the entry.
+  - A failed restore (no rights, connection lost) keeps the entry, so the question
+    comes again. This also covers a restore that failed on Stop or on quit, and a
+    profiler tab closed while its connection was busy.
+  - The entry is matched by host and port; one for a server that is no longer saved
+    stays in the file (the dialog names the file).
 
 ### D-059 — Statement pane in the dashboard and profiler tabs
 - **Status:** Accepted (refines D-019, D-049, D-057, D-058)
@@ -2341,6 +2356,25 @@ pgtc (binary)
 - **Quitting:** every open connection is ended the same way; pgtc waits up to 1 second
   for them (the terminal is restored first), then exits.
 
+### D-072 — File work in the background
+- **Status:** Accepted (refines D-006, D-041, D-048, D-064)
+- Reading and writing files never blocks the UI (as D-006 for the database). The work
+  runs in a background task and its result arrives as a message, like database events.
+- **Open SQL file:** the status line shows *Opening …*; the query tab appears when the
+  file is read. An unreadable or non-UTF-8 file gives the same error dialog as before.
+- **Save / Save as:** the text is taken at the moment of saving and written in the
+  background (*Saving …*). The tab may be edited meanwhile; it loses its "modified"
+  mark only if the text did not change since. A second save of the same tab waits for
+  the first.
+- **Closing a tab or quitting after "Save changes? Yes":** continues when the save has
+  succeeded; a failed save stops it.
+- **Export / load database definition:** reading and parsing the `.pgdef`, writing it,
+  and building the sync script run in the background (*Comparing …*).
+- Not moved: `settings.toml`, `.pgpass`, `keymap.toml`, the templates folder and the
+  profiler's restore file (small, local files).
+- Not moved in this step: the folder listings and path checks of the file dialogs
+  (D-070); they still read the folder directly.
+
 ---
 
 ## 3. Change log
@@ -2487,3 +2521,4 @@ pgtc (binary)
 | 2026-11-15 | D-019 updated: positions of messages — errors and notices map to editor line and column from `position`, from `CONTEXT … inline_code_block line N` of the running `DO` (also in SQL mode), with the column from PostgreSQL's internal position and query; psql-style `LINE n:` line with `^` caret in the message (copied too); `Enter` / double click jump and select the token; positions only clamped after edits; `Ctrl+A` + copy copies all messages; Messages context menu *Jump to line*, *Copy message*, *Copy all messages*. D-020 updated. |
 | 2026-11-15 | D-071 accepted: closing a tab ends its connection with Terminate (a running statement is cancelled first); dropped after 3 seconds without an end; on quit all connections are ended and pgtc waits up to 1 second. D-012 updated: `.pgdef` starts with `"format": 1`; a file without it is format 1, a higher number is refused, unknown fields are ignored. |
 | 2026-11-15 | D-070 updated: `Esc` and the *Cancel* button of a file dialog both leave the places, so the next file dialog shows the folder (the button did not). |
+| 2026-11-15 | D-072 accepted: opening and saving SQL files, reading / writing `.pgdef` and building the sync script run in the background; a save takes the text at that moment, the tab stays editable and keeps its "modified" mark if it changed meanwhile; file dialog listings are not moved yet. D-058 updated: changed logging settings are recorded in `profiler_restore.toml`; when that server connects and the settings are still changed, pgtc asks to put them back (Yes / Not now / Forget). |

@@ -5,9 +5,8 @@ use std::path::{Component, MAIN_SEPARATOR, Path, PathBuf};
 
 use pgc_core::places::Place;
 
-use super::closing::AfterSave;
+use super::App;
 use super::result_export::export_options;
-use super::{App, TextView};
 use crate::dialog::{Button, Dialog, DialogKind, Widget};
 
 /// Layout of a file dialog (D-041): the folder's listing with a name input.
@@ -257,68 +256,6 @@ impl App {
             }
         } else {
             self.open_path(path);
-        }
-    }
-
-    pub(super) fn open_path(&mut self, path: std::path::PathBuf) {
-        let text = match std::fs::read(&path) {
-            Ok(bytes) => match String::from_utf8(bytes) {
-                Ok(t) => t,
-                Err(_) => {
-                    self.error(&format!("{} is not a UTF-8 text file.", path.display()));
-                    return;
-                }
-            },
-            Err(e) => {
-                self.error(&format!("Cannot open {}:\n{e}", path.display()));
-                return;
-            }
-        };
-        // a UTF-8 byte order mark is not part of the SQL (the server would reject it)
-        let text = match text.strip_prefix('\u{feff}') {
-            Some(rest) => rest.to_owned(),
-            None => text,
-        };
-        let mut view = TextView::new(false, self.tab_width());
-        view.load(text);
-        let id = self.add_query_tab(view);
-        if let Some(q) = self.tabs.last_mut().and_then(|t| t.query_mut()) {
-            q.file = Some(path.clone());
-        }
-        self.bind_query_tab(id);
-        self.status = format!("Opened {}", path.display());
-    }
-
-    pub(super) fn save_to(&mut self, path: std::path::PathBuf) {
-        let text = self.tabs[self.active_tab].view.editor.text();
-        // a temporary file first: a crash or a full disk keeps the old file (D-064)
-        let saved = pgc_core::fsutil::atomic_write(
-            &path,
-            text.as_bytes(),
-            pgc_core::fsutil::Access::Default,
-        );
-        match saved {
-            Ok(()) => {
-                self.tabs[self.active_tab].view.editor.set_modified(false);
-                if let Some(q) = self.query_mut() {
-                    q.file = Some(path.clone());
-                }
-                if let Some(dir) = path.parent() {
-                    self.files.dir = dir.to_path_buf();
-                }
-                self.status = format!("Saved {}", path.display());
-                let id = self.tabs[self.active_tab].id;
-                match self.closing.after_save.take() {
-                    Some(AfterSave::Close(tab)) if tab == id => self.request_close_tab(id, false),
-                    Some(AfterSave::Bulk) => {
-                        if let Some((b, _)) = self.closing.bulk {
-                            self.request_bulk(b);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            Err(e) => self.error(&format!("Cannot save {}:\n{e}", path.display())),
         }
     }
 }

@@ -1,0 +1,369 @@
+//! File work in the background (D-072): opening and saving SQL files, reading and
+//! writing `.pgdef` files and building the sync script run in a blocking task; the
+//! result comes back as a [`FileEvent`] message, like database events.
+
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use pgc_model::Database;
+
+use super::closing::AfterSave;
+use super::definition::JobKind;
+use super::{App, TextView};
+use crate::dialog::Dialog;
+
+/// Work for the background.
+pub(super) enum FileJob {
+    /// Read an SQL file (UTF-8, without its byte order mark).
+    Open { path: PathBuf },
+    /// Write `text`, the text of tab `tab` at editor revision `revision`.
+    Save {
+        tab: u64,
+        path: PathBuf,
+        text: String,
+        revision: u64,
+    },
+    /// Read a `.pgdef` file to compare it with `database` on server `uid`.
+    LoadDefinition {
+        path: PathBuf,
+        uid: u64,
+        database: String,
+    },
+    /// Write the structure of `database` as a `.pgdef` file.
+    SaveDefinition {
+        path: PathBuf,
+        database: String,
+        model: Box<Database>,
+    },
+    /// The script that brings `live` (`database` on server `uid`) to `want`.
+    SyncScript {
+        uid: u64,
+        database: String,
+        want: Box<Database>,
+        live: Box<Database>,
+    },
+}
+
+/// The outcome of a [`FileJob`]; errors are texts for the user.
+pub enum FileEvent {
+    Opened {
+        path: PathBuf,
+        result: Result<String, String>,
+    },
+    Saved {
+        tab: u64,
+        path: PathBuf,
+        revision: u64,
+        result: Result<(), String>,
+    },
+    DefinitionLoaded {
+        uid: u64,
+        database: String,
+        result: Result<Box<Database>, String>,
+    },
+    DefinitionSaved {
+        path: PathBuf,
+        database: String,
+        result: Result<(), String>,
+    },
+    SyncScript {
+        uid: u64,
+        database: String,
+        /// `None`: the structures already match.
+        script: Option<String>,
+    },
+}
+
+impl std::fmt::Debug for FileEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // the texts can be very long: only what happened
+        f.write_str(match self {
+            FileEvent::Opened { .. } => "Opened",
+            FileEvent::Saved { .. } => "Saved",
+            FileEvent::DefinitionLoaded { .. } => "DefinitionLoaded",
+            FileEvent::DefinitionSaved { .. } => "DefinitionSaved",
+            FileEvent::SyncScript { .. } => "SyncScript",
+        })
+    }
+}
+
+/// Where the background tasks report to (set by the event loop).
+pub type FileSink = Arc<dyn Fn(FileEvent) + Send + Sync>;
+
+impl FileJob {
+    /// Does the work; runs outside the UI loop.
+    fn run(self) -> FileEvent {
+        match self {
+            FileJob::Open { path } => {
+                let result = match std::fs::read(&path) {
+                    Ok(bytes) => String::from_utf8(bytes)
+                        .map_err(|_| format!("{} is not a UTF-8 text file.", path.display()))
+                        // a byte order mark is not part of the SQL (the server would
+                        // reject it)
+                        .map(|text| match text.strip_prefix('\u{feff}') {
+                            Some(rest) => rest.to_owned(),
+                            None => text,
+                        }),
+                    Err(e) => Err(format!("Cannot open {}:\n{e}", path.display())),
+                };
+                FileEvent::Opened { path, result }
+            }
+            FileJob::Save {
+                tab,
+                path,
+                text,
+                revision,
+            } => {
+                // a temporary file first: a crash or a full disk keeps the old file
+                let result = pgc_core::fsutil::atomic_write(
+                    &path,
+                    text.as_bytes(),
+                    pgc_core::fsutil::Access::Default,
+                )
+                .map_err(|e| format!("Cannot save {}:\n{e}", path.display()));
+                FileEvent::Saved {
+                    tab,
+                    path,
+                    revision,
+                    result,
+                }
+            }
+            FileJob::LoadDefinition {
+                path,
+                uid,
+                database,
+            } => {
+                let result = pgc_model::file::load(&path)
+                    .map(Box::new)
+                    .map_err(|e| format!("Cannot load {}:\n{e}", path.display()));
+                FileEvent::DefinitionLoaded {
+                    uid,
+                    database,
+                    result,
+                }
+            }
+            FileJob::SaveDefinition {
+                path,
+                database,
+                model,
+            } => {
+                let result = pgc_model::file::save(&model, &path)
+                    .map_err(|e| format!("Cannot write {}:\n{e}", path.display()));
+                FileEvent::DefinitionSaved {
+                    path,
+                    database,
+                    result,
+                }
+            }
+            FileJob::SyncScript {
+                uid,
+                database,
+                want,
+                live,
+            } => FileEvent::SyncScript {
+                uid,
+                database,
+                script: pgc_model::sync::sync_script(&want, &live),
+            },
+        }
+    }
+}
+
+impl App {
+    /// Where the background file tasks report to (set by the event loop). Without it
+    /// (tests) the work is done at once, in place.
+    pub fn set_file_sink(&mut self, sink: FileSink) {
+        self.file_sink = Some(sink);
+    }
+
+    /// Starts `job` in the background; its [`FileEvent`] follows.
+    pub(super) fn start_file_job(&mut self, job: FileJob) {
+        match self.file_sink.clone() {
+            Some(sink) => {
+                tokio::task::spawn_blocking(move || sink(job.run()));
+            }
+            None => {
+                let event = job.run();
+                self.on_file_event(event);
+            }
+        }
+    }
+
+    /// Open SQL file (D-041, D-072): the tab appears when the file is read.
+    pub(super) fn open_path(&mut self, path: PathBuf) {
+        self.status = format!("Opening {}…", path.display());
+        self.start_file_job(FileJob::Open { path });
+    }
+
+    /// Saves the active tab to `path` (D-064, D-072).
+    pub(super) fn save_to(&mut self, path: PathBuf) {
+        let tab = self.tabs[self.active_tab].id;
+        self.save_tab(tab, path);
+    }
+
+    /// Writes the text tab `tab` has now to `path`. While an earlier save of the tab
+    /// is still being written, this one waits for it.
+    fn save_tab(&mut self, tab: u64, path: PathBuf) {
+        let Some(i) = self.tab_index(tab) else {
+            return;
+        };
+        let t = &mut self.tabs[i];
+        let Some(q) = t.query_mut() else {
+            return;
+        };
+        if q.saving {
+            q.save_next = Some(path);
+            return;
+        }
+        q.saving = true;
+        let editor = &t.view.editor;
+        let (text, revision) = (editor.text(), editor.revision());
+        self.status = format!("Saving {}…", path.display());
+        self.start_file_job(FileJob::Save {
+            tab,
+            path,
+            text,
+            revision,
+        });
+    }
+
+    /// A save is on its way: closing / quitting that waits for it goes on then.
+    pub(super) fn saving(&self) -> bool {
+        self.tabs
+            .iter()
+            .any(|t| t.query().is_some_and(|q| q.saving))
+    }
+
+    pub(super) fn on_file_event(&mut self, event: FileEvent) {
+        match event {
+            FileEvent::Opened { path, result } => match result {
+                Ok(text) => {
+                    let mut view = TextView::new(false, self.tab_width());
+                    view.load(text);
+                    let id = self.add_query_tab(view);
+                    if let Some(q) = self.tabs.last_mut().and_then(|t| t.query_mut()) {
+                        q.file = Some(path.clone());
+                    }
+                    self.bind_query_tab(id);
+                    self.status = format!("Opened {}", path.display());
+                }
+                Err(e) => {
+                    self.status.clear();
+                    self.error(&e);
+                }
+            },
+            FileEvent::Saved {
+                tab,
+                path,
+                revision,
+                result,
+            } => self.saved(tab, path, revision, result),
+            FileEvent::DefinitionLoaded {
+                uid,
+                database,
+                result,
+            } => match result {
+                Ok(model) => self.start_job(JobKind::Load(model), (uid, database)),
+                Err(e) => {
+                    self.status.clear();
+                    self.error(&e);
+                }
+            },
+            FileEvent::DefinitionSaved {
+                path,
+                database,
+                result,
+            } => match result {
+                Ok(()) => {
+                    self.status =
+                        format!("Definition of {database} exported to {}", path.display());
+                }
+                Err(e) => {
+                    self.status.clear();
+                    self.error(&e);
+                }
+            },
+            FileEvent::SyncScript {
+                uid,
+                database,
+                script,
+            } => match script {
+                None => {
+                    self.status.clear();
+                    self.dialogs.push(Dialog::message(
+                        "Load database definition",
+                        &format!(
+                            "The structure of {database} already matches the definition file."
+                        ),
+                        false,
+                    ));
+                }
+                Some(script) => {
+                    // review in a query tab of that database; never run automatically
+                    let mut view = TextView::new(false, self.tab_width());
+                    view.load(script);
+                    let id = self.add_query_tab(view);
+                    if let Some(q) = self.tab_index(id).and_then(|i| self.tabs[i].query_mut()) {
+                        q.binding = Some((uid, database.clone()));
+                    }
+                    self.bind_query_tab(id);
+                    self.status =
+                        format!("Sync script for {database}: review it, then run it with F5");
+                }
+            },
+        }
+    }
+
+    /// The text of tab `tab` at `revision` was written to `path`, or could not be.
+    fn saved(&mut self, tab: u64, path: PathBuf, revision: u64, result: Result<(), String>) {
+        let Some(i) = self.tab_index(tab) else {
+            // the tab is gone (closed without waiting): nothing to mark
+            return;
+        };
+        let next = {
+            let t = &mut self.tabs[i];
+            let unchanged = t.view.editor.revision() == revision;
+            let Some(q) = t.query_mut() else {
+                return;
+            };
+            q.saving = false;
+            let next = q.save_next.take();
+            if result.is_ok() {
+                q.file = Some(path.clone());
+                // edited while it was written: still modified (D-072)
+                if unchanged {
+                    t.view.editor.set_modified(false);
+                }
+            }
+            next
+        };
+        if let Err(e) = result {
+            // closing / quitting that waited for this save stops
+            self.closing.after_save = None;
+            self.closing.bulk = None;
+            self.status.clear();
+            self.error(&e);
+            return;
+        }
+        if let Some(dir) = path.parent() {
+            self.files.dir = dir.to_path_buf();
+        }
+        self.status = format!("Saved {}", path.display());
+        // a save asked for while this one was written: the newer text
+        if let Some(path) = next {
+            self.save_tab(tab, path);
+            return;
+        }
+        match self.closing.after_save.take() {
+            Some(AfterSave::Close(closing)) if closing == tab => {
+                self.request_close_tab(tab, false);
+            }
+            Some(AfterSave::Bulk) => {
+                if let Some((b, _)) = self.closing.bulk {
+                    self.request_bulk(b);
+                }
+            }
+            _ => {}
+        }
+    }
+}

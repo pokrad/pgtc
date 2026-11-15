@@ -3771,3 +3771,274 @@ async fn quitting_ends_the_open_connections() {
     assert!(a.connections.is_empty());
     assert_eq!(a.tree.by_uid(uid).unwrap().state, ConnState::Disconnected);
 }
+
+/// Saving in the background (D-072): the text is taken when the save starts, the tab
+/// stays editable and keeps its "modified" mark when it changed meanwhile, and a
+/// second save waits for the first.
+#[tokio::test]
+async fn saving_in_the_background() {
+    let (mut a, dir) = app();
+    let (tx, rx) = std::sync::mpsc::channel();
+    a.set_file_sink(Arc::new(move |e| {
+        let _ = tx.send(e);
+    }));
+    let next = |a: &mut App| {
+        let e = rx
+            .recv_timeout(std::time::Duration::from_secs(10))
+            .expect("file event");
+        a.update(Msg::File(e), &Hits::default());
+    };
+    a.new_query_tab(None);
+    typing(&mut a, "one");
+    let path = dir.path().join("q.sql");
+    a.save_to(path.clone());
+    assert!(a.query().unwrap().saving);
+    assert!(a.status.starts_with("Saving "), "{}", a.status);
+    assert!(a.editor().modified(), "not saved yet");
+    // edited while the file is written, and saved again: the second save waits
+    typing(&mut a, " two");
+    a.save_to(path.clone());
+    assert_eq!(a.query().unwrap().save_next, Some(path.clone()));
+
+    next(&mut a);
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), "one");
+    assert!(a.editor().modified(), "the text changed since");
+    assert!(a.query().unwrap().saving, "the waiting save runs now");
+    assert_eq!(a.query().unwrap().file, Some(path.clone()));
+
+    next(&mut a);
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), "one two");
+    assert!(!a.editor().modified());
+    assert!(!a.query().unwrap().saving);
+    assert!(a.status.starts_with("Saved "), "{}", a.status);
+
+    // opening: the tab appears when the file is read
+    let tabs = a.tabs.len();
+    a.open_path(path.clone());
+    assert_eq!(a.tabs.len(), tabs);
+    assert!(a.status.starts_with("Opening "), "{}", a.status);
+    next(&mut a);
+    assert_eq!(a.tabs.len(), tabs + 1);
+    assert_eq!(a.editor().text(), "one two");
+}
+
+/// A save that fails stops the closing or quitting that waited for it (D-072).
+#[test]
+fn a_failed_save_stops_closing() {
+    let (mut a, dir) = app();
+    a.new_query_tab(None);
+    typing(&mut a, "select 1;");
+    let tab = a.tabs[a.active_tab].id;
+    a.closing.after_save = Some(AfterSave::Close(tab));
+    a.save_to(dir.path().join("missing").join("q.sql"));
+    assert!(a.tab_index(tab).is_some(), "the tab stays");
+    assert_eq!(a.closing.after_save, None);
+    assert!(a.editor().modified());
+    assert!(!a.query().unwrap().saving);
+    let d = a.dialogs.last().expect("the error");
+    assert!(d.widgets[0].label.text.contains("Cannot save"));
+}
+
+/// A connected server `a` with a (detached) tree connection: (uid, connection id).
+fn connected_server(a: &mut App) -> (u64, ConnId) {
+    let uid = add_server(a, "a");
+    let conn = fake_connecting(a, uid);
+    a.tree.by_uid(uid).unwrap().handle = Some(pgc_db::ConnectionHandle::detached(conn));
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    (uid, conn)
+}
+
+/// The answer to a lookup on a server's tree connection.
+fn server_answer(a: &mut App, conn: ConnId, key: u64, result: Result<Vec<Vec<&str>>, &str>) {
+    let result = result
+        .map(|rows| {
+            rows.into_iter()
+                .map(|r| r.into_iter().map(str::to_owned).collect())
+                .collect()
+        })
+        .map_err(|e| DbError::Other(e.to_owned()));
+    a.on_db(DbEvent::Lookup {
+        id: conn,
+        key,
+        result,
+    });
+}
+
+/// The logging settings the profiler changed, as it notes them.
+fn profiler_changes() -> Vec<crate::profiler::Change> {
+    vec![
+        crate::profiler::Change {
+            name: "log_destination",
+            value: "stderr,jsonlog".into(),
+            restore: None,
+        },
+        crate::profiler::Change {
+            name: "log_min_duration_statement",
+            value: "0".into(),
+            restore: Some("250".into()),
+        },
+    ]
+}
+
+/// Settings the profiler left changed (D-058): when the server connects and they are
+/// still changed, pgtc asks; Yes puts them back and the note goes.
+#[tokio::test]
+async fn profiler_settings_are_offered_for_restore_on_connect() {
+    let (mut a, _d) = app();
+    let note = a.paths.profiler_restore_file();
+    let (uid, conn) = connected_server(&mut a);
+    assert!(a.dialogs.is_empty(), "no note, no question");
+    a.record_profiler_changes(uid, &profiler_changes());
+    assert!(note.exists());
+    let still = vec!["on", "stderr,jsonlog", "f", "0", "f", "7"];
+
+    // the server connects (again): the current settings are read, then the question
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    let k = a.next_key;
+    server_answer(&mut a, conn, k, Ok(vec![still.clone()]));
+    let d = a.dialogs.last().expect("the question");
+    assert_eq!(d.kind, DialogKind::ConfirmProfilerRestore { server: uid });
+    let text = d.widgets[0].label.text.clone();
+    assert!(
+        text.contains("log_min_duration_statement = '0'  (before: '250')"),
+        "{text}"
+    );
+    assert!(text.contains("(before: not set)"), "{text}");
+    assert!(text.contains("profiler_restore.toml"), "{text}");
+
+    // Not now: the note stays
+    key_n(&mut a);
+    assert!(a.dialogs.is_empty());
+    assert!(note.exists());
+
+    // again, Yes: two statements and the reload; a failure keeps the note
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    let k = a.next_key;
+    server_answer(&mut a, conn, k, Ok(vec![still.clone()]));
+    key(&mut a, "y");
+    let last = a.next_key;
+    server_answer(&mut a, conn, last - 2, Err("ERROR: permission denied"));
+    server_answer(&mut a, conn, last - 1, Ok(vec![]));
+    assert!(a.dialogs.is_empty(), "not finished yet");
+    server_answer(&mut a, conn, last, Ok(vec![]));
+    let d = a.dialogs.last().expect("the error");
+    assert!(d.widgets[0].label.text.contains("could not be put back"));
+    assert!(note.exists());
+    key(&mut a, "Enter");
+
+    // again, Yes, and it works: the note goes
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    let k = a.next_key;
+    server_answer(&mut a, conn, k, Ok(vec![still.clone()]));
+    key(&mut a, "y");
+    let last = a.next_key;
+    for k in last - 2..=last {
+        server_answer(&mut a, conn, k, Ok(vec![]));
+    }
+    assert!(a.dialogs.is_empty());
+    assert_eq!(a.status, "Logging settings restored");
+    assert!(!note.exists());
+}
+
+fn key_n(a: &mut App) {
+    key(a, "n");
+}
+
+/// No question when the settings are no longer what the profiler set (the note is
+/// dropped), and Forget drops it without a restore (D-058).
+#[tokio::test]
+async fn profiler_note_is_dropped_when_nothing_is_changed_or_on_forget() {
+    let (mut a, _d) = app();
+    let note = a.paths.profiler_restore_file();
+    let (uid, conn) = connected_server(&mut a);
+    a.record_profiler_changes(uid, &profiler_changes());
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    let k = a.next_key;
+    server_answer(
+        &mut a,
+        conn,
+        k,
+        Ok(vec![vec!["on", "stderr", "f", "250", "f", "7"]]),
+    );
+    assert!(a.dialogs.is_empty());
+    assert!(!note.exists());
+
+    // only one of them is still changed: only that one is asked about
+    a.record_profiler_changes(uid, &profiler_changes());
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    let k = a.next_key;
+    server_answer(
+        &mut a,
+        conn,
+        k,
+        Ok(vec![vec!["on", "stderr", "f", "0", "f", "7"]]),
+    );
+    let text = a.dialogs.last().unwrap().widgets[0].label.text.clone();
+    assert!(text.contains("log_min_duration_statement"), "{text}");
+    assert!(!text.contains("log_destination"), "{text}");
+    // Forget: nothing is restored
+    key(&mut a, "f");
+    assert!(a.dialogs.is_empty());
+    assert_ne!(a.status, "Restoring logging settings…");
+    assert!(!note.exists());
+
+    // a running profiler of this pgtc is not "left changed"
+    a.record_profiler_changes(uid, &profiler_changes());
+    key(&mut a, "Home");
+    a.run(Command::SqlProfiler);
+    a.tabs[1].profiler_mut().unwrap().applied = profiler_changes();
+    let before = a.next_key;
+    a.check_profiler_restore(uid);
+    assert_eq!(a.next_key, before, "nothing is read");
+}
+
+/// Start notes the changed settings; Stop removes the note once they are back
+/// (D-058).
+#[tokio::test]
+async fn profiler_notes_its_changes_until_they_are_restored() {
+    let (mut a, _d) = app();
+    let note = a.paths.profiler_restore_file();
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    key(&mut a, "Home");
+    a.run(Command::SqlProfiler);
+    let tab = a.tabs[1].id;
+    let conn = {
+        let p = a.tabs[1].profiler_mut().unwrap();
+        let c = p.conn.as_mut().unwrap();
+        c.handle.abort();
+        c.handle = pgc_db::ConnectionHandle::detached(c.id);
+        c.connected = true;
+        p.version = Some(pgc_core::ServerVersion(170002));
+        c.id
+    };
+    fn prof(a: &App) -> &crate::profiler::Profiler {
+        a.tabs[1].profiler().unwrap()
+    }
+    key(&mut a, "F5");
+    let k = prof(&a).step_keys[0];
+    profiler_answer(
+        &mut a,
+        conn,
+        tab,
+        k,
+        vec![vec!["on", "stderr", "default", "-1", "default", "99"]],
+    );
+    assert!(!note.exists(), "nothing changed yet");
+    key(&mut a, "y");
+    for k in prof(&a).step_keys.clone() {
+        profiler_answer(&mut a, conn, tab, k, vec![]);
+    }
+    let text = std::fs::read_to_string(&note).unwrap();
+    assert!(text.contains("log_min_duration_statement"), "{text}");
+    assert!(text.contains("host = \"localhost\""), "{text}");
+
+    // F5 stops: restored, the note goes
+    key(&mut a, "F5");
+    for k in prof(&a).step_keys.clone() {
+        profiler_answer(&mut a, conn, tab, k, vec![]);
+    }
+    assert!(!prof(&a).needs_restore());
+    assert!(!note.exists());
+}

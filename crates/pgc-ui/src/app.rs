@@ -13,6 +13,7 @@ mod dashboard;
 mod db_stats;
 mod definition;
 mod editing;
+mod file_jobs;
 mod files;
 mod find_object;
 mod focus;
@@ -22,6 +23,7 @@ mod monitor;
 mod mouse;
 mod object_view;
 mod profiler;
+mod profiler_restore;
 mod query;
 mod result_export;
 mod results;
@@ -48,7 +50,9 @@ use pgc_sql::SqlCatalog;
 use self::closing::{AfterSave, Bulk};
 use self::definition::{JobKind, StructureJob};
 use self::editing::editor_action;
+pub use self::file_jobs::{FileEvent, FileSink};
 use self::lookups::LookupTarget;
+use self::profiler_restore::Recovery;
 use self::state::{Closing, EscState, FileDialogState, LastFrame, MouseState, TemplateState};
 use crate::clipboard::Clipboard;
 use crate::dialog::{Button, Dialog, DialogEvent, DialogKind};
@@ -81,6 +85,8 @@ pub enum Msg {
     TabTimer(u64, u64),
     /// From a result export's writer thread (D-042).
     Export(ExportEvent),
+    /// From a background file task (D-072).
+    File(FileEvent),
 }
 
 /// Side effects requested by `update`, carried out by the event loop.
@@ -401,6 +407,8 @@ pub struct App {
     template_lookups: HashMap<u64, LookupTarget>,
     /// Result export (D-042): events from writer threads, last id.
     export_sink: Option<ExportSink>,
+    /// Where the background file tasks report to (D-072); `None`: done in place.
+    file_sink: Option<FileSink>,
     next_export: u64,
     /// Definition exports / loads reading a database's structure (D-048).
     jobs: HashMap<ConnId, StructureJob>,
@@ -424,6 +432,8 @@ pub struct App {
     closing: Closing,
     /// `Esc` waiting for a digit (D-032).
     esc: EscState,
+    /// Logging settings the profiler left changed, and putting them back (D-058).
+    recovery: Recovery,
 }
 
 const ESC: KeyEvent = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
@@ -481,6 +491,7 @@ impl App {
             format!("Problems in {} — see the log file", problems.join(", "))
         };
         let tree = Tree::new(&settings.servers);
+        let recovery = Recovery::load(paths.profiler_restore_file());
         let settings_clipboard = settings.clipboard.clone();
         let tab_width = settings.editor.tab_width as usize;
 
@@ -526,6 +537,7 @@ impl App {
             tick_scheduled: false,
             template_lookups: HashMap::new(),
             export_sink: None,
+            file_sink: None,
             next_export: 0,
             jobs: HashMap::new(),
             last_search: None,
@@ -544,6 +556,7 @@ impl App {
             },
             closing: Closing::default(),
             esc: EscState::default(),
+            recovery,
         };
         if let Some(resolved) = startup {
             app.startup_connection(resolved);
@@ -837,6 +850,10 @@ impl App {
             }
             Msg::Export(event) => {
                 self.on_export_event(event);
+                Vec::new()
+            }
+            Msg::File(event) => {
+                self.on_file_event(event);
                 Vec::new()
             }
             Msg::TabTimer(tab, seq) => {
@@ -1419,6 +1436,12 @@ impl App {
                         | DialogKind::OpenDefinition { .. },
                         Button::Cancel,
                     ) => self.files.places = None,
+                    (DialogKind::ConfirmProfilerRestore { server }, Button::Yes) => {
+                        self.run_profiler_restore(server);
+                    }
+                    (DialogKind::ConfirmProfilerRestore { server }, Button::Forget) => {
+                        self.forget_profiler_changes(server);
+                    }
                     (DialogKind::Settings, Button::Ok) => self.apply_settings(dialog),
                     (DialogKind::FindObject, Button::Ok) => self.find_chosen(dialog),
                     (DialogKind::PsqlCommand, Button::Ok) => {
@@ -1518,12 +1541,14 @@ impl App {
         }
         // a save for closing / quitting that was cancelled or failed: the tab stays
         // open, quitting stops
-        let saving = self.dialogs.iter().any(|d| {
-            matches!(
-                d.kind,
-                DialogKind::SaveFile | DialogKind::ConfirmOverwrite { .. }
-            )
-        });
+        // (a save being written counts too, D-072)
+        let saving = self.saving()
+            || self.dialogs.iter().any(|d| {
+                matches!(
+                    d.kind,
+                    DialogKind::SaveFile | DialogKind::ConfirmOverwrite { .. }
+                )
+            });
         if !saving {
             self.closing.after_save = None;
         }

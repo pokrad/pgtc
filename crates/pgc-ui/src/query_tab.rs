@@ -172,6 +172,10 @@ pub struct QueryState {
     pub auto_rollback: bool,
     pub plpgsql: bool,
     pub file: Option<PathBuf>,
+    /// The text is being written to a file (D-072); a save asked for meanwhile waits
+    /// in `save_next`.
+    pub saving: bool,
+    pub save_next: Option<PathBuf>,
     pub sent: Option<Sent>,
     /// Statements of the run that have completed (the running one is the next).
     pub completed: usize,
@@ -207,6 +211,8 @@ impl QueryState {
             auto_rollback,
             plpgsql: false,
             file: None,
+            saving: false,
+            save_next: None,
             sent: None,
             completed: 0,
             messages_all_selected: false,

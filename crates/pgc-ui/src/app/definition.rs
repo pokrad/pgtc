@@ -3,8 +3,9 @@
 
 use pgc_db::{ConnId, DbEvent};
 
+use super::file_jobs::FileJob;
 use super::files::{FileDialog, Picked};
-use super::{App, Target, TextView};
+use super::{App, Target};
 use crate::dialog::{Button, Dialog, DialogKind, Widget};
 use crate::tree::RowKind;
 
@@ -103,10 +104,12 @@ impl App {
                 self.start_job(JobKind::Export(path), (uid, database));
             }
         } else {
-            match pgc_model::file::load(&path) {
-                Ok(model) => self.start_job(JobKind::Load(Box::new(model)), (uid, database)),
-                Err(e) => self.error(&format!("Cannot load {}:\n{e}", path.display())),
-            }
+            self.status = format!("Reading {}…", path.display());
+            self.start_file_job(FileJob::LoadDefinition {
+                path,
+                uid,
+                database,
+            });
         }
     }
 
@@ -185,42 +188,27 @@ impl App {
         }
     }
 
+    /// The live structure is read: it is written to the file, or compared with the
+    /// definition — both in the background (D-072).
     fn job_done(&mut self, job: StructureJob, live: pgc_model::Database) {
         match job.kind {
-            JobKind::Export(path) => match pgc_model::file::save(&live, &path) {
-                Ok(()) => {
-                    self.status = format!(
-                        "Definition of {} exported to {}",
-                        job.database,
-                        path.display()
-                    );
-                }
-                Err(e) => self.error(&format!("Cannot write {}:\n{e}", path.display())),
-            },
-            JobKind::Load(want) => match pgc_model::sync::sync_script(&want, &live) {
-                None => self.dialogs.push(Dialog::message(
-                    "Load database definition",
-                    &format!(
-                        "The structure of {} already matches the definition file.",
-                        job.database
-                    ),
-                    false,
-                )),
-                Some(script) => {
-                    // review in a query tab of that database; never run automatically
-                    let mut view = TextView::new(false, self.tab_width());
-                    view.load(script);
-                    let id = self.add_query_tab(view);
-                    if let Some(q) = self.tab_index(id).and_then(|i| self.tabs[i].query_mut()) {
-                        q.binding = Some((job.uid, job.database.clone()));
-                    }
-                    self.bind_query_tab(id);
-                    self.status = format!(
-                        "Sync script for {}: review it, then run it with F5",
-                        job.database
-                    );
-                }
-            },
+            JobKind::Export(path) => {
+                self.status = format!("Writing {}…", path.display());
+                self.start_file_job(FileJob::SaveDefinition {
+                    path,
+                    database: job.database,
+                    model: Box::new(live),
+                });
+            }
+            JobKind::Load(want) => {
+                self.status = format!("Comparing the definition with {}…", job.database);
+                self.start_file_job(FileJob::SyncScript {
+                    uid: job.uid,
+                    database: job.database,
+                    want,
+                    live: Box::new(live),
+                });
+            }
         }
     }
 }
