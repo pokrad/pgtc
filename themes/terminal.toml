@@ -68,3 +68,8 @@ info = "default on default"
 [dashboard]
 graph = "default on default bold"
 blocked = "lightred on default"
+blocking = "lightmagenta on default"
+slow = "black on yellow"
+very_slow = "lightred on default bold"
+idle_in_transaction = "black on cyan"
+tagged = "default on default reversed bold"

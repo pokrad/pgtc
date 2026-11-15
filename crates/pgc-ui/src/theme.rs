@@ -84,6 +84,11 @@ roles! {
     MessagesInfo = "messages.info";
     DashboardGraph = "dashboard.graph";
     DashboardBlocked = "dashboard.blocked";
+    DashboardBlocking = "dashboard.blocking";
+    DashboardSlow = "dashboard.slow";
+    DashboardVerySlow = "dashboard.very_slow";
+    DashboardIdleInTransaction = "dashboard.idle_in_transaction";
+    DashboardTagged = "dashboard.tagged";
 }
 
 /// Junction characters of a single frame, from [`Theme::plain_junctions`].

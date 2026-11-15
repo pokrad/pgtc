@@ -2930,9 +2930,13 @@ async fn dashboard_tab_refreshes_and_cancels() {
         c.id
     };
     a.dashboard_refresh(tab, true);
-    let (stats, list) = {
+    let (stats, size, list) = {
         let d = a.tabs[1].dashboard().unwrap();
-        (d.stats_key.unwrap(), d.list_key.unwrap().0)
+        (
+            d.stats_key.unwrap(),
+            d.size_key.unwrap(),
+            d.list_key.unwrap().0,
+        )
     };
     let stats_row = |t: &str| -> Vec<String> {
         let mut r: Vec<String> = ["3", "1", "2"].iter().map(|s| s.to_string()).collect();
@@ -2950,11 +2954,21 @@ async fn dashboard_tab_refreshes_and_cancels() {
         },
     );
     assert!(a.effects.is_empty(), "the list is still on its way");
-    let mut session = vec![String::new(); 14];
+    a.on_dashboard_event(
+        conn,
+        tab,
+        DbEvent::Lookup {
+            id: conn,
+            key: size,
+            result: Ok(vec![vec!["10485760".into(), "1000".into()]]),
+        },
+    );
+    assert!(a.effects.is_empty(), "the list is still on its way");
+    let mut session = vec![String::new(); crate::dashboard::SESSION_QUERY_COLUMNS];
     session[0] = "4242".into();
     session[1] = "db".into();
     session[2] = "bob".into();
-    session[6] = "active".into();
+    session[5] = "active".into();
     a.on_dashboard_event(
         conn,
         tab,
@@ -2970,10 +2984,18 @@ async fn dashboard_tab_refreshes_and_cancels() {
             if *t == tab && *after == std::time::Duration::from_secs(2)
     ));
     let screen = screen_text(&a);
-    assert!(screen.contains("Transactions"), "{screen}");
     assert!(screen.contains("Sessions (1)"), "{screen}");
     assert!(screen.contains("4242"), "{screen}");
+    // the summary strip: counts from the old 13-column stats row, the size
+    assert!(screen.contains("size 10 MB"), "{screen}");
+    assert!(screen.contains("Workers"), "{screen}");
+    // with the statement pane the graphs do not fit (they go first); without it they do
+    assert!(!screen.contains("Transactions"), "{screen}");
+    key(&mut a, "Ctrl+R");
+    let screen = screen_text(&a);
+    assert!(screen.contains("Transactions"), "{screen}");
     assert!(screen.contains("total 3"), "{screen}");
+    key(&mut a, "Ctrl+R");
 
     // cancel query: asked first, No does nothing, Yes sends it
     a.run(Command::CancelBackend);
@@ -2981,11 +3003,14 @@ async fn dashboard_tab_refreshes_and_cancels() {
     assert_eq!(d.kind, DialogKind::ConfirmCancelBackend);
     assert!(d.widgets[0].label.text.contains("PID 4242 (bob on db)"));
     key(&mut a, "n");
-    assert!(a.tabs[1].dashboard().unwrap().signal_key.is_none());
+    assert!(a.tabs[1].dashboard().unwrap().signals.pending.is_empty());
     a.run(Command::CancelBackend);
     key(&mut a, "y");
-    let signal = a.tabs[1].dashboard().unwrap().signal_key.clone();
-    let (k, _, s) = signal.expect("sent");
+    let pending = a.tabs[1].dashboard().unwrap().signals.pending.clone();
+    let [(k, s)] = pending.as_slice() else {
+        panic!("one signal: {pending:?}");
+    };
+    let k = *k;
     assert_eq!(s.pid, "4242");
     a.on_dashboard_event(
         conn,
@@ -3012,10 +3037,21 @@ async fn dashboard_tab_refreshes_and_cancels() {
         assert!(h.contains(want), "{want} in {h}");
     }
     assert!(!h.contains("Next tab"), "Alt+Right is the lists here: {h}");
+    // Insert tags (and moves down), Alt+T the duration mode, Esc clears the tags
+    key(&mut a, "Insert");
+    assert!(a.tabs[1].dashboard().unwrap().tags.contains("4242"));
+    assert!(screen_text(&a).contains("1 tagged"));
+    key(&mut a, "Alt+T");
+    assert_eq!(
+        a.tabs[1].dashboard().unwrap().mode,
+        crate::dashboard::DurationMode::Transaction
+    );
+    esc(&mut a);
+    assert!(a.tabs[1].dashboard().unwrap().tags.is_empty());
     key(&mut a, "Alt+Right");
     assert_eq!(
         a.tabs[1].dashboard().unwrap().list,
-        crate::dashboard::List::Locks
+        crate::dashboard::List::Blocking
     );
     key(&mut a, "Alt+Left");
     assert_eq!(

@@ -67,3 +67,8 @@ info = "black on white"
 [dashboard]
 graph = "blue on white"
 blocked = "red on white"
+blocking = "magenta on white"
+slow = "black on yellow"
+very_slow = "white on red"
+idle_in_transaction = "blue on white"
+tagged = "white on blue"

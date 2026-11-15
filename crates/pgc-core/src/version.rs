@@ -79,6 +79,16 @@ features! {
     StatSessions = 140000;
     StatLogicalSlotConflicts = 160000;
     StatParallelWorkers = 180000;
+    // dashboard (D-057): pg_ls_tmpdir, pg_stat_activity.leader_pid / .query_id
+    TmpDirListing = 120000;
+    LeaderPid = 130000;
+    QueryId = 140000;
+    // dashboard Progress list (D-057): pg_stat_progress_* views
+    ProgressCluster = 120000;
+    ProgressCreateIndex = 120000;
+    ProgressAnalyze = 130000;
+    ProgressBaseBackup = 130000;
+    ProgressCopy = 140000;
 }
 
 impl Feature {

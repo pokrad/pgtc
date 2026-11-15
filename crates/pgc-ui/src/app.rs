@@ -725,6 +725,9 @@ impl App {
             | Command::DashboardPause
             | Command::DashboardInterval
             | Command::HideIdleSessions
+            | Command::DurationMode
+            | Command::TagSession
+            | Command::ClearTags
             | Command::NextList
             | Command::PrevList
             | Command::CancelBackend

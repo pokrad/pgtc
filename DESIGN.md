@@ -1809,34 +1809,92 @@ pgtc (binary)
   again.
 - **Refresh:** every **2 s** by default; the next refresh is sent only after the answer
   of the previous one (no pile-up). *Pause / resume* stops and restarts it, *Refresh
-  interval* cycles 1 → 2 → 5 → 10 → 30 s, `F5` refreshes at once. Rates are computed by
-  pgtc from two samples (server clock), as pgAdmin does.
+  interval* cycles 0.5 → 1 → 2 → 5 → 10 → 30 s, `F5` refreshes at once. Rates are
+  computed by pgtc from two samples (server clock), as pgAdmin does.
+- **Ideas from pg_activity** (Dalibo) **and pgCenter** (Alexey Lesovsky): the summary
+  strip, duration modes and colours, the Blocking and Progress lists, tagging, the xmin
+  age and transaction ID columns. Only ideas — the SQL and code are pgtc's own (or
+  adapted from pgAdmin), so neither needs a notice.
+- **Cheap queries only:** every dashboard query reads the statistics views and functions
+  kept in memory (`pg_stat_*`, `pg_locks`, `pg_replication_slots`); none scans a table,
+  lists a directory (except `pg_ls_tmpdir`, see below) or takes a lock that could block
+  other sessions. A list is read only while it is shown.
+- **Summary strip:** always shown, four text lines between the graphs and the lists:
+  - *Global:* server role (primary / standby), uptime, size of the databases and its
+    growth per second, cache hit ratio and rollback ratio (both between the last two
+    samples), temporary files (count, size);
+  - *Sessions:* client backends out of `max_connections`, active, idle, idle in
+    transaction, idle in transaction (aborted), waiting for a lock, the oldest open
+    transaction, the longest running query (both without WAL senders), the oldest xmin
+    (age in transactions) and the PID holding it — the session that holds back vacuum;
+  - *Workers:* autovacuum, parallel and logical replication workers out of their
+    maximum; deadlocks, recovery conflicts and checksum failures (PostgreSQL 12+) since
+    the previous refresh, a value above 0 in `dashboard.very_slow`;
+  - *Replication:* WAL senders out of `max_wal_senders`, WAL receivers, replication
+    slots out of `max_replication_slots`, the largest standby lag (bytes, primary only;
+    needs `pg_read_all_stats`, else `-`), the most WAL kept by one replication slot.
+  The session values follow the database filter; workers, problems, replication and
+  temporary files are always the whole server. The database size is read at most every **30 s** and on
+  `F5` (`pg_database_size` is expensive; databases without `CONNECT` are skipped).
+  Temporary files need PostgreSQL 12 and the right to run `pg_ls_tmpdir` (superuser or
+  `pg_monitor`), else `-`. On a short window the graphs are dropped first, then the
+  strip keeps its lines as long as the list has room.
 - **Graphs (top):** five boxes — *Sessions* (total / active / idle, client backends),
   *Transactions per second* (total / commits / rollbacks), *Tuples in* (inserts /
   updates / deletes per s), *Tuples out* (fetched / returned per s), *Block I/O* (reads
   / hits per s). Each box: title, a sparkline of its total over the last samples (newest
   right), current values as numbers. Five boxes in a row on wide windows, else 3 + 2.
-- **Lists (bottom):** sub-tabs *Sessions · Locks · Prepared transactions ·
-  Configuration* in the result grid (D-041). Sessions: PID, database, user, application,
-  client, backend start, state, wait event, blocked by, transaction start, query start,
-  running for, backend type, query; blocked sessions in the theme role
-  `dashboard.blocked`. *Hide idle sessions* toggles sessions in state `idle`. The cursor
-  stays on the same row (first column) across refreshes. `Enter` shows the whole row
-  in a scrolling window; the session's query is in the statement pane below the list
-  (D-059).
-- **Cancel / terminate** (Sessions list): *Cancel query* (`pg_cancel_backend`) and
-  *Terminate session* (`pg_terminate_backend`) of the row under the cursor, each after a
-  Yes / No question naming the PID, user and database; the PID is a bind parameter. The
-  result (or the server's error, e.g. missing permission) is reported in the status line
-  / an error dialog.
+- **Lists (bottom):** sub-tabs *Sessions · Blocking · Progress · Locks · Prepared
+  transactions · Configuration* in the result grid (D-041). Sessions: PID, database,
+  user, application, client, state, wait event, blocked by, duration, xmin age
+  (`age(backend_xmin)`, transactions), transaction ID (`backend_xid`: empty = the
+  transaction has written nothing, so terminating it is cheap), leader PID
+  (PostgreSQL 13+), query ID (PostgreSQL 14+), backend start, transaction start, query
+  start, backend type, query. *Hide idle sessions* toggles sessions in state `idle`.
+  The cursor stays on the same row (first column) across refreshes. `Enter` shows the
+  whole row in a scrolling window; the session's query is in the statement pane below
+  the list (D-059).
+- **Duration** (Sessions): *Duration mode* cycles **query → transaction → backend**
+  (time since `query_start` of non-idle sessions / `xact_start` / `backend_start`); the
+  column title names the mode. Sessions are ordered by the duration, longest first
+  (no duration last, then by PID); parallel workers follow their leader. In the query and
+  transaction modes a duration from **1 s** is in the theme role `dashboard.slow`, from
+  **10 s** in `dashboard.very_slow`.
+- **Row colours** (Sessions): state *idle in transaction* (and *aborted*) in
+  `dashboard.idle_in_transaction`; sessions that block others in `dashboard.blocking`,
+  blocked sessions in `dashboard.blocked` (the whole row; the row colour wins over the
+  cell colours); tagged sessions in `dashboard.tagged` (wins over everything).
+- **Blocking list:** one row per blocker and blocked session (`pg_blocking_pids`):
+  blocker PID, database, user, state, transaction time, blocked PID, blocked user, lock
+  type, mode and relation of the lock the blocked session waits for, waiting for,
+  blocker's query, blocked query; longest wait first. The statement pane shows the
+  blocker's query; cancel / terminate act on the blocker.
+- **Progress list:** running maintenance commands from `pg_stat_progress_*`: VACUUM
+  (also autovacuum), and by server version CLUSTER / VACUUM FULL and CREATE INDEX /
+  REINDEX (12+), ANALYZE and base backups (13+), COPY (14+). Columns: PID, database,
+  user, command, relation, phase, done % and done (`12,000 / 50,000 blocks`; COPY and base
+  backups in bytes; empty % when the total is unknown), running for, query; longest
+  running first. The statement pane shows the query; cancel / terminate act on the row.
+- **Cancel / terminate** (Sessions, Blocking and Progress lists): *Cancel query*
+  (`pg_cancel_backend`) and *Terminate session* (`pg_terminate_backend`) of the row under
+  the cursor, each after a Yes / No question naming the PID, user and database; the PID
+  is a bind parameter. The result (or the server's error, e.g. missing permission) is
+  reported in the status line / an error dialog.
+- **Tagging** (Sessions, as mc's file tagging): `Insert` tags / untags the session under
+  the cursor and moves down; `Esc` clears the tags. With tagged sessions, cancel /
+  terminate act on all of them after one question naming how many; tags of ended
+  sessions are dropped at the next refresh.
 - **SQL:** `sql/dashboard/` (versioned, D-010), adapted from pgAdmin's dashboard
   queries (copyright notice kept); all columns as text.
 - **Keys** (`[dashboard]` context, D-016): `F5` refresh now, `Ctrl+P` pause / resume,
-  `Ctrl+T` refresh interval, `Alt+I` hide idle sessions, `Ctrl+PgDn` / `Ctrl+PgUp`
-  (`Alt+PgDn` / `Alt+PgUp`) next / previous list, `Alt+Shift+C` cancel query, `F8`
-  terminate session, `Enter` show row, `Ctrl+C` copy, arrows / `PgUp` / `PgDn` / `Home`
-  / `End` in the list. Commands also in the tab's context menu (`F2`).
-- **Colours:** theme roles `dashboard.graph` (sparklines) and `dashboard.blocked`.
+  `Ctrl+T` refresh interval, `Alt+T` duration mode, `Alt+I` hide idle sessions,
+  `Ctrl+PgDn` / `Ctrl+PgUp` (`Alt+PgDn` / `Alt+PgUp`) next / previous list,
+  `Alt+Shift+C` cancel query, `F8` terminate session, `Insert` tag session, `Esc` clear
+  tags, `Enter` show row, `Ctrl+C` copy, arrows / `PgUp` / `PgDn` / `Home` / `End` in
+  the list. Commands also in the tab's context menu (`F2`).
+- **Colours:** theme roles `dashboard.graph` (sparklines), `dashboard.blocked`,
+  `dashboard.blocking`, `dashboard.slow`, `dashboard.very_slow`,
+  `dashboard.idle_in_transaction`, `dashboard.tagged`.
 - **Later:** pgAdmin's system statistics (`system_stats` extension), replication, logs.
 
 ### D-058 — SQL profiler tab (statements from the server log)
@@ -1907,8 +1965,8 @@ pgtc (binary)
 - **Pane:** below the list, a **read-only SQL editor** (the `pgc-editor` control of the
   object view, D-038) with highlighting, line numbers, selection, `Ctrl+C`, find and
   scrolling. It shows the statement of the row under the list cursor and changes with
-  it. Dashboard: only for the Sessions list (the query of the session); profiler: every
-  entry.
+  it. Dashboard: only for the Sessions list (the query of the session) and the Blocking
+  list (the blocker's query) and the Progress list; profiler: every entry.
 - **Parameters and errors** as SQL comments at the top, so they are copied with the
   statement: `-- parameters: $1 = '5', …` (prepared statements), `-- ERROR: message`
   (errors); multi-line texts get `-- ` on every line.
@@ -2309,4 +2367,6 @@ pgtc (binary)
 | 2026-11-14 | D-067 accepted: a double click on a dialog list row acts as `Enter` (file dialogs: open the folder / choose the file); two clicks on the same cell within 500 ms. |
 | 2026-11-14 | D-068 accepted: server dashboard `Alt+D` and SQL profiler `Alt+P` in the tree (like `Alt+I`, `Alt+S`), `Ctrl+D` / `Ctrl+P` as second keys. D-057, D-058 updated. |
 | 2026-11-15 | D-069 accepted: on Windows pgtc's own console window (started outside a terminal, classic console only) remembers its position, size and maximized state in `window.toml` (data dir), saved on exit and on the close button, restored at startup; always on; `windows-sys` for the `pgtc` binary. D-028 updated. |
+| 2026-11-15 | D-057 updated (ideas from pg_activity, no code or SQL taken): summary strip (uptime, database size and growth, cache hit / rollback ratio, temporary files; session states; workers, WAL, slots), duration mode query / transaction / backend (`Alt+T`), sessions ordered by duration with parallel workers under their leader, xmin / leader PID / query ID columns, duration colours from 1 s / 10 s, Blocking list, tagging with `Insert` (`Esc` clears) for cancel / terminate of several sessions, 0.5 s refresh step; roles `dashboard.blocking`, `.slow`, `.very_slow`, `.idle_in_transaction`, `.tagged`. D-059 updated (statement pane for the Blocking list). |
 | 2026-11-15 | D-054 updated: autocomplete in the `F4` input — only on `Ctrl+Space` / `Alt+/` (never by itself), for the argument; each command has its own list of object kinds (`d` / `dp`: tables, views, materialized views, foreign tables, sequences; `dt` / `dv` / `dm` / `ds` their kinds, combined letters add up; `gts`–`gtd`: tables, views, foreign tables; the others none); names from the tab's cache (D-052), schema-qualified when not on the search path. D-052 updated. |
+| 2026-11-15 | D-057 updated (ideas from pgCenter, no code or SQL taken): cheap queries only; summary strip of four lines — server role, oldest transaction, longest query, oldest xmin and its PID, deadlocks / conflicts / checksum failures per refresh (above 0 in `dashboard.very_slow`), a Replication line with standby lag and the WAL kept by slots; Sessions columns xmin age and transaction ID; Progress list (`pg_stat_progress_*`). D-059 updated (statement pane for the Progress list). |

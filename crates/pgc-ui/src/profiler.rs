@@ -754,7 +754,7 @@ pub fn render(
     }
     let styles = crate::dashboard::grid_styles(theme);
     let error = theme.get(Role::MessagesError);
-    let row_style = |i: usize| {
+    let row_style = |i: usize, _: usize| {
         p.grid
             .rows
             .get(i)

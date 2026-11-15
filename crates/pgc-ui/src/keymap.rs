@@ -211,8 +211,11 @@ commands! {
     Dashboard = "dashboard", "Server dashboard of the selected server or database", Actions;
     DashboardRefresh = "dashboard_refresh", "Refresh the dashboard now (connects again when needed)", Actions;
     DashboardPause = "dashboard_pause", "Pause / resume the dashboard refresh", Actions;
-    DashboardInterval = "dashboard_interval", "Dashboard refresh interval (1, 2, 5, 10, 30 s)", Actions;
+    DashboardInterval = "dashboard_interval", "Dashboard refresh interval (0.5, 1, 2, 5, 10, 30 s)", Actions;
     HideIdleSessions = "hide_idle_sessions", "Hide / show idle sessions", Actions;
+    DurationMode = "duration_mode", "Session duration: query, transaction or backend time", Actions;
+    TagSession = "tag_session", "Tag / untag the session (cancel and terminate act on the tagged ones)", Actions;
+    ClearTags = "clear_tags", "Untag all sessions", Actions;
     NextList = "next_list", "Next dashboard list", Moving;
     PrevList = "prev_list", "Previous dashboard list", Moving;
     CancelBackend = "cancel_backend", "Cancel the query of the selected session", Actions;
@@ -451,6 +454,9 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::Dashboard, Command::DashboardPause, &["Ctrl+P"]),
     (Context::Dashboard, Command::DashboardInterval, &["Ctrl+T"]),
     (Context::Dashboard, Command::HideIdleSessions, &["Alt+I"]),
+    (Context::Dashboard, Command::DurationMode, &["Alt+T"]),
+    (Context::Dashboard, Command::TagSession, &["Insert"]),
+    (Context::Dashboard, Command::ClearTags, &["Esc"]),
     (
         Context::Dashboard,
         Command::NextList,

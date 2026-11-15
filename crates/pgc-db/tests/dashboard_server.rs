@@ -31,8 +31,11 @@ async fn dashboard_queries_run_on_a_real_server() {
     // whole server (NULL) and one database
     for filter in [None, Some("postgres".to_owned())] {
         for (file, columns) in [
-            ("stats.sql", 13),
-            ("sessions.sql", 14),
+            ("stats.sql", 41),
+            ("size.sql", 2),
+            ("sessions.sql", 20),
+            ("blocking.sql", 13),
+            ("progress.sql", 11),
             ("locks.sql", 15),
             ("prepared.sql", 5),
         ] {
@@ -41,7 +44,7 @@ async fn dashboard_queries_run_on_a_real_server() {
                 .query(&sql, &[&filter])
                 .await
                 .unwrap_or_else(|e| panic!("{file}: {}", pgc_db::describe(&e)));
-            if file == "stats.sql" {
+            if file == "stats.sql" || file == "size.sql" {
                 assert_eq!(rows.len(), 1);
             }
             for r in &rows {

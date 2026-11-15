@@ -69,3 +69,8 @@ info = "#f8f8f2 on #282a36"
 [dashboard]
 graph = "#50fa7b on #282a36"
 blocked = "#ff5555 on #282a36"
+blocking = "#ff79c6 on #282a36"
+slow = "#f1fa8c on #282a36"
+very_slow = "#ffb86c on #282a36"
+idle_in_transaction = "#8be9fd on #282a36"
+tagged = "#282a36 on #f1fa8c"

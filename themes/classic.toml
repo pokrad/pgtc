@@ -68,3 +68,8 @@ info = "lightgray on blue"
 [dashboard]
 graph = "lightgreen on blue"
 blocked = "white on red"
+blocking = "white on magenta"
+slow = "lightyellow on blue"
+very_slow = "lightyellow on red"
+idle_in_transaction = "lightcyan on blue"
+tagged = "black on cyan"

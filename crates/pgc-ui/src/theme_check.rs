@@ -212,6 +212,11 @@ const READABLE: &[Role] = &[
     R::MessagesInfo,
     R::DashboardGraph,
     R::DashboardBlocked,
+    R::DashboardBlocking,
+    R::DashboardSlow,
+    R::DashboardVerySlow,
+    R::DashboardIdleInTransaction,
+    R::DashboardTagged,
 ];
 
 /// Deliberately quieter roles: contrast ≥ 2.

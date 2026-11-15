@@ -256,18 +256,18 @@ pub fn render(
     styles: &GridStyles,
     focused: bool,
 ) -> Vec<CellArea> {
-    render_styled(rs, area, buf, styles, focused, &|_| None)
+    render_styled(rs, area, buf, styles, focused, &|_, _| None)
 }
 
-/// [`render`] with a text style per row (`None` = the normal text style), e.g. the
-/// dashboard's blocked sessions (D-057).
+/// [`render`] with a text style per cell (row, column; `None` = the normal text
+/// style), e.g. the dashboard's blocked sessions and long durations (D-057).
 pub fn render_styled(
     rs: &ResultSet,
     area: Rect,
     buf: &mut Buffer,
     styles: &GridStyles,
     focused: bool,
-    row_style: &dyn Fn(usize) -> Option<Style>,
+    cell_style: &dyn Fn(usize, usize) -> Option<Style>,
 ) -> Vec<CellArea> {
     let mut cells = Vec::new();
     buf.set_style(area, styles.text);
@@ -302,11 +302,11 @@ pub fn render_styled(
         buf.set_stringn(area.x, y, &label, rn - 1, styles.row_number);
         buf.set_stringn(area.x + rn as u16 - 1, y, line, 1, styles.separator);
         let mut x = area.x + rn as u16;
-        let text_style = row_style(i).unwrap_or(styles.text);
         for (c, col) in rs.columns.iter().enumerate().skip(rs.left) {
             if x >= right {
                 break;
             }
+            let text_style = cell_style(i, c).unwrap_or(styles.text);
             let w = rs.widths[c];
             let (text, mut style) = match row.get(c).and_then(|v| v.as_deref()) {
                 Some(v) => (fit(&display(v), w, is_numeric(col.type_oid)), text_style),

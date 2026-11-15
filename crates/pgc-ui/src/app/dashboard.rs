@@ -9,7 +9,7 @@ use ratatui::layout::Position;
 
 use super::connections::MonitorEvent;
 use super::{App, Effect, Focus, Tab, TabBody, Target, TextView};
-use crate::dashboard::{Dashboard, List, Session, Signal};
+use crate::dashboard::{Dashboard, List, Session, Signal, Signals, interval_text};
 use crate::dialog::{Dialog, DialogKind};
 use crate::keymap::Command;
 use crate::menu::{self, MenuEntry, Popup};
@@ -88,8 +88,9 @@ impl App {
         {
             d.error = None;
             d.stats_key = None;
+            d.size_key = None;
             d.list_key = None;
-            d.signal_key = None;
+            d.signals = Default::default();
         }
     }
 
@@ -134,11 +135,23 @@ impl App {
         let list = d.list;
         let filter = d.database.clone();
         let send_stats = stats && d.stats_key.is_none();
+        let send_size = stats && d.size_key.is_none() && d.size_due();
         let send_list = d.list_key.is_none();
         let stats_sql = send_stats.then(|| self.render_dashboard_sql(version, "stats.sql"));
+        let size_sql = send_size.then(|| self.render_dashboard_sql(version, "size.sql"));
         let list_sql = send_list.then(|| self.render_dashboard_sql(version, list.file()));
         let mut keys = (None, None);
+        let mut size_key = None;
         let mut error = None;
+        if let Some(sql) = size_sql {
+            match sql {
+                Ok(sql) => {
+                    self.next_key += 1;
+                    size_key = Some((self.next_key, sql));
+                }
+                Err(e) => error = Some(e),
+            }
+        }
         if let Some(sql) = stats_sql {
             match sql {
                 Ok(sql) => {
@@ -166,6 +179,10 @@ impl App {
         if let Some((key, sql)) = keys.0 {
             conn.handle.lookup_with(key, sql, vec![filter.clone()]);
             d.stats_key = Some(key);
+        }
+        if let Some((key, sql)) = size_key {
+            conn.handle.lookup_with(key, sql, vec![filter.clone()]);
+            d.size_key = Some(key);
         }
         if let Some((key, sql)) = keys.1 {
             let params = if list.takes_database() {
@@ -199,6 +216,24 @@ impl App {
                 }
                 Err(e) => d.error = Some(e.to_string()),
             }
+        } else if d.size_key == Some(key) {
+            d.size_key = None;
+            match result {
+                Ok(rows) => {
+                    let parsed = rows.first().and_then(|r| {
+                        let bytes = r.first()?.trim().parse::<u64>().ok()?;
+                        Some((bytes, r.get(1)?.trim().parse::<f64>().ok()?))
+                    });
+                    if let Some((bytes, t)) = parsed {
+                        d.apply_size(bytes, t);
+                    }
+                }
+                Err(e) => {
+                    // not worth a broken tab: the strip shows "-"
+                    tracing::warn!("dashboard size: {e}");
+                    d.size_forced = false;
+                }
+            }
         } else if let Some((k, list)) = d.list_key
             && k == key
         {
@@ -215,12 +250,23 @@ impl App {
                 self.dashboard_refresh(tab, false);
                 return;
             }
-        } else if let Some((k, signal, session)) = d.signal_key.clone()
-            && k == key
-        {
-            d.signal_key = None;
-            self.signal_done(signal, &session, result);
-            self.dashboard_refresh(tab, false);
+        } else if let Some(i) = d.signals.pending.iter().position(|(k, _)| *k == key) {
+            let (_, session) = d.signals.pending.remove(i);
+            let answer = match result {
+                Ok(rows) => Ok(rows
+                    .first()
+                    .and_then(|r| r.first())
+                    .is_some_and(|v| v == "true")),
+                Err(e) => Err(e.to_string()),
+            };
+            d.signals.done.push((session, answer));
+            if d.signals.pending.is_empty() {
+                let signals = std::mem::take(&mut d.signals);
+                if let Some(signal) = signals.signal {
+                    self.signals_done(signal, signals.done);
+                }
+                self.dashboard_refresh(tab, false);
+            }
             return;
         } else {
             return;
@@ -240,7 +286,7 @@ impl App {
         let effect = Effect::Timer(super::Timer::Tab {
             tab,
             seq: d.timer_seq,
-            after: Duration::from_secs(d.interval_secs()),
+            after: Duration::from_millis(d.interval_ms()),
         });
         self.effects.push(effect);
     }
@@ -293,6 +339,9 @@ impl App {
                     self.dashboard_connect(tab);
                     self.status = "Connecting…".to_owned();
                 } else {
+                    if let Some(d) = self.dashboard_mut() {
+                        d.size_forced = true;
+                    }
                     self.dashboard_refresh(tab, true);
                 }
             }
@@ -310,8 +359,8 @@ impl App {
                 }
             }
             Command::DashboardInterval => {
-                if let Some(secs) = self.dashboard_mut().map(Dashboard::next_interval) {
-                    self.status = format!("Dashboard refreshes every {secs} s");
+                if let Some(ms) = self.dashboard_mut().map(Dashboard::next_interval) {
+                    self.status = format!("Dashboard refreshes every {}", interval_text(ms));
                 }
                 self.schedule_dashboard(tab);
             }
@@ -327,6 +376,27 @@ impl App {
                     "Idle sessions shown".to_owned()
                 };
                 self.dashboard_scroll();
+            }
+            Command::DurationMode => {
+                if let Some(mode) = self.dashboard_mut().map(Dashboard::next_mode) {
+                    self.status = format!("Session duration: {} time", mode.name());
+                }
+                self.dashboard_scroll();
+            }
+            Command::TagSession => {
+                if self.dashboard_mut().is_some_and(Dashboard::toggle_tag) {
+                    self.dashboard_scroll();
+                } else {
+                    self.status = "Tag sessions in the Sessions list".to_owned();
+                }
+            }
+            Command::ClearTags => {
+                if let Some(d) = self.dashboard_mut()
+                    && !d.tags.is_empty()
+                {
+                    d.tags.clear();
+                    self.status = "Tags cleared".to_owned();
+                }
             }
             Command::NextList | Command::PrevList => {
                 let n = List::ALL.len();
@@ -409,24 +479,40 @@ impl App {
             self.status = "The dashboard is not connected".to_owned();
             return;
         }
-        let Some(s) = d.selected_session() else {
+        let targets = d.signal_targets();
+        let Some(first) = targets.first() else {
             self.status = "Select a session in the Sessions list first".to_owned();
             return;
         };
-        d.asking = Some((signal, s.clone()));
-        let who = session_text(&s);
+        let one = targets.len() == 1;
+        let who = if one {
+            session_text(first)
+        } else {
+            format!("{} tagged sessions", targets.len())
+        };
         let (kind, title, text) = match signal {
-            Signal::Cancel => (
+            Signal::Cancel if one => (
                 DialogKind::ConfirmCancelBackend,
                 "Cancel query",
                 format!("Cancel the running query of {who}?"),
             ),
-            Signal::Terminate => (
+            Signal::Cancel => (
+                DialogKind::ConfirmCancelBackend,
+                "Cancel queries",
+                format!("Cancel the running queries of {who}?"),
+            ),
+            Signal::Terminate if one => (
                 DialogKind::ConfirmTerminateBackend,
                 "Terminate session",
                 format!("Terminate {who}?\nIts open transaction is rolled back."),
             ),
+            Signal::Terminate => (
+                DialogKind::ConfirmTerminateBackend,
+                "Terminate sessions",
+                format!("Terminate {who}?\nTheir open transactions are rolled back."),
+            ),
         };
+        d.asking = Some((signal, targets));
         self.dialogs
             .push(Dialog::confirm(kind, title, &text).with_tag(tab));
     }
@@ -446,52 +532,71 @@ impl App {
                 return;
             }
         };
-        self.next_key += 1;
-        let key = self.next_key;
+        let first_key = self.next_key + 1;
         let Some(d) = self.tabs[i].dashboard_mut() else {
             return;
         };
-        let Some((asked, session)) = d.asking.take().filter(|(s, _)| *s == signal) else {
+        let Some((asked, sessions)) = d.asking.take().filter(|(s, _)| *s == signal) else {
             return;
         };
         let Some(conn) = d.conn.as_ref().filter(|c| c.connected) else {
             self.status = "The dashboard is not connected".to_owned();
             return;
         };
-        conn.handle
-            .lookup_with(key, sql, vec![Some(session.pid.clone())]);
-        d.signal_key = Some((key, asked, session));
+        let mut pending = Vec::with_capacity(sessions.len());
+        for (k, session) in sessions.into_iter().enumerate() {
+            let key = first_key + k as u64;
+            conn.handle
+                .lookup_with(key, sql.clone(), vec![Some(session.pid.clone())]);
+            pending.push((key, session));
+        }
+        if pending.len() > 1 {
+            // the signals went out: the tags have done their job
+            d.tags.clear();
+        }
+        let sent = pending.len() as u64;
+        d.signals = Signals {
+            signal: Some(asked),
+            pending,
+            done: Vec::new(),
+        };
+        self.next_key += sent;
     }
 
-    fn signal_done(
-        &mut self,
-        signal: Signal,
-        s: &Session,
-        result: Result<Vec<Vec<String>>, DbError>,
-    ) {
-        let who = session_text(s);
-        match result {
-            Ok(rows)
-                if rows
-                    .first()
-                    .and_then(|r| r.first())
-                    .is_some_and(|v| v == "true") =>
-            {
-                self.status = match signal {
-                    Signal::Cancel => format!("Cancel request sent to {who}"),
-                    Signal::Terminate => format!("{who} terminated"),
-                };
-            }
-            Ok(_) => {
-                self.status = format!("{who}: no such session any more");
-            }
-            Err(e) => {
-                let what = match signal {
-                    Signal::Cancel => "Cannot cancel the query of",
-                    Signal::Terminate => "Cannot terminate",
-                };
-                self.error(&format!("{what} {who}:\n{e}"));
-            }
+    /// All answers of one question are in: the status line, the errors in a dialog.
+    fn signals_done(&mut self, signal: Signal, done: Vec<(Session, Result<bool, String>)>) {
+        let what = match signal {
+            Signal::Cancel => "Cannot cancel the query of",
+            Signal::Terminate => "Cannot terminate",
+        };
+        if let [(s, Ok(sent))] = done.as_slice() {
+            let who = session_text(s);
+            self.status = match (sent, signal) {
+                (true, Signal::Cancel) => format!("Cancel request sent to {who}"),
+                (true, Signal::Terminate) => format!("{who} terminated"),
+                (false, _) => format!("{who}: no such session any more"),
+            };
+            return;
+        }
+        if done.len() > 1 {
+            let sent = done.iter().filter(|(_, r)| *r == Ok(true)).count();
+            self.status = match signal {
+                Signal::Cancel => {
+                    format!("Cancel request sent to {sent} of {} sessions", done.len())
+                }
+                Signal::Terminate => format!("{sent} of {} sessions terminated", done.len()),
+            };
+        }
+        let errors: Vec<String> = done
+            .iter()
+            .filter_map(|(s, r)| {
+                r.as_ref()
+                    .err()
+                    .map(|e| format!("{what} {}:\n{e}", session_text(s)))
+            })
+            .collect();
+        if !errors.is_empty() {
+            self.error(&errors.join("\n\n"));
         }
     }
 
@@ -504,6 +609,9 @@ impl App {
             MenuEntry::Separator,
             menu::item("&Next list", Command::NextList),
             menu::item("Hide / show i&dle sessions", Command::HideIdleSessions),
+            menu::item("Duration &mode", Command::DurationMode),
+            menu::item("T&ag / untag session", Command::TagSession),
+            menu::item("&Untag all", Command::ClearTags),
             menu::item("&Show row…", Command::ShowRow),
             MenuEntry::Separator,
             menu::item("&Cancel query…", Command::CancelBackend),
@@ -519,8 +627,10 @@ impl App {
         };
         match cmd {
             Command::CancelBackend | Command::TerminateBackend => {
-                d.connected() && d.selected_session().is_some()
+                d.connected() && !d.signal_targets().is_empty()
             }
+            Command::TagSession => d.list == List::Sessions && d.selected_session().is_some(),
+            Command::ClearTags => !d.tags.is_empty(),
             Command::ShowRow => d.loaded(d.list) && !d.grid().rows.is_empty(),
             _ => true,
         }
@@ -600,7 +710,7 @@ impl App {
         } else if d.paused {
             "Paused (Ctrl+P resumes)".to_owned()
         } else {
-            format!("Refresh every {} s", d.interval_secs())
+            format!("Refresh every {}", interval_text(d.interval_ms()))
         };
         Some((left, right))
     }
