@@ -5,12 +5,16 @@
 //! startup and saved on exit and when the window's close button is used. A terminal
 //! the user opened is never moved. Nothing happens on other platforms.
 
+// The placement file is only used on Windows (and by the tests on every platform).
+#[cfg(any(windows, test))]
 use std::path::Path;
 
+#[cfg(any(windows, test))]
 use serde::{Deserialize, Serialize};
 
 /// The stored window placement: the normal (restored) rectangle in screen
 /// coordinates and whether the window is maximized.
+#[cfg(any(windows, test))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 struct Placement {
     left: i32,
@@ -20,6 +24,7 @@ struct Placement {
     maximized: bool,
 }
 
+#[cfg(any(windows, test))]
 impl Placement {
     /// A rectangle with a size (a broken file must not shrink the window to nothing).
     fn is_usable(&self) -> bool {
@@ -28,6 +33,7 @@ impl Placement {
 }
 
 /// The placement in `window.toml`; `None` when the file is missing or unreadable.
+#[cfg(any(windows, test))]
 fn load(file: &Path) -> Option<Placement> {
     let text = std::fs::read_to_string(file).ok()?;
     match toml::from_str::<Placement>(&text) {
@@ -40,6 +46,7 @@ fn load(file: &Path) -> Option<Placement> {
     }
 }
 
+#[cfg(any(windows, test))]
 fn store(file: &Path, placement: &Placement) {
     let result = toml::to_string_pretty(placement)
         .map_err(std::io::Error::other)
