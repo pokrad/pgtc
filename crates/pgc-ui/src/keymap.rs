@@ -641,21 +641,30 @@ impl Keymap {
                 warnings.push(format!("[{section}] is not a table"));
                 continue;
             };
+            // keys the file itself gives to a command of this section (taking a key
+            // from a built-in binding is what the file is for; giving it twice is not)
+            let mut given: Vec<(KeyCombo, &str)> = Vec::new();
             for (name, keys) in entries {
                 let Some(cmd) = Command::from_name(name) else {
                     warnings.push(format!("[{section}] unknown command '{name}'"));
                     continue;
                 };
-                let names: Vec<&str> = match keys {
-                    toml::Value::String(s) => vec![s.as_str()],
-                    toml::Value::Array(a) => a.iter().filter_map(|v| v.as_str()).collect(),
+                let values: Vec<&toml::Value> = match keys {
+                    toml::Value::String(_) => vec![keys],
+                    toml::Value::Array(a) => a.iter().collect(),
                     _ => {
                         warnings.push(format!("[{section}] {name}: expected key name(s)"));
                         continue;
                     }
                 };
                 let mut combos = Vec::new();
-                for n in names {
+                for v in values {
+                    let Some(n) = v.as_str() else {
+                        warnings.push(format!(
+                            "[{section}] {name}: {v} is not a key name (write it in quotes)"
+                        ));
+                        continue;
+                    };
                     match KeyCombo::parse(n) {
                         Ok(c) => combos.push(c),
                         Err(e) => warnings.push(format!("[{section}] {name}: {e}")),
@@ -663,6 +672,14 @@ impl Keymap {
                 }
                 self.unbind_command(ctx, cmd);
                 for combo in combos {
+                    match given.iter().find(|(c, _)| *c == combo) {
+                        Some((_, other)) if *other != name.as_str() => warnings.push(format!(
+                            "[{section}] {combo} is given to both '{other}' and '{name}'; \
+                             '{name}' has it"
+                        )),
+                        Some(_) => {}
+                        None => given.push((combo, name.as_str())),
+                    }
                     self.bind(ctx, combo, cmd);
                 }
             }
@@ -827,5 +844,39 @@ mod tests {
             .unwrap();
         assert_eq!(w.len(), 3, "{w:?}");
         assert!(km.apply_overrides("[tree").is_err());
+    }
+
+    #[test]
+    fn skipped_and_contradicting_entries_are_reported() {
+        let mut km = Keymap::default();
+        // a number in a key list
+        let w = km
+            .apply_overrides("[editor]\nfind = [\"Ctrl+F\", 7]\n")
+            .unwrap();
+        assert_eq!(w.len(), 1, "{w:?}");
+        assert!(w[0].contains("7 is not a key name"), "{w:?}");
+        assert_eq!(km.lookup(Context::Editor, k("Ctrl+F")), Some(Command::Find));
+        // the same key for two commands of one section: the later one has it
+        let w = km
+            .apply_overrides("[editor]\nfind = \"F8\"\nfind_next = \"F8\"\n")
+            .unwrap();
+        assert_eq!(w.len(), 1, "{w:?}");
+        assert!(w[0].contains("given to both"), "{w:?}");
+        // taking a key from a built-in binding is not a problem to report
+        let mut km = Keymap::default();
+        let taken = km.lookup_only(Context::Editor, k("Ctrl+F"));
+        assert!(taken.is_some());
+        let w = km
+            .apply_overrides("[editor]\nfind_next = \"Ctrl+F\"\n")
+            .unwrap();
+        assert!(w.is_empty(), "{w:?}");
+        assert_eq!(
+            km.lookup_only(Context::Editor, k("Ctrl+F")),
+            Some(Command::FindNext)
+        );
+        // the plus key
+        let w = km.apply_overrides("[editor]\nfind = \"+\"\n").unwrap();
+        assert!(w.is_empty(), "{w:?}");
+        assert_eq!(km.lookup_only(Context::Editor, k("+")), Some(Command::Find));
     }
 }

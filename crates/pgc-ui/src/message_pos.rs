@@ -84,11 +84,14 @@ pub fn locate_in(
 }
 
 /// N of `PL/pgSQL function inline_code_block line N …` (also `compilation of PL/pgSQL
-/// function "inline_code_block" near line N`).
+/// function "inline_code_block" near line N`). The words around it are in the server's
+/// language (`lc_messages`); the function's name and the number are not, so the line
+/// is the first number after the name.
 fn do_line(context_line: &str) -> Option<usize> {
-    let at = context_line.find("inline_code_block")?;
-    let rest = &context_line[at..];
-    let n = rest[rest.find("line ")? + 5..]
+    const NAME: &str = "inline_code_block";
+    let rest = &context_line[context_line.find(NAME)? + NAME.len()..];
+    let digits = rest.trim_start_matches(|c: char| !c.is_ascii_digit());
+    let n: usize = digits
         .split(|c: char| !c.is_ascii_digit())
         .next()?
         .parse()
@@ -262,6 +265,33 @@ mod tests {
         assert!(!s[0].is_do && s[1].is_do && s[2].is_do && !s[3].is_do);
         assert_eq!(&sql[s[1].body.unwrap()..][..6], " begin");
         assert_eq!(&sql[s[2].body.unwrap()..][..3], " x ");
+    }
+
+    #[test]
+    fn do_lines_in_other_languages() {
+        for (context, line) in [
+            (
+                "PL/pgSQL function inline_code_block line 3 at RAISE",
+                Some(3),
+            ),
+            (
+                "compilation of PL/pgSQL function \"inline_code_block\" near line 12",
+                Some(12),
+            ),
+            (
+                "PL/pgSQL-Funktion inline_code_block Zeile 4 bei RAISE",
+                Some(4),
+            ),
+            (
+                "fonction PL/pgSQL inline_code_block, ligne 7 à RAISE",
+                Some(7),
+            ),
+            ("PL/pgSQL function f(integer) line 3 at RAISE", None),
+            ("PL/pgSQL function inline_code_block", None),
+            ("PL/pgSQL function inline_code_block line 0", None),
+        ] {
+            assert_eq!(do_line(context), line, "{context}");
+        }
     }
 
     #[test]

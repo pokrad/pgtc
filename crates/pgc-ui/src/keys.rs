@@ -50,7 +50,10 @@ impl KeyCombo {
     /// Parses `Ctrl+Shift+F5`, `Alt+.`, `Esc`, `Ctrl++` ... (case-insensitive).
     pub fn parse(text: &str) -> Result<Self, String> {
         let text = text.trim();
-        let (mods_part, key_part) = if let Some(prefix) = text.strip_suffix("++") {
+        let (mods_part, key_part) = if text == "+" {
+            // the plus key on its own
+            ("", "+")
+        } else if let Some(prefix) = text.strip_suffix("++") {
             (prefix, "+")
         } else {
             match text.rsplit_once('+') {
@@ -184,6 +187,18 @@ mod tests {
             KeyCombo::from_event(&ev),
             KeyCombo::plain(KeyCode::Char('?'))
         );
+    }
+
+    #[test]
+    fn the_plus_key() {
+        assert_eq!(k("+"), KeyCombo::plain(KeyCode::Char('+')));
+        assert_eq!(k("+").to_string(), "+");
+        assert_eq!(
+            k("Ctrl++"),
+            KeyCombo::new(KeyCode::Char('+'), KeyModifiers::CONTROL)
+        );
+        assert_eq!(k("Ctrl++").to_string(), "Ctrl++");
+        assert!(KeyCombo::parse("Ctrl+").is_err());
     }
 
     #[test]
