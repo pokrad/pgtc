@@ -3,23 +3,21 @@
 //!
 //! Template directories have version folders (`default/`, `16_plus/`, ...); inside a
 //! version folder, sub-folders are categories (`default/Functions/function.pgtemplate`).
-//! Sources are scanned in precedence order — user directory, built-in directory, and
-//! the embedded templates when the built-in directory does not exist — and for each
-//! template and version folder the first source wins.
+//! Templates are read only from the user's templates folder; the embedded ones get
+//! there by installing them (`--install-templates`, Settings → Install templates).
 
 use std::collections::BTreeMap;
 use std::fmt;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use include_dir::{Dir, include_dir};
 use minijinja::Environment;
-use minijinja::syntax::SyntaxConfig;
 use minijinja::value::{Object, ObjectRepr, Value};
 use pgc_core::ServerVersion;
 use serde::Deserialize;
 
-use crate::{pick_folder, register};
+use crate::pick_folder;
 
 static EMBEDDED: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../../templates");
 
@@ -540,15 +538,9 @@ pub fn render(
     ctx: &TemplateContext,
 ) -> Result<String, String> {
     validate(&template.params, values)?;
-    let mut env = Environment::new();
-    env.set_syntax(
-        SyntaxConfig::builder()
-            .trim_blocks(true)
-            .lstrip_blocks(true)
-            .build()
-            .expect("valid syntax config"),
-    );
-    register(&mut env);
+    // built once: the form renders its preview after every key
+    static ENV: LazyLock<Environment<'static>> = LazyLock::new(crate::environment);
+    let env = &*ENV;
     let mut vars: BTreeMap<String, Value> = BTreeMap::new();
     for p in &template.params {
         let value = match values.get(&p.name) {

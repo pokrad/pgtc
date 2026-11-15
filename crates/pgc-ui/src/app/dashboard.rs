@@ -8,6 +8,7 @@ use pgc_sql::RenderContext;
 use ratatui::layout::Position;
 
 use super::connections::MonitorEvent;
+use super::query::connection_label;
 use super::{App, Effect, Focus, Tab, TabBody, Target, TextView};
 use crate::dashboard::{Dashboard, List, Session, Signal, Signals, interval_text};
 use crate::dialog::{Dialog, DialogKind};
@@ -700,11 +701,7 @@ impl App {
     pub(crate) fn dashboard_status(&self, tab: &Tab) -> Option<(String, String)> {
         let d = tab.dashboard()?;
         let place = self.place_label(d.uid, Some(&d.conn_database));
-        let left = match (&d.conn, &d.problem) {
-            (Some(c), _) if c.connected => place,
-            (Some(_), _) => format!("{place} – connecting…"),
-            (None, _) => format!("{place} – not connected"),
-        };
+        let left = connection_label(place, d.conn.as_ref().map(|c| c.connected));
         let right = if !d.connected() {
             String::new()
         } else if d.paused {

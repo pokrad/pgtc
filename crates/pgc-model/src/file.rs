@@ -30,7 +30,11 @@ pub fn from_text(text: &str) -> Result<Database, FileError> {
 }
 
 pub fn save(db: &Database, path: &Path) -> Result<(), FileError> {
-    std::fs::write(path, to_text(db))?;
+    pgc_core::fsutil::atomic_write(
+        path,
+        to_text(db).as_bytes(),
+        pgc_core::fsutil::Access::Default,
+    )?;
     Ok(())
 }
 

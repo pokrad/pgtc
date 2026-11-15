@@ -412,7 +412,6 @@ pub struct App {
     file_places: Option<Vec<pgc_core::places::Place>>,
     /// What to do once a "Save changes?" save has succeeded (D-019).
     after_save: Option<AfterSave>,
-    /// Quitting: tabs whose unsaved text the user chose not to save (D-019).
     /// Quitting / disconnecting (D-043): what, and the tabs whose unsaved text the
     /// user chose not to save.
     bulk: Option<(Bulk, Vec<u64>)>,

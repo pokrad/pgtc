@@ -547,34 +547,39 @@ fn topo_sort(steps: Vec<&Step>) -> Vec<&Step> {
         })
         .collect();
     let at: HashMap<&ObjRef, usize> = refs.iter().enumerate().map(|(i, r)| (r, i)).collect();
-    let mut waiting: Vec<BTreeSet<usize>> = steps
-        .iter()
-        .enumerate()
-        .map(|(i, s)| {
-            s.deps
-                .iter()
-                .filter_map(|d| at.get(d).copied())
-                .filter(|&d| d != i)
-                .collect()
-        })
+    // how many steps each one still waits for, and who waits for it
+    let mut waiting = vec![0usize; steps.len()];
+    let mut dependents: Vec<Vec<usize>> = vec![Vec::new(); steps.len()];
+    for (i, s) in steps.iter().enumerate() {
+        let deps: BTreeSet<usize> = s
+            .deps
+            .iter()
+            .filter_map(|d| at.get(d).copied())
+            .filter(|&d| d != i)
+            .collect();
+        waiting[i] = deps.len();
+        for d in deps {
+            dependents[d].push(i);
+        }
+    }
+    let order_key = |i: usize| (rank(refs[i].kind), &refs[i], i);
+    let mut left: BTreeSet<_> = (0..steps.len()).map(order_key).collect();
+    let mut ready: BTreeSet<_> = (0..steps.len())
+        .filter(|&i| waiting[i] == 0)
+        .map(order_key)
         .collect();
-    let order_key = |i: usize| (rank(refs[i].kind), refs[i].clone());
-    let mut done = vec![false; steps.len()];
     let mut out = Vec::with_capacity(steps.len());
-    while out.len() < steps.len() {
-        let next = (0..steps.len())
-            .filter(|&i| !done[i] && waiting[i].is_empty())
-            .min_by_key(|&i| order_key(i))
-            .or_else(|| {
-                (0..steps.len())
-                    .filter(|&i| !done[i])
-                    .min_by_key(|&i| order_key(i))
-            })
-            .expect("a step is left");
-        done[next] = true;
+    // the first ready step, or (a cycle) the first one left
+    while let Some(key) = ready.first().or_else(|| left.first()).copied() {
+        let next = key.2;
+        ready.remove(&key);
+        left.remove(&key);
         out.push(steps[next]);
-        for w in &mut waiting {
-            w.remove(&next);
+        for &d in &dependents[next] {
+            waiting[d] = waiting[d].saturating_sub(1);
+            if waiting[d] == 0 && left.contains(&order_key(d)) {
+                ready.insert(order_key(d));
+            }
         }
     }
     out

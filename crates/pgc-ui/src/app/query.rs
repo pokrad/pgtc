@@ -394,11 +394,12 @@ impl App {
             return "No database – select one in the tree".to_owned();
         };
         let place = self.place_label(*uid, Some(db));
-        match q.conn.as_ref().map(|c| c.state) {
-            Some(QueryConnState::Connected) => place,
-            Some(QueryConnState::Connecting) => format!("{place} – connecting…"),
-            None => format!("{place} – not connected"),
-        }
+        connection_label(
+            place,
+            q.conn
+                .as_ref()
+                .map(|c| c.state == QueryConnState::Connected),
+        )
     }
 
     /// `server · user@database` (or `server · user` without a database).
@@ -422,5 +423,15 @@ impl App {
     pub(super) fn tab_server_version(&self) -> Option<pgc_core::ServerVersion> {
         let (uid, _) = self.query()?.binding.as_ref()?;
         self.tree.servers.iter().find(|s| s.uid == *uid)?.version
+    }
+}
+
+/// `place`, with the state of a tab's own connection when it is not open: `connected`
+/// is `None` without a connection, `Some(false)` while it is being opened (D-043).
+pub(super) fn connection_label(place: String, connected: Option<bool>) -> String {
+    match connected {
+        Some(true) => place,
+        Some(false) => format!("{place} – connecting…"),
+        None => format!("{place} – not connected"),
     }
 }

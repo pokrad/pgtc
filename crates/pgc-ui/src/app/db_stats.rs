@@ -6,6 +6,7 @@ use pgc_sql::RenderContext;
 use ratatui::layout::Position;
 
 use super::connections::MonitorEvent;
+use super::query::connection_label;
 use super::{App, Focus, Tab, TabBody, Target, TextView};
 use crate::db_stats::DbStats;
 use crate::keymap::Command;
@@ -277,11 +278,7 @@ impl App {
     pub(crate) fn db_stats_status(&self, tab: &Tab) -> Option<(String, String)> {
         let s = tab.db_stats()?;
         let place = self.place_label(s.uid, Some(&s.database));
-        let left = match &s.conn {
-            Some(c) if c.connected => place,
-            Some(_) => format!("{place} – connecting…"),
-            None => format!("{place} – not connected"),
-        };
+        let left = connection_label(place, s.conn.as_ref().map(|c| c.connected));
         let right = if s.key.is_some() {
             "Reading…".to_owned()
         } else {

@@ -295,9 +295,8 @@ impl Settings {
             std::fs::create_dir_all(dir).map_err(|e| Error::io(dir, e))?;
         }
         let text = toml::to_string_pretty(self)?;
-        let tmp = path.with_extension("toml.tmp");
-        std::fs::write(&tmp, text).map_err(|e| Error::io(&tmp, e))?;
-        std::fs::rename(&tmp, path).map_err(|e| Error::io(path, e))
+        crate::fsutil::atomic_write(path, text.as_bytes(), crate::fsutil::Access::Default)
+            .map_err(|e| Error::io(path, e))
     }
 }
 
@@ -334,7 +333,10 @@ mod tests {
         assert!(text.contains("[[servers]]"), "{text}");
         assert!(text.contains("ssl_mode = \"verify-full\""), "{text}");
         assert_eq!(Settings::load(&path).unwrap(), s);
-        assert!(!path.with_extension("toml.tmp").exists());
+        assert_eq!(
+            std::fs::read_dir(path.parent().unwrap()).unwrap().count(),
+            1
+        );
     }
 
     #[test]

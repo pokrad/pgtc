@@ -147,16 +147,9 @@ pub fn save_password(path: &Path, key: PgPassKey<'_>, password: &str) -> Result<
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(err)?;
     }
-    let mut options = std::fs::OpenOptions::new();
-    options.write(true).create(true).truncate(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.mode(0o600);
-    }
-    use std::io::Write;
-    let mut file = options.open(path).map_err(err)?;
-    file.write_all(new.as_bytes()).map_err(err)
+    // a crash while writing must not lose the other saved passwords
+    pgc_core::fsutil::atomic_write(path, new.as_bytes(), pgc_core::fsutil::Access::Private)
+        .map_err(err)
 }
 
 #[cfg(test)]

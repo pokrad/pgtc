@@ -555,6 +555,16 @@ impl Dialog {
     }
 
     /// Selected index of a list or choice.
+    /// Text of the selected row of list `id`, as it is shown.
+    pub fn selected_item(&self, id: &str) -> Option<&str> {
+        match self.find(id).map(|w| &w.kind) {
+            Some(WidgetKind::List {
+                selected, items, ..
+            }) => items.get(*selected).map(String::as_str),
+            _ => None,
+        }
+    }
+
     pub fn selected(&self, id: &str) -> Option<usize> {
         match self.find(id).map(|w| &w.kind) {
             Some(WidgetKind::List {

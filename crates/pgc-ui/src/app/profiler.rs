@@ -9,6 +9,7 @@ use pgc_sql::RenderContext;
 use ratatui::layout::Position;
 
 use super::connections::MonitorEvent;
+use super::query::connection_label;
 use super::{App, Effect, Focus, Tab, TabBody, Target, TextView};
 use crate::dialog::{Dialog, DialogKind, Widget};
 use crate::keymap::Command;
@@ -731,11 +732,7 @@ impl App {
     pub(crate) fn profiler_status(&self, tab: &Tab) -> Option<(String, String)> {
         let p = tab.profiler()?;
         let place = self.place_label(p.uid, Some(&p.conn_database));
-        let left = match &p.conn {
-            Some(c) if c.connected => place,
-            Some(_) => format!("{place} – connecting…"),
-            None => format!("{place} – not connected"),
-        };
+        let left = connection_label(place, p.conn.as_ref().map(|c| c.connected));
         Some((left, p.state_text()))
     }
 

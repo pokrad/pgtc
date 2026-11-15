@@ -58,16 +58,8 @@ impl Default for SqlCatalog {
 
 impl SqlCatalog {
     pub fn new() -> Self {
-        let mut env = Environment::new();
-        env.set_syntax(
-            SyntaxConfig::builder()
-                .trim_blocks(true)
-                .lstrip_blocks(true)
-                .build()
-                .expect("valid syntax config"),
-        );
+        let mut env = environment();
         env.set_loader(|name| Ok(SQL_DIR.get_file(name).and_then(|f| f.contents_utf8())));
-        register(&mut env);
         Self { env }
     }
 
@@ -152,6 +144,21 @@ pub fn pick_folder<'a>(folders: &[&'a str], version: ServerVersion) -> Option<&'
         .max_by_key(|(n, _)| *n)
         .map(|(_, f)| f)
         .or_else(|| folders.iter().copied().find(|f| *f == "default"))
+}
+
+/// A minijinja environment as every pgtc template gets it: block tags take their line
+/// with them, and the filters and functions of [`register`] are known.
+pub(crate) fn environment() -> Environment<'static> {
+    let mut env = Environment::new();
+    env.set_syntax(
+        SyntaxConfig::builder()
+            .trim_blocks(true)
+            .lstrip_blocks(true)
+            .build()
+            .expect("valid syntax config"),
+    );
+    register(&mut env);
+    env
 }
 
 pub(crate) fn register(env: &mut Environment<'_>) {

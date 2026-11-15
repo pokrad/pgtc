@@ -119,8 +119,12 @@ impl App {
                 }
                 return Picked::Folder;
             }
-            let entries = list_dir(&dir, "");
-            let Some(name) = entries.get(i).map(|e| e.0.trim_end_matches(MAIN_SEPARATOR)) else {
+            // the row as the user sees it: the folder may have changed since it was
+            // listed
+            let Some(name) = dialog
+                .selected_item("files")
+                .map(|n| n.trim_end_matches(MAIN_SEPARATOR))
+            else {
                 return Picked::Nothing;
             };
             if name == ".." {
@@ -289,7 +293,13 @@ impl App {
 
     pub(super) fn save_to(&mut self, path: std::path::PathBuf) {
         let text = self.tabs[self.active_tab].view.editor.text();
-        match std::fs::write(&path, text) {
+        // a temporary file first: a crash or a full disk keeps the old file (D-064)
+        let saved = pgc_core::fsutil::atomic_write(
+            &path,
+            text.as_bytes(),
+            pgc_core::fsutil::Access::Default,
+        );
+        match saved {
             Ok(()) => {
                 self.tabs[self.active_tab].view.editor.set_modified(false);
                 if let Some(q) = self.query_mut() {

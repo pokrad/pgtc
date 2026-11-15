@@ -4,6 +4,7 @@
 //! dependencies (no tokio-postgres, ratatui, minijinja).
 
 pub mod error;
+pub mod fsutil;
 pub mod logging;
 pub mod paths;
 pub mod places;
