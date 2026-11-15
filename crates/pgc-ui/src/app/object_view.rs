@@ -109,8 +109,20 @@ impl App {
                 {
                     self.request_settings(row.server);
                 }
-                let (title, text) = self.info_text(row);
-                self.tabs[0].view.set_text(title, text);
+                // A group lists all its children: that text is built again only when
+                // it can have changed. The other info texts are short.
+                let made_from = match row.kind {
+                    RowKind::Node(nid) => self
+                        .tree
+                        .node(nid)
+                        .map(|n| (nid, n.children.as_ref().map(Vec::len), n.loading)),
+                    RowKind::Server | RowKind::Loading(_) => None,
+                };
+                if changed || made_from.is_none() || made_from != self.followed_info {
+                    self.followed_info = made_from;
+                    let (title, text) = self.info_text(row);
+                    self.tabs[0].view.set_text(title, text);
+                }
                 Vec::new()
             }
             (None, None) if changed => {

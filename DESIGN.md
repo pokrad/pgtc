@@ -1815,8 +1815,10 @@ pgtc (binary)
     role or tablespace has nothing below it;
   - **all databases:** each database is searched through its tree connection, all at
     the same time; results appear as each database answers (*1 of 20 databases*).
-    Databases that are not connected are opened, at most 8 at a time, already when
-    the dialog opens; they are closed again when the dialog closes, except the one
+    Databases that are not connected are opened already when the dialog opens. The
+    search never has more than 8 connections of its own: with more databases, one
+    is closed when it has answered, to make room for the next. They are closed
+    again when the dialog closes, except the one
     the tree opens into (OK), which stays connected like an expanded database
     (D-011). Databases already connected keep their connection. A database that
     cannot be opened (password needed, login failed, no permission, connections not
@@ -2529,3 +2531,4 @@ pgtc (binary)
 | 2026-11-15 | D-072 updated: the file dialogs no longer read the file system themselves — the folder listing, the places and the check of a chosen path run in the background; the dialog opens with *Reading…* and stays while a path is checked. |
 | 2026-11-15 | D-038 / D-064 refined: undoing (or redoing) back to the saved text removes the "modified" mark; replace in regex mode takes each match in its line, so patterns that look around the match (`\b`, `\B`, `^`, `$`) replace what the search found. D-019 refined: a paused result notices a lost connection within a second, not only at the next request. |
 | 2026-11-15 | D-046 refined: a template's own `query` must be one `SELECT` / `WITH` / `VALUES` / `TABLE` statement and runs so that nothing it does stays (a read-only transaction, or a savepoint of the tab's open transaction that is rolled back). D-057 refined: cancel / terminate go only to the session that was shown (PID and backend start), not to one that got its PID since. D-058 refined: profiler entries are recognised by SQLSTATE, so errors also show on servers whose messages are not English. |
+| 2026-11-15 | D-055 updated: a search of all databases has at most 8 connections of its own open at a time (it had one per database until the dialog closed); with more databases a connection is closed when it has answered. D-052 refined: names are not asked for in a failed transaction, and a failed lookup is not remembered as an empty list. |

@@ -690,7 +690,39 @@ impl Tree {
         self.offset = self.offset.min(n.saturating_sub(height));
     }
 
-    /// Name used by quick search (D-036).
+    /// The names of [`Self::rows`], in their order, made in one walk (quick search
+    /// compares every row, D-036).
+    pub fn row_names(&self) -> Vec<&str> {
+        fn push<'a>(node: &'a Node, names: &mut Vec<&'a str>) {
+            names.push(&node.name);
+            if !node.expanded {
+                return;
+            }
+            match &node.children {
+                Some(children) => {
+                    for c in children {
+                        push(c, names);
+                    }
+                }
+                // the "loading…" row has no name
+                None if node.loading || node.is_database() => names.push(""),
+                None => {}
+            }
+        }
+        let mut names = Vec::new();
+        for s in &self.servers {
+            names.push(s.conn.name.as_str());
+            if s.expanded && s.state == ConnState::Connected {
+                for c in &s.children {
+                    push(c, &mut names);
+                }
+            }
+        }
+        names
+    }
+
+    /// Name of one row, as quick search sees it.
+    #[cfg(test)]
     pub fn row_name(&self, row: Row) -> String {
         match row.kind {
             RowKind::Server => self.servers[row.server].conn.name.clone(),
@@ -952,6 +984,9 @@ mod tests {
                 assert_eq!(got, want, "offset {offset}, count {count}");
             }
         }
+        // the names quick search compares are those of the same rows
+        let names: Vec<String> = rows.iter().map(|r| t.row_name(*r)).collect();
+        assert_eq!(t.row_names(), names);
     }
 
     #[test]

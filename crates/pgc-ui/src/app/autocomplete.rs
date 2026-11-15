@@ -274,8 +274,9 @@ impl App {
         let Some(handle) = q.conn.as_ref().map(|c| c.handle.clone()) else {
             return;
         };
-        // a request now would end the running or paused result (see `completion_list`)
-        if q.running.is_some() {
+        // a request now would end the running or paused result, and fail in a failed
+        // transaction (see `completion_list`)
+        if q.running.is_some() || q.tx == pgc_db::TxStatus::Failed {
             return;
         }
         let generation = q.names.generation;
@@ -329,19 +330,26 @@ impl App {
         if q.names.generation != generation {
             return;
         }
-        if let Err(e) = &result {
-            tracing::warn!("autocomplete names: {e}");
-        }
-        let rows = result.unwrap_or_default();
-        match need {
-            Need::Objects => q.names.set_objects(rows),
-            Need::Columns(key) => {
+        match (need, result) {
+            (Need::Objects, Ok(rows)) => q.names.set_objects(rows),
+            (Need::Columns(key), Ok(rows)) => {
                 q.names.columns_pending.remove(&key);
                 let cols = rows
                     .into_iter()
                     .filter_map(|r| r.into_iter().next())
                     .collect();
                 q.names.columns.insert(key, cols);
+            }
+            // not an answer (a failed transaction, a lost connection): nothing is
+            // remembered, so the names are asked for again when that is possible
+            (need, Err(e)) => {
+                tracing::warn!("autocomplete names: {e}");
+                match need {
+                    Need::Objects => q.names.objects_pending = false,
+                    Need::Columns(key) => {
+                        q.names.columns_pending.remove(&key);
+                    }
+                }
             }
         }
         if self.completion.as_ref().is_some_and(|p| p.tab == tab) {
@@ -359,7 +367,9 @@ fn completion_list(
     q: &QueryState,
 ) -> (crate::completion::Built, bool) {
     let mut built = crate::completion::build(a, &q.names, pgc_editor::lexer::keywords());
-    let held = q.running.is_some() && !built.needs.is_empty();
+    // (in a failed transaction every lookup is an error until it is rolled back)
+    let busy = q.running.is_some() || q.tx == pgc_db::TxStatus::Failed;
+    let held = busy && !built.needs.is_empty();
     if held {
         built.needs.clear();
         built.loading = false;

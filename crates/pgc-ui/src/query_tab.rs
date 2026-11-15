@@ -58,6 +58,8 @@ pub struct Sent {
     pub prefix: usize,
     /// Chars of the user's text.
     pub user_len: usize,
+    /// The statements of `sql`, split when a message first needs them.
+    pub statements: std::cell::OnceCell<crate::message_pos::Statements>,
 }
 
 impl Sent {
@@ -68,6 +70,7 @@ impl Sent {
             sql: sql.into(),
             prefix: 0,
             user_len: sql.chars().count(),
+            statements: std::cell::OnceCell::new(),
         }
     }
 
@@ -327,7 +330,7 @@ impl QueryState {
     /// A server message with its editor position and `LINE n:` text (D-019).
     fn push_server(&mut self, kind: MessageKind, m: &ServerMessage, lines: &LineMap<'_>) {
         let place = self.sent.as_ref().and_then(|sent| {
-            let at = crate::message_pos::locate(&sent.sql, m, self.completed)?;
+            let at = crate::message_pos::locate_in(&sent.sql, m, self.completed, &sent.statements)?;
             let pos = sent.editor_pos(at.pos)?;
             let line_no = (lines.line_of)(pos) + 1;
             let text = crate::message_pos::line_text(&sent.sql, at.pos, at.exact, line_no);
@@ -698,6 +701,7 @@ mod tests {
                 sql: sql.as_str().into(),
                 prefix,
                 user_len: text.chars().count(),
+                statements: std::cell::OnceCell::new(),
             },
         );
         let line_of = |c: usize| text[..c - 100].matches('\n').count();

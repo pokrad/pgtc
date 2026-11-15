@@ -15,9 +15,26 @@ pub struct Located {
     pub exact: bool,
 }
 
-/// Where `m` points in `sql`; `completed`: statements of the run that had completed
-/// when it arrived (the running one is the next).
+/// The statements of a sent text, split once per run: a script that raises thousands
+/// of notices is not read again for each of them.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Statements(Vec<Statement>);
+
+/// [`locate_in`] for a text whose statements are not kept.
+#[cfg(test)]
 pub fn locate(sql: &str, m: &ServerMessage, completed: usize) -> Option<Located> {
+    locate_in(sql, m, completed, &std::cell::OnceCell::new())
+}
+
+/// Where `m` points in `sql`; `completed`: statements of the run that had completed
+/// when it arrived (the running one is the next). `split` keeps the statements of
+/// `sql` (filled when they are first needed).
+pub fn locate_in(
+    sql: &str,
+    m: &ServerMessage,
+    completed: usize,
+    split: &std::cell::OnceCell<Statements>,
+) -> Option<Located> {
     if let Some(p) = m.position {
         let pos = (p as usize).saturating_sub(1).min(sql.chars().count());
         return Some(Located { pos, exact: true });
@@ -27,7 +44,7 @@ pub fn locate(sql: &str, m: &ServerMessage, completed: usize) -> Option<Located>
         .lines()
         .enumerate()
         .find_map(|(i, l)| Some((i, do_line(l)?)))?;
-    let stmts = statements(sql);
+    let stmts = &split.get_or_init(|| Statements(statements(sql))).0;
     let body = match stmts.get(completed) {
         Some(s) if s.is_do => s.body,
         _ => {

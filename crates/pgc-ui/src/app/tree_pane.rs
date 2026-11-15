@@ -59,14 +59,11 @@ impl App {
             return;
         };
         let needle = text.to_lowercase();
-        let rows = self.tree.rows();
-        let n = rows.len();
-        let found = (0..n).map(|k| (start + k) % n).find(|&i| {
-            self.tree
-                .row_name(rows[i])
-                .to_lowercase()
-                .starts_with(&needle)
-        });
+        let names = self.tree.row_names();
+        let n = names.len();
+        let found = (0..n)
+            .map(|k| (start + k) % n)
+            .find(|&i| names[i].to_lowercase().starts_with(&needle));
         if let Some(i) = found {
             self.tree.cursor = i;
         }

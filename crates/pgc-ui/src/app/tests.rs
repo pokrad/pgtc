@@ -4223,3 +4223,147 @@ async fn profiler_follows_a_log_file_that_starts_again() {
     assert_eq!(prof(&a).grid.rows.len(), 1);
     assert_eq!(prof(&a).offset, line.len() as u64);
 }
+
+/// A search of all databases (D-055) never has more than 8 connections of its own:
+/// with more databases, one is closed when it has answered and the next is opened.
+#[tokio::test]
+async fn find_object_caps_its_own_connections() {
+    use super::find_object::Source;
+    use crate::objects::ObjType;
+    use crate::tree::NodeKind;
+    use pgc_db::NodeRow;
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "srv");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    a.tree.by_uid(uid).unwrap().handle = Some(pgc_db::ConnectionHandle::detached(50));
+    let dbs = a.tree.servers[0]
+        .children
+        .iter()
+        .find(|n| n.kind == NodeKind::Group(ObjType::Database))
+        .unwrap()
+        .nid;
+    a.tree.set_children(
+        dbs,
+        (1..=10)
+            .map(|oid| NodeRow {
+                oid,
+                name: format!("db{oid:02}"),
+                label: None,
+                partitioned: false,
+            })
+            .collect(),
+    );
+    let state = |a: &App, nid: u64| {
+        a.tree
+            .node(nid)
+            .and_then(|n| n.conn.as_ref())
+            .map(|c| c.state)
+    };
+    a.focus = Focus::Tree;
+    a.tree.select_server(uid);
+    key(&mut a, "Ctrl+F");
+    // ten databases, none connected: eight are opened, two wait
+    let opened: Vec<u64> = a.find.as_ref().unwrap().opened.iter().copied().collect();
+    assert_eq!(opened.len(), 8);
+    // (no servers in tests: the connections are taken as made)
+    for nid in &opened {
+        let n = a.tree.node_mut(*nid).unwrap();
+        n.conn.as_mut().unwrap().state = ConnState::Connected;
+    }
+    typing(&mut a, "orders");
+    let seq = a.find_seq;
+    a.update(Msg::FindTimer(seq), &Hits::default());
+    let pending: Vec<(u64, Source)> = a
+        .find
+        .as_ref()
+        .unwrap()
+        .pending
+        .iter()
+        .map(|(k, s)| (*k, *s))
+        .collect();
+    assert_eq!(pending.len(), 9, "the server and the eight open databases");
+
+    // one database answers: its connection goes, the next one is opened
+    let (key, answered) = pending
+        .iter()
+        .find_map(|(k, s)| match s {
+            Source::Database(n) => Some((*k, *n)),
+            Source::Server => None,
+        })
+        .unwrap();
+    a.find_loaded(key, Ok(Vec::new()));
+    assert_eq!(state(&a, answered), Some(ConnState::Disconnected));
+    assert_eq!(a.find.as_ref().unwrap().opened.len(), 7);
+    a.after_tree_event();
+    let f = a.find.as_ref().unwrap();
+    assert_eq!(f.opened.len(), 8, "the ninth database takes its place");
+    assert!(!f.opened.contains(&answered));
+
+    // with nobody waiting any more, an answer keeps its connection for the next search
+    let all: Vec<u64> = f.opened.iter().copied().collect();
+    for nid in &all {
+        let n = a.tree.node_mut(*nid).unwrap();
+        n.conn.as_mut().unwrap().state = ConnState::Connected;
+    }
+    a.after_tree_event();
+    let waiting_for_room = a
+        .tree
+        .node(dbs)
+        .unwrap()
+        .children
+        .as_ref()
+        .unwrap()
+        .iter()
+        .filter(|n| {
+            let f = a.find.as_ref().unwrap();
+            !f.opened.contains(&n.nid) && !f.searched.contains(&Source::Database(n.nid))
+        })
+        .count();
+    assert_eq!(waiting_for_room, 1, "one database still waits");
+    assert!(a.find.as_ref().unwrap().opened.len() <= 8);
+    esc(&mut a);
+    assert!(a.find.is_none());
+}
+
+/// Autocomplete (D-052): a lookup that failed is not an answer — nothing is
+/// remembered — and in a failed transaction no names are asked for.
+#[tokio::test]
+async fn failed_name_lookups_are_not_remembered() {
+    use crate::completion::Need;
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    let tab = connected_tab(&mut a, 99);
+    let i = a.tab_index(tab).unwrap();
+    a.query_mut().unwrap().binding = Some((uid, "shop".into()));
+
+    a.request_names(i, &[Need::Objects, Need::Columns((None, "orders".into()))]);
+    let q = a.query().unwrap();
+    assert!(q.names.objects_pending);
+    let generation = q.names.generation;
+    a.names_loaded(tab, generation, Need::Objects, Err("ERROR: aborted".into()));
+    a.names_loaded(
+        tab,
+        generation,
+        Need::Columns((None, "orders".into())),
+        Err("ERROR: aborted".into()),
+    );
+    let q = a.query().unwrap();
+    assert!(q.names.objects.is_none(), "no empty list is kept");
+    assert!(!q.names.objects_pending);
+    assert!(q.names.columns.is_empty());
+    assert!(q.names.columns_pending.is_empty());
+
+    // a failed transaction: nothing is asked (it would only fail again)
+    a.query_mut().unwrap().tx = TxStatus::Failed;
+    let before = a.next_key;
+    a.request_names(i, &[Need::Objects]);
+    assert_eq!(a.next_key, before);
+    assert!(!a.query().unwrap().names.objects_pending);
+    // rolled back: asked again
+    a.query_mut().unwrap().tx = TxStatus::Idle;
+    a.request_names(i, &[Need::Objects]);
+    assert_eq!(a.next_key, before + 1);
+}

@@ -393,6 +393,9 @@ pub struct App {
     default_key: u64,
     /// Row the default tab shows; `def_seq` invalidates older timers.
     followed: Option<RowKind>,
+    /// What the info text of the followed group was made from (node, number of
+    /// children, loading): it is built again only when this changes.
+    followed_info: Option<(u64, Option<usize>, bool)>,
     def_seq: u64,
     next_tab: u64,
     clipboard: Clipboard,
@@ -529,6 +532,7 @@ impl App {
             pending_defs: HashMap::new(),
             default_key: 0,
             followed: None,
+            followed_info: None,
             def_seq: 0,
             next_tab: 0,
             clipboard: Clipboard::new(&settings_clipboard),

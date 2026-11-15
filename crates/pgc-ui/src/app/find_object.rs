@@ -14,8 +14,10 @@ use crate::tree::{ConnState, NodeKind, RowKind};
 
 /// Most rows shown; each query reads one more to know there are more.
 const MAX_HITS: usize = 200;
-/// Database connections opened at the same time for a search of all databases.
-const MAX_CONNECTING: usize = 8;
+/// Database connections a search of all databases has open at the same time. With
+/// more databases than this, a database's connection is closed when it has answered,
+/// to make room for the next one.
+const MAX_OPEN: usize = 8;
 
 /// Where a search looks: server, one database (nid, oid) or all databases of the
 /// server, and the path prefix of the selected row.
@@ -342,16 +344,7 @@ impl App {
             if Some(nid) == keep {
                 continue;
             }
-            let handle = self
-                .tree
-                .node_mut(nid)
-                .and_then(|n| n.conn.as_mut())
-                .and_then(|c| c.handle.take());
-            if let Some(h) = handle {
-                self.connections.remove(&h.id);
-                h.close();
-            }
-            self.database_reset(nid);
+            self.close_find_database(nid);
         }
     }
 
@@ -403,7 +396,8 @@ impl App {
     }
 
     /// All databases: the Databases group is loaded, then the databases that are not
-    /// connected are opened, at most [`MAX_CONNECTING`] at a time.
+    /// connected and not searched yet are opened, so that the search never has more
+    /// than [`MAX_OPEN`] connections of its own.
     fn find_prepare(&mut self) {
         if !self.find.as_ref().is_some_and(|f| f.scope.all_databases) {
             return;
@@ -430,20 +424,22 @@ impl App {
         let Some(f) = self.find.as_ref() else {
             return;
         };
-        let mut connecting = f
-            .opened
-            .iter()
-            .filter(|n| state(self, **n) == ConnState::Connecting)
-            .count();
+        // `opened` holds the ones that are open (or opening) now
+        let mut own = f.opened.len();
         let mut open = Vec::new();
         for nid in self.find_database_nodes() {
-            if connecting >= MAX_CONNECTING {
+            if own >= MAX_OPEN {
                 break;
             }
             let failed = f.failed.iter().any(|(n, _)| *n == nid);
-            if !failed && !f.opened.contains(&nid) && state(self, nid) == ConnState::Disconnected {
+            let searched = f.searched.contains(&Source::Database(nid));
+            if !failed
+                && !searched
+                && !f.opened.contains(&nid)
+                && state(self, nid) == ConnState::Disconnected
+            {
                 open.push(nid);
-                connecting += 1;
+                own += 1;
             }
         }
         for nid in open {
@@ -452,6 +448,49 @@ impl App {
                 f.opened.insert(nid);
             }
         }
+    }
+
+    /// Database `nid` has answered the search. When the search opened its connection
+    /// and other databases still wait for one, it is closed to make room (the tree
+    /// opens it again if a match in it is chosen).
+    fn find_release(&mut self, nid: u64) {
+        let Some(f) = self.find.as_ref() else {
+            return;
+        };
+        if !f.opened.contains(&nid) {
+            return;
+        }
+        let waiting = self.find_database_nodes().into_iter().any(|n| {
+            !f.searched.contains(&Source::Database(n))
+                && !f.opened.contains(&n)
+                && !f.failed.iter().any(|(x, _)| *x == n)
+                && self
+                    .tree
+                    .node(n)
+                    .and_then(|n| n.conn.as_ref())
+                    .is_none_or(|c| c.state == ConnState::Disconnected)
+        });
+        if !waiting {
+            return;
+        }
+        if let Some(f) = self.find.as_mut() {
+            f.opened.remove(&nid);
+        }
+        self.close_find_database(nid);
+    }
+
+    /// Closes the tree connection of database `nid` that a search had opened.
+    fn close_find_database(&mut self, nid: u64) {
+        let handle = self
+            .tree
+            .node_mut(nid)
+            .and_then(|n| n.conn.as_mut())
+            .and_then(|c| c.handle.take());
+        if let Some(h) = handle {
+            self.connections.remove(&h.id);
+            h.close();
+        }
+        self.database_reset(nid);
     }
 
     /// A database opened for the search could not be connected: listed as not
@@ -595,6 +634,9 @@ impl App {
                     _ => f.error = Some(format!("Search failed: {e}")),
                 }
                 f.results.insert(source, (Vec::new(), false));
+                if let Source::Database(nid) = source {
+                    self.find_release(nid);
+                }
                 self.find_show();
                 return;
             }
@@ -620,6 +662,9 @@ impl App {
             })
             .collect();
         f.results.insert(source, (hits, more));
+        if let Source::Database(nid) = source {
+            self.find_release(nid);
+        }
         self.find_show();
     }
 

@@ -250,6 +250,7 @@ impl App {
                     sql: sql.into(),
                     prefix,
                     user_len: text.chars().count(),
+                    statements: std::cell::OnceCell::new(),
                 },
                 Err(e) => {
                     self.error(&e);
