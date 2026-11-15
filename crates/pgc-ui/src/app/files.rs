@@ -41,7 +41,7 @@ impl App {
     /// The mc-style file dialog for the current folder, or for the places (D-041,
     /// D-070).
     pub(super) fn file_dialog(&self, f: FileDialog<'_>) -> Dialog {
-        let (folder, labels, marks) = match &self.file_places {
+        let (folder, labels, marks) = match &self.files.places {
             Some(places) => {
                 let mut labels = vec![format!("..{MAIN_SEPARATOR}")];
                 labels.extend(place_labels(places));
@@ -49,10 +49,10 @@ impl App {
                 ("Places".to_owned(), labels, marks)
             }
             None => {
-                let entries = list_dir(&self.file_dir, f.ext);
+                let entries = list_dir(&self.files.dir, f.ext);
                 let labels = entries.iter().map(|e| e.0.clone()).collect();
                 let marks = entries.iter().map(|e| e.2).collect();
-                (self.file_dir.display().to_string(), labels, marks)
+                (self.files.dir.display().to_string(), labels, marks)
             }
         };
         let mut widgets = f.above;
@@ -69,7 +69,7 @@ impl App {
         widgets.push(Widget::button("places", "&Places", false));
         widgets.push(Widget::button("cancel", "&Cancel", false));
         let mut dialog = Dialog::new(f.kind, f.title, 70, widgets);
-        if f.pick || self.file_places.is_some() {
+        if f.pick || self.files.places.is_some() {
             dialog.focus_on("files");
         }
         dialog
@@ -96,7 +96,7 @@ impl App {
                 },
             );
         }
-        self.file_places = Some(places);
+        self.files.places = Some(places);
     }
 
     /// The choice made in a file dialog with `button`: the selected entry of the
@@ -107,15 +107,15 @@ impl App {
             self.show_places();
             return Picked::Folder;
         }
-        let dir = self.file_dir.clone();
+        let dir = self.files.dir.clone();
         let path = if dialog.focused_id() == Some("files") {
             let Some(i) = dialog.selected("files") else {
                 return Picked::Nothing;
             };
-            if let Some(places) = self.file_places.take() {
+            if let Some(places) = self.files.places.take() {
                 // `..` goes back to the folder
                 if let Some(place) = i.checked_sub(1).and_then(|i| places.get(i)) {
-                    self.file_dir = place.path.clone();
+                    self.files.dir = place.path.clone();
                 }
                 return Picked::Folder;
             }
@@ -129,7 +129,7 @@ impl App {
             };
             if name == ".." {
                 match dir.parent() {
-                    Some(up) => self.file_dir = up.to_path_buf(),
+                    Some(up) => self.files.dir = up.to_path_buf(),
                     // the top of a drive: the places
                     None => self.show_places(),
                 }
@@ -144,8 +144,8 @@ impl App {
             resolve(&dir, text, pgc_core::paths::home_dir().as_deref())
         };
         if path.is_dir() {
-            self.file_dir = path;
-            self.file_places = None;
+            self.files.dir = path;
+            self.files.places = None;
             return Picked::Folder;
         }
         if let Some(parent) = path
@@ -154,7 +154,7 @@ impl App {
         {
             return Picked::Invalid(format!("The folder {} does not exist.", parent.display()));
         }
-        self.file_places = None;
+        self.files.places = None;
         Picked::File(path)
     }
 
@@ -174,7 +174,7 @@ impl App {
             .and_then(|f| f.parent())
             .filter(|d| d.is_dir())
         {
-            self.file_dir = dir.to_path_buf();
+            self.files.dir = dir.to_path_buf();
         }
         self.open_file_dialog(true);
     }
@@ -306,14 +306,14 @@ impl App {
                     q.file = Some(path.clone());
                 }
                 if let Some(dir) = path.parent() {
-                    self.file_dir = dir.to_path_buf();
+                    self.files.dir = dir.to_path_buf();
                 }
                 self.status = format!("Saved {}", path.display());
                 let id = self.tabs[self.active_tab].id;
-                match self.after_save.take() {
+                match self.closing.after_save.take() {
                     Some(AfterSave::Close(tab)) if tab == id => self.request_close_tab(id, false),
                     Some(AfterSave::Bulk) => {
-                        if let Some((b, _)) = self.bulk {
+                        if let Some((b, _)) = self.closing.bulk {
                             self.request_bulk(b);
                         }
                     }

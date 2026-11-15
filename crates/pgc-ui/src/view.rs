@@ -153,7 +153,7 @@ pub fn render(frame: &mut Frame, app: &App, hits: &mut Hits) {
     }
 
     hits.template.clear();
-    if let Some(form) = &app.template {
+    if let Some(form) = &app.templates.form {
         let t = &app.theme;
         let styles = EditorStyles {
             text: t.get(Role::EditorText),
@@ -533,7 +533,7 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
     );
     let editing = app.focus == Focus::Tabs
         && app.dialogs.is_empty()
-        && app.template.is_none()
+        && app.templates.form.is_none()
         && app.menu.is_none()
         && app.popup.is_none();
     if editing && let Some(pos) = cursor {
@@ -702,11 +702,7 @@ fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: 
     let style = app.theme.get(Role::StatusNormal);
     let mut left = String::from(" ");
     let mut right = String::new();
-    if let Some((l, r)) = app
-        .dashboard_status(tab)
-        .or_else(|| app.profiler_status(tab))
-        .or_else(|| app.db_stats_status(tab))
-    {
+    if let Some((l, r)) = app.monitor_status(tab) {
         left.push_str(&l);
         right = format!(" {r} ");
     } else {

@@ -9,8 +9,8 @@ use pgc_db::conninfo::{PasswordPrompt, Resolved};
 use pgc_db::pgpass::{self, PgPassKey};
 use pgc_db::{ConnId, ConnectParams, ConnectionHandle, DbError, DbEvent};
 
-use super::{App, Focus, TabBody, Target};
-use crate::dashboard::{DashConn, OwnConn};
+use super::{App, Focus, Target};
+use crate::dashboard::DashConn;
 use crate::dialog::{Dialog, DialogKind, Widget};
 use crate::objects::ObjType;
 use crate::tree::{ConnState, DbConn};
@@ -141,16 +141,6 @@ impl App {
                 state: ConnState::Connecting,
                 handle: Some(handle),
             });
-        }
-    }
-
-    /// The own connection of the dashboard, profiler or database statistics tab `tab`.
-    fn own_conn(&mut self, tab: u64) -> Option<OwnConn<'_>> {
-        match &mut self.tab_mut(tab)?.body {
-            TabBody::Dashboard(d) => Some(d.own_conn()),
-            TabBody::Profiler(p) => Some(p.own_conn()),
-            TabBody::DbStats(s) => Some(s.own_conn()),
-            TabBody::Default | TabBody::Object | TabBody::Query(..) => None,
         }
     }
 

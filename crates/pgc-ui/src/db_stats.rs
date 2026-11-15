@@ -140,17 +140,6 @@ impl DbStats {
         self.conn.as_ref().is_some_and(|c| c.connected)
     }
 
-    /// The tab's own connection, as the three monitor tabs share it.
-    pub fn own_conn(&mut self) -> crate::dashboard::OwnConn<'_> {
-        crate::dashboard::OwnConn {
-            uid: self.uid,
-            database: &self.database,
-            conn: &mut self.conn,
-            version: &mut self.version,
-            problem: &mut self.problem,
-        }
-    }
-
     /// New rows of `stats.sql`; the cursor stays on the same statistic.
     pub fn apply_rows(&mut self, rows: &[Vec<String>]) {
         let stats: Vec<Stat> = rows.iter().filter_map(|r| Stat::from_row(r)).collect();
@@ -373,6 +362,45 @@ fn render_boxes(frame: &mut Frame, s: &DbStats, area: Rect, rows: u16, t: &Theme
                 Paragraph::new(cut(format!(" {value}"))).style(normal),
                 Rect::new(x, row.y + 1, w, 1),
             );
+        }
+    }
+}
+
+impl crate::monitor::MonitorTab for DbStats {
+    fn own_conn(&mut self) -> crate::dashboard::OwnConn<'_> {
+        crate::dashboard::OwnConn {
+            uid: self.uid,
+            database: &self.database,
+            conn: &mut self.conn,
+            version: &mut self.version,
+            problem: &mut self.problem,
+        }
+    }
+
+    fn place(&self) -> (u64, &str, Option<bool>) {
+        (
+            self.uid,
+            &self.database,
+            self.conn.as_ref().map(|c| c.connected),
+        )
+    }
+
+    fn list(&self) -> &ResultSet {
+        &self.grid
+    }
+
+    fn list_mut(&mut self) -> &mut ResultSet {
+        &mut self.grid
+    }
+
+    fn status_text(&self) -> String {
+        if self.key.is_some() {
+            "Reading…".to_owned()
+        } else {
+            match self.read_at() {
+                Some(t) => format!("Read at {t} (F5 refreshes)"),
+                None => String::new(),
+            }
         }
     }
 }

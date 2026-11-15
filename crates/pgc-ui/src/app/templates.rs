@@ -59,7 +59,7 @@ impl App {
                 },
             )
             .collect();
-        self.picker = Some(Picker {
+        self.templates.picker = Some(Picker {
             lib,
             names,
             rows: Vec::new(),
@@ -89,7 +89,7 @@ impl App {
         if d.kind != DialogKind::TemplatePicker {
             return;
         }
-        let Some(p) = self.picker.as_mut() else {
+        let Some(p) = self.templates.picker.as_mut() else {
             return;
         };
         let filter = d.text("search").unwrap_or("").trim().to_lowercase();
@@ -110,7 +110,8 @@ impl App {
 
     pub(super) fn template_chosen(&mut self, dialog: Dialog) {
         let entry = dialog.selected("items").and_then(|i| {
-            self.picker
+            self.templates
+                .picker
                 .as_ref()
                 .and_then(|p| p.rows.get(i).copied().flatten())
         });
@@ -122,7 +123,7 @@ impl App {
         let Some(version) = self.tab_server_version() else {
             return;
         };
-        let picker = self.picker.take().expect("picker");
+        let picker = self.templates.picker.take().expect("picker");
         let entry = &picker.lib.entries[e];
         let Some((text, origin)) = entry.resolve(version) else {
             self.error("This template has no version for the tab's server.");
@@ -144,8 +145,8 @@ impl App {
         let ctx = devtemplate::TemplateContext { version, database };
         let mut form = TemplateForm::new(tab, title, file, ctx, self.tab_width());
         self.template_defaults(&mut form);
-        self.template = Some(form);
-        self.row_choices.clear();
+        self.templates.form = Some(form);
+        self.templates.row_choices.clear();
         self.start_lookups();
     }
 
@@ -232,7 +233,7 @@ impl App {
 
     /// Asks the tab's connection for every live choice list of the form.
     fn start_lookups(&mut self) {
-        let Some(form) = &self.template else {
+        let Some(form) = &self.templates.form else {
             return;
         };
         let mut wanted = Vec::new();
@@ -279,17 +280,17 @@ impl App {
         match event {
             FormEvent::None => {}
             FormEvent::Cancel => {
-                self.template = None;
+                self.templates.form = None;
                 self.drop_form_lookups();
             }
             FormEvent::Ok => {
-                let Some(form) = &self.template else {
+                let Some(form) = &self.templates.form else {
                     return;
                 };
                 match form.result() {
                     Ok(sql) => {
                         let tab = form.tab;
-                        self.template = None;
+                        self.templates.form = None;
                         self.drop_form_lookups();
                         if let Some(i) = self.tab_index(tab) {
                             self.active_tab = i;
@@ -308,7 +309,7 @@ impl App {
 
     /// The small dialog with the fields of one row of a `list` parameter.
     fn open_row_dialog(&mut self, field: usize, row: Option<usize>) {
-        let Some(form) = &self.template else {
+        let Some(form) = &self.templates.form else {
             return;
         };
         let param = form.fields[field].param.clone();
@@ -365,7 +366,7 @@ impl App {
         widgets.push(Widget::button("ok", "&OK", true));
         widgets.push(Widget::button("cancel", "&Cancel", false));
         let title = if row.is_some() { "Edit row" } else { "Add row" };
-        self.row_edit = Some((field, row));
+        self.templates.row_edit = Some((field, row));
         self.dialogs.push(Dialog::new(
             DialogKind::TemplateRow,
             &format!("{}: {title}", param.label()),
@@ -388,17 +389,19 @@ impl App {
                     .collect(),
             );
         }
-        self.row_choices
+        self.templates
+            .row_choices
             .get(&(list.to_owned(), sub.name.clone()))
             .cloned()
     }
 
     pub(super) fn row_done(&mut self, dialog: Dialog) {
-        let Some((field, row)) = self.row_edit else {
+        let Some((field, row)) = self.templates.row_edit else {
             return;
         };
         let Some(param) = self
-            .template
+            .templates
+            .form
             .as_ref()
             .map(|f| f.fields[field].param.clone())
         else {
@@ -426,8 +429,8 @@ impl App {
             self.error(&e);
             return;
         }
-        self.row_edit = None;
-        let Some(form) = self.template.as_mut() else {
+        self.templates.row_edit = None;
+        let Some(form) = self.templates.form.as_mut() else {
             return;
         };
         if let Some(rows) = form.list_rows_mut(field) {

@@ -41,7 +41,7 @@ impl App {
 
     /// Asks for the next batch when the grid cursor nears the end of a paused result.
     pub(super) fn after_grid_move(&mut self) {
-        let (h, w) = self.grid_size;
+        let (h, w) = self.frame.grid_size;
         let Some(q) = self.query_mut() else {
             return;
         };
@@ -73,7 +73,7 @@ impl App {
 
     /// Keys in the results pane. Returns false if the command is not for it.
     pub(super) fn results_command(&mut self, cmd: Command) -> bool {
-        let page = self.grid_size.0.saturating_sub(1).max(1) as isize;
+        let page = self.frame.grid_size.0.saturating_sub(1).max(1) as isize;
         let Some(q) = self.query_mut() else {
             return false;
         };

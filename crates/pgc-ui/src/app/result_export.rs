@@ -105,7 +105,7 @@ impl App {
         self.settings.export.csv_bom = options.bom;
         self.save_settings();
         if let Some(dir) = path.parent() {
-            self.file_dir = dir.to_path_buf();
+            self.files.dir = dir.to_path_buf();
         }
         let Some(sink) = self.export_sink.clone() else {
             self.error("Export is not available.");

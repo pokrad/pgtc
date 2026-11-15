@@ -16,6 +16,7 @@ mod keymap;
 mod keys;
 mod menu;
 mod message_pos;
+mod monitor;
 mod objects;
 mod profiler;
 mod psql;

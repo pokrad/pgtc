@@ -18,13 +18,18 @@ pub(super) const NAMES_HELD: &str =
 impl App {
     /// The list works in the template form: its focused `sql` box, no dialog on top.
     pub(super) fn completion_in_form(&self) -> bool {
-        self.dialogs.is_empty() && self.template.as_ref().is_some_and(|f| f.editing_sql())
+        self.dialogs.is_empty()
+            && self
+                .templates
+                .form
+                .as_ref()
+                .is_some_and(|f| f.editing_sql())
     }
 
     /// The editor the list works in: the form's `sql` box or the active tab's editor.
     fn completion_editor(&self, in_form: bool) -> Option<&Editor> {
         if in_form {
-            self.template.as_ref()?.sql_editor()
+            self.templates.form.as_ref()?.sql_editor()
         } else {
             Some(&self.tabs[self.active_tab].view.editor)
         }
@@ -32,7 +37,7 @@ impl App {
 
     fn completion_editor_mut(&mut self, in_form: bool) -> Option<&mut Editor> {
         if in_form {
-            self.template.as_mut()?.sql_editor_mut()
+            self.templates.form.as_mut()?.sql_editor_mut()
         } else {
             Some(self.editor())
         }
@@ -41,7 +46,7 @@ impl App {
     /// The query tab whose connection and names serve the list.
     fn completion_tab(&self, in_form: bool) -> Option<usize> {
         if in_form {
-            self.tab_index(self.template.as_ref()?.tab)
+            self.tab_index(self.templates.form.as_ref()?.tab)
         } else {
             Some(self.active_tab)
         }
@@ -53,7 +58,7 @@ impl App {
             if let Some(e) = self.completion_editor_mut(true) {
                 e.apply(action);
             }
-            if let Some(f) = self.template.as_mut() {
+            if let Some(f) = self.templates.form.as_mut() {
                 f.refresh();
             }
         } else {

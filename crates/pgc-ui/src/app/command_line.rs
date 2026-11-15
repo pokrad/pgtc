@@ -46,7 +46,7 @@ impl App {
                 Widget::button("cancel", "Ca&ncel", false),
             ],
         );
-        d.fit_text(self.screen);
+        d.fit_text(self.frame.screen);
         self.psql_seen = (text.to_owned(), 0);
         d
     }

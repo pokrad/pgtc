@@ -18,6 +18,7 @@ mod find_object;
 mod focus;
 mod key_help;
 mod lookups;
+mod monitor;
 mod mouse;
 mod object_view;
 mod profiler;
@@ -25,6 +26,7 @@ mod query;
 mod result_export;
 mod results;
 mod settings_dialog;
+mod state;
 mod statement_pane;
 mod templates;
 #[cfg(test)]
@@ -42,13 +44,12 @@ use pgc_db::conninfo::Resolved;
 use pgc_db::{ConnId, DbEvent, EventSink};
 use pgc_editor::{Action, Editor, SearchOptions};
 use pgc_sql::SqlCatalog;
-use ratatui::layout::Rect;
 
 use self::closing::{AfterSave, Bulk};
 use self::definition::{JobKind, StructureJob};
 use self::editing::editor_action;
 use self::lookups::LookupTarget;
-use self::templates::Picker;
+use self::state::{Closing, EscState, FileDialogState, LastFrame, MouseState, TemplateState};
 use crate::clipboard::Clipboard;
 use crate::dialog::{Dialog, DialogEvent, DialogKind, Payload};
 use crate::export::{ExportEvent, ExportSink};
@@ -56,7 +57,6 @@ use crate::keymap::{Command, Context, Keymap};
 use crate::keys::KeyCombo;
 use crate::menu::{self, MenuDef, MenuEvent, MenuState, Popup};
 use crate::query_tab::{AfterRun, QueryState};
-use crate::template_dialog::{Choice, TemplateForm};
 use crate::theme::{Theme, ThemeSet};
 use crate::tree::{ConnState, RowKind, Tree};
 use crate::view::Hits;
@@ -318,6 +318,26 @@ impl Tab {
         }
     }
 
+    /// The dashboard, profiler or statistics of the tab, as what they share (D-057,
+    /// D-058, D-062).
+    pub(crate) fn monitor(&self) -> Option<&dyn crate::monitor::MonitorTab> {
+        match &self.body {
+            TabBody::Dashboard(d) => Some(&**d),
+            TabBody::Profiler(p) => Some(&**p),
+            TabBody::DbStats(s) => Some(&**s),
+            TabBody::Default | TabBody::Object | TabBody::Query(..) => None,
+        }
+    }
+
+    pub(crate) fn monitor_mut(&mut self) -> Option<&mut dyn crate::monitor::MonitorTab> {
+        match &mut self.body {
+            TabBody::Dashboard(d) => Some(&mut **d),
+            TabBody::Profiler(p) => Some(&mut **p),
+            TabBody::DbStats(s) => Some(&mut **s),
+            TabBody::Default | TabBody::Object | TabBody::Query(..) => None,
+        }
+    }
+
     /// Label in the tab strip.
     pub fn label(&self) -> String {
         match &self.body {
@@ -376,8 +396,6 @@ pub struct App {
     pub search: Option<String>,
     /// The open autocomplete list (D-052).
     pub(crate) completion: Option<crate::completion::Popup>,
-    /// Time and place of the last left click, for double clicks (D-067).
-    last_click: Option<(std::time::Instant, ratatui::layout::Position)>,
     /// The open Find object dialog (D-055).
     find: Option<find_object::FindState>,
     find_seq: u64,
@@ -404,57 +422,36 @@ pub struct App {
     effects: Vec<Effect>,
     next_run: u64,
     tick_scheduled: bool,
-    /// Grid area of the active query tab (rows incl. header, columns).
-    grid_size: (usize, usize),
-    /// Directory shown in the file dialogs.
-    file_dir: std::path::PathBuf,
-    /// The file dialogs show the places instead of `file_dir` (D-070).
-    file_places: Option<Vec<pgc_core::places::Place>>,
-    /// What to do once a "Save changes?" save has succeeded (D-019).
-    after_save: Option<AfterSave>,
-    /// Quitting / disconnecting (D-043): what, and the tabs whose unsaved text the
-    /// user chose not to save.
-    bulk: Option<(Bulk, Vec<u64>)>,
-    /// The editor / results split is being dragged with the mouse (D-019).
-    split_drag: bool,
-    /// The tree / tabs border is being dragged with the mouse (D-045).
-    pane_drag: bool,
-    /// Developer templates (D-046): the open form, the picker's state, lookups on
-    /// their way (key → what they fill; also the lookups of autocomplete, D-052, and
-    /// of the generate commands, D-054) and the row being edited (list field, row).
-    pub template: Option<TemplateForm>,
-    picker: Option<Picker>,
+    /// Developer templates (D-046): the open form, the picker, the row being edited.
+    pub templates: TemplateState,
+    /// Lookups on their way: key → what they fill (template choice lists, D-046; also
+    /// the lookups of autocomplete, D-052, and of the generate commands, D-054).
     template_lookups: HashMap<u64, LookupTarget>,
-    row_choices: HashMap<(String, String), Vec<Choice>>,
-    row_edit: Option<(usize, Option<usize>)>,
-    /// Result export (D-042): events from writer threads, last id, grid area (anchor
-    /// of the results context menu).
+    /// Result export (D-042): events from writer threads, last id.
     export_sink: Option<ExportSink>,
     next_export: u64,
     /// Definition exports / loads reading a database's structure (D-048).
     jobs: HashMap<ConnId, StructureJob>,
-    grid_area: Rect,
-    /// Quitting / disconnecting waits for COMMITs to finish.
-    bulk_pending: Option<Bulk>,
     /// Last find options and replacement (F3, D-038).
     last_search: Option<(SearchOptions, String)>,
     /// A scan tick is already scheduled.
     scan_scheduled: bool,
-    /// Text area of the active editor (for mouse clicks).
-    editor_area: Rect,
     next_key: u64,
     sink: EventSink,
     connections: HashMap<ConnId, Target>,
     next_conn: ConnId,
-    tree_height: usize,
-    /// The whole screen of the last frame (sizes the Help windows).
-    pub(crate) screen: Rect,
     next_query: u32,
-    quit: bool,
-    /// Quitting waits for profilers to put the logging settings back (D-058).
-    quit_after_restore: bool,
-    esc_seq: u64,
-    esc_pending: bool,
+    /// What the last frame drew, and where (D-019, D-045).
+    pub(crate) frame: LastFrame,
+    /// Mouse: a border being dragged, the last click (D-019, D-045, D-067).
+    mouse: MouseState,
+    /// The folder of the file dialogs (D-070).
+    files: FileDialogState,
+    /// Closing tabs, quitting, disconnecting: what is asked and waited for (D-019,
+    /// D-043, D-058).
+    closing: Closing,
+    /// `Esc` waiting for a digit (D-032).
+    esc: EscState,
 }
 
 const ESC: KeyEvent = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
@@ -539,7 +536,6 @@ impl App {
             status,
             search: None,
             completion: None,
-            last_click: None,
             find: None,
             find_seq: 0,
             reveal: None,
@@ -556,37 +552,26 @@ impl App {
             effects: Vec::new(),
             next_run: 0,
             tick_scheduled: false,
-            grid_size: (0, 0),
-            file_dir: pgc_core::places::start_dir(),
-            file_places: None,
-            after_save: None,
-            bulk: None,
-            split_drag: false,
-            pane_drag: false,
-            template: None,
-            picker: None,
             template_lookups: HashMap::new(),
-            row_choices: HashMap::new(),
-            row_edit: None,
             export_sink: None,
             next_export: 0,
             jobs: HashMap::new(),
-            grid_area: Rect::default(),
-            bulk_pending: None,
             last_search: None,
             scan_scheduled: false,
-            editor_area: Rect::default(),
             next_key: 0,
             sink,
             connections: HashMap::new(),
             next_conn: 0,
-            tree_height: 0,
-            screen: Rect::default(),
             next_query: 0,
-            quit: false,
-            quit_after_restore: false,
-            esc_seq: 0,
-            esc_pending: false,
+            templates: TemplateState::default(),
+            frame: LastFrame::default(),
+            mouse: MouseState::default(),
+            files: FileDialogState {
+                dir: pgc_core::places::start_dir(),
+                places: None,
+            },
+            closing: Closing::default(),
+            esc: EscState::default(),
         };
         if let Some(resolved) = startup {
             app.startup_connection(resolved);
@@ -595,19 +580,19 @@ impl App {
     }
 
     pub fn should_quit(&self) -> bool {
-        self.quit
+        self.closing.quit
     }
 
     /// True while `Esc` waits for a digit.
     pub fn esc_pending(&self) -> bool {
-        self.esc_pending
+        self.esc.pending
     }
 
     fn modal(&self) -> bool {
         !self.dialogs.is_empty()
             || self.menu.is_some()
             || self.popup.is_some()
-            || self.template.is_some()
+            || self.templates.form.is_some()
     }
 
     /// Keymap context of the focused panel (`None` = only `[global]`).
@@ -795,18 +780,18 @@ impl App {
     // ---- update -------------------------------------------------------------------
 
     pub fn update(&mut self, msg: Msg, hits: &Hits) -> Vec<Effect> {
-        self.tree_height = hits.tree_rows.height as usize;
+        self.frame.tree_height = hits.tree_rows.height as usize;
         // (an empty screen: no frame drawn yet)
-        if !hits.screen.is_empty() && hits.screen != self.screen {
-            self.screen = hits.screen;
+        if !hits.screen.is_empty() && hits.screen != self.frame.screen {
+            self.frame.screen = hits.screen;
             for d in &mut self.dialogs {
                 d.fit_text(hits.screen);
             }
         }
-        self.grid_size = (hits.grid.height as usize, hits.grid.width as usize);
-        self.grid_area = hits.grid;
+        self.frame.grid_size = (hits.grid.height as usize, hits.grid.width as usize);
+        self.frame.grid_area = hits.grid;
         // The active editor learns its size from the last frame.
-        self.editor_area = hits.editor;
+        self.frame.editor_area = hits.editor;
         if hits.editor.width > 0 {
             let line_numbers = self.settings.editor.line_numbers;
             let editor = &mut self.tabs[self.active_tab].view.editor;
@@ -825,7 +810,7 @@ impl App {
             Msg::Input(Event::Paste(text)) => {
                 if let Some(d) = self.dialogs.last_mut() {
                     d.paste(&text);
-                } else if let Some(form) = self.template.as_mut() {
+                } else if let Some(form) = self.templates.form.as_mut() {
                     form.paste(&text);
                 } else if self.focus == Focus::Tabs && !self.modal() {
                     self.edit(Action::Insert(text));
@@ -834,8 +819,8 @@ impl App {
             }
             Msg::Input(_) => Vec::new(),
             Msg::EscTimeout(seq) => {
-                if self.esc_pending && seq == self.esc_seq {
-                    self.esc_pending = false;
+                if self.esc.pending && seq == self.esc.seq {
+                    self.esc.pending = false;
                     self.dispatch(ESC);
                 }
                 Vec::new()
@@ -892,11 +877,11 @@ impl App {
         self.sync_psql_dialog();
         self.refresh_psql_completion();
         self.sync_find_dialog();
-        if let Some(form) = self.template.as_mut() {
+        if let Some(form) = self.templates.form.as_mut() {
             form.set_screen(hits.screen);
         }
         self.tree.clamp();
-        self.tree.ensure_visible(self.tree_height);
+        self.tree.ensure_visible(self.frame.tree_height);
         effects.extend(self.follow_selection());
         effects.append(&mut self.effects);
         if !self.scan_scheduled && self.tabs.iter().any(|t| t.view.editor.needs_scan()) {
@@ -927,7 +912,8 @@ impl App {
         let keep = match self.completion.as_ref() {
             None => true,
             Some(p) if p.in_form => {
-                self.completion_in_form() && self.template.as_ref().is_some_and(|f| f.tab == p.tab)
+                self.completion_in_form()
+                    && self.templates.form.as_ref().is_some_and(|f| f.tab == p.tab)
             }
             Some(p) => {
                 p.tab == self.tabs[self.active_tab].id && self.focus == Focus::Tabs && !self.modal()
@@ -941,8 +927,8 @@ impl App {
 
     fn on_key(&mut self, ev: KeyEvent) -> Vec<Effect> {
         let combo = KeyCombo::from_event(&ev);
-        if self.esc_pending {
-            self.esc_pending = false;
+        if self.esc.pending {
+            self.esc.pending = false;
             if combo.mods.is_empty()
                 && let KeyCode::Char(d @ '0'..='9') = combo.code
             {
@@ -951,7 +937,7 @@ impl App {
                 return Vec::new();
             }
             self.dispatch(ESC);
-            if self.quit {
+            if self.closing.quit {
                 return Vec::new();
             }
         }
@@ -964,9 +950,9 @@ impl App {
             return Vec::new();
         }
         if combo == KeyCombo::plain(KeyCode::Esc) {
-            self.esc_seq += 1;
-            self.esc_pending = true;
-            return vec![Effect::Timer(Timer::Esc(self.esc_seq))];
+            self.esc.seq += 1;
+            self.esc.pending = true;
+            return vec![Effect::Timer(Timer::Esc(self.esc.seq))];
         }
         self.dispatch(ev);
         Vec::new()
@@ -1033,7 +1019,7 @@ impl App {
             return;
         }
 
-        if self.template.is_some() {
+        if self.templates.form.is_some() {
             // an SQL box gets the editor's keys (D-046) and autocomplete (D-052)
             let in_sql = self.completion_in_form();
             let editor_cmd = if in_sql {
@@ -1061,7 +1047,7 @@ impl App {
                 }
                 _ => None,
             };
-            let Some(form) = self.template.as_mut() else {
+            let Some(form) = self.templates.form.as_mut() else {
                 return;
             };
             let event = form.handle_key(cmd, editor_cmd.and_then(editor_action), &ev);
@@ -1280,7 +1266,7 @@ impl App {
                 }
             }
             Command::ContextMenu if self.focus == Focus::Results => {
-                let a = self.grid_area;
+                let a = self.frame.grid_area;
                 self.open_results_menu((a.x + 2, a.y + 1));
             }
             Command::ContextMenu if !self.tree.servers.is_empty() => self.open_context_menu(),
@@ -1360,7 +1346,7 @@ impl App {
     }
 
     fn page(&self) -> usize {
-        self.tree_height.max(2) - 1
+        self.frame.tree_height.max(2) - 1
     }
 
     fn open_menu(&mut self, index: usize) {
@@ -1442,7 +1428,7 @@ impl App {
                     | DialogKind::SaveFile
                     | DialogKind::ExportFile
                     | DialogKind::SaveDefinition
-                    | DialogKind::OpenDefinition => self.file_places = None,
+                    | DialogKind::OpenDefinition => self.files.places = None,
                     _ => {}
                 }
             }
@@ -1473,7 +1459,7 @@ impl App {
                         self.save_before(dialog.tag, AfterSave::Bulk);
                     }
                     (DialogKind::QuitSaveChanges, "no") => {
-                        if let Some((b, skip)) = self.bulk.as_mut() {
+                        if let Some((b, skip)) = self.closing.bulk.as_mut() {
                             skip.push(dialog.tag);
                             let b = *b;
                             self.request_bulk(b);
@@ -1485,8 +1471,8 @@ impl App {
                     }
                     (DialogKind::CloseTransaction, "rollback") => self.close_tab(dialog.tag),
                     (DialogKind::QuitTransactions, "commit") => {
-                        if let Some((b, _)) = self.bulk.take() {
-                            self.bulk_pending = Some(b);
+                        if let Some((b, _)) = self.closing.bulk.take() {
+                            self.closing.bulk_pending = Some(b);
                             for id in self.bulk_transactions(b) {
                                 self.finish_transaction(id, AfterRun::Bulk);
                             }
@@ -1495,7 +1481,7 @@ impl App {
                     }
                     (DialogKind::QuitTransactions, "rollback") => {
                         // closing the connections rolls the transactions back
-                        if let Some((b, _)) = self.bulk.take() {
+                        if let Some((b, _)) = self.closing.bulk.take() {
                             self.finish_bulk(b);
                         }
                     }
@@ -1554,7 +1540,7 @@ impl App {
             .iter()
             .any(|d| matches!(d.kind, DialogKind::SaveFile | DialogKind::ConfirmOverwrite));
         if !saving {
-            self.after_save = None;
+            self.closing.after_save = None;
         }
         if !saving
             && !self.dialogs.iter().any(|d| {
@@ -1564,7 +1550,7 @@ impl App {
                 )
             })
         {
-            self.bulk = None;
+            self.closing.bulk = None;
         }
     }
 }

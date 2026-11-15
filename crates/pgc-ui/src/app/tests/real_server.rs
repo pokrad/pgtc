@@ -807,10 +807,13 @@ async fn template_against_a_real_server() {
         "{:?}",
         a.dialogs.last().map(|d| &d.title)
     );
-    assert_eq!(a.template.as_ref().unwrap().title, "New: Create index");
+    assert_eq!(
+        a.templates.form.as_ref().unwrap().title,
+        "New: Create index"
+    );
     // the table list comes through the tab's connection
     pump(&mut a, &mut rx, &hits, |a| a.template_lookups.is_empty()).await;
-    let form = a.template.as_ref().unwrap();
+    let form = a.templates.form.as_ref().unwrap();
     let crate::template_dialog::FieldValue::Choice { items, .. } = &form.fields[0].value else {
         panic!("table is a choice");
     };
@@ -823,7 +826,7 @@ async fn template_against_a_real_server() {
     typing(&mut a, "pgtc_tmpl");
     key(&mut a, "Enter");
     // the columns list (field 5): Add opens the row dialog
-    let form = a.template.as_mut().unwrap();
+    let form = a.templates.form.as_mut().unwrap();
     form.focus = crate::template_dialog::Stop::Field(5);
     key(&mut a, "Enter");
     assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::TemplateRow);
@@ -834,17 +837,17 @@ async fn template_against_a_real_server() {
         "{:?}",
         a.dialogs.last().map(|d| &d.title)
     );
-    let preview = a.template.as_ref().unwrap().preview.text();
+    let preview = a.templates.form.as_ref().unwrap().preview.text();
     assert_eq!(
         preview,
         "CREATE INDEX ON public.pgtc_tmpl_test (\"Name\");\n",
         "{:?}",
-        a.template.as_ref().unwrap().error
+        a.templates.form.as_ref().unwrap().error
     );
     // OK inserts at the cursor; run it, then roll back
-    a.template.as_mut().unwrap().focus = crate::template_dialog::Stop::Ok;
+    a.templates.form.as_mut().unwrap().focus = crate::template_dialog::Stop::Ok;
     key(&mut a, "Enter");
-    assert!(a.template.is_none());
+    assert!(a.templates.form.is_none());
     assert_eq!(a.editor().text(), preview);
     key(&mut a, "F5");
     pump(&mut a, &mut rx, &hits, |a| !a.query().unwrap().busy()).await;
@@ -928,7 +931,7 @@ async fn definition_export_and_load_against_a_real_server() {
         ..startup
     };
     let mut a = App::new(paths, settings, sink, Some(startup));
-    a.file_dir = dir.path().to_path_buf();
+    a.files.dir = dir.path().to_path_buf();
     let hits = Hits::default();
     async fn pump(
         a: &mut App,
@@ -1112,7 +1115,7 @@ async fn export_against_a_real_server() {
     a.set_export_sink(Arc::new(move |e| {
         let _ = tx.send(Msg::Export(e));
     }));
-    a.file_dir = dir.path().to_path_buf();
+    a.files.dir = dir.path().to_path_buf();
     let hits = Hits {
         grid: Rect::new(0, 0, 80, 10),
         ..Hits::default()

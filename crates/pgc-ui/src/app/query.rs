@@ -131,7 +131,7 @@ impl App {
                 });
                 // a COMMIT sent for quitting / disconnecting will not be answered
                 if q.after_run.take() == Some(AfterRun::Bulk) {
-                    self.bulk_pending = None;
+                    self.closing.bulk_pending = None;
                 }
                 self.drop_tab_lookups(tab);
             }
@@ -174,7 +174,7 @@ impl App {
             Some(_) => {
                 q.show_messages = true;
                 q.results_visible = true;
-                self.bulk_pending = None;
+                self.closing.bulk_pending = None;
                 self.active_tab = i;
                 self.status = "The transaction was not committed — see Messages".to_owned();
             }

@@ -79,6 +79,11 @@ dependencies.
   rest of `impl App` is split by area into `app/*.rs` (tree pane, query tabs, closing,
   templates, ...). New handlers go into the module of their area; tests are in
   `app/tests.rs` (`tests/real_server.rs`, `tests/screenshots.rs`).
+  State that belongs together is grouped in `app/state.rs` (`frame`, `mouse`, `files`,
+  `closing`, `esc`, `templates`): add a field to its group, or a new group, rather
+  than to `App` itself. What the dashboard, profiler and statistics tabs share goes
+  through the `MonitorTab` trait (`monitor.rs`) and its handlers in `app/monitor.rs`,
+  not into a copy per tab.
 - **Terminal safety:** always restore the terminal (raw mode, alternate screen) on exit
   *and* on panic (install a panic hook first thing).
 - **Logging:** `tracing` to a file only (D-007); never print to stdout/stderr while the

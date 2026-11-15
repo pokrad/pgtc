@@ -14,13 +14,13 @@ impl App {
             return;
         }
         let mut d = help::viewer("Keys available now", self.key_help_lines());
-        d.fit_text(self.screen);
+        d.fit_text(self.frame.screen);
         self.dialogs.push(d);
     }
 
     /// A dialog (or the template form) has the keys.
     fn dialog_has_keys(&self) -> bool {
-        !self.dialogs.is_empty() || self.template.is_some()
+        !self.dialogs.is_empty() || self.templates.form.is_some()
     }
 
     /// Text of the `F1` window: the focused frame, *Everywhere*, *Other keys*.

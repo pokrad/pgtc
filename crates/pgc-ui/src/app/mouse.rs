@@ -19,16 +19,16 @@ impl App {
             self.psql_completion = None;
         }
         let p = Position::new(m.column, m.row);
-        if self.template.is_some() && self.dialogs.is_empty() {
+        if self.templates.form.is_some() && self.dialogs.is_empty() {
             // an open choice list takes every click and the wheel
-            if let Some(form) = self.template.as_mut()
+            if let Some(form) = self.templates.form.as_mut()
                 && form.popup_mouse(m.kind, p)
             {
                 return;
             }
             if m.kind == MouseEventKind::Down(MouseButton::Left)
                 && let Some((stop, area)) = hits.template.iter().find(|(_, r)| r.contains(p))
-                && let Some(form) = self.template.as_mut()
+                && let Some(form) = self.templates.form.as_mut()
             {
                 let event = form.click(*stop, p.y, *area);
                 self.form_event(event);
@@ -57,17 +57,17 @@ impl App {
             MouseEventKind::Down(MouseButton::Left)
                 if !self.modal() && hits.pane_border.contains(p) =>
             {
-                self.pane_drag = true;
+                self.mouse.pane_drag = true;
                 return;
             }
-            MouseEventKind::Drag(MouseButton::Left) if self.pane_drag => {
+            MouseEventKind::Drag(MouseButton::Left) if self.mouse.pane_drag => {
                 let wanted = (p.x + 1).saturating_sub(hits.main.x);
                 self.settings.ui.tree_width =
                     Some(crate::view::tree_width(Some(wanted), hits.main.width));
                 return;
             }
-            MouseEventKind::Up(_) if self.pane_drag => {
-                self.pane_drag = false;
+            MouseEventKind::Up(_) if self.mouse.pane_drag => {
+                self.mouse.pane_drag = false;
                 self.save_settings();
                 return;
             }
@@ -76,13 +76,13 @@ impl App {
         // the results bar is the drag handle of the editor / results split (D-019)
         match m.kind {
             MouseEventKind::Down(MouseButton::Left) => {
-                self.split_drag = !self.modal() && hits.split.contains(p);
+                self.mouse.split_drag = !self.modal() && hits.split.contains(p);
             }
-            MouseEventKind::Drag(MouseButton::Left) if self.split_drag => {
+            MouseEventKind::Drag(MouseButton::Left) if self.mouse.split_drag => {
                 self.drag_split(p.y, hits.split_area);
                 return;
             }
-            MouseEventKind::Up(_) => self.split_drag = false,
+            MouseEventKind::Up(_) => self.mouse.split_drag = false,
             _ => {}
         }
         // the dashboard tab's lists and grid (D-057)
@@ -97,20 +97,22 @@ impl App {
         }
         match m.kind {
             MouseEventKind::Down(MouseButton::Left)
-                if !self.modal() && self.editor_area.contains(p) =>
+                if !self.modal() && self.frame.editor_area.contains(p) =>
             {
                 self.focus = Focus::Tabs;
                 self.click_editor(p, false);
             }
             MouseEventKind::Drag(MouseButton::Left)
-                if !self.modal() && self.focus == Focus::Tabs && self.editor_area.contains(p) =>
+                if !self.modal()
+                    && self.focus == Focus::Tabs
+                    && self.frame.editor_area.contains(p) =>
             {
                 self.click_editor(p, true);
             }
-            MouseEventKind::ScrollDown if !self.modal() && self.editor_area.contains(p) => {
+            MouseEventKind::ScrollDown if !self.modal() && self.frame.editor_area.contains(p) => {
                 self.editor().scroll_lines(3);
             }
-            MouseEventKind::ScrollUp if !self.modal() && self.editor_area.contains(p) => {
+            MouseEventKind::ScrollUp if !self.modal() && self.frame.editor_area.contains(p) => {
                 self.editor().scroll_lines(-3);
             }
             MouseEventKind::Down(MouseButton::Left)
@@ -187,7 +189,7 @@ impl App {
     /// Mouse in the editor: place the cursor (`select`: extend the selection).
     fn click_editor(&mut self, p: Position, select: bool) {
         let line_numbers = self.settings.editor.line_numbers;
-        let area = self.editor_area;
+        let area = self.frame.editor_area;
         let editor = self.editor();
         let gutter = pgc_editor::gutter_width(editor, line_numbers);
         let line = editor.top + (p.y - area.y) as usize;
@@ -218,10 +220,11 @@ impl App {
     fn double_click(&mut self, p: Position) -> bool {
         let now = std::time::Instant::now();
         let double = self
+            .mouse
             .last_click
             .is_some_and(|(t, at)| at == p && now.duration_since(t) <= DOUBLE_CLICK);
         // a third click starts a new pair
-        self.last_click = if double { None } else { Some((now, p)) };
+        self.mouse.last_click = if double { None } else { Some((now, p)) };
         double
     }
 

@@ -240,7 +240,7 @@ impl App {
         }
         let file = self.paths.keymap_file().display().to_string();
         let mut d = viewer("Keyboard shortcuts", shortcut_lines(&self.keymap, &file));
-        d.fit_text(self.screen);
+        d.fit_text(self.frame.screen);
         self.dialogs.push(d);
     }
 
@@ -254,7 +254,7 @@ impl App {
     /// Help → Third-party licences (D-017).
     pub(crate) fn open_licences(&mut self) {
         let mut d = viewer("Third-party licences", licence_lines());
-        d.fit_text(self.screen);
+        d.fit_text(self.frame.screen);
         self.dialogs.push(d);
     }
 

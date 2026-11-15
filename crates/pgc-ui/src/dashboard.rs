@@ -633,17 +633,6 @@ impl Dashboard {
         self.conn.as_ref().is_some_and(|c| c.connected)
     }
 
-    /// The tab's own connection, as the three monitor tabs share it.
-    pub fn own_conn(&mut self) -> OwnConn<'_> {
-        OwnConn {
-            uid: self.uid,
-            database: &self.conn_database,
-            conn: &mut self.conn,
-            version: &mut self.version,
-            problem: &mut self.problem,
-        }
-    }
-
     pub fn interval_ms(&self) -> u64 {
         INTERVALS_MS[self.interval]
     }
@@ -1508,6 +1497,44 @@ fn render_graphs(frame: &mut Frame, d: &Dashboard, area: Rect, rows: u16, spark:
                 .take(w as usize)
                 .collect();
             frame.render_widget(Paragraph::new(v).style(normal), values);
+        }
+    }
+}
+
+impl crate::monitor::MonitorTab for Dashboard {
+    fn own_conn(&mut self) -> crate::dashboard::OwnConn<'_> {
+        crate::dashboard::OwnConn {
+            uid: self.uid,
+            database: &self.conn_database,
+            conn: &mut self.conn,
+            version: &mut self.version,
+            problem: &mut self.problem,
+        }
+    }
+
+    fn place(&self) -> (u64, &str, Option<bool>) {
+        (
+            self.uid,
+            &self.conn_database,
+            self.conn.as_ref().map(|c| c.connected),
+        )
+    }
+
+    fn list(&self) -> &ResultSet {
+        self.grid()
+    }
+
+    fn list_mut(&mut self) -> &mut ResultSet {
+        self.grid_mut()
+    }
+
+    fn status_text(&self) -> String {
+        if !self.connected() {
+            String::new()
+        } else if self.paused {
+            "Paused (Ctrl+P resumes)".to_owned()
+        } else {
+            format!("Refresh every {}", interval_text(self.interval_ms()))
         }
     }
 }

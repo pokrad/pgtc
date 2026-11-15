@@ -8,8 +8,7 @@ use pgc_sql::RenderContext;
 use ratatui::layout::Position;
 
 use super::connections::MonitorEvent;
-use super::query::connection_label;
-use super::{App, Effect, Focus, Tab, TabBody, Target, TextView};
+use super::{App, Effect, Focus, TabBody, Target, TextView};
 use crate::dashboard::{Dashboard, List, Session, Signal, Signals, interval_text};
 use crate::dialog::{Dialog, DialogKind};
 use crate::keymap::Command;
@@ -309,29 +308,11 @@ impl App {
     /// Keys of the dashboard tab. Returns false if the command is not for it.
     pub(super) fn dashboard_command(&mut self, cmd: Command) -> bool {
         let tab = self.active_tab_id();
-        let page = self.grid_size.0.saturating_sub(1).max(1) as isize;
         if self.dashboard().is_none() {
             return false;
         }
-        // cursor moves in the shown list
-        let step = match cmd {
-            Command::Up => Some((-1, 0)),
-            Command::Down => Some((1, 0)),
-            Command::Left => Some((0, -1)),
-            Command::Right => Some((0, 1)),
-            Command::PageUp => Some((-page, 0)),
-            Command::PageDown => Some((page, 0)),
-            Command::Home => Some((0, isize::MIN / 2)),
-            Command::End => Some((0, isize::MAX / 2)),
-            Command::DocStart => Some((isize::MIN / 2, isize::MIN / 2)),
-            Command::DocEnd => Some((isize::MAX / 2, 0)),
-            _ => None,
-        };
-        if let Some((dr, dc)) = step {
-            if let Some(d) = self.dashboard_mut() {
-                d.grid_mut().move_cursor(dr, dc, 0);
-            }
-            self.dashboard_scroll();
+        // the list: cursor, copy, select all
+        if self.monitor_command(cmd) {
             return true;
         }
         match cmd {
@@ -376,17 +357,17 @@ impl App {
                 } else {
                     "Idle sessions shown".to_owned()
                 };
-                self.dashboard_scroll();
+                self.monitor_scroll();
             }
             Command::DurationMode => {
                 if let Some(mode) = self.dashboard_mut().map(Dashboard::next_mode) {
                     self.status = format!("Session duration: {} time", mode.name());
                 }
-                self.dashboard_scroll();
+                self.monitor_scroll();
             }
             Command::TagSession => {
                 if self.dashboard_mut().is_some_and(Dashboard::toggle_tag) {
-                    self.dashboard_scroll();
+                    self.monitor_scroll();
                 } else {
                     self.status = "Tag sessions in the Sessions list".to_owned();
                 }
@@ -414,34 +395,13 @@ impl App {
             Command::TerminateBackend => self.ask_signal(Signal::Terminate),
             Command::ShowRow | Command::Accept => self.show_dashboard_row(),
             Command::ContextMenu => {
-                let a = self.grid_area;
+                let a = self.frame.grid_area;
                 self.open_dashboard_menu((a.x + 2, a.y + 1));
-            }
-            Command::Copy => {
-                let text = self.dashboard().and_then(|d| d.grid().copy_text());
-                if let Some(text) = text
-                    && self.clipboard.copy(&text)
-                {
-                    self.effects.push(Effect::Osc52(text));
-                }
-            }
-            Command::SelectAll => {
-                if let Some(d) = self.dashboard_mut() {
-                    d.grid_mut().all_selected = true;
-                }
             }
             _ => return false,
         }
         true
     }
-    /// Keeps the dashboard grid's cursor visible.
-    fn dashboard_scroll(&mut self) {
-        let (h, w) = self.grid_size;
-        if let Some(d) = self.dashboard_mut() {
-            d.grid_mut().ensure_visible(h.saturating_sub(1), w);
-        }
-    }
-
     /// Shows `list` and reads it at once.
     fn show_list(&mut self, list: List) {
         let tab = self.active_tab_id();
@@ -466,7 +426,7 @@ impl App {
             .collect();
         let headers = vec![false; lines.len()];
         let mut dialog = crate::help::viewer(&title, crate::help::Lines { lines, headers });
-        dialog.fit_text(self.screen);
+        dialog.fit_text(self.frame.screen);
         self.dialogs.push(dialog);
     }
 
@@ -659,57 +619,16 @@ impl App {
                 }
                 true
             }
-            MouseEventKind::Down(b @ (MouseButton::Left | MouseButton::Right))
-                if dh.grid.contains(p) =>
-            {
-                self.focus = Focus::Results;
-                let cell = dh
-                    .cells
-                    .iter()
-                    .find(|(_, r)| r.contains(p))
-                    .map(|(rc, _)| *rc);
-                if let Some(d) = self.dashboard_mut()
-                    && let Some((row, col)) = cell
-                {
-                    let g = d.grid_mut();
-                    g.row = row;
-                    g.col = col;
-                    g.all_selected = false;
+            _ => match self.monitor_mouse(kind, p, dh.grid, &dh.cells) {
+                Some(menu) => {
+                    if menu {
+                        self.open_dashboard_menu((p.x, p.y + 1));
+                    }
+                    true
                 }
-                if b == MouseButton::Right {
-                    self.open_dashboard_menu((p.x, p.y + 1));
-                }
-                true
-            }
-            MouseEventKind::ScrollDown | MouseEventKind::ScrollUp if dh.grid.contains(p) => {
-                let delta = if kind == MouseEventKind::ScrollDown {
-                    3
-                } else {
-                    -3
-                };
-                if let Some(d) = self.dashboard_mut() {
-                    d.grid_mut().move_cursor(delta, 0, 0);
-                }
-                self.dashboard_scroll();
-                true
-            }
-            _ => false,
+                None => false,
+            },
         }
-    }
-
-    /// `server · user@database` and the refresh state of a dashboard tab (D-043).
-    pub(crate) fn dashboard_status(&self, tab: &Tab) -> Option<(String, String)> {
-        let d = tab.dashboard()?;
-        let place = self.place_label(d.uid, Some(&d.conn_database));
-        let left = connection_label(place, d.conn.as_ref().map(|c| c.connected));
-        let right = if !d.connected() {
-            String::new()
-        } else if d.paused {
-            "Paused (Ctrl+P resumes)".to_owned()
-        } else {
-            format!("Refresh every {}", interval_text(d.interval_ms()))
-        };
-        Some((left, right))
     }
 }
 

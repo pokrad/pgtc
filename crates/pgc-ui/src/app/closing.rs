@@ -75,7 +75,7 @@ impl App {
         };
         self.active_tab = i;
         let file = self.tabs[i].query().and_then(|q| q.file.clone());
-        self.after_save = Some(then);
+        self.closing.after_save = Some(then);
         match file {
             Some(path) => self.save_to(path),
             None => self.open_file_dialog(true),
@@ -150,11 +150,11 @@ impl App {
     /// Quitting or disconnecting a server: asks about unsaved query text, one tab at
     /// a time, then about open transactions; `Cancel` stops (D-019, D-043).
     pub(super) fn request_bulk(&mut self, b: Bulk) {
-        let skip = match &self.bulk {
+        let skip = match &self.closing.bulk {
             Some((current, skip)) if *current == b => skip.clone(),
             _ => Vec::new(),
         };
-        self.bulk = Some((b, skip.clone()));
+        self.closing.bulk = Some((b, skip.clone()));
         let title = match b {
             Bulk::Quit => "Quit",
             Bulk::Disconnect(_) => "Disconnect",
@@ -185,11 +185,11 @@ impl App {
         }
         let open = self.bulk_transactions(b).len();
         if open == 0 {
-            self.bulk = None;
+            self.closing.bulk = None;
             self.finish_bulk(b);
             return;
         }
-        self.bulk = Some((b, Vec::new()));
+        self.closing.bulk = Some((b, Vec::new()));
         let text = if open == 1 {
             "A query tab has an open transaction.".to_owned()
         } else {
@@ -224,7 +224,7 @@ impl App {
             // profilers put the logging settings back first (D-058)
             Bulk::Quit => {
                 if !self.restore_before_quit() {
-                    self.quit = true;
+                    self.closing.quit = true;
                 }
             }
             Bulk::Disconnect(uid) | Bulk::Delete(uid) => {
@@ -278,7 +278,7 @@ impl App {
 
     /// Finishes quitting / disconnecting once every COMMIT sent for it has finished.
     pub(super) fn maybe_finish_bulk(&mut self) {
-        let Some(b) = self.bulk_pending else {
+        let Some(b) = self.closing.bulk_pending else {
             return;
         };
         let waiting = self.tabs.iter().any(|t| {
@@ -287,7 +287,7 @@ impl App {
                     .is_some_and(|q| q.after_run == Some(AfterRun::Bulk) || q.busy())
         });
         if !waiting {
-            self.bulk_pending = None;
+            self.closing.bulk_pending = None;
             self.finish_bulk(b);
         }
     }

@@ -6,8 +6,7 @@ use pgc_sql::RenderContext;
 use ratatui::layout::Position;
 
 use super::connections::MonitorEvent;
-use super::query::connection_label;
-use super::{App, Focus, Tab, TabBody, Target, TextView};
+use super::{App, Focus, TabBody, Target, TextView};
 use crate::db_stats::DbStats;
 use crate::keymap::Command;
 use crate::menu::{self, Popup};
@@ -20,10 +19,6 @@ impl App {
     /// The statistics of the active tab.
     pub(super) fn db_stats(&self) -> Option<&DbStats> {
         self.tabs[self.active_tab].db_stats()
-    }
-
-    fn db_stats_mut(&mut self) -> Option<&mut DbStats> {
-        self.tabs[self.active_tab].db_stats_mut()
     }
 
     fn db_stats_of(&mut self, tab: u64) -> Option<&mut DbStats> {
@@ -151,28 +146,11 @@ impl App {
     /// Keys of the statistics tab. Returns false if the command is not for it.
     pub(super) fn db_stats_command(&mut self, cmd: Command) -> bool {
         let tab = self.tabs[self.active_tab].id;
-        let page = self.grid_size.0.saturating_sub(1).max(1) as isize;
         if self.db_stats().is_none() {
             return false;
         }
-        let step = match cmd {
-            Command::Up => Some((-1, 0)),
-            Command::Down => Some((1, 0)),
-            Command::Left => Some((0, -1)),
-            Command::Right => Some((0, 1)),
-            Command::PageUp => Some((-page, 0)),
-            Command::PageDown => Some((page, 0)),
-            Command::Home => Some((0, isize::MIN / 2)),
-            Command::End => Some((0, isize::MAX / 2)),
-            Command::DocStart => Some((isize::MIN / 2, isize::MIN / 2)),
-            Command::DocEnd => Some((isize::MAX / 2, 0)),
-            _ => None,
-        };
-        if let Some((dr, dc)) = step {
-            if let Some(s) = self.db_stats_mut() {
-                s.grid.move_cursor(dr, dc, 0);
-            }
-            self.db_stats_scroll();
+        // the list: cursor, copy, select all
+        if self.monitor_command(cmd) {
             return true;
         }
         match cmd {
@@ -185,33 +163,12 @@ impl App {
                 }
             }
             Command::ContextMenu => {
-                let a = self.grid_area;
+                let a = self.frame.grid_area;
                 self.open_db_stats_menu((a.x + 2, a.y + 1));
-            }
-            Command::Copy => {
-                let text = self.db_stats().and_then(|s| s.grid.copy_text());
-                if let Some(text) = text
-                    && self.clipboard.copy(&text)
-                {
-                    self.effects.push(super::Effect::Osc52(text));
-                }
-            }
-            Command::SelectAll => {
-                if let Some(s) = self.db_stats_mut() {
-                    s.grid.all_selected = true;
-                }
             }
             _ => return false,
         }
         true
-    }
-
-    /// Keeps the grid's cursor visible.
-    fn db_stats_scroll(&mut self) {
-        let (h, w) = self.grid_size;
-        if let Some(s) = self.db_stats_mut() {
-            s.grid.ensure_visible(h.saturating_sub(1), w);
-        }
     }
 
     /// Context menu of the statistics tab (D-062).
@@ -231,62 +188,18 @@ impl App {
         p: Position,
         hits: &Hits,
     ) -> bool {
-        use crossterm::event::{MouseButton, MouseEventKind};
         if self.db_stats().is_none() {
             return false;
         }
         let sh = &hits.db_stats;
-        match kind {
-            MouseEventKind::Down(b @ (MouseButton::Left | MouseButton::Right))
-                if sh.grid.contains(p) =>
-            {
-                self.focus = Focus::Results;
-                let cell = sh
-                    .cells
-                    .iter()
-                    .find(|(_, r)| r.contains(p))
-                    .map(|(rc, _)| *rc);
-                if let Some(s) = self.db_stats_mut()
-                    && let Some((row, col)) = cell
-                {
-                    s.grid.row = row;
-                    s.grid.col = col;
-                    s.grid.all_selected = false;
-                }
-                if b == MouseButton::Right {
+        match self.monitor_mouse(kind, p, sh.grid, &sh.cells) {
+            Some(menu) => {
+                if menu {
                     self.open_db_stats_menu((p.x, p.y + 1));
                 }
                 true
             }
-            MouseEventKind::ScrollDown | MouseEventKind::ScrollUp if sh.grid.contains(p) => {
-                let delta = if kind == MouseEventKind::ScrollDown {
-                    3
-                } else {
-                    -3
-                };
-                if let Some(s) = self.db_stats_mut() {
-                    s.grid.move_cursor(delta, 0, 0);
-                }
-                self.db_stats_scroll();
-                true
-            }
-            _ => false,
+            None => false,
         }
-    }
-
-    /// `server · user@database` and when the values were read (D-043, D-062).
-    pub(crate) fn db_stats_status(&self, tab: &Tab) -> Option<(String, String)> {
-        let s = tab.db_stats()?;
-        let place = self.place_label(s.uid, Some(&s.database));
-        let left = connection_label(place, s.conn.as_ref().map(|c| c.connected));
-        let right = if s.key.is_some() {
-            "Reading…".to_owned()
-        } else {
-            match s.read_at() {
-                Some(t) => format!("Read at {t} (F5 refreshes)"),
-                None => String::new(),
-            }
-        };
-        Some((left, right))
     }
 }

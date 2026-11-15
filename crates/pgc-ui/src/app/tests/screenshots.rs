@@ -193,7 +193,7 @@ async fn readme_screenshots() {
         let (mut a, d) = app();
         a.settings.ui.color_scheme = "Dracula".into();
         a.theme = a.themes.get("Dracula").clone();
-        a.screen = Rect::new(0, 0, W, H);
+        a.frame.screen = Rect::new(0, 0, W, H);
         let uid = a.tree.add(SavedConnection {
             name: "production".into(),
             username: "app".into(),
@@ -450,7 +450,7 @@ async fn readme_screenshots() {
     {
         use crate::template_dialog::{Choice, FieldValue, Stop};
         use pgc_sql::devtemplate::ParamValue;
-        let form = a.template.as_mut().expect("Create table form");
+        let form = a.templates.form.as_mut().expect("Create table form");
         let text = |s: &str| ParamValue::Text(s.into());
         let schemas = ["public", "sales", "audit"]
             .iter()

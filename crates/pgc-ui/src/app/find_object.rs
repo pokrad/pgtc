@@ -262,7 +262,7 @@ impl App {
         {
             self.expand_node(nid);
         }
-        let rows = self.screen.height.saturating_sub(15).clamp(5, 20);
+        let rows = self.frame.screen.height.saturating_sub(15).clamp(5, 20);
         self.dialogs.push(Dialog::new(
             DialogKind::FindObject,
             "Find object",

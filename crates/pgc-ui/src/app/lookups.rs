@@ -52,7 +52,7 @@ impl App {
         let result = result.map_err(|e| e.to_string());
         match target {
             LookupTarget::Field(name, shape) => {
-                if let Some(form) = self.template.as_mut() {
+                if let Some(form) = self.templates.form.as_mut() {
                     form.set_choices(
                         &name,
                         result.map(|rows| crate::template_dialog::choices_from_rows(rows, shape)),
@@ -61,7 +61,7 @@ impl App {
             }
             LookupTarget::Row(list, field, shape) => {
                 if let Ok(rows) = result {
-                    self.row_choices.insert(
+                    self.templates.row_choices.insert(
                         (list, field),
                         crate::template_dialog::choices_from_rows(rows, shape),
                     );

@@ -450,7 +450,7 @@ fn cursor_follows_the_focused_control() {
         "+++\nname = \"T\"\n[[param]]\nname = \"mode\"\ntype = \"choice\"\noptions = [\"a\", \"b\"]\n[[param]]\nname = \"flag\"\ntype = \"bool\"\n+++\nx\n",
     )
     .unwrap();
-    a.template = Some(TemplateForm::new(
+    a.templates.form = Some(TemplateForm::new(
         1,
         "T".into(),
         file,
@@ -469,20 +469,20 @@ fn cursor_follows_the_focused_control() {
         (terminal.get_cursor_position().unwrap(), hits)
     };
     for stop in [Stop::Field(0), Stop::Field(1), Stop::Ok] {
-        a.template.as_mut().unwrap().focus = stop;
+        a.templates.form.as_mut().unwrap().focus = stop;
         let (pos, hits) = draw(&a);
         let r = hits.template.iter().find(|(s, _)| *s == stop).unwrap().1;
         assert!(r.contains(pos), "{stop:?}: cursor {pos:?} not in {r:?}");
     }
     // an open list: on its highlighted row
-    a.template.as_mut().unwrap().focus = Stop::Field(0);
+    a.templates.form.as_mut().unwrap().focus = Stop::Field(0);
     key(&mut a, "Enter");
     let (pos, _) = draw(&a);
-    let area = a.template.as_ref().unwrap().popup_area.get().unwrap();
+    let area = a.templates.form.as_ref().unwrap().popup_area.get().unwrap();
     assert_eq!((pos.x, pos.y), (area.x + 2, area.y + 1));
 
     // a dialog: on the focused combo's value
-    a.template = None;
+    a.templates.form = None;
     a.run(Command::Settings);
     let d = a.dialogs.last_mut().unwrap();
     let combo = d
@@ -735,7 +735,7 @@ fn status_line_is_the_bottom_row() {
 #[test]
 fn help_menu_shortcuts_licences_about() {
     let (mut a, _d) = app();
-    a.screen = Rect::new(0, 0, 100, 30);
+    a.frame.screen = Rect::new(0, 0, 100, 30);
     for cmd in [
         Command::Help,
         Command::KeyboardShortcuts,
@@ -925,7 +925,7 @@ fn query_tab_editing_clipboard_and_find() {
 #[test]
 fn psql_window_lists_every_command() {
     let (mut a, _d) = app();
-    a.screen = Rect::new(0, 0, 100, 40);
+    a.frame.screen = Rect::new(0, 0, 100, 40);
     let d = a.psql_dialog("");
     a.dialogs.push(d);
     let rows = crate::psql::list_rows();
@@ -984,7 +984,7 @@ fn replace_asks_per_match() {
 #[test]
 fn closing_an_unsaved_query_tab_asks_to_save() {
     let (mut a, dir) = app();
-    a.file_dir = dir.path().to_path_buf();
+    a.files.dir = dir.path().to_path_buf();
     // unchanged: closes without asking
     a.new_query_tab(None);
     key(&mut a, "Ctrl+W");
@@ -1011,7 +1011,7 @@ fn closing_an_unsaved_query_tab_asks_to_save() {
     esc(&mut a);
     assert!(a.dialogs.is_empty());
     assert_eq!(a.tabs.len(), 2);
-    assert_eq!(a.after_save, None);
+    assert_eq!(a.closing.after_save, None);
     // ... saving through it closes the tab
     key(&mut a, "Ctrl+W");
     key(&mut a, "y");
@@ -1033,7 +1033,7 @@ fn closing_an_unsaved_query_tab_asks_to_save() {
 #[test]
 fn quitting_asks_about_each_unsaved_query_tab() {
     let (mut a, dir) = app();
-    a.file_dir = dir.path().to_path_buf();
+    a.files.dir = dir.path().to_path_buf();
     for text in ["select 1;", "select 2;"] {
         a.new_query_tab(None);
         typing(&mut a, text);
@@ -1046,7 +1046,7 @@ fn quitting_asks_about_each_unsaved_query_tab() {
     esc(&mut a);
     assert!(a.dialogs.is_empty());
     assert!(!a.should_quit());
-    assert_eq!(a.bulk, None);
+    assert_eq!(a.closing.bulk, None);
     // No for the first tab, Yes (save as query.sql) for the second: then quits
     a.request_quit();
     key(&mut a, "n");
@@ -1087,7 +1087,7 @@ fn quitting_saves_a_tab_with_a_file_without_asking_for_a_name() {
 
     // the same for a tab saved with Ctrl+S (name asked once), then edited
     let (mut a, dir) = app();
-    a.file_dir = dir.path().to_path_buf();
+    a.files.dir = dir.path().to_path_buf();
     a.new_query_tab(None);
     typing(&mut a, "select 2;");
     key(&mut a, "Ctrl+S");
@@ -1173,7 +1173,7 @@ fn disconnect_closes_the_servers_tabs() {
     esc(&mut a);
     assert!(a.dialogs.is_empty());
     assert_eq!(a.tabs.len(), 5);
-    assert_eq!(a.bulk, None);
+    assert_eq!(a.closing.bulk, None);
 
     // No: all tabs of server a close, server b's tab stays
     a.tree.select_server(a_uid);
@@ -1304,7 +1304,7 @@ fn export_app() -> (
     a.set_export_sink(Arc::new(move |e| {
         let _ = tx.send(e);
     }));
-    a.file_dir = dir.path().to_path_buf();
+    a.files.dir = dir.path().to_path_buf();
     (a, dir, rx)
 }
 
@@ -1436,7 +1436,7 @@ fn double_click_in_the_file_dialog() {
     let files = dir.path().join("sql");
     std::fs::create_dir_all(files.join("sub")).unwrap();
     std::fs::write(files.join("sub").join("pick.sql"), "x").unwrap();
-    a.file_dir = files.clone();
+    a.files.dir = files.clone();
     a.new_query_tab(None);
     typing(&mut a, "select 1;");
     a.run(Command::SaveFileAs);
@@ -1470,12 +1470,12 @@ fn double_click_in_the_file_dialog() {
     let sub = format!("sub{}", std::path::MAIN_SEPARATOR);
     // a single click only selects
     click(&mut a, &sub, 1);
-    assert_eq!(a.file_dir, files);
+    assert_eq!(a.files.dir, files);
     assert_eq!(a.dialogs.last().unwrap().focused_id(), Some("files"));
-    a.last_click = None; // later, not a double click
+    a.mouse.last_click = None; // later, not a double click
     // a double click opens the folder
     click(&mut a, &sub, 2);
-    assert_eq!(a.file_dir, files.join("sub"));
+    assert_eq!(a.files.dir, files.join("sub"));
     assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::SaveFile);
     // a double click on a file chooses it: Save asks before overwriting
     click(&mut a, "pick.sql", 2);
@@ -1525,7 +1525,7 @@ fn places_in_the_file_dialog() {
     let files = dir.path().join("sql");
     std::fs::create_dir_all(files.join("sub")).unwrap();
     std::fs::write(files.join("sub").join("q.sql"), "select 1;").unwrap();
-    a.file_dir = files.clone();
+    a.files.dir = files.clone();
     // a tab with a file: its folder is a place
     a.open_path(files.join("sub").join("q.sql"));
     a.open_file_dialog(false);
@@ -1537,12 +1537,13 @@ fn places_in_the_file_dialog() {
     assert_eq!(d.focused_id(), Some("files"));
     // `..`: back to the folder
     key(&mut a, "Enter");
-    assert!(a.file_places.is_none());
-    assert_eq!(a.file_dir, files);
+    assert!(a.files.places.is_none());
+    assert_eq!(a.files.dir, files);
     // the place of the current file (after `~` when there is a home folder)
     key(&mut a, "Alt+P");
     let at = a
-        .file_places
+        .files
+        .places
         .as_ref()
         .unwrap()
         .iter()
@@ -1551,14 +1552,14 @@ fn places_in_the_file_dialog() {
         key(&mut a, "Down");
     }
     key(&mut a, "Enter");
-    assert_eq!(a.file_dir, files.join("sub"));
+    assert_eq!(a.files.dir, files.join("sub"));
     assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::OpenFile);
     // Cancel in the places: the next dialog shows the folder
     key(&mut a, "Alt+P");
-    assert!(a.file_places.is_some());
+    assert!(a.files.places.is_some());
     esc(&mut a);
     assert!(a.dialogs.is_empty());
-    assert!(a.file_places.is_none());
+    assert!(a.files.places.is_none());
 }
 
 /// A typed path (D-070): a folder opens, a missing folder is an error.
@@ -1567,7 +1568,7 @@ fn typed_folder_and_missing_folder() {
     let (mut a, dir) = app();
     let files = dir.path().join("sql");
     std::fs::create_dir_all(files.join("sub")).unwrap();
-    a.file_dir = files.join("sub");
+    a.files.dir = files.join("sub");
     a.new_query_tab(None);
     a.run(Command::SaveFileAs);
     for _ in 0.."query.sql".len() {
@@ -1575,7 +1576,7 @@ fn typed_folder_and_missing_folder() {
     }
     typing(&mut a, "..");
     key(&mut a, "Enter");
-    assert_eq!(a.file_dir, files);
+    assert_eq!(a.files.dir, files);
     assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::SaveFile);
     for _ in 0.."query.sql".len() {
         key(&mut a, "Backspace");
@@ -1601,7 +1602,7 @@ fn save_and_open_sql_files_through_the_dialog() {
     let (mut a, dir) = app();
     let files = dir.path().join("sql");
     std::fs::create_dir_all(files.join("sub")).unwrap();
-    a.file_dir = files.clone();
+    a.files.dir = files.clone();
     a.new_query_tab(None); // unbound (no server): still editable
     typing(&mut a, "select 'čšž';");
     // no file: no file bar, the editor follows the tab strip's line
@@ -1648,10 +1649,10 @@ fn save_and_open_sql_files_through_the_dialog() {
     );
     assert!(!a.editor().modified());
     // Save as: always the dialog, in the file's folder; asks before overwriting
-    a.file_dir = files.join("sub");
+    a.files.dir = files.join("sub");
     a.run(Command::SaveFileAs);
     assert_eq!(a.dialogs[0].kind, DialogKind::SaveFile);
-    assert_eq!(a.file_dir, files);
+    assert_eq!(a.files.dir, files);
     key(&mut a, "Enter");
     assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::ConfirmOverwrite);
     key(&mut a, "Enter");
@@ -1672,9 +1673,9 @@ fn save_and_open_sql_files_through_the_dialog() {
     assert_eq!(d.focused_id(), Some("files"));
     key(&mut a, "Down"); // sub/
     key(&mut a, "Enter"); // into sub/
-    assert_eq!(a.file_dir, files.join("sub"));
+    assert_eq!(a.files.dir, files.join("sub"));
     key(&mut a, "Enter"); // ../
-    assert_eq!(a.file_dir, files);
+    assert_eq!(a.files.dir, files);
     key(&mut a, "End"); // query.sql
     key(&mut a, "Enter");
     assert!(
@@ -1955,7 +1956,7 @@ fn deleting_a_connection_closes_its_tabs_like_disconnect() {
     assert!(a.dialogs.is_empty());
     assert_eq!(a.tabs.len(), 4);
     assert_eq!(a.tree.servers.len(), 2);
-    assert_eq!(a.bulk, None);
+    assert_eq!(a.closing.bulk, None);
 
     // No (do not save): the server's tabs close, then it leaves the tree
     a.tree.select_server(a_uid);
@@ -2145,7 +2146,7 @@ async fn autocomplete_in_the_template_sql_box() {
         "+++\nname = \"F\"\n[[param]]\nname = \"body\"\ntype = \"sql\"\nfill = true\n+++\n{{ body }}\n",
     )
     .unwrap();
-    a.template = Some(TemplateForm::new(
+    a.templates.form = Some(TemplateForm::new(
         tab,
         "F".into(),
         file,
@@ -2165,7 +2166,7 @@ async fn autocomplete_in_the_template_sql_box() {
     // Enter takes the entry into the box (not a new line), the preview follows
     key(&mut a, "Enter");
     assert!(a.completion.is_none());
-    let form = a.template.as_ref().unwrap();
+    let form = a.templates.form.as_ref().unwrap();
     assert_eq!(form.sql_editor().unwrap().text(), "select * from orders");
     assert!(form.preview.text().contains("from orders"));
     assert!(
@@ -2178,7 +2179,7 @@ async fn autocomplete_in_the_template_sql_box() {
     assert!(a.completion.is_some());
     key(&mut a, "Esc");
     assert!(a.completion.is_none());
-    assert!(a.template.is_some(), "the form stays open");
+    assert!(a.templates.form.is_some(), "the form stays open");
 }
 
 /// Autocomplete in the F4 input (D-054): only on `Ctrl+Space` / `Alt+/`, the
@@ -2401,7 +2402,7 @@ async fn alt_i_opens_the_database_statistics() {
         let s = a.tabs[1].db_stats().unwrap();
         assert_eq!(s.key, None);
         assert_eq!(s.grid.rows.len(), 2);
-        let (_, right) = a.db_stats_status(&a.tabs[1]).unwrap();
+        let (_, right) = a.monitor_status(&a.tabs[1]).unwrap();
         assert!(right.starts_with("Read at 2026-11-13"), "{right}");
     }
     // F5 reads again
@@ -2852,7 +2853,7 @@ async fn find_object_searches_all_databases_of_the_server() {
 
     // closing the dialog closes the connections opened for the search
     key(&mut a, "Esc");
-    a.update(Msg::EscTimeout(a.esc_seq), &Hits::default());
+    a.update(Msg::EscTimeout(a.esc.seq), &Hits::default());
     assert!(a.dialogs.is_empty() && a.find.is_none());
     let conn = a.tree.node(mantis).unwrap().conn.as_ref().unwrap();
     assert_eq!(conn.state, ConnState::Disconnected);
@@ -3525,7 +3526,7 @@ async fn quitting_with_commit_all_needs_real_commits() {
     commit_all(&mut a);
     end_run(&mut a, 99, tab, Ok("ROLLBACK"));
     assert!(!a.should_quit());
-    assert_eq!(a.bulk_pending, None);
+    assert_eq!(a.closing.bulk_pending, None);
     assert!(a.status.contains("not committed"), "{}", a.status);
 
     // committed: quits
@@ -3546,7 +3547,7 @@ async fn quitting_with_commit_all_needs_real_commits() {
         },
     );
     assert!(!a.should_quit());
-    assert_eq!(a.bulk_pending, None);
+    assert_eq!(a.closing.bulk_pending, None);
     let q = a.query().unwrap();
     assert!(q.conn.is_none() && !q.busy());
     // nothing is open any more: F10 quits
