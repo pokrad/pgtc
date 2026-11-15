@@ -926,18 +926,18 @@ fn query_tab_editing_clipboard_and_find() {
 #[test]
 fn psql_window_lists_every_command() {
     let (mut a, _d) = app();
-    a.frame.screen = Rect::new(0, 0, 100, 40);
+    a.frame.screen = Rect::new(0, 0, 100, 44);
     let d = a.psql_dialog("");
     a.dialogs.push(d);
     let rows = crate::psql::list_rows();
-    let screen = screen_text_sized(&a, 100, 40);
+    let screen = screen_text_sized(&a, 100, 44);
     assert!(
         screen.contains("dt         [pattern] list tables"),
         "{screen}"
     );
     assert!(!screen.contains("\\dt"), "no psql backslash: {screen}");
     assert!(screen.contains(" pgtc "), "{screen}");
-    assert!(screen.contains("gtt"), "the whole list fits: {screen}");
+    assert!(screen.contains("gtsa"), "the whole list fits: {screen}");
     // Down: the next command goes into the input (with a space for its argument)
     key(&mut a, "Down");
     assert_eq!(a.dialogs[0].text("cmd"), Some("l "));

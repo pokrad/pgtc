@@ -438,8 +438,26 @@ impl App {
             return;
         };
         use crate::psql::Gen;
-        if matches!(what, Gen::Merge | Gen::Trigger) && !table.is_table() {
-            let command = if what == Gen::Merge { "gtm" } else { "gtt" };
+        if matches!(what, Gen::Merge | Gen::Trigger { .. }) && !table.is_table() {
+            let command = match what {
+                Gen::Trigger {
+                    row: true,
+                    before: true,
+                } => "gtrb",
+                Gen::Trigger {
+                    row: true,
+                    before: false,
+                } => "gtra",
+                Gen::Trigger {
+                    row: false,
+                    before: true,
+                } => "gtsb",
+                Gen::Trigger {
+                    row: false,
+                    before: false,
+                } => "gtsa",
+                _ => "gtm",
+            };
             self.error(&format!(
                 "{command} works on tables only; {}.{} is not a table.",
                 table.schema, table.name
@@ -453,7 +471,7 @@ impl App {
         self.tabs[i].view.editor.apply(Action::Insert(text));
         let todo = match what {
             Gen::Cursor => "write the loop body at PROCESS THE ROW HERE",
-            Gen::Trigger => "name the function at [function_name]",
+            Gen::Trigger { .. } => "name the function at [function_name]",
             _ => "fill in the [values]",
         };
         self.status = format!("Generated for {}.{} — {todo}", table.schema, table.name);

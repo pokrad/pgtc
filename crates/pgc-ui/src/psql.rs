@@ -1,6 +1,7 @@
 //! psql-style commands (D-054): the command list, the parser (with psql patterns),
 //! the catalog queries of a command and pgtc's generate commands (`gts` / `gti` /
-//! `gtu` / `gtd` / `gtc` / `gto` / `gtsi` / `gtm` / `gtt` / `gtv`). Commands are psql's
+//! `gtu` / `gtd` / `gtc` / `gto` / `gtsi` / `gtm` / `gtrb` / `gtra` / `gtsb` / `gtsa` /
+//! `gtv`). Commands are psql's
 //! backslash commands, typed without the backslash.
 
 use pgc_core::quote::quote_ident;
@@ -115,9 +116,27 @@ pub const GENERATE: &[Row] = &[
         TABLES,
     ),
     (
-        "gtt",
+        "gtrb",
         "table",
-        "generate trigger function + row trigger (inserted at the cursor)",
+        "generate trigger function + BEFORE row trigger (inserted at the cursor)",
+        TABLES,
+    ),
+    (
+        "gtra",
+        "table",
+        "generate trigger function + AFTER row trigger (inserted at the cursor)",
+        TABLES,
+    ),
+    (
+        "gtsb",
+        "table",
+        "generate trigger function + BEFORE statement trigger (inserted at the cursor)",
+        TABLES,
+    ),
+    (
+        "gtsa",
+        "table",
+        "generate trigger function + AFTER statement trigger (inserted at the cursor)",
         TABLES,
     ),
 ];
@@ -135,7 +154,11 @@ pub enum Gen {
     Upsert,
     Vars,
     Merge,
-    Trigger,
+    /// `gtrb` / `gtra` / `gtsb` / `gtsa`: `FOR EACH ROW` or `STATEMENT`, `BEFORE` or `AFTER`.
+    Trigger {
+        row: bool,
+        before: bool,
+    },
 }
 
 /// A schema-qualified or plain name, folded like PostgreSQL.
@@ -182,7 +205,19 @@ pub fn list_rows() -> Vec<Option<(&'static str, &'static str, &'static str)>> {
 pub fn needs_table(input: &str) -> bool {
     matches!(
         without_backslash(input),
-        "gts" | "gti" | "gtu" | "gtd" | "gtc" | "gto" | "gtsi" | "gtv" | "gtm" | "gtt"
+        "gts"
+            | "gti"
+            | "gtu"
+            | "gtd"
+            | "gtc"
+            | "gto"
+            | "gtsi"
+            | "gtv"
+            | "gtm"
+            | "gtrb"
+            | "gtra"
+            | "gtsb"
+            | "gtsa"
     )
 }
 
@@ -268,7 +303,8 @@ pub fn parse(input: &str) -> Result<Cmd, String> {
                 .collect::<Result<_, _>>()?;
             return Ok(Cmd::View { tables });
         }
-        "gts" | "gti" | "gtu" | "gtd" | "gtc" | "gto" | "gtsi" | "gtm" | "gtt" => {
+        "gts" | "gti" | "gtu" | "gtd" | "gtc" | "gto" | "gtsi" | "gtm" | "gtrb" | "gtra"
+        | "gtsb" | "gtsa" => {
             let what = match word {
                 "gts" => Gen::Select,
                 "gti" => Gen::Insert,
@@ -277,7 +313,10 @@ pub fn parse(input: &str) -> Result<Cmd, String> {
                 "gto" => Gen::Upsert,
                 "gtsi" => Gen::Vars,
                 "gtm" => Gen::Merge,
-                "gtt" => Gen::Trigger,
+                "gtrb" | "gtra" | "gtsb" | "gtsa" => Gen::Trigger {
+                    row: word.as_bytes()[2] == b'r',
+                    before: word.ends_with('b'),
+                },
                 _ => Gen::Delete,
             };
             let Some(arg) = arg else {
@@ -945,7 +984,7 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
                 String::new(),
             ));
         }
-        Gen::Trigger => return trigger(&table, t),
+        Gen::Trigger { row, before } => return trigger(&table, t, row, before),
         Gen::Vars => {
             let vars = var_names(&t.columns);
             let width = vars.iter().map(|v| v.chars().count()).max().unwrap_or(0);
@@ -981,10 +1020,10 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
     aligned(&lines)
 }
 
-/// `gtt`: a trigger function with `TG_OP` branches and a row trigger (D-054). The
-/// function (in the table's schema) has a placeholder name: the script does not run
-/// until it is named.
-fn trigger(table: &str, t: &GenTable) -> String {
+/// `gtrb` / `gtra` / `gtsb` / `gtsa`: a trigger function with `TG_OP` branches and
+/// its trigger (D-054). The function (in the table's schema) has a placeholder name:
+/// the script does not run until it is named.
+fn trigger(table: &str, t: &GenTable, row: bool, before: bool) -> String {
     let function = format!("{}.[function_name]", quote_ident(&t.schema));
     let mut out = vec![
         format!("CREATE OR REPLACE FUNCTION {function}()"),
@@ -993,41 +1032,93 @@ fn trigger(table: &str, t: &GenTable) -> String {
         "AS $$".to_owned(),
         "BEGIN".to_owned(),
     ];
-    let fields: Vec<String> = t
-        .columns
-        .iter()
-        .map(|c| format!("NEW. / OLD.{}", quote_ident(&c.name)))
-        .collect();
-    let width = fields.iter().map(|f| f.chars().count()).max().unwrap_or(0);
-    for (f, c) in fields.iter().zip(&t.columns) {
-        let pad = " ".repeat(width - f.chars().count());
-        out.push(format!("    -- {f}{pad}  {}", type_comment(c)));
+    let push = |out: &mut Vec<String>, lines: &[&str]| {
+        out.extend(lines.iter().map(|l| (*l).to_owned()));
+    };
+    if row {
+        let fields: Vec<String> = t
+            .columns
+            .iter()
+            .map(|c| format!("NEW. / OLD.{}", quote_ident(&c.name)))
+            .collect();
+        let width = fields.iter().map(|f| f.chars().count()).max().unwrap_or(0);
+        for (f, c) in fields.iter().zip(&t.columns) {
+            let pad = " ".repeat(width - f.chars().count());
+            out.push(format!("    -- {f}{pad}  {}", type_comment(c)));
+        }
     }
-    for line in [
-        "    IF TG_OP = 'INSERT' THEN",
-        "        --PROCESS NEW HERE",
-        "        RETURN NEW;",
-        "    ELSIF TG_OP = 'UPDATE' THEN",
-        "        --PROCESS OLD AND NEW HERE",
-        "        RETURN NEW;",
-        "    ELSIF TG_OP = 'DELETE' THEN",
-        "        --PROCESS OLD HERE",
-        "        RETURN OLD;",
-        "    END IF;",
-        "    RETURN NULL;",
-        "END;",
-        "$$;",
-        "",
-    ] {
-        out.push(line.to_owned());
+    match (row, before) {
+        (true, true) => push(
+            &mut out,
+            &[
+                "    IF TG_OP = 'INSERT' THEN",
+                "        --PROCESS NEW HERE",
+                "        RETURN NEW;",
+                "    ELSIF TG_OP = 'UPDATE' THEN",
+                "        --PROCESS OLD AND NEW HERE",
+                "        RETURN NEW;",
+                "    ELSIF TG_OP = 'DELETE' THEN",
+                "        --PROCESS OLD HERE",
+                "        RETURN OLD;",
+                "    END IF;",
+                "    RETURN NULL;  -- NULL skips the row",
+            ],
+        ),
+        (true, false) => push(
+            &mut out,
+            &[
+                "    IF TG_OP = 'INSERT' THEN",
+                "        --PROCESS NEW HERE",
+                "    ELSIF TG_OP = 'UPDATE' THEN",
+                "        --PROCESS OLD AND NEW HERE",
+                "    ELSIF TG_OP = 'DELETE' THEN",
+                "        --PROCESS OLD HERE",
+                "    END IF;",
+                "    RETURN NULL;  -- ignored for AFTER triggers",
+            ],
+        ),
+        (false, _) => push(
+            &mut out,
+            &[
+                "    IF TG_OP = 'INSERT' THEN",
+                "        --PROCESS INSERT HERE",
+                "    ELSIF TG_OP = 'UPDATE' THEN",
+                "        --PROCESS UPDATE HERE",
+                "    ELSIF TG_OP = 'DELETE' THEN",
+                "        --PROCESS DELETE HERE",
+                "    ELSIF TG_OP = 'TRUNCATE' THEN",
+                "        --PROCESS TRUNCATE HERE",
+                "    END IF;",
+                "    RETURN NULL;  -- ignored for statement triggers",
+            ],
+        ),
     }
+    push(&mut out, &["END;", "$$;", ""]);
+    let suffix = match (row, before) {
+        (true, true) => "rb",
+        (true, false) => "ra",
+        (false, true) => "sb",
+        (false, false) => "sa",
+    };
     out.push(format!(
         "CREATE TRIGGER {}",
-        quote_ident(&format!("{}_trg", t.name))
+        quote_ident(&format!("{}_{suffix}_trg", t.name))
     ));
-    out.push(format!("    BEFORE INSERT OR UPDATE OR DELETE ON {table}"));
-    out.push(format!("    FOR EACH ROW EXECUTE FUNCTION {function}();"));
-    out.join("\n")
+    let when = if before { "BEFORE" } else { "AFTER" };
+    let events = if row {
+        "INSERT OR UPDATE OR DELETE"
+    } else {
+        "INSERT OR UPDATE OR DELETE OR TRUNCATE"
+    };
+    out.push(format!("    {when} {events} ON {table}"));
+    let each = if row { "ROW" } else { "STATEMENT" };
+    out.push(format!(
+        "    FOR EACH {each} EXECUTE FUNCTION {function}();"
+    ));
+    out.join(
+        "
+",
+    )
 }
 
 /// `gtsi` variable names: `v_` + the column name in lower case, every character other
@@ -1434,7 +1525,9 @@ mod tests {
         assert_eq!(t("d+ x").unwrap().1, RELATIONS_SORTED);
         assert_eq!(t("gts o").unwrap().1, ["foreign table", "table", "view"]);
         assert_eq!(t("gtm o").unwrap().1, ["table"]);
-        assert_eq!(t("gtt o").unwrap().1, ["table"]);
+        for input in ["gtrb o", "gtra o", "gtsb o", "gtsa o"] {
+            assert_eq!(t(input).unwrap().1, ["table"]);
+        }
         assert_eq!(t("di x"), None);
         assert_eq!(t("du x"), None);
         assert_eq!(t("dt"), None, "no argument yet");
@@ -1457,10 +1550,11 @@ mod tests {
         assert_eq!(
             m,
             [
-                "gts", "gti", "gtu", "gtd", "gtc", "gto", "gtsi", "gtv", "gtm", "gtt"
+                "gts", "gti", "gtu", "gtd", "gtc", "gto", "gtsi", "gtv", "gtm", "gtrb", "gtra",
+                "gtsb", "gtsa"
             ]
         );
-        assert_eq!(matching("\\gt").len(), 10);
+        assert_eq!(matching("\\gt").len(), 13);
         assert_eq!(matching("dt+ x").len(), 1);
     }
 
@@ -1663,41 +1757,121 @@ mod tests {
 
     #[test]
     fn generate_trigger() {
-        assert!(needs_table("gtt"));
-        let expected = [
+        for c in ["gtrb", "gtra", "gtsb", "gtsa"] {
+            assert!(needs_table(c));
+        }
+        let kind = |c: &str| match parse(&format!("{c} orders")).unwrap() {
+            Cmd::Generate { what, .. } => what,
+            other => panic!("{other:?}"),
+        };
+        let trig = |row, before| Gen::Trigger { row, before };
+        assert_eq!(kind("gtrb"), trig(true, true));
+        assert_eq!(kind("gtra"), trig(true, false));
+        assert_eq!(kind("gtsb"), trig(false, true));
+        assert_eq!(kind("gtsa"), trig(false, false));
+        let head = [
             "CREATE OR REPLACE FUNCTION public.[function_name]()",
             "RETURNS trigger",
             "LANGUAGE plpgsql",
             "AS $$",
             "BEGIN",
+        ];
+        let fields = [
             "    -- NEW. / OLD.id           integer, NOT NULL",
             "    -- NEW. / OLD.customer_id  integer, NOT NULL",
             "    -- NEW. / OLD.note         text",
             "    -- NEW. / OLD.total        numeric",
+        ];
+        let make = |row, before| generate(trig(row, before), &orders());
+        let join = |parts: &[&[&str]]| parts.concat().join("\n");
+        assert_eq!(
+            make(true, true),
+            join(&[
+                &head,
+                &fields,
+                &[
+                    "    IF TG_OP = 'INSERT' THEN",
+                    "        --PROCESS NEW HERE",
+                    "        RETURN NEW;",
+                    "    ELSIF TG_OP = 'UPDATE' THEN",
+                    "        --PROCESS OLD AND NEW HERE",
+                    "        RETURN NEW;",
+                    "    ELSIF TG_OP = 'DELETE' THEN",
+                    "        --PROCESS OLD HERE",
+                    "        RETURN OLD;",
+                    "    END IF;",
+                    "    RETURN NULL;  -- NULL skips the row",
+                    "END;",
+                    "$$;",
+                    "",
+                    "CREATE TRIGGER orders_rb_trg",
+                    "    BEFORE INSERT OR UPDATE OR DELETE ON public.orders",
+                    "    FOR EACH ROW EXECUTE FUNCTION public.[function_name]();",
+                ],
+            ])
+        );
+        assert_eq!(
+            make(true, false),
+            join(&[
+                &head,
+                &fields,
+                &[
+                    "    IF TG_OP = 'INSERT' THEN",
+                    "        --PROCESS NEW HERE",
+                    "    ELSIF TG_OP = 'UPDATE' THEN",
+                    "        --PROCESS OLD AND NEW HERE",
+                    "    ELSIF TG_OP = 'DELETE' THEN",
+                    "        --PROCESS OLD HERE",
+                    "    END IF;",
+                    "    RETURN NULL;  -- ignored for AFTER triggers",
+                    "END;",
+                    "$$;",
+                    "",
+                    "CREATE TRIGGER orders_ra_trg",
+                    "    AFTER INSERT OR UPDATE OR DELETE ON public.orders",
+                    "    FOR EACH ROW EXECUTE FUNCTION public.[function_name]();",
+                ],
+            ])
+        );
+        let body = [
             "    IF TG_OP = 'INSERT' THEN",
-            "        --PROCESS NEW HERE",
-            "        RETURN NEW;",
+            "        --PROCESS INSERT HERE",
             "    ELSIF TG_OP = 'UPDATE' THEN",
-            "        --PROCESS OLD AND NEW HERE",
-            "        RETURN NEW;",
+            "        --PROCESS UPDATE HERE",
             "    ELSIF TG_OP = 'DELETE' THEN",
-            "        --PROCESS OLD HERE",
-            "        RETURN OLD;",
+            "        --PROCESS DELETE HERE",
+            "    ELSIF TG_OP = 'TRUNCATE' THEN",
+            "        --PROCESS TRUNCATE HERE",
             "    END IF;",
-            "    RETURN NULL;",
+            "    RETURN NULL;  -- ignored for statement triggers",
             "END;",
             "$$;",
             "",
-            "CREATE TRIGGER orders_trg",
-            "    BEFORE INSERT OR UPDATE OR DELETE ON public.orders",
-            "    FOR EACH ROW EXECUTE FUNCTION public.[function_name]();",
         ];
+        let each = "    FOR EACH STATEMENT EXECUTE FUNCTION public.[function_name]();";
         assert_eq!(
-            generate(Gen::Trigger, &orders()),
-            expected.join(
-                "
-"
-            )
+            make(false, true),
+            join(&[
+                &head,
+                &body,
+                &[
+                    "CREATE TRIGGER orders_sb_trg",
+                    "    BEFORE INSERT OR UPDATE OR DELETE OR TRUNCATE ON public.orders",
+                    each,
+                ],
+            ])
+        );
+        assert_eq!(
+            make(false, false),
+            join(&[
+                &head,
+                &body,
+                &[
+                    "CREATE TRIGGER orders_sa_trg",
+                    "    AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE ON public.orders",
+                    each,
+                ],
+            ])
         );
         // names quoted when needed
         let t = GenTable {
@@ -1705,12 +1879,12 @@ mod tests {
             name: "Order Items".into(),
             ..orders()
         };
-        let g = generate(Gen::Trigger, &t);
+        let g = generate(trig(false, false), &t);
         assert!(
             g.starts_with("CREATE OR REPLACE FUNCTION \"Sales\".[function_name]()"),
             "{g}"
         );
-        assert!(g.contains("CREATE TRIGGER \"Order Items_trg\""), "{g}");
+        assert!(g.contains("CREATE TRIGGER \"Order Items_sa_trg\""), "{g}");
         assert!(
             g.ends_with("EXECUTE FUNCTION \"Sales\".[function_name]();"),
             "{g}"

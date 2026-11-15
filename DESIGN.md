@@ -1690,7 +1690,7 @@ pgtc (binary)
     combined letters add up (`dtv` → tables and views; `E` foreign tables, `i` nothing);
   - `gts`, `gti`, `gtu`, `gtd`, `gtc`, `gto`, `gtsi`, `gtv` — tables, views, foreign
     tables (`gtv` completes the last name typed);
-  - `gtm`, `gtt` — tables;
+  - `gtm`, `gtrb`, `gtra`, `gtsb`, `gtsa` — tables;
   - all others — nothing (*No suggestions*).
   Names come from the query tab's name cache (*loading…* until it is read; nothing is
   read while a result runs or is paused). Names on the search path are offered as
@@ -1773,19 +1773,29 @@ pgtc (binary)
     insert. No `WHEN NOT MATCHED BY SOURCE` (it would delete every row not in
     `USING`). Needs PostgreSQL 15 (feature `Merge`, D-011): refused before that with
     *MERGE needs PostgreSQL 15 or later*. Tables only (not views or foreign tables).
-  - `gtt` *table* — a row trigger: `CREATE OR REPLACE FUNCTION <schema>.[function_name]()
-    RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN … END; $$;` with one comment line per
-    field (`-- NEW. / OLD.id  integer, NOT NULL`), `IF TG_OP = 'INSERT'` / `'UPDATE'` /
-    `'DELETE'` branches with `--PROCESS NEW HERE` / `--PROCESS OLD AND NEW HERE` /
-    `--PROCESS OLD HERE` and `RETURN NEW` / `NEW` / `OLD`, `RETURN NULL` at the end;
-    then `CREATE TRIGGER <table>_trg BEFORE INSERT OR UPDATE OR DELETE ON <table> FOR
-    EACH ROW EXECUTE FUNCTION <schema>.[function_name]();`. The function is in the
-    table's schema; its name is a placeholder on purpose: the script does not run until the developer
-    names the function. Run in SQL mode. Tables only (views need `INSTEAD OF` triggers).
+  - `gtrb` / `gtra` / `gtsb` / `gtsa` *table* — a trigger function and its trigger:
+    **r**ow / **s**tatement, **b**efore / **a**fter. `CREATE OR REPLACE FUNCTION
+    <schema>.[function_name]() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN … END; $$;`
+    with `IF TG_OP = 'INSERT'` / `'UPDATE'` / `'DELETE'` branches, then `CREATE TRIGGER
+    <table>_rb_trg` (`_ra_trg`, `_sb_trg`, `_sa_trg`, so several kinds on one table do
+    not clash) `BEFORE` / `AFTER INSERT OR UPDATE OR DELETE ON <table> FOR EACH ROW` /
+    `STATEMENT EXECUTE FUNCTION <schema>.[function_name]();`.
+    - *Row* (`gtrb`, `gtra`): one comment line per field (`-- NEW. / OLD.id  integer,
+      NOT NULL`); branches `--PROCESS NEW HERE` / `--PROCESS OLD AND NEW HERE` /
+      `--PROCESS OLD HERE`. `gtrb`: `RETURN NEW` / `NEW` / `OLD` in the branches and
+      `RETURN NULL;  -- NULL skips the row` at the end. `gtra`: no `RETURN` in the
+      branches, `RETURN NULL;  -- ignored for AFTER triggers` at the end.
+    - *Statement* (`gtsb`, `gtsa`): no field comments (no `NEW` / `OLD`); also the
+      `TRUNCATE` event and an `ELSIF TG_OP = 'TRUNCATE'` branch; branches `--PROCESS
+      INSERT HERE` / … / `--PROCESS TRUNCATE HERE`, `RETURN NULL;  -- ignored for
+      statement triggers` at the end. No transition tables (`REFERENCING`).
+    The function is in the table's schema; its name is a placeholder on purpose: the
+    script does not run until the developer names the function. Run in SQL mode.
+    Tables only (views need `INSTEAD OF` triggers).
   - `gtv` *table* [*table* …] — a view over one or more tables (views, foreign
     tables): `CREATE VIEW <schema>.[view_name] AS SELECT <columns> FROM <first> JOIN …;`
     in the first table's schema; the view name is a placeholder (does not run until
-    named, as `gtt`). Names separated by spaces (`gtv orders customers "Order Items"`).
+    named, as the trigger commands). Names separated by spaces (`gtv orders customers "Order Items"`).
     - *Aliases:* every table gets `T1`, `T2`, `T3`, … in the order typed (`FROM
       public.orders AS T1`), unquoted, so joins and conditions are easy to write.
     - *Columns:* every column of every table, one per line, `T1.column`; a column name
@@ -2532,3 +2542,4 @@ pgtc (binary)
 | 2026-11-15 | D-038 / D-064 refined: undoing (or redoing) back to the saved text removes the "modified" mark; replace in regex mode takes each match in its line, so patterns that look around the match (`\b`, `\B`, `^`, `$`) replace what the search found. D-019 refined: a paused result notices a lost connection within a second, not only at the next request. |
 | 2026-11-15 | D-046 refined: a template's own `query` must be one `SELECT` / `WITH` / `VALUES` / `TABLE` statement and runs so that nothing it does stays (a read-only transaction, or a savepoint of the tab's open transaction that is rolled back). D-057 refined: cancel / terminate go only to the session that was shown (PID and backend start), not to one that got its PID since. D-058 refined: profiler entries are recognised by SQLSTATE, so errors also show on servers whose messages are not English. |
 | 2026-11-15 | D-055 updated: a search of all databases has at most 8 connections of its own open at a time (it had one per database until the dialog closed); with more databases a connection is closed when it has answered. D-052 refined: names are not asked for in a failed transaction, and a failed lookup is not remembered as an empty list. |
+| 2026-11-15 | D-054 updated: `gtt` split into `gtrb` / `gtra` / `gtsb` / `gtsa` (row / statement, before / after); trigger names `<table>_rb_trg`, `_ra_trg`, `_sb_trg`, `_sa_trg`; after row triggers end every branch with the final `RETURN NULL` (ignored); statement triggers have no field comments, add `TRUNCATE`, no transition tables. |

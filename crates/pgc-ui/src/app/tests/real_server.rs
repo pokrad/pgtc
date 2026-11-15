@@ -203,19 +203,33 @@ async fn psql_commands_against_a_real_server() {
     .await;
     assert!(a.editor().text().is_empty());
     a.dialogs.clear();
-    // gtt: the trigger function and the trigger, the function name a placeholder
-    a.status.clear();
-    run(&mut a, "gtt pgtc_psql");
-    pump(&mut a, &mut rx, &hits, |a| {
-        a.status.starts_with("Generated")
-    })
-    .await;
-    let text = a.editor().text();
-    assert!(
-        text.contains(".[function_name]()\nRETURNS trigger"),
-        "{text}"
-    );
-    assert!(text.contains("CREATE TRIGGER pgtc_psql_trg"), "{text}");
+    // gtrb / gtra / gtsb / gtsa: the trigger function and the trigger, the function
+    // name a placeholder
+    for (command, each) in [
+        ("gtrb", "ROW"),
+        ("gtra", "ROW"),
+        ("gtsb", "STATEMENT"),
+        ("gtsa", "STATEMENT"),
+    ] {
+        a.editor().set_text("");
+        a.status.clear();
+        run(&mut a, &format!("{command} pgtc_psql"));
+        pump(&mut a, &mut rx, &hits, |a| {
+            a.status.starts_with("Generated")
+        })
+        .await;
+        let text = a.editor().text();
+        assert!(
+            text.contains(".[function_name]()\nRETURNS trigger"),
+            "{text}"
+        );
+        let suffix = &command[2..];
+        assert!(
+            text.contains(&format!("CREATE TRIGGER pgtc_psql_{suffix}_trg")),
+            "{text}"
+        );
+        assert!(text.contains(&format!("FOR EACH {each} ")), "{text}");
+    }
     // unknown command: an error, the command line stays open
     run(&mut a, "xyz");
     assert_eq!(a.dialogs.len(), 2);
