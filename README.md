@@ -21,6 +21,12 @@ right, function keys, menus and dialogs.
 - **psql-style commands** (`F4`) — psql's `\dt`, `\d table`, `\df`, `\du`, … typed without the
   backslash (`dt`, `d table`, …), plus pgtc's own `gts` / `gti` / `gtu` / `gtd` to generate SELECT / INSERT / UPDATE / DELETE for a
   table.
+- **Server dashboard** (`Alt+D`) — live graphs, a summary of the server's health
+  (sessions, oldest transaction, the session holding back vacuum, replication),
+  sessions with blocking, running VACUUM / CREATE INDEX progress, locks; cancel or
+  terminate one or several sessions.
+- **SQL profiler** (`Alt+P`) — every statement the server runs, with its duration,
+  parameters and errors, read from the server log.
 - **Export** results to CSV, JSON or XML — the whole result, streamed to the file.
 - **Developer templates** — fill in a short form, get ready-to-run SQL (CREATE
   TABLE, FUNCTION, INDEX, …); add your own templates as files.
@@ -28,6 +34,10 @@ right, function keys, menus and dialogs.
   (only the needed CREATE / ALTER statements, for review before running).
 - **Colour schemes** (Classic, Dark, Light, Terminal default, Tokyo Night, Dracula and
   your own), configurable keys.
+
+| Server dashboard (`Alt+D`) | SQL profiler (`Alt+P`) |
+|---|---|
+| ![Server dashboard](docs/screenshots/dashboard.svg) | ![SQL profiler](docs/screenshots/profiler.svg) |
 
 | Developer template: Create table | Developer templates (`F7`) |
 |---|---|

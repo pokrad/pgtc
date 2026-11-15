@@ -609,4 +609,298 @@ async fn readme_screenshots() {
     );
     a.dialogs[0].list_select("list", 2);
     std::fs::write(dir.join("find.svg"), svg(&a)).unwrap();
+
+    // 8. the server dashboard (D-057): graphs, summary strip, Sessions
+    let (mut a, _d) = scene();
+    a.tree.cursor = 0;
+    // a narrower tree (dragged, D-045): room for the wide lists
+    a.settings.ui.tree_width = Some(24);
+    a.run(Command::Dashboard);
+    {
+        let d = a.tabs[a.active_tab].dashboard_mut().unwrap();
+        let c = d.conn.as_mut().unwrap();
+        c.handle.abort();
+        c.handle = pgc_db::ConnectionHandle::detached(c.id);
+        c.connected = true;
+        d.version = Some(pgc_core::ServerVersion(170002));
+        // two minutes of samples every 2 s: a working day's wave
+        let (mut commits, mut tuples, mut blocks) = (9_000_000u64, 40_000_000u64, 7_000_000u64);
+        for i in 0..60u64 {
+            let wave = (i as f64 / 6.0).sin().abs();
+            commits += 300 + (wave * 500.0) as u64 + i % 7 * 20;
+            tuples += 2_000 + (wave * 6_000.0) as u64;
+            blocks += 4_000 + ((1.0 - wave) * 3_000.0) as u64;
+            let sessions = 38 + (wave * 9.0) as u64;
+            let active = 3 + (wave * 6.0) as u64;
+            let mut row: Vec<String> = vec![
+                sessions.to_string(),
+                active.to_string(),
+                (sessions - active - 2).to_string(),
+                commits.to_string(),
+                (commits / 180).to_string(),
+                (tuples / 3).to_string(),
+                (tuples / 5).to_string(),
+                (tuples / 40).to_string(),
+                (tuples * 2).to_string(),
+                (tuples * 9).to_string(),
+                (blocks / 90).to_string(),
+                blocks.to_string(),
+                (1_000_000.0 + i as f64 * 2.0).to_string(),
+            ];
+            let deadlocks = if i >= 58 { "4" } else { "3" };
+            row.extend(
+                [
+                    "2", "0", "1", "200", "1", "3", "2", "8", "0", "4", "2", "10", "0", "2", "10",
+                    "1209600", "1", "8388608", "false", "754", "48.6", "1843", "41377", deadlocks,
+                    "0", "0", "16384", "50331648",
+                ]
+                .map(String::from),
+            );
+            d.apply_stats(crate::dashboard::Sample::from_row(&row).unwrap());
+        }
+        d.apply_size(41_000_000_000, 1_000_000.0);
+        d.apply_size(41_000_368_640, 1_000_090.0);
+        // the Sessions list
+        let s = |pid: &str,
+                 app: &str,
+                 state: &str,
+                 wait: &str,
+                 by: &str,
+                 q: &str,
+                 x: &str,
+                 xmin: &str,
+                 kind: &str,
+                 query: &str| {
+            [
+                pid,
+                "shop",
+                if kind == "client backend" { "app" } else { "" },
+                app,
+                if kind == "client backend" {
+                    "10.0.4.17"
+                } else {
+                    ""
+                },
+                state,
+                wait,
+                by,
+                q,
+                x,
+                "3600",
+                xmin,
+                "",
+                "",
+                "",
+                "2026-11-15 08:00:02",
+                "",
+                "",
+                kind,
+                query,
+            ]
+            .map(String::from)
+            .to_vec()
+        };
+        d.apply_rows(
+            crate::dashboard::List::Sessions,
+            vec![
+                s(
+                    "41377",
+                    "billing-job",
+                    "idle in transaction",
+                    "Client: ClientRead",
+                    "",
+                    "754",
+                    "754",
+                    "1843",
+                    "client backend",
+                    "UPDATE invoices SET status = 'sent' WHERE id = $1",
+                ),
+                s(
+                    "41502",
+                    "web",
+                    "active",
+                    "Lock: transactionid",
+                    "41377",
+                    "48.6",
+                    "48.6",
+                    "12",
+                    "client backend",
+                    "UPDATE invoices SET paid_at = now() WHERE id = $1",
+                ),
+                s(
+                    "41620",
+                    "report",
+                    "active",
+                    "IO: DataFileRead",
+                    "",
+                    "3.2",
+                    "3.2",
+                    "8",
+                    "client backend",
+                    "SELECT c.name, sum(o.total) FROM orders o JOIN customers c ON c.id = o.customer_id GROUP BY 1",
+                ),
+                s(
+                    "41733",
+                    "web",
+                    "active",
+                    "",
+                    "",
+                    "0.004",
+                    "0.004",
+                    "",
+                    "client backend",
+                    "SELECT * FROM products WHERE id = $1",
+                ),
+                s(
+                    "40112",
+                    "",
+                    "active",
+                    "",
+                    "",
+                    "21",
+                    "21",
+                    "3",
+                    "autovacuum worker",
+                    "autovacuum: VACUUM public.orders",
+                ),
+                s(
+                    "41801",
+                    "web",
+                    "idle",
+                    "Client: ClientRead",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "client backend",
+                    "COMMIT",
+                ),
+                s(
+                    "41802",
+                    "web",
+                    "idle",
+                    "Client: ClientRead",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "client backend",
+                    "SELECT 1",
+                ),
+            ],
+        );
+        d.tags.insert("41733".into());
+        d.pane.visible = false;
+    }
+    a.focus = Focus::Results;
+    std::fs::write(dir.join("dashboard.svg"), svg(&a)).unwrap();
+
+    // 9. the SQL profiler (D-058): statements from the server log
+    let (mut a, _d) = scene();
+    a.tree.cursor = 0;
+    // a narrower tree (dragged, D-045): room for the wide lists
+    a.settings.ui.tree_width = Some(24);
+    a.run(Command::SqlProfiler);
+    {
+        let p = a.tabs[a.active_tab].profiler_mut().unwrap();
+        let c = p.conn.as_mut().unwrap();
+        c.handle.abort();
+        c.handle = pgc_db::ConnectionHandle::detached(c.id);
+        c.connected = true;
+        p.version = Some(pgc_core::ServerVersion(170002));
+        p.phase = crate::profiler::Phase::Running;
+        let r = |time: &str, pid: &str, app: &str, ms: &str, kind: &str, sql: &str| {
+            crate::profiler::Record {
+                time: format!("2026-11-15 10:42:{time}"),
+                user: "app".into(),
+                database: "shop".into(),
+                pid: pid.into(),
+                client: "10.0.4.17".into(),
+                severity: "LOG".into(),
+                message: format!("duration: {ms} ms  {kind}: {sql}"),
+                detail: if kind == "execute <unnamed>" {
+                    "Parameters: $1 = '1042'".into()
+                } else {
+                    String::new()
+                },
+                statement: String::new(),
+                application: app.into(),
+            }
+        };
+        let mut records = vec![
+            r(
+                "03.114",
+                "41733",
+                "web",
+                "0.412",
+                "execute <unnamed>",
+                "SELECT * FROM products WHERE id = $1",
+            ),
+            r(
+                "03.180",
+                "41733",
+                "web",
+                "1.873",
+                "statement",
+                "SELECT count(*) FROM cart_items WHERE cart_id = 77",
+            ),
+            r(
+                "03.902",
+                "41620",
+                "report",
+                "3204.551",
+                "statement",
+                "SELECT c.name, sum(o.total) FROM orders o JOIN customers c ON c.id = o.customer_id GROUP BY 1",
+            ),
+            r(
+                "04.015",
+                "41502",
+                "web",
+                "0.388",
+                "execute <unnamed>",
+                "SELECT * FROM products WHERE id = $1",
+            ),
+            r(
+                "04.230",
+                "41502",
+                "web",
+                "12.906",
+                "statement",
+                "INSERT INTO orders (customer_id, total) VALUES (17, 129.90)",
+            ),
+            r("04.231", "41502", "web", "0.051", "statement", "COMMIT"),
+        ];
+        records.push(crate::profiler::Record {
+            severity: "ERROR".into(),
+            message: "duplicate key value violates unique constraint \"customers_email_key\""
+                .into(),
+            statement:
+                "INSERT INTO customers (name, email) VALUES ('Globex', 'info@globex.example')"
+                    .into(),
+            ..r("04.502", "41801", "signup", "0", "statement", "")
+        });
+        records.push(r(
+            "05.077",
+            "41733",
+            "web",
+            "0.297",
+            "execute <unnamed>",
+            "SELECT * FROM products WHERE id = $1",
+        ));
+        records.push(r(
+            "05.640",
+            "41620",
+            "report",
+            "845.020",
+            "statement",
+            "SELECT date_trunc('day', created_at), count(*) FROM orders GROUP BY 1 ORDER BY 1",
+        ));
+        p.add_records(records);
+        p.grid.row = 6;
+    }
+    a.focus = Focus::Results;
+    // the statement pane follows the cursor in `update`
+    key(&mut a, "Down");
+    key(&mut a, "Up");
+    std::fs::write(dir.join("profiler.svg"), svg(&a)).unwrap();
 }
