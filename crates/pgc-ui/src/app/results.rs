@@ -73,7 +73,7 @@ impl App {
 
     /// Keys in the results pane. Returns false if the command is not for it.
     pub(super) fn results_command(&mut self, cmd: Command) -> bool {
-        let page = self.frame.grid_size.0.saturating_sub(1).max(1) as isize;
+        let step = self.grid_step(cmd);
         let Some(q) = self.query_mut() else {
             return false;
         };
@@ -120,17 +120,12 @@ impl App {
                 Command::Up | Command::Down | Command::Left | Command::Right
             );
         };
+        if let Some((rows, columns)) = step {
+            rs.move_cursor(rows, columns);
+            self.after_grid_move();
+            return true;
+        }
         match cmd {
-            Command::Up => rs.move_cursor(-1, 0, 0),
-            Command::Down => rs.move_cursor(1, 0, 0),
-            Command::Left => rs.move_cursor(0, -1, 0),
-            Command::Right => rs.move_cursor(0, 1, 0),
-            Command::PageUp => rs.move_cursor(-page, 0, 0),
-            Command::PageDown => rs.move_cursor(page, 0, 0),
-            Command::Home => rs.move_cursor(0, isize::MIN / 2, 0),
-            Command::End => rs.move_cursor(0, isize::MAX / 2, 0),
-            Command::DocStart => rs.move_cursor(isize::MIN / 2, isize::MIN / 2, 0),
-            Command::DocEnd => rs.move_cursor(isize::MAX / 2, 0, 0),
             Command::SelectAll => rs.all_selected = true,
             Command::Copy => {
                 if let Some(text) = rs.copy_text()

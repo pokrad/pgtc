@@ -22,11 +22,11 @@ impl App {
         self.tab_mut(tab)?.monitor_mut().map(|m| m.own_conn())
     }
 
-    /// Keys of the list: the cursor, copy, select all. Returns false if the command
-    /// is not one of them.
-    pub(super) fn monitor_command(&mut self, cmd: Command) -> bool {
+    /// How far a key moves the cell cursor of a grid, as (rows, columns): the arrows,
+    /// a page, the ends of the row and of the grid. `None` for other commands.
+    pub(super) fn grid_step(&self, cmd: Command) -> Option<(isize, isize)> {
         let page = self.frame.grid_size.0.saturating_sub(1).max(1) as isize;
-        let step = match cmd {
+        match cmd {
             Command::Up => Some((-1, 0)),
             Command::Down => Some((1, 0)),
             Command::Left => Some((0, -1)),
@@ -38,10 +38,15 @@ impl App {
             Command::DocStart => Some((isize::MIN / 2, isize::MIN / 2)),
             Command::DocEnd => Some((isize::MAX / 2, 0)),
             _ => None,
-        };
-        if let Some((rows, columns)) = step {
+        }
+    }
+
+    /// Keys of the list: the cursor, copy, select all. Returns false if the command
+    /// is not one of them.
+    pub(super) fn monitor_command(&mut self, cmd: Command) -> bool {
+        if let Some((rows, columns)) = self.grid_step(cmd) {
             if let Some(m) = self.monitor_mut() {
-                m.list_mut().move_cursor(rows, columns, 0);
+                m.list_mut().move_cursor(rows, columns);
             }
             self.monitor_scroll();
             return true;
@@ -109,7 +114,7 @@ impl App {
                     -3
                 };
                 if let Some(m) = self.monitor_mut() {
-                    m.list_mut().move_cursor(rows, 0, 0);
+                    m.list_mut().move_cursor(rows, 0);
                 }
                 self.monitor_scroll();
                 Some(false)

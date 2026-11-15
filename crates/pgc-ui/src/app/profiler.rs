@@ -451,6 +451,16 @@ impl App {
             self.schedule_profiler(tab, READ_EVERY);
             return;
         };
+        // the file is shorter than what was read of it: the server emptied it and
+        // writes it again (log_truncate_on_rotation) — from its start
+        if size.parse::<u64>().is_ok_and(|size| size < p.offset) {
+            p.offset = 0;
+            if let Some(r) = p.reader.as_mut() {
+                r.reset();
+            }
+            self.profiler_read(tab);
+            return;
+        }
         let bytes = from_hex(&data);
         p.offset += bytes.len() as u64;
         let records = p

@@ -889,7 +889,7 @@ impl Dashboard {
         if !self.tags.remove(&s.pid) {
             self.tags.insert(s.pid);
         }
-        self.grid_mut().move_cursor(1, 0, 0);
+        self.grid_mut().move_cursor(1, 0);
         true
     }
 

@@ -131,9 +131,8 @@ impl ResultSet {
         thousands(self.rows.len()).len().max(3) + 1
     }
 
-    /// Moves the cell cursor; `page` = visible rows.
-    pub fn move_cursor(&mut self, drow: isize, dcol: isize, page: usize) {
-        let _ = page;
+    /// Moves the cell cursor by rows and columns (clamped to the grid).
+    pub fn move_cursor(&mut self, drow: isize, dcol: isize) {
         self.all_selected = false;
         if !self.rows.is_empty() {
             let max = self.rows.len() as isize - 1;
@@ -382,13 +381,13 @@ mod tests {
         assert_eq!(r.label(1), "1: 3 rows");
         r.more = true;
         assert_eq!(r.label(1), "1: 3+ rows");
-        r.move_cursor(0, 1, 10);
+        r.move_cursor(0, 1);
         assert_eq!(
             r.copy_text().as_deref(),
             Some("a\nb\tc"),
             "copied unchanged"
         );
-        r.move_cursor(1, 0, 10);
+        r.move_cursor(1, 0);
         assert_eq!(r.copy_text().as_deref(), Some(""));
         r.all_selected = true;
         let all = r.copy_text().unwrap();
@@ -417,7 +416,7 @@ mod tests {
     #[test]
     fn cursor_scrolls_into_view() {
         let mut r = rs();
-        r.move_cursor(2, 1, 1);
+        r.move_cursor(2, 1);
         r.ensure_visible(1, 20);
         assert_eq!(r.top, 2);
         assert_eq!(

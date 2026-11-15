@@ -2,7 +2,8 @@
 //! end of a line (inside a block comment, string, quoted identifier, dollar quote or a
 //! function / `DO` body) is carried to the next line.
 //!
-//! A dollar quote right after `AS` or `DO` (`AS $$`, `DO $body$`) is a **body** and
+//! A dollar quote right after `AS` or `DO` (`AS $$`, `DO $body$`, also `DO LANGUAGE
+//! plpgsql $$` on one line) is a **body** and
 //! its text is lexed as SQL (keywords, strings, comments); its closing tag always ends
 //! it, also inside an unclosed string or comment of the body, as in PostgreSQL. Every
 //! other dollar quote is a string.
@@ -131,6 +132,8 @@ fn lex_range(
     // produced by the branch for the construct it opens.
     let mut opened: Option<usize> = None;
     let mut after_as = matches!(state, LexState::AfterAs);
+    // `DO LANGUAGE name $$`: 1 after `DO`, 2 after its `LANGUAGE` (the name follows)
+    let mut do_language = 0u8;
     let mut state = match state {
         LexState::AfterAs => LexState::Normal,
         s => s.clone(),
@@ -310,8 +313,18 @@ fn lex_range(
                         opened = Some(start);
                         state = LexState::String { escape: true };
                     } else {
-                        word_as =
-                            word.eq_ignore_ascii_case("as") || word.eq_ignore_ascii_case("do");
+                        let is_do = word.eq_ignore_ascii_case("do");
+                        if do_language == 1 && word.eq_ignore_ascii_case("language") {
+                            word_as = true;
+                            do_language = 2;
+                        } else if do_language == 2 {
+                            // the language's name: the body may follow
+                            word_as = true;
+                            do_language = 0;
+                        } else {
+                            word_as = is_do || word.eq_ignore_ascii_case("as");
+                            do_language = u8::from(is_do);
+                        }
                         let kind = if want_tokens && is_keyword(word) {
                             TokenKind::Keyword
                         } else {
@@ -328,6 +341,9 @@ fn lex_range(
                     push(out, start, i, TokenKind::Operator);
                 }
                 after_as = word_as;
+                if !word_as {
+                    do_language = 0;
+                }
             }
         }
     }
@@ -951,6 +967,21 @@ mod tests {
     }
 
     /// `AS $tag$` / `DO $$` open a body lexed as SQL (D-015).
+    #[test]
+    fn do_with_a_language_is_a_body_too() {
+        let (t, s) = kinds(&LexState::Normal, "DO LANGUAGE plpgsql $$");
+        assert_eq!(s, body(&[""], LexState::Normal));
+        assert_eq!(t.last().unwrap(), &("$$".into(), K::BodyQuote));
+        let (t, _) = kinds(&s, "BEGIN NULL; END");
+        assert_eq!(t[0], ("BEGIN".into(), K::Keyword));
+        // only that shape: another word in between is no body
+        let (t, s) = kinds(&LexState::Normal, "DO LANGUAGE plpgsql x $$a$$");
+        assert_eq!(s, LexState::Normal);
+        assert_eq!(t.last().unwrap(), &("$$a$$".into(), K::String));
+        let (_, s) = kinds(&LexState::Normal, "SELECT language, $$text$$");
+        assert_eq!(s, LexState::Normal);
+    }
+
     #[test]
     fn function_and_do_bodies_are_code() {
         let (t, s) = kinds(&LexState::Normal, "CREATE FUNCTION f() RETURNS int AS $fn$");

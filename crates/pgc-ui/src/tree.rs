@@ -497,15 +497,19 @@ impl Tree {
         let Some(NodeKind::Group(obj)) = self.node(nid).map(|n| n.kind) else {
             return;
         };
-        let mut old: Vec<Node> = self
+        // the old nodes by OID (a group with thousands of objects is refreshed in one
+        // pass)
+        let mut old: std::collections::HashMap<u32, Node> = self
             .node_mut(nid)
             .and_then(|n| n.children.take())
-            .unwrap_or_default();
+            .unwrap_or_default()
+            .into_iter()
+            .map(|n| (n.oid, n))
+            .collect();
         let mut children = Vec::with_capacity(rows.len());
         for row in rows {
             let label = row.label.clone().unwrap_or_else(|| row.name.clone());
-            if let Some(i) = old.iter().position(|n| n.oid == row.oid) {
-                let mut node = old.swap_remove(i);
+            if let Some(mut node) = old.remove(&row.oid) {
                 node.name = row.name;
                 node.label = label;
                 if node.partitioned != row.partitioned {

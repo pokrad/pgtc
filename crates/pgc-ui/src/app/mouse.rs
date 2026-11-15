@@ -147,7 +147,7 @@ impl App {
                     -3
                 };
                 if let Some(rs) = self.active_result_set() {
-                    rs.move_cursor(d, 0, 0);
+                    rs.move_cursor(d, 0);
                 }
                 self.after_grid_move();
             }

@@ -93,7 +93,7 @@ client",
             if screen == 0 {
                 a.focus = Focus::Results;
                 if let Some(rs) = a.active_result_set() {
-                    rs.move_cursor(1, 1, 0);
+                    rs.move_cursor(1, 1);
                 }
                 key(&mut a, "F9"); // File menu
                 key(&mut a, "Down");

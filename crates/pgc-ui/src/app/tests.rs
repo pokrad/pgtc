@@ -4145,3 +4145,81 @@ async fn file_dialogs_list_and_check_in_the_background() {
     let text = a.dialogs.last().unwrap().widgets[0].label.text.clone();
     assert!(text.contains("does not exist"), "{text}");
 }
+
+/// The server emptied the log file and writes it again under the same name
+/// (`log_truncate_on_rotation`): the profiler reads it from its start (D-058).
+#[tokio::test]
+async fn profiler_follows_a_log_file_that_starts_again() {
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    key(&mut a, "Home");
+    a.run(Command::SqlProfiler);
+    let tab = a.tabs[1].id;
+    let conn = {
+        let p = a.tabs[1].profiler_mut().unwrap();
+        let c = p.conn.as_mut().unwrap();
+        c.handle.abort();
+        c.handle = pgc_db::ConnectionHandle::detached(c.id);
+        c.connected = true;
+        p.version = Some(pgc_core::ServerVersion(170002));
+        c.id
+    };
+    fn prof(a: &App) -> &crate::profiler::Profiler {
+        a.tabs[1].profiler().unwrap()
+    }
+    // the settings are as the profiler needs them: it runs at once
+    key(&mut a, "F5");
+    let k = prof(&a).step_keys[0];
+    profiler_answer(
+        &mut a,
+        conn,
+        tab,
+        k,
+        vec![vec!["on", "stderr,jsonlog", "f", "0", "f", "99"]],
+    );
+    assert_eq!(prof(&a).phase, crate::profiler::Phase::Running);
+    // the first read: the end of the current file
+    let k = prof(&a).read_key.unwrap();
+    profiler_answer(
+        &mut a,
+        conn,
+        tab,
+        k,
+        vec![vec!["log/day.json", "5000", "", ""]],
+    );
+    assert_eq!(prof(&a).offset, 5000);
+    let Some(Effect::Timer(Timer::Tab { seq, .. })) = a.effects.pop() else {
+        unreachable!()
+    };
+    a.update(Msg::TabTimer(tab, seq), &Hits::default());
+
+    // the same file is now 120 bytes: read again, from 0
+    let k = prof(&a).read_key.unwrap();
+    profiler_answer(
+        &mut a,
+        conn,
+        tab,
+        k,
+        vec![vec!["log/day.json", "120", "120", ""]],
+    );
+    assert_eq!(prof(&a).offset, 0);
+    assert_eq!(prof(&a).file.as_deref(), Some("log/day.json"));
+    let again = prof(&a).read_key.expect("the next read is on its way");
+    assert_ne!(again, k);
+    let line = serde_json::json!({"user": "bob", "dbname": "shop", "pid": "7",
+        "error_severity": "LOG", "state_code": "00000",
+        "message": "duration: 0.5 ms  statement: SELECT 1"})
+    .to_string()
+        + "\n";
+    profiler_answer(
+        &mut a,
+        conn,
+        tab,
+        again,
+        vec![vec!["log/day.json", "120", "120", &hex(&line)]],
+    );
+    assert_eq!(prof(&a).grid.rows.len(), 1);
+    assert_eq!(prof(&a).offset, line.len() as u64);
+}
