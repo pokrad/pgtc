@@ -16,6 +16,7 @@ impl App {
         // any mouse action closes the autocomplete list (D-052)
         if !matches!(m.kind, MouseEventKind::Moved) {
             self.completion = None;
+            self.psql_completion = None;
         }
         let p = Position::new(m.column, m.row);
         if self.template.is_some() && self.dialogs.is_empty() {

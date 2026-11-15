@@ -386,6 +386,8 @@ pub struct App {
     /// F4 list: input text and selected row last seen, to tell typing from choosing
     /// (D-054).
     psql_seen: (String, usize),
+    /// Autocomplete list of the F4 input (D-054); its `analysis.prefix` is the argument.
+    pub(crate) psql_completion: Option<crate::completion::Popup>,
     sql: SqlCatalog,
     /// Tree queries in flight: request key → group node id.
     pending: HashMap<u64, u64>,
@@ -543,6 +545,7 @@ impl App {
             find_seq: 0,
             reveal: None,
             psql_seen: (String::new(), 0),
+            psql_completion: None,
             sql: SqlCatalog::new(),
             pending: HashMap::new(),
             pending_defs: HashMap::new(),
@@ -873,6 +876,7 @@ impl App {
         self.sync_export_dialog();
         self.sync_picker();
         self.sync_psql_dialog();
+        self.refresh_psql_completion();
         self.sync_find_dialog();
         if let Some(form) = self.template.as_mut() {
             form.set_screen(hits.screen);
@@ -937,9 +941,12 @@ impl App {
                 return Vec::new();
             }
         }
-        if combo == KeyCombo::plain(KeyCode::Esc) && self.completion.is_some() {
-            // closes the list at once, without the Esc + digit wait (D-052)
+        if combo == KeyCombo::plain(KeyCode::Esc)
+            && (self.completion.is_some() || self.psql_completion.is_some())
+        {
+            // closes the list at once, without the Esc + digit wait (D-052, D-054)
             self.completion = None;
+            self.psql_completion = None;
             return Vec::new();
         }
         if combo == KeyCombo::plain(KeyCode::Esc) {
@@ -974,6 +981,20 @@ impl App {
             }
             // F4 list (D-054) and Find object (D-055): arrows and pages move in the
             // list while typing in the input
+            // F4 input: autocomplete of the argument on request (D-054)
+            if dialog.kind == DialogKind::PsqlCommand && dialog.focused_id() == Some("cmd") {
+                let editor_cmd = self.keymap.lookup_only(Context::Editor, combo);
+                if self.psql_completion.is_some() && self.psql_completion_key(&ev, cmd) {
+                    return;
+                }
+                if editor_cmd == Some(Command::Complete) {
+                    self.open_psql_completion();
+                    return;
+                }
+            }
+            let Some(dialog) = self.dialogs.last_mut() else {
+                return;
+            };
             if matches!(
                 dialog.kind,
                 DialogKind::FindObject | DialogKind::PsqlCommand

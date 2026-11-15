@@ -243,7 +243,7 @@ impl App {
     }
 
     /// Asks the connection of query tab `i` for missing names.
-    fn request_names(&mut self, i: usize, needs: &[crate::completion::Need]) {
+    pub(super) fn request_names(&mut self, i: usize, needs: &[crate::completion::Need]) {
         use crate::completion::Need;
         if needs.is_empty() {
             return;

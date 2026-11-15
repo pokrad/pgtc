@@ -1566,7 +1566,8 @@ pgtc (binary)
   and the body's `$tag$` ends a statement too (in PL/pgSQL `SELECT … INTO v` it still
   offers tables after `INTO`; a heuristic). In the form the list uses the query
   tab's connection and names, analyses the text of the box itself, is drawn over the
-  form at the cursor, and `Esc` closes only the list (the form stays open).
+  form at the cursor, and `Esc` closes only the list (the form stays open). The `F4`
+  command line has its own, smaller completion of object names (D-054).
 - **Trigger:** `Ctrl+Space` and `Alt+/` (`complete` in `[editor]`; some terminals do
   not pass `Ctrl+Space` on), and **automatically** after typing `.` and after typing the
   **3rd letter** of a name. Opened automatically, the list appears only when it has
@@ -1648,6 +1649,23 @@ pgtc (binary)
   generate command without its table keeps the cursor in the input; `Esc` closes.
   No command history. In SQL scripts a `\` line is **not** a command (psql-style script
   lines are a possible later addition).
+- **Autocomplete in the input** (D-052): only on `Ctrl+Space` / `Alt+/` (`complete`),
+  never by itself (not after letters, `.` or in patterns); `Tab` still moves the focus.
+  It completes the **argument** (the text after the command and a space). Each command
+  has its own **list of object kinds** to offer (empty = no autocomplete):
+  - `d` / `d+`, `dp` — tables, views, materialized views, foreign tables, sequences;
+  - `dt` / `dv` / `dm` / `ds` — tables / views / materialized views / sequences;
+    combined letters add up (`dtv` → tables and views; `E` foreign tables, `i` nothing);
+  - `gts`, `gti`, `gtu`, `gtd` — tables, views, foreign tables;
+  - all others — nothing (*No suggestions*).
+  Names come from the query tab's name cache (*loading…* until it is read; nothing is
+  read while a result runs or is paused). Names on the search path are offered as
+  `orders`, others as `sales.orders`; the typed argument filters them (case-insensitive,
+  starts with, also `sales.o`) and the chosen entry replaces it, quoted only when
+  needed (`sales."Order Items"`). The list is drawn under the input, over the command
+  list, with the entry's kind; `Up` / `Down` / `PgUp` / `PgDn` move, `Enter` inserts
+  (does not run), `Esc` closes only the list, typing goes on into the input and
+  filters it, `Backspace` refilters, any other key closes it.
 - **Commands (psql meanings, pgtc's own simpler queries):**
   - Lists — `l` databases, `dn` schemas, `dt` tables, `dv` views, `dm`
     materialized views, `di` indexes, `ds` sequences (letters combine: `dtv`),
@@ -2291,3 +2309,4 @@ pgtc (binary)
 | 2026-11-14 | D-067 accepted: a double click on a dialog list row acts as `Enter` (file dialogs: open the folder / choose the file); two clicks on the same cell within 500 ms. |
 | 2026-11-14 | D-068 accepted: server dashboard `Alt+D` and SQL profiler `Alt+P` in the tree (like `Alt+I`, `Alt+S`), `Ctrl+D` / `Ctrl+P` as second keys. D-057, D-058 updated. |
 | 2026-11-15 | D-069 accepted: on Windows pgtc's own console window (started outside a terminal, classic console only) remembers its position, size and maximized state in `window.toml` (data dir), saved on exit and on the close button, restored at startup; always on; `windows-sys` for the `pgtc` binary. D-028 updated. |
+| 2026-11-15 | D-054 updated: autocomplete in the `F4` input — only on `Ctrl+Space` / `Alt+/` (never by itself), for the argument; each command has its own list of object kinds (`d` / `dp`: tables, views, materialized views, foreign tables, sequences; `dt` / `dv` / `dm` / `ds` their kinds, combined letters add up; `gts`–`gtd`: tables, views, foreign tables; the others none); names from the tab's cache (D-052), schema-qualified when not on the search path. D-052 updated. |

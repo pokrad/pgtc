@@ -184,6 +184,15 @@ pub fn render(frame: &mut Frame, app: &App, hits: &mut Hits) {
     for dialog in &app.dialogs {
         hits.dialog = Some(dialog.render(frame, &app.theme));
     }
+    // the F4 input's list, over the command list (D-054)
+    if let Some(p) = app.psql_completion.as_ref()
+        && let Some(at) = app
+            .dialogs
+            .last()
+            .and_then(|d| d.input_cursor_at("cmd", frame.area()))
+    {
+        crate::completion::render(frame, p, at, frame.area(), &app.theme);
+    }
 }
 
 fn pane_block(app: &App, title: &str, focused: bool) -> Block<'static> {

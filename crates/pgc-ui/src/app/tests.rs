@@ -2118,6 +2118,79 @@ async fn autocomplete_in_the_template_sql_box() {
     assert!(a.template.is_some(), "the form stays open");
 }
 
+/// Autocomplete in the F4 input (D-054): only on `Ctrl+Space` / `Alt+/`, the
+/// command's own object kinds, Enter puts the name into the input (does not run),
+/// Esc closes only the list.
+#[tokio::test]
+async fn autocomplete_in_the_psql_command_line() {
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    a.new_query_tab(None);
+    let q = a.query_mut().unwrap();
+    q.binding = Some((uid, "shop".into()));
+    q.conn = Some(QueryConn {
+        id: 99,
+        database: "shop".into(),
+        handle: pgc_db::ConnectionHandle::detached(99),
+        cancel: None,
+        state: QueryConnState::Connected,
+        ssl_mode: SslMode::default(),
+        ssl_root_cert: None,
+    });
+    let row = |s: &str, n: &str, k: &str, v: &str| vec![s.into(), n.into(), k.into(), v.into()];
+    q.names.set_objects(vec![
+        row("public", "orders", "table", "t"),
+        row("public", "order_view", "view", "t"),
+        row("sales", "Order Items", "table", "f"),
+    ]);
+    key(&mut a, "F4");
+    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::PsqlCommand);
+    // never by itself
+    typing(&mut a, "dt ord");
+    assert!(a.psql_completion.is_none());
+    // dt: tables only
+    key(&mut a, "Ctrl+Space");
+    let p = a.psql_completion.as_ref().expect("the list opened");
+    let labels: Vec<&str> = p.items.iter().map(|i| i.label.as_str()).collect();
+    assert_eq!(labels, ["orders"]);
+    let screen = screen_text(&a);
+    assert!(
+        screen.contains("orders") && screen.contains("table"),
+        "{screen}"
+    );
+    // Esc closes only the list
+    key(&mut a, "Esc");
+    assert!(a.psql_completion.is_none());
+    assert_eq!(a.dialogs.len(), 1, "the command line stays open");
+    // gts: tables and views; schema-qualified when not on the search path
+    a.dialogs.last_mut().unwrap().set_text("cmd", "gts ");
+    key(&mut a, "Alt+/");
+    let labels: Vec<String> = a
+        .psql_completion
+        .as_ref()
+        .unwrap()
+        .items
+        .iter()
+        .map(|i| i.label.clone())
+        .collect();
+    assert_eq!(labels, ["order_view", "orders", "sales.Order Items"]);
+    // typing filters; Enter puts the quoted name into the input and does not run
+    typing(&mut a, "sal");
+    assert_eq!(a.psql_completion.as_ref().unwrap().items.len(), 1);
+    key(&mut a, "Enter");
+    assert!(a.psql_completion.is_none());
+    let d = a.dialogs.last().unwrap();
+    assert_eq!(d.kind, DialogKind::PsqlCommand);
+    assert_eq!(d.text("cmd"), Some("gts sales.\"Order Items\""));
+    // a command without object kinds offers nothing
+    a.dialogs.last_mut().unwrap().set_text("cmd", "du ");
+    key(&mut a, "Ctrl+Space");
+    assert!(a.psql_completion.is_none());
+    assert_eq!(a.status, "No suggestions");
+}
+
 /// Ctrl+E (D-049): the definition of the read-only view in a new query tab on the same
 /// server and database, as unsaved text; refused without a definition, a database or
 /// a connected server; nothing in a query tab.

@@ -6,38 +6,82 @@ use pgc_core::quote::quote_ident;
 use pgc_db::CatalogQuery;
 use pgc_sql::{RenderContext, SqlCatalog};
 
-/// (command, arguments, description) — shown while typing and by `?`.
-pub const COMMANDS: &[(&str, &str, &str)] = &[
+/// Object kinds the F4 input completes (D-054), as `sql/completion` names them.
+const RELATIONS: &[&str] = &[
+    "table",
+    "view",
+    "materialized view",
+    "foreign table",
+    "sequence",
+];
+const SELECTABLE: &[&str] = &["table", "view", "foreign table"];
+
+/// A command row: command, arguments, description (shown while typing and by `?`)
+/// and the object kinds autocomplete offers for its argument (empty = none, D-054).
+pub type Row = (
+    &'static str,
+    &'static str,
+    &'static str,
+    &'static [&'static str],
+);
+
+pub const COMMANDS: &[Row] = &[
     (
         "d",
         "[name]",
         "describe a table, view, sequence; without a name: list them",
+        RELATIONS,
     ),
-    ("l", "[pattern]", "list databases"),
-    ("dn", "[pattern]", "list schemas"),
-    ("dt", "[pattern]", "list tables"),
-    ("dv", "[pattern]", "list views"),
-    ("dm", "[pattern]", "list materialized views"),
-    ("di", "[pattern]", "list indexes"),
-    ("ds", "[pattern]", "list sequences"),
-    ("df", "[pattern]", "list functions"),
-    ("dT", "[pattern]", "list data types"),
-    ("dD", "[pattern]", "list domains"),
-    ("du", "[pattern]", "list roles"),
-    ("dg", "[pattern]", "list roles"),
-    ("dx", "[pattern]", "list extensions"),
-    ("db", "[pattern]", "list tablespaces"),
-    ("dp", "[pattern]", "list access privileges"),
-    ("conninfo", "", "information about the connection"),
-    ("?", "", "this list"),
+    ("l", "[pattern]", "list databases", &[]),
+    ("dn", "[pattern]", "list schemas", &[]),
+    ("dt", "[pattern]", "list tables", &["table"]),
+    ("dv", "[pattern]", "list views", &["view"]),
+    (
+        "dm",
+        "[pattern]",
+        "list materialized views",
+        &["materialized view"],
+    ),
+    ("di", "[pattern]", "list indexes", &[]),
+    ("ds", "[pattern]", "list sequences", &["sequence"]),
+    ("df", "[pattern]", "list functions", &[]),
+    ("dT", "[pattern]", "list data types", &[]),
+    ("dD", "[pattern]", "list domains", &[]),
+    ("du", "[pattern]", "list roles", &[]),
+    ("dg", "[pattern]", "list roles", &[]),
+    ("dx", "[pattern]", "list extensions", &[]),
+    ("db", "[pattern]", "list tablespaces", &[]),
+    ("dp", "[pattern]", "list access privileges", RELATIONS),
+    ("conninfo", "", "information about the connection", &[]),
+    ("?", "", "this list", &[]),
 ];
 
 /// pgtc's own commands (listed separately by `?`).
-pub const GENERATE: &[(&str, &str, &str)] = &[
-    ("gts", "table", "generate SELECT (inserted at the cursor)"),
-    ("gti", "table", "generate INSERT (inserted at the cursor)"),
-    ("gtu", "table", "generate UPDATE (inserted at the cursor)"),
-    ("gtd", "table", "generate DELETE (inserted at the cursor)"),
+pub const GENERATE: &[Row] = &[
+    (
+        "gts",
+        "table",
+        "generate SELECT (inserted at the cursor)",
+        SELECTABLE,
+    ),
+    (
+        "gti",
+        "table",
+        "generate INSERT (inserted at the cursor)",
+        SELECTABLE,
+    ),
+    (
+        "gtu",
+        "table",
+        "generate UPDATE (inserted at the cursor)",
+        SELECTABLE,
+    ),
+    (
+        "gtd",
+        "table",
+        "generate DELETE (inserted at the cursor)",
+        SELECTABLE,
+    ),
 ];
 
 /// Modifiers: `+` (more columns), `S` (system objects).
@@ -80,9 +124,10 @@ pub enum Cmd {
 
 /// Rows of the F4 list: every command, pgtc's own after a separator (`None`).
 pub fn list_rows() -> Vec<Option<(&'static str, &'static str, &'static str)>> {
-    let mut rows: Vec<_> = COMMANDS.iter().copied().map(Some).collect();
+    let shown = |r: &Row| Some((r.0, r.1, r.2));
+    let mut rows: Vec<_> = COMMANDS.iter().map(shown).collect();
     rows.push(None);
-    rows.extend(GENERATE.iter().copied().map(Some));
+    rows.extend(GENERATE.iter().map(shown));
     rows
 }
 
@@ -107,9 +152,41 @@ pub fn matching(input: &str) -> Vec<(&'static str, &'static str, &'static str)> 
     COMMANDS
         .iter()
         .chain(GENERATE)
-        .filter(|(c, _, _)| c.starts_with(word))
-        .copied()
+        .filter(|(c, ..)| c.starts_with(word))
+        .map(|r| (r.0, r.1, r.2))
         .collect()
+}
+
+/// The argument of `input` and the object kinds autocomplete offers for it (D-054):
+/// the command's own list; combined letters (`dtv`) add up. `None` when the input
+/// has no argument yet (no space after the command) or the command offers nothing.
+pub fn completion_target(input: &str) -> Option<(&str, Vec<&'static str>)> {
+    let input = input.trim_start();
+    let input = input.strip_prefix('\\').unwrap_or(input);
+    let i = input.find(char::is_whitespace)?;
+    let (word, arg) = (&input[..i], input[i..].trim_start());
+    let base = word.trim_end_matches(MODIFIERS);
+    let row = |c: &str| COMMANDS.iter().chain(GENERATE).find(|r| r.0 == c);
+    let mut kinds: Vec<&'static str> = match row(base) {
+        Some(r) => r.3.to_vec(),
+        None if base.len() > 2
+            && base.starts_with('d')
+            && base[1..].chars().all(|c| "tvmisE".contains(c)) =>
+        {
+            let mut kinds = Vec::new();
+            for c in base[1..].chars() {
+                match c {
+                    'E' => kinds.push("foreign table"),
+                    c => kinds.extend(row(&format!("d{c}")).map_or(&[][..], |r| r.3)),
+                }
+            }
+            kinds
+        }
+        None => Vec::new(),
+    };
+    kinds.sort_unstable();
+    kinds.dedup();
+    (!kinds.is_empty()).then_some((arg, kinds))
 }
 
 /// Parses a command. Commands are typed without psql's backslash (F4 already opened
@@ -386,7 +463,7 @@ pub fn queries(
 pub fn help_query() -> CatalogQuery {
     let mut rows = Vec::new();
     for (group, list) in [("psql", COMMANDS), ("pgtc", GENERATE)] {
-        for (c, args, desc) in list {
+        for (c, args, desc, _) in list {
             let cmd = if args.is_empty() {
                 (*c).to_owned()
             } else {
@@ -735,6 +812,31 @@ mod tests {
             (Some("^(public)$".into()), None)
         );
     }
+
+    #[test]
+    fn completion_targets_of_commands() {
+        let t = |s| completion_target(s).map(|(a, k)| (a.to_owned(), k));
+        assert_eq!(t("dt ord"), Some(("ord".into(), vec!["table"])));
+        assert_eq!(t("\\dt+ "), Some(("".into(), vec!["table"])));
+        assert_eq!(
+            t("dtvE x"),
+            Some(("x".into(), vec!["foreign table", "table", "view"]))
+        );
+        assert_eq!(t("d+ x").unwrap().1, RELATIONS_SORTED);
+        assert_eq!(t("gts o").unwrap().1, ["foreign table", "table", "view"]);
+        assert_eq!(t("di x"), None);
+        assert_eq!(t("du x"), None);
+        assert_eq!(t("dt"), None, "no argument yet");
+        assert_eq!(t("xyz a"), None);
+    }
+
+    const RELATIONS_SORTED: [&str; 5] = [
+        "foreign table",
+        "materialized view",
+        "sequence",
+        "table",
+        "view",
+    ];
 
     #[test]
     fn matching_commands_for_the_hint_list() {

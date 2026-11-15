@@ -529,6 +529,18 @@ impl Dialog {
         }
     }
 
+    /// Where [`Self::render`] puts the text cursor of input `id` on `screen`.
+    pub fn input_cursor_at(&self, id: &str, screen: Rect) -> Option<Position> {
+        let i = self.widgets.iter().position(|w| w.id == id)?;
+        let WidgetKind::Input { cursor, .. } = &self.widgets[i].kind else {
+            return None;
+        };
+        let area = *self.widget_areas(self.area(screen)).get(i)?;
+        let value = self.widgets[i].value_rect(area);
+        let from = input_offset(*cursor, value.width);
+        Some(Position::new(value.x + (*cursor - from) as u16, value.y))
+    }
+
     /// Replaces the text of an input (cursor at the end).
     pub fn set_text(&mut self, id: &str, text: &str) {
         if let Some(WidgetKind::Input { value, cursor, .. }) = self

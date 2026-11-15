@@ -1,6 +1,7 @@
 //! psql-style commands on `F4` (D-054): the command window, running a command,
 //! `\conninfo` and the answers of the generate commands.
 
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use pgc_editor::Action;
 use pgc_sql::RenderContext;
 
@@ -92,6 +93,143 @@ impl App {
             }
             self.psql_seen = (text, sel);
         }
+    }
+
+    /// The argument of the F4 input and its autocomplete list with the names known so
+    /// far (D-054); names still missing are not asked for while a result runs or is
+    /// paused (D-052). `None`: the command offers nothing.
+    fn psql_completion_list(&self) -> Option<(String, crate::completion::Built, bool)> {
+        let d = self.dialogs.last()?;
+        if d.kind != DialogKind::PsqlCommand {
+            return None;
+        }
+        let (arg, kinds) = crate::psql::completion_target(d.text("cmd")?)?;
+        let q = self.query()?;
+        let mut built = crate::completion::build_command(&q.names, &kinds, arg);
+        let held = q.running.is_some() && !built.needs.is_empty();
+        if held {
+            built.needs.clear();
+            built.loading = false;
+        }
+        Some((arg.to_owned(), built, held))
+    }
+
+    /// `Ctrl+Space` / `Alt+/` in the F4 input: the list for the argument (D-054).
+    pub(super) fn open_psql_completion(&mut self) {
+        use crate::completion::Popup;
+        use pgc_editor::complete::{Analysis, Want};
+        let Some((arg, built, held)) = self.psql_completion_list() else {
+            self.status = "No suggestions".to_owned();
+            return;
+        };
+        let needs = built.needs.clone();
+        if held {
+            self.status = super::autocomplete::NAMES_HELD.to_owned();
+        } else if built.items.is_empty() && !built.loading {
+            self.status = "No suggestions".to_owned();
+        }
+        if !built.items.is_empty() || built.loading {
+            let mut popup = Popup {
+                tab: self.tabs[self.active_tab].id,
+                in_form: false,
+                analysis: Analysis {
+                    prefix: arg,
+                    start: 0,
+                    want: Want::Any,
+                    tables: Vec::new(),
+                },
+                items: Vec::new(),
+                loading: false,
+                selected: 0,
+                offset: 0,
+                auto: false,
+            };
+            popup.set_items(built.items, built.loading);
+            self.psql_completion = Some(popup);
+        }
+        self.request_names(self.active_tab, &needs);
+    }
+
+    /// After every message: the open F4 list follows the input and arriving names; it
+    /// closes when the F4 window is gone or nothing fits any more.
+    pub(super) fn refresh_psql_completion(&mut self) {
+        if self.psql_completion.is_none() {
+            return;
+        }
+        let tab = self.tabs[self.active_tab].id;
+        match self.psql_completion_list() {
+            Some((arg, built, _))
+                if (!built.items.is_empty() || built.loading)
+                    && self.psql_completion.as_ref().is_some_and(|p| p.tab == tab) =>
+            {
+                if let Some(p) = self.psql_completion.as_mut() {
+                    p.analysis.prefix = arg;
+                    p.set_items(built.items, built.loading);
+                }
+            }
+            _ => self.psql_completion = None,
+        }
+    }
+
+    /// Keys while the F4 list is open; true when the key was used. Typing and
+    /// `Backspace` go on into the input (the list follows it afterwards).
+    pub(super) fn psql_completion_key(&mut self, ev: &KeyEvent, cmd: Option<Command>) -> bool {
+        use crate::completion::LIST_ROWS;
+        let typing = matches!(ev.code, KeyCode::Char(_))
+            && !ev
+                .modifiers
+                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT);
+        if typing || cmd == Some(Command::Backspace) {
+            return false;
+        }
+        let rows = LIST_ROWS as isize;
+        let step = match cmd {
+            Some(Command::Up) => Some(-1),
+            Some(Command::Down) => Some(1),
+            Some(Command::PageUp) => Some(-rows),
+            Some(Command::PageDown) => Some(rows),
+            _ => None,
+        };
+        if let Some(step) = step {
+            if let Some(p) = self.psql_completion.as_mut() {
+                p.move_by(step);
+            }
+            return true;
+        }
+        if cmd == Some(Command::Accept) {
+            self.accept_psql_completion();
+            return true;
+        }
+        let combo = crate::keys::KeyCombo::from_event(ev);
+        if self
+            .keymap
+            .lookup_only(crate::keymap::Context::Editor, combo)
+            == Some(Command::Complete)
+        {
+            return true;
+        }
+        self.psql_completion = None;
+        false
+    }
+
+    /// Puts the selected entry in place of the argument.
+    fn accept_psql_completion(&mut self) {
+        let Some(popup) = self.psql_completion.take() else {
+            return;
+        };
+        let Some(item) = popup.items.get(popup.selected) else {
+            return;
+        };
+        let Some(d) = self.dialogs.last_mut() else {
+            return;
+        };
+        let text = d.text("cmd").unwrap_or("");
+        let Some((arg, _)) = crate::psql::completion_target(text) else {
+            return;
+        };
+        let keep = text.len() - arg.len();
+        let new = format!("{}{}", &text[..keep], item.insert);
+        d.set_text("cmd", &new);
     }
 
     /// Runs a command of the command line; a wrong one keeps the dialog open.

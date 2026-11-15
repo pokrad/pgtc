@@ -241,6 +241,44 @@ pub fn build(a: &Analysis, names: &Names, keywords: &[&str]) -> Built {
     b
 }
 
+/// The list for the argument of the `F4` input (D-054): objects of `kinds`, offered
+/// as `name` when on the search path, else as `schema.name` (always qualified once
+/// the typed text has a `.`). `typed` filters (quotes ignored, case-insensitive).
+pub fn build_command(names: &Names, kinds: &[&str], typed: &str) -> Built {
+    let mut b = Built::default();
+    let Some(objects) = names.objects.as_deref() else {
+        b.needs.push(Need::Objects);
+        b.loading = true;
+        return b;
+    };
+    let typed = typed.replace('"', "").to_lowercase();
+    let qualified = typed.contains('.');
+    let mut out: Vec<Item> = objects
+        .iter()
+        .filter(|o| kinds.contains(&o.kind.as_str()))
+        .filter_map(|o| {
+            let schema = o.schema.as_deref()?;
+            let (label, insert) = if o.visible && !qualified {
+                (o.name.clone(), quote_ident(&o.name))
+            } else {
+                (
+                    format!("{schema}.{}", o.name),
+                    format!("{}.{}", quote_ident(schema), quote_ident(&o.name)),
+                )
+            };
+            label.to_lowercase().starts_with(&typed).then(|| Item {
+                label,
+                kind: kind_label(&o.kind),
+                insert,
+            })
+        })
+        .collect();
+    out.sort_by(|x, y| (x.label.to_lowercase(), x.kind).cmp(&(y.label.to_lowercase(), y.kind)));
+    out.dedup_by(|x, y| x.label == y.label && x.kind == y.kind);
+    b.items = out;
+    b
+}
+
 /// The open list (one at a time, for the active query tab).
 #[derive(Debug, Clone)]
 pub struct Popup {
@@ -491,6 +529,43 @@ mod tests {
         );
         assert_eq!(b.needs, [Need::Objects]);
         assert!(b.loading);
+    }
+
+    #[test]
+    fn command_line_names_by_kind() {
+        let mut n = names();
+        if let Some(o) = n.objects.as_mut() {
+            o.push(obj(Some("public"), "order_view", "view", true));
+        }
+        let b = build_command(&n, &["table"], "ord");
+        assert_eq!(labels(&b), ["Order Items table", "orders table"]);
+        assert_eq!(b.items[0].insert, "\"Order Items\"");
+        // not on the search path: schema-qualified
+        let b = build_command(&n, &["table"], "");
+        assert_eq!(
+            labels(&b),
+            ["Order Items table", "orders table", "sales.invoices table"]
+        );
+        let b = build_command(&n, &["table"], "sales.i");
+        assert_eq!(labels(&b), ["sales.invoices table"]);
+        // a `.` qualifies everything; quotes are ignored when filtering
+        let b = build_command(&n, &["table"], "public.\"Ord");
+        assert_eq!(
+            labels(&b),
+            ["public.Order Items table", "public.orders table"]
+        );
+        assert_eq!(b.items[0].insert, "public.\"Order Items\"");
+        // only the asked kinds
+        let b = build_command(&n, &["table", "view"], "order");
+        assert_eq!(
+            labels(&b),
+            ["Order Items table", "order_view view", "orders table"]
+        );
+        let b = build_command(&n, &["sequence"], "");
+        assert_eq!(labels(&b), ["orders_id_seq sequence"]);
+        // not read yet
+        let b = build_command(&Names::default(), &["table"], "");
+        assert!(b.loading && b.needs == [Need::Objects]);
     }
 
     #[test]
