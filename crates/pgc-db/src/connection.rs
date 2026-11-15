@@ -272,7 +272,33 @@ impl ConnectionHandle {
     pub fn abort(&self) {
         self.abort.abort();
     }
+
+    /// Ends the connection properly (D-071): it closes with PostgreSQL's Terminate
+    /// message as soon as its task is free, and is dropped if that has not happened
+    /// after `grace`. Does not wait. A running statement is not cancelled here: send
+    /// [`cancel_query`] first.
+    pub fn end(&self, grace: Duration) {
+        self.close();
+        let abort = self.abort.clone();
+        match tokio::runtime::Handle::try_current() {
+            Ok(runtime) => {
+                runtime.spawn(async move {
+                    tokio::time::sleep(grace).await;
+                    abort.abort();
+                });
+            }
+            Err(_) => abort.abort(),
+        }
+    }
+
+    /// The connection's task has ended (closed, failed, or dropped).
+    pub fn is_finished(&self) -> bool {
+        self.abort.is_finished()
+    }
 }
+
+/// How long a connection that is being ended may take before it is dropped (D-071).
+pub const END_GRACE: Duration = Duration::from_secs(3);
 
 /// How long a cancel request sent in the background may take.
 const CANCEL_TIMEOUT: Duration = Duration::from_secs(10);
@@ -617,4 +643,57 @@ async fn lookup(client: &tokio_postgres::Client, sql: &str) -> Result<Vec<Vec<St
         }
     }
     Ok(rows)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A handle whose task behaves like a connection task that is free (`obeys`: it
+    /// ends on `Close`) or one that is stuck in a statement (it never looks).
+    fn handle(obeys: bool) -> ConnectionHandle {
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let task = tokio::spawn(async move {
+            if obeys {
+                while let Some(request) = rx.recv().await {
+                    if matches!(request, Request::Close) {
+                        return;
+                    }
+                }
+            } else {
+                let _keep = rx;
+                std::future::pending::<()>().await;
+            }
+        });
+        ConnectionHandle {
+            id: 1,
+            tx,
+            abort: task.abort_handle(),
+        }
+    }
+
+    async fn finished_within(h: &ConnectionHandle, limit: Duration) -> bool {
+        let start = std::time::Instant::now();
+        while !h.is_finished() {
+            if start.elapsed() > limit {
+                return false;
+            }
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+        true
+    }
+
+    /// D-071: a free connection closes on request, long before the grace time; a
+    /// stuck one is dropped when the grace time is over, not before.
+    #[tokio::test]
+    async fn end_closes_or_drops_after_the_grace_time() {
+        let free = handle(true);
+        free.end(Duration::from_secs(60));
+        assert!(finished_within(&free, Duration::from_secs(5)).await);
+
+        let stuck = handle(false);
+        stuck.end(Duration::from_millis(300));
+        assert!(!finished_within(&stuck, Duration::from_millis(100)).await);
+        assert!(finished_within(&stuck, Duration::from_secs(5)).await);
+    }
 }

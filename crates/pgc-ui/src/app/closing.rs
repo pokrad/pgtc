@@ -1,11 +1,11 @@
 //! Closing tabs, quitting, disconnecting and deleting a server (D-019, D-043): the
 //! questions about unsaved text and open transactions.
 
-use pgc_db::TxStatus;
+use pgc_db::{ConnectionHandle, TxStatus};
 
 use super::{App, Focus, Tab, TabBody};
 use crate::dialog::{Dialog, DialogKind};
-use crate::query_tab::AfterRun;
+use crate::query_tab::{AfterRun, QueryConn};
 
 /// What follows a save asked for by "Save changes?" (D-019).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -94,8 +94,11 @@ impl App {
         self.template_lookups.retain(|_, t| t.tab() != Some(tab.id));
         let conn = match tab.body {
             TabBody::Default | TabBody::Object => None,
-            // dropping the connection rolls back an open transaction (D-019)
-            TabBody::Query(_, q) => q.conn.map(|c| (c.id, c.handle)),
+            // closing the connection rolls back an open transaction (D-019)
+            TabBody::Query(_, q) => {
+                let busy = q.busy();
+                q.conn.map(|c| (c.id, end_query_conn(busy, c)))
+            }
             TabBody::Dashboard(d) => d.conn.map(|c| (c.id, c.handle)),
             TabBody::DbStats(s) => s.conn.map(|c| (c.id, c.handle)),
             // changed logging settings are put back first (D-058)
@@ -104,8 +107,9 @@ impl App {
                 None
             }
         };
+        // ended properly, without waiting for it (D-071)
         if let Some((id, handle)) = conn {
-            handle.abort();
+            handle.end(pgc_db::END_GRACE);
             self.connections.remove(&id);
         }
         self.active_tab = self.active_tab.min(self.tabs.len() - 1);
@@ -243,6 +247,35 @@ impl App {
         }
     }
 
+    /// Quitting (D-071): ends every open connection — the tree's, the tabs' and those
+    /// of running definition jobs — and returns their handles, so the caller can give
+    /// them a moment to finish.
+    pub fn end_connections(&mut self) -> Vec<ConnectionHandle> {
+        let mut handles = Vec::new();
+        for server in &mut self.tree.servers {
+            handles.extend(server.reset());
+        }
+        for tab in &mut self.tabs {
+            let handle = match &mut tab.body {
+                TabBody::Default | TabBody::Object => None,
+                TabBody::Query(_, q) => {
+                    let busy = q.busy();
+                    q.conn.take().map(|c| end_query_conn(busy, c))
+                }
+                TabBody::Dashboard(d) => d.conn.take().map(|c| c.handle),
+                TabBody::DbStats(s) => s.conn.take().map(|c| c.handle),
+                TabBody::Profiler(p) => p.conn.take().map(|c| c.handle),
+            };
+            handles.extend(handle);
+        }
+        handles.extend(self.jobs.drain().map(|(_, job)| job.handle));
+        self.connections.clear();
+        for handle in &handles {
+            handle.end(pgc_db::END_GRACE);
+        }
+        handles
+    }
+
     /// Finishes quitting / disconnecting once every COMMIT sent for it has finished.
     pub(super) fn maybe_finish_bulk(&mut self) {
         let Some(b) = self.bulk_pending else {
@@ -258,4 +291,13 @@ impl App {
             self.finish_bulk(b);
         }
     }
+}
+
+/// The handle of a query tab's connection that is about to be ended: a statement that
+/// is still running (`busy`) is cancelled first, so the connection gets free (D-071).
+fn end_query_conn(busy: bool, conn: QueryConn) -> ConnectionHandle {
+    if busy && let Some(cancel) = &conn.cancel {
+        pgc_db::cancel_query(cancel, conn.ssl_mode, conn.ssl_root_cert.clone());
+    }
+    conn.handle
 }

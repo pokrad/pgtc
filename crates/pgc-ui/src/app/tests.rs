@@ -3711,3 +3711,19 @@ async fn profiler_restore_failure_stops_the_quit() {
     key(&mut a, "F10");
     assert!(a.should_quit());
 }
+
+/// Quitting ends every open connection (D-071): the tabs give up theirs and the
+/// handles are returned for the short wait.
+#[tokio::test]
+async fn quitting_ends_the_open_connections() {
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "a");
+    let id = fake_connecting(&mut a, uid);
+    a.tree.by_uid(uid).unwrap().handle = Some(pgc_db::ConnectionHandle::detached(id));
+    connected_tab(&mut a, 99);
+    let handles = a.end_connections();
+    assert_eq!(handles.len(), 2, "the server's and the tab's");
+    assert!(a.query().unwrap().conn.is_none());
+    assert!(a.connections.is_empty());
+    assert_eq!(a.tree.by_uid(uid).unwrap().state, ConnState::Disconnected);
+}

@@ -311,6 +311,12 @@ desktop dependency.
     diffs (git-friendly).
   - serde keeps the model independent of the format; other formats could be added later
     at low cost if needed.
+  - **Format number:** the file starts with `"format": 1`; pgtc always writes it. A
+    file without `format` is read as format 1 (files exported before the number
+    existed). A file with a higher number than this pgtc knows is not loaded: *This
+    definition file was written by a newer pgtc (format N).* The number goes up only
+    when an older pgtc could no longer read a newer file correctly; a new optional
+    field does not change it, and fields this pgtc does not know are ignored.
 - **Shared structure model:** one in-memory model (Rust structs describing the database
   structure):
   - Export = read database → model → write JSON file.
@@ -2317,6 +2323,22 @@ pgtc (binary)
 - The place lists are computed in `pgc-core` (D-039); `windows-sys` becomes a
   Windows-only dependency of `pgc-core` too (D-069).
 
+### D-071 — Closing a tab's connection
+- **Status:** Accepted (refines D-011, D-019, D-041, D-043)
+- When a tab with its own connection closes (query, dashboard, profiler, statistics),
+  pgtc ends the session properly instead of dropping the socket, so the server log has
+  no "unexpected EOF on client connection" line.
+- **Idle, in a transaction, or with a paused result:** the connection is closed with
+  PostgreSQL's Terminate message. An open transaction is rolled back by the server, as
+  before.
+- **A statement is running:** pgtc sends a cancel request first, then closes.
+- The tab disappears at once; the UI never waits (D-006). If the session has not ended
+  after 3 seconds, the connection is dropped.
+- *Close connection* after a cancel request without reaction (D-041) still drops the
+  connection at once.
+- **Quitting:** every open connection is ended the same way; pgtc waits up to 1 second
+  for them (the terminal is restored first), then exits.
+
 ---
 
 ## 3. Change log
@@ -2461,3 +2483,4 @@ pgtc (binary)
 | 2026-11-15 | D-054 updated: generate commands `gtm` *table* (`MERGE … USING (VALUES ([column]::type, …))`, `WHEN MATCHED` update / `WHEN NOT MATCHED` insert, no `BY SOURCE` delete; PostgreSQL 15+, feature `Merge`) and `gtt` *table* (`BEFORE INSERT OR UPDATE OR DELETE` row trigger with `TG_OP` branches and the fields as comments; function in the table's schema with the name `[function_name]` as a placeholder so the script does not run until named; trigger `<table>_trg`); both tables only; new feature `Merge` in the D-011 feature table. |
 | 2026-11-15 | D-054 updated: generate command `gtv` *table* [*table* …] — `CREATE VIEW <schema>.[view_name]` over one or more tables, aliases `T1`, `T2`, …, every column (`AS table_column` for a name an earlier table already has), joins in the order typed on a foreign key to an earlier table (first by name, others in a comment; `LEFT JOIN` when the earlier table holds a nullable foreign key), `ON 1=1` with a comment without one; the variables + `SELECT INTO` command is `gtsi`. |
 | 2026-11-15 | D-019 updated: positions of messages — errors and notices map to editor line and column from `position`, from `CONTEXT … inline_code_block line N` of the running `DO` (also in SQL mode), with the column from PostgreSQL's internal position and query; psql-style `LINE n:` line with `^` caret in the message (copied too); `Enter` / double click jump and select the token; positions only clamped after edits; `Ctrl+A` + copy copies all messages; Messages context menu *Jump to line*, *Copy message*, *Copy all messages*. D-020 updated. |
+| 2026-11-15 | D-071 accepted: closing a tab ends its connection with Terminate (a running statement is cancelled first); dropped after 3 seconds without an end; on quit all connections are ended and pgtc waits up to 1 second. D-012 updated: `.pgdef` starts with `"format": 1`; a file without it is format 1, a higher number is refused, unknown fields are ignored. |

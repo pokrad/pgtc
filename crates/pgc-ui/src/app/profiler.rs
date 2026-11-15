@@ -750,10 +750,9 @@ impl App {
             if let Some(Ok(sql)) = p.version.map(|v| self.render_profiler_sql(v, "reload.sql")) {
                 conn.handle.lookup(0, sql);
             }
-            conn.handle.close();
-        } else {
-            conn.handle.abort();
         }
+        // ended properly, after what was just sent (D-071)
+        conn.handle.end(pgc_db::END_GRACE);
     }
 
     /// Quitting: profilers with changed settings put them back first. True if quitting

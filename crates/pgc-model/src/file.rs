@@ -1,10 +1,16 @@
-//! The `.pgdef` file (D-012): pretty-printed JSON of a normalised [`Database`].
+//! The `.pgdef` file (D-012): pretty-printed JSON of a normalised [`Database`], with
+//! the format number in front.
 
 use std::path::Path;
 
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::Database;
+
+/// The format this pgtc writes, and the newest it reads (D-012). It goes up only when
+/// an older pgtc could no longer read a newer file correctly.
+pub const FORMAT: u32 = 1;
 
 #[derive(Debug, Error)]
 pub enum FileError {
@@ -12,19 +18,50 @@ pub enum FileError {
     Io(#[from] std::io::Error),
     #[error("not a valid definition file: {0}")]
     Format(#[from] serde_json::Error),
+    #[error("This definition file was written by a newer pgtc (format {0}).")]
+    Newer(u32),
+}
+
+/// The file as written: the format number, then the database.
+#[derive(Serialize)]
+struct Output<'a> {
+    format: u32,
+    #[serde(flatten)]
+    database: &'a Database,
+}
+
+/// The file as read; one without a format number is format 1.
+#[derive(Deserialize)]
+struct Input {
+    #[serde(default = "first_format")]
+    format: u32,
+    #[serde(flatten)]
+    database: Database,
+}
+
+fn first_format() -> u32 {
+    1
 }
 
 /// The file text: normalised, pretty-printed, ending with a newline.
 pub fn to_text(db: &Database) -> String {
     let mut db = db.clone();
     db.normalize();
-    let mut text = serde_json::to_string_pretty(&db).expect("the model always serialises");
+    let file = Output {
+        format: FORMAT,
+        database: &db,
+    };
+    let mut text = serde_json::to_string_pretty(&file).expect("the model always serialises");
     text.push('\n');
     text
 }
 
 pub fn from_text(text: &str) -> Result<Database, FileError> {
-    let mut db: Database = serde_json::from_str(text)?;
+    let file: Input = serde_json::from_str(text)?;
+    if file.format > FORMAT {
+        return Err(FileError::Newer(file.format));
+    }
+    let mut db = file.database;
     db.normalize();
     Ok(db)
 }
@@ -122,5 +159,28 @@ mod tests {
     fn bad_files_are_errors() {
         assert!(matches!(from_text("{"), Err(FileError::Format(_))));
         assert!(from_text("{}").unwrap().schemas.is_empty());
+    }
+
+    #[test]
+    fn format_number() {
+        let db = sample();
+        let text = to_text(&db);
+        assert!(text.starts_with("{\n  \"format\": 1,\n"), "{text}");
+        // a file from before the number existed is format 1
+        let old = text.replacen("  \"format\": 1,\n", "", 1);
+        assert_eq!(from_text(&old).unwrap(), from_text(&text).unwrap());
+        // a newer format is refused, with its number
+        let newer = text.replacen("\"format\": 1", "\"format\": 2", 1);
+        let e = from_text(&newer).unwrap_err();
+        assert!(matches!(e, FileError::Newer(2)), "{e}");
+        assert_eq!(
+            e.to_string(),
+            "This definition file was written by a newer pgtc (format 2)."
+        );
+        // a field this pgtc does not know is ignored
+        let extra = text.replacen("\"format\": 1", "\"format\": 1,\n  \"later\": true", 1);
+        assert_eq!(from_text(&extra).unwrap(), from_text(&text).unwrap());
+        // an empty database: only the number
+        assert_eq!(to_text(&Database::default()), "{\n  \"format\": 1\n}\n");
     }
 }

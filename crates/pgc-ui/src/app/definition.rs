@@ -14,7 +14,7 @@ pub(super) struct StructureJob {
     uid: u64,
     database: String,
     kind: JobKind,
-    handle: pgc_db::ConnectionHandle,
+    pub(super) handle: pgc_db::ConnectionHandle,
 }
 
 pub(super) enum JobKind {

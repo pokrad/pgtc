@@ -12,8 +12,8 @@ pub mod query;
 mod tls;
 
 pub use connection::{
-    Cancel, ConnId, ConnectParams, ConnectionHandle, DbEvent, EventSink, NodeRow, cancel_query,
-    spawn,
+    Cancel, ConnId, ConnectParams, ConnectionHandle, DbEvent, END_GRACE, EventSink, NodeRow,
+    cancel_query, spawn,
 };
 pub use error::{DbError, describe};
 pub use query::{

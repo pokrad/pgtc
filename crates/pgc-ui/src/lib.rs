@@ -58,8 +58,17 @@ pub async fn run(paths: Paths, settings: Settings, startup: Option<Resolved>) ->
     let mut tui = terminal::enter()?;
     let result = event_loop(&mut tui, &mut app, tx, rx).await;
     terminal::leave();
+    // D-071: the sessions end properly; a moment for that, never long
+    let handles = app.end_connections();
+    let deadline = std::time::Instant::now() + QUIT_WAIT;
+    while handles.iter().any(|h| !h.is_finished()) && std::time::Instant::now() < deadline {
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
     result
 }
+
+/// How long quitting waits for the open connections to end (D-071).
+const QUIT_WAIT: std::time::Duration = std::time::Duration::from_secs(1);
 
 async fn event_loop(
     tui: &mut terminal::Tui,
