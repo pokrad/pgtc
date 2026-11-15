@@ -77,6 +77,14 @@ impl Node {
         }
     }
 
+    /// The node `nid` in this subtree (stops at the first hit, collects nothing).
+    fn find(&self, nid: u64) -> Option<&Node> {
+        if self.nid == nid {
+            return Some(self);
+        }
+        self.children.iter().flatten().find_map(|c| c.find(nid))
+    }
+
     fn find_mut(&mut self, nid: u64) -> Option<&mut Node> {
         if self.nid == nid {
             return Some(self);
@@ -317,13 +325,10 @@ impl Tree {
     }
 
     pub fn node(&self, nid: u64) -> Option<&Node> {
-        let mut all = Vec::new();
-        for s in &self.servers {
-            for c in &s.children {
-                c.walk(&mut all);
-            }
-        }
-        all.into_iter().find(|n| n.nid == nid)
+        self.servers
+            .iter()
+            .flat_map(|s| s.children.iter())
+            .find_map(|c| c.find(nid))
     }
 
     pub fn node_mut(&mut self, nid: u64) -> Option<&mut Node> {
@@ -690,56 +695,145 @@ impl Tree {
         }
     }
 
+    /// The text of one row (a frame uses [`Self::visible_texts`]).
+    #[cfg(test)]
     pub fn row_text(&self, row: Row) -> RowText {
-        let expand = |e: bool| if e { '▼' } else { '►' };
-        let state_suffix = |state: ConnState| match state {
-            ConnState::Disconnected => "",
-            ConnState::Connecting => " (connecting…)",
-            ConnState::Connected => " (connected)",
-        };
         match row.kind {
-            RowKind::Server => {
-                let s = &self.servers[row.server];
-                RowText {
-                    depth: 0,
-                    marker: expand(s.expanded && s.state == ConnState::Connected),
-                    label: format!("{}{}", s.conn.name, state_suffix(s.state)),
-                }
-            }
-            RowKind::Node(nid) => {
-                let Some(n) = self.node(nid) else {
-                    return RowText {
-                        depth: row.depth,
-                        marker: ' ',
-                        label: String::new(),
-                    };
-                };
-                let label = match n.kind {
-                    NodeKind::Group(_) => match &n.children {
-                        Some(c) => format!("{} ({})", n.label, c.len()),
-                        None => n.label.clone(),
-                    },
-                    NodeKind::Object(_) => {
-                        let suffix = n.conn.as_ref().map_or("", |c| state_suffix(c.state));
-                        format!("{}{suffix}", n.label)
-                    }
-                };
-                RowText {
+            RowKind::Server => server_text(&self.servers[row.server]),
+            RowKind::Node(nid) => match self.node(nid) {
+                Some(n) => node_text(n, row.depth),
+                None => RowText {
                     depth: row.depth,
-                    marker: if n.expandable() {
-                        expand(n.expanded)
-                    } else {
-                        ' '
-                    },
-                    label,
+                    marker: ' ',
+                    label: String::new(),
+                },
+            },
+            RowKind::Loading(_) => loading_text(row.depth),
+        }
+    }
+
+    /// The rows `offset..offset + count` of [`Self::rows`] with their texts, made in
+    /// one walk that stops after the last of them: what a frame draws (rendering only
+    /// what is visible, without looking every row's node up again).
+    pub fn visible_texts(&self, offset: usize, count: usize) -> Vec<(usize, Row, RowText)> {
+        struct Walk {
+            next: usize,
+            from: usize,
+            to: usize,
+            out: Vec<(usize, Row, RowText)>,
+        }
+        impl Walk {
+            /// Counts a row and keeps it when it is in the window; false: past it.
+            fn row(&mut self, row: Row, text: impl FnOnce() -> RowText) -> bool {
+                if self.next >= self.to {
+                    return false;
+                }
+                if self.next >= self.from {
+                    self.out.push((self.next, row, text()));
+                }
+                self.next += 1;
+                true
+            }
+
+            fn node(&mut self, node: &Node, server: usize, depth: usize) -> bool {
+                let row = Row {
+                    server,
+                    kind: RowKind::Node(node.nid),
+                    depth,
+                };
+                if !self.row(row, || node_text(node, depth)) {
+                    return false;
+                }
+                if !node.expanded {
+                    return true;
+                }
+                match &node.children {
+                    Some(children) => children.iter().all(|c| self.node(c, server, depth + 1)),
+                    None if node.loading || node.is_database() => self.row(
+                        Row {
+                            server,
+                            kind: RowKind::Loading(node.nid),
+                            depth: depth + 1,
+                        },
+                        || loading_text(depth + 1),
+                    ),
+                    None => true,
                 }
             }
-            RowKind::Loading(_) => RowText {
-                depth: row.depth,
-                marker: ' ',
-                label: "loading…".to_owned(),
-            },
         }
+        let mut walk = Walk {
+            next: 0,
+            from: offset,
+            to: offset.saturating_add(count),
+            out: Vec::new(),
+        };
+        for (i, s) in self.servers.iter().enumerate() {
+            let row = Row {
+                server: i,
+                kind: RowKind::Server,
+                depth: 0,
+            };
+            if !walk.row(row, || server_text(s)) {
+                break;
+            }
+            if s.expanded
+                && s.state == ConnState::Connected
+                && !s.children.iter().all(|c| walk.node(c, i, 1))
+            {
+                break;
+            }
+        }
+        walk.out
+    }
+}
+
+fn expand_marker(expanded: bool) -> char {
+    if expanded { '▼' } else { '►' }
+}
+
+fn state_suffix(state: ConnState) -> &'static str {
+    match state {
+        ConnState::Disconnected => "",
+        ConnState::Connecting => " (connecting…)",
+        ConnState::Connected => " (connected)",
+    }
+}
+
+fn server_text(s: &ServerNode) -> RowText {
+    RowText {
+        depth: 0,
+        marker: expand_marker(s.expanded && s.state == ConnState::Connected),
+        label: format!("{}{}", s.conn.name, state_suffix(s.state)),
+    }
+}
+
+fn node_text(n: &Node, depth: usize) -> RowText {
+    let label = match n.kind {
+        NodeKind::Group(_) => match &n.children {
+            Some(c) => format!("{} ({})", n.label, c.len()),
+            None => n.label.clone(),
+        },
+        NodeKind::Object(_) => {
+            let suffix = n.conn.as_ref().map_or("", |c| state_suffix(c.state));
+            format!("{}{suffix}", n.label)
+        }
+    };
+    RowText {
+        depth,
+        marker: if n.expandable() {
+            expand_marker(n.expanded)
+        } else {
+            ' '
+        },
+        label,
+    }
+}
+
+fn loading_text(depth: usize) -> RowText {
+    RowText {
+        depth,
+        marker: ' ',
+        label: "loading…".to_owned(),
     }
 }
 
@@ -812,6 +906,48 @@ mod tests {
         assert!(labels.contains(&"app (connected)".to_owned()), "{labels:?}");
         assert!(labels.contains(&"Schemas (1)".to_owned()), "{labels:?}");
         assert!(labels.contains(&"public".to_owned()), "{labels:?}");
+    }
+
+    /// What a frame draws is the same as looking every row up, for every window.
+    #[test]
+    fn visible_texts_are_the_rows_of_the_window() {
+        let (mut t, dbs, db, schemas) = sample();
+        t.add(SavedConnection {
+            name: "second".into(),
+            ..SavedConnection::default()
+        });
+        t.node_mut(dbs).unwrap().expanded = true;
+        t.node_mut(db).unwrap().expanded = true;
+        t.node_mut(schemas).unwrap().expanded = true;
+        // a group that is still loading has a "loading…" row
+        let public = t.node(schemas).unwrap().children.as_ref().unwrap()[0].nid;
+        let tables = t.node(public).unwrap().children.as_ref().unwrap()[0].nid;
+        t.node_mut(public).unwrap().expanded = true;
+        let n = t.node_mut(tables).unwrap();
+        n.expanded = true;
+        n.loading = true;
+        let rows = t.rows();
+        assert!(rows.iter().any(|r| matches!(r.kind, RowKind::Loading(_))));
+        for offset in 0..=rows.len() + 1 {
+            for count in [0, 1, 3, rows.len(), rows.len() + 5] {
+                let want: Vec<(usize, Row, String, char, usize)> = rows
+                    .iter()
+                    .enumerate()
+                    .skip(offset)
+                    .take(count)
+                    .map(|(i, r)| {
+                        let x = t.row_text(*r);
+                        (i, *r, x.label, x.marker, x.depth)
+                    })
+                    .collect();
+                let got: Vec<(usize, Row, String, char, usize)> = t
+                    .visible_texts(offset, count)
+                    .into_iter()
+                    .map(|(i, r, x)| (i, r, x.label, x.marker, x.depth))
+                    .collect();
+                assert_eq!(got, want, "offset {offset}, count {count}");
+            }
+        }
     }
 
     #[test]

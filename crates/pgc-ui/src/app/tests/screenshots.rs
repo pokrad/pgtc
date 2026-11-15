@@ -799,6 +799,7 @@ async fn readme_screenshots() {
                 pid: pid.into(),
                 client: "10.0.4.17".into(),
                 severity: "LOG".into(),
+                sqlstate: "00000".into(),
                 message: format!("duration: {ms} ms  {kind}: {sql}"),
                 detail: if kind == "execute <unnamed>" {
                     "Parameters: $1 = '1042'".into()

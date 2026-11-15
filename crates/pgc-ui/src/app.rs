@@ -556,6 +556,7 @@ impl App {
                 seq: 0,
                 listing: None,
                 probing: None,
+                list_rows: 0,
             },
             closing: Closing::default(),
             esc: EscState::default(),

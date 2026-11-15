@@ -48,6 +48,8 @@ pub struct Record {
     pub pid: String,
     pub client: String,
     pub severity: String,
+    /// SQLSTATE (`00000` for log lines that are no errors); empty if not known.
+    pub sqlstate: String,
     pub message: String,
     pub detail: String,
     /// The statement of an error (`statement` / `query`).
@@ -138,6 +140,7 @@ fn csv_records(bytes: &[u8]) -> Vec<Record> {
             pid: f(3),
             client: f(4),
             severity: f(11),
+            sqlstate: f(12),
             message: f(13),
             detail: f(14),
             statement: f(19),
@@ -168,6 +171,7 @@ fn json_record(line: &str) -> Option<Record> {
         pid: s("pid"),
         client,
         severity: s("error_severity"),
+        sqlstate: s("state_code"),
         message: s("message"),
         detail: s("detail"),
         statement: s("statement"),
@@ -226,9 +230,15 @@ fn split_duration(message: &str) -> Option<(f64, &str, &str)> {
 /// A record as a profiler entry; `None` for records that are not statements or errors
 /// (connections, checkpoints, the extended protocol's parse / bind steps, D-058).
 pub fn entry(r: Record) -> Option<Entry> {
-    let (duration, kind, statement, detail) = match r.severity.as_str() {
-        "ERROR" | "FATAL" | "PANIC" => (None, Kind::Error, r.statement, r.message),
-        "LOG" => {
+    // The severity word is written in the server's language (`lc_messages`); the
+    // SQLSTATE is not. Classes 00, 01 and 02 are success, warning and no data.
+    let state_class = r.sqlstate.get(..2).unwrap_or("");
+    let failed = matches!(r.severity.as_str(), "ERROR" | "FATAL" | "PANIC")
+        || !(r.sqlstate.is_empty() || matches!(state_class, "00" | "01" | "02"));
+    let log_line = r.severity == "LOG" || r.sqlstate == "00000";
+    let (duration, kind, statement, detail) = match () {
+        () if failed => (None, Kind::Error, r.statement, r.message),
+        () if log_line => {
             let (duration, kind, text) = match split_duration(&r.message) {
                 Some((ms, kind, text)) => (Some(ms), kind, text),
                 // log_statement lines: `statement: …` without a duration
@@ -251,7 +261,7 @@ pub fn entry(r: Record) -> Option<Entry> {
             };
             (duration, kind, text.to_owned(), r.detail)
         }
-        _ => return None,
+        () => return None,
     };
     Some(Entry {
         time: r.time,
@@ -891,6 +901,44 @@ mod tests {
         assert_eq!(e.kind, Kind::Other("Anweisung".into()));
         assert_eq!(e.statement, "SELECT 2");
         assert_eq!(e.duration, Some(2.0));
+    }
+
+    /// The severity word follows the server's language; the SQLSTATE says what a
+    /// record is.
+    #[test]
+    fn translated_severities_are_read_by_sqlstate() {
+        let rec = |severity: &str, sqlstate: &str, message: &str, statement: &str| Record {
+            severity: severity.into(),
+            sqlstate: sqlstate.into(),
+            message: message.into(),
+            statement: statement.into(),
+            ..Record::default()
+        };
+        // German: FEHLER / LOG, "Dauer: … ms  Anweisung: …"
+        let e = entry(rec("FEHLER", "22012", "Division durch Null", "SELECT 1/0")).unwrap();
+        assert_eq!(e.kind, Kind::Error);
+        assert_eq!(e.statement, "SELECT 1/0");
+        assert_eq!(e.detail, "Division durch Null");
+        let e = entry(rec(
+            "PROTOKOLL",
+            "00000",
+            "Dauer: 1.5 ms  Anweisung: SELECT 1",
+            "",
+        ))
+        .unwrap();
+        assert_eq!(e.duration, Some(1.5));
+        assert_eq!(e.statement, "SELECT 1");
+        // warnings and notices are not errors, whatever they are called
+        assert!(entry(rec("WARNUNG", "01000", "veraltet", "")).is_none());
+        assert!(entry(rec("HINWEIS", "00000", "nur ein Hinweis", "")).is_none());
+        // without a SQLSTATE (old records): by the English words, as before
+        assert_eq!(
+            entry(rec("ERROR", "", "division by zero", "SELECT 1/0"))
+                .unwrap()
+                .kind,
+            Kind::Error
+        );
+        assert!(entry(rec("WARNING", "", "x", "")).is_none());
     }
 
     fn rec(user: &str, pid: &str, sql: &str) -> Record {

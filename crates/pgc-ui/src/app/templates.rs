@@ -243,6 +243,7 @@ impl App {
                     wanted.push((
                         LookupTarget::Field(f.param.name.clone(), shape(&f.param)),
                         sql_of(&f.param),
+                        custom(&f.param),
                     ));
                 }
                 ParamType::List => {
@@ -255,6 +256,7 @@ impl App {
                                     shape(sub),
                                 ),
                                 sql_of(sub),
+                                custom(sub),
                             ));
                         }
                     }
@@ -269,10 +271,23 @@ impl App {
         else {
             return;
         };
-        for (target, sql) in wanted {
+        let mut refused = Vec::new();
+        for (target, sql, custom) in wanted {
             self.next_key += 1;
-            self.template_lookups.insert(self.next_key, target);
-            handle.lookup(self.next_key, sql);
+            let key = self.next_key;
+            self.template_lookups.insert(key, target);
+            if !custom {
+                handle.lookup(key, sql);
+                continue;
+            }
+            // a template's own query (D-046): one SELECT, and nothing it does stays
+            match check_choice_query(&sql) {
+                Ok(()) => handle.lookup_read_only(key, sql),
+                Err(e) => refused.push((key, e)),
+            }
+        }
+        for (key, e) in refused {
+            self.lookup_loaded(key, Err(pgc_db::DbError::Other(e)));
         }
     }
 
@@ -455,6 +470,51 @@ fn shape(p: &devtemplate::Param) -> devtemplate::Shape {
         .map_or(devtemplate::Shape::Name, devtemplate::Source::shape)
 }
 
+/// The choice list comes from the template's own `query`, not from a `source` of
+/// pgtc.
+fn custom(p: &devtemplate::Param) -> bool {
+    p.source.is_none() && p.query.is_some()
+}
+
+/// A template's own `query` must be one statement that reads: `SELECT`, `WITH`,
+/// `VALUES` or `TABLE` (D-046). It runs when the form opens, before the user has seen
+/// any SQL, so nothing else is accepted.
+pub(super) fn check_choice_query(sql: &str) -> Result<(), String> {
+    use pgc_editor::lexer::{LexState, TokenKind, lex_line};
+    let mut state = LexState::Normal;
+    let mut first: Option<String> = None;
+    let mut ended = false;
+    for line in sql.lines() {
+        let mut tokens = Vec::new();
+        state = lex_line(&state, line, Some(&mut tokens));
+        for t in tokens {
+            let text = &line[t.start..t.end];
+            match t.kind {
+                TokenKind::Comment => continue,
+                TokenKind::Text if text.trim().is_empty() => continue,
+                _ => {}
+            }
+            if ended {
+                return Err("The template's query must be one statement.".to_owned());
+            }
+            if t.kind == TokenKind::Operator && text == ";" {
+                ended = true;
+                continue;
+            }
+            if first.is_none() {
+                first = Some(text.to_lowercase());
+            }
+        }
+    }
+    match first.as_deref() {
+        Some("select" | "with" | "values" | "table") => Ok(()),
+        Some(_) => {
+            Err("The template's query must be a SELECT (or WITH, VALUES, TABLE).".to_owned())
+        }
+        None => Err("The template's query is empty.".to_owned()),
+    }
+}
+
 fn sql_of(p: &devtemplate::Param) -> String {
     match (p.source, &p.query) {
         (Some(s), _) => s.sql().to_owned(),
@@ -496,4 +556,34 @@ fn picker_rows(p: &Picker, filter: &str) -> (Vec<Option<usize>>, Vec<String>, Ve
         marks.push(false);
     }
     (rows, labels, marks)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::check_choice_query;
+
+    #[test]
+    fn choice_queries_are_one_reading_statement() {
+        for ok in [
+            "SELECT 1",
+            "select nspname from pg_namespace;  -- done",
+            "/* list */ WITH t AS (SELECT 1) SELECT * FROM t;\n",
+            "VALUES ('a'), ('b;c')",
+            "TABLE pg_am",
+            "SELECT ';' AS x, $$a;b$$",
+        ] {
+            assert_eq!(check_choice_query(ok), Ok(()), "{ok}");
+        }
+        for (bad, why) in [
+            ("SELECT 1; DROP TABLE t", "one statement"),
+            ("SELECT 1;\nCOMMIT", "one statement"),
+            ("DROP TABLE t", "must be a SELECT"),
+            ("DO $$ BEGIN END $$", "must be a SELECT"),
+            ("COMMIT", "must be a SELECT"),
+            ("  -- nothing\n", "empty"),
+        ] {
+            let e = check_choice_query(bad).unwrap_err();
+            assert!(e.contains(why), "{bad}: {e}");
+        }
+    }
 }

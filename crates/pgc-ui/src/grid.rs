@@ -26,6 +26,26 @@ pub fn display(value: &str) -> String {
         .replace('\t', "→")
 }
 
+/// Width of [`display`]`(value)`, at most `cap`, without building the text: this
+/// runs for every cell of every row that is loaded.
+fn display_width(value: &str, cap: usize) -> usize {
+    let mut width = 0;
+    let mut after_cr = false;
+    for c in value.chars() {
+        width += match c {
+            // the second half of a `\r\n`, which is one symbol
+            '\n' if after_cr => 0,
+            '\n' | '\r' | '\t' => 1,
+            c => unicode_width::UnicodeWidthChar::width(c).unwrap_or(0),
+        };
+        after_cr = c == '\r';
+        if width >= cap {
+            return cap;
+        }
+    }
+    width
+}
+
 #[derive(Debug, Clone)]
 pub struct ResultSet {
     pub columns: Vec<Column>,
@@ -75,8 +95,12 @@ impl ResultSet {
     pub fn push_rows(&mut self, rows: Vec<Vec<Value>>) {
         for row in &rows {
             for (w, v) in self.widths.iter_mut().zip(row) {
+                // a column that is as wide as it gets needs no more measuring
+                if *w >= MAX_COL_WIDTH {
+                    continue;
+                }
                 let len = match v {
-                    Some(s) => display(s).width(),
+                    Some(s) => display_width(s, MAX_COL_WIDTH),
                     None => NULL.len(),
                 };
                 *w = (*w).max(len.min(MAX_COL_WIDTH));
@@ -400,5 +424,21 @@ mod tests {
             r.left, 1,
             "column 2 does not fit next to column 1 in 20 cells"
         );
+    }
+
+    #[test]
+    fn display_width_matches_the_displayed_text() {
+        for v in [
+            "",
+            "abc",
+            "a\tb",
+            "line\r\nline\nline\rline",
+            "\r\r\n",
+            "šđčćž 日本",
+            "\n",
+        ] {
+            assert_eq!(display_width(v, usize::MAX), display(v).width(), "{v:?}");
+        }
+        assert_eq!(display_width(&"x".repeat(1000), 40), 40);
     }
 }

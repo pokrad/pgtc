@@ -98,6 +98,8 @@ pub(crate) enum Request {
         key: u64,
         sql: String,
         params: Vec<Option<String>>,
+        /// Run so that nothing it does stays ([`ConnectionHandle::lookup_read_only`]).
+        read_only: bool,
     },
     /// The structure model of the connected database (D-048).
     ReadModel {
@@ -244,7 +246,26 @@ impl ConnectionHandle {
 
     /// [`Self::lookup`] with text bind parameters; the query's columns must be text.
     pub fn lookup_with(&self, key: u64, sql: String, params: Vec<Option<String>>) {
-        let _ = self.tx.send(Request::Lookup { key, sql, params });
+        let _ = self.tx.send(Request::Lookup {
+            key,
+            sql,
+            params,
+            read_only: false,
+        });
+    }
+
+    /// [`Self::lookup`] for SQL pgtc did not write (a developer template's own `query`,
+    /// D-046): outside a transaction it runs in a read-only one, so a write is an
+    /// error; inside the session's open transaction it runs in a savepoint that is
+    /// rolled back, so a write does not stay. The caller makes sure `sql` is one
+    /// statement.
+    pub fn lookup_read_only(&self, key: u64, sql: String) {
+        let _ = self.tx.send(Request::Lookup {
+            key,
+            sql,
+            params: Vec::new(),
+            read_only: true,
+        });
     }
 
     /// Reads the structure model of the connected database (D-048); answered with
@@ -566,8 +587,15 @@ async fn run(
                 let result = load_definition(&client, &sql, &params).await;
                 sink(DbEvent::Definition { id, key, result });
             }
-            Some(Request::Lookup { key, sql, params }) => {
-                let result = if params.is_empty() {
+            Some(Request::Lookup {
+                key,
+                sql,
+                params,
+                read_only,
+            }) => {
+                let result = if read_only {
+                    lookup_read_only(&client, &sql).await
+                } else if params.is_empty() {
                     lookup(&client, &sql).await
                 } else {
                     lookup_params(&client, &sql, &params).await
@@ -622,6 +650,33 @@ async fn lookup_params(
                 .collect()
         })
         .collect()
+}
+
+/// [`lookup`] with nothing left behind: in a read-only transaction when none is open,
+/// else in a savepoint of the open one that is rolled back.
+async fn lookup_read_only(
+    client: &tokio_postgres::Client,
+    sql: &str,
+) -> Result<Vec<Vec<String>>, DbError> {
+    use tokio_postgres::TransactionStatus;
+    let (begin, end) = match client.transaction_status() {
+        TransactionStatus::Idle => ("BEGIN READ ONLY", "ROLLBACK"),
+        TransactionStatus::InTransaction => (
+            "SAVEPOINT pgtc_lookup",
+            "ROLLBACK TO SAVEPOINT pgtc_lookup; RELEASE SAVEPOINT pgtc_lookup",
+        ),
+        // nothing runs in a failed transaction: the server says so
+        TransactionStatus::Failed => return lookup(client, sql).await,
+    };
+    client
+        .batch_execute(begin)
+        .await
+        .map_err(|e| DbError::Other(crate::describe(&e)))?;
+    let result = lookup(client, sql).await;
+    if let Err(e) = client.batch_execute(end).await {
+        tracing::warn!("ending a read-only lookup: {}", crate::describe(&e));
+    }
+    result
 }
 
 /// Rows of a simple query as text; the first result set only.

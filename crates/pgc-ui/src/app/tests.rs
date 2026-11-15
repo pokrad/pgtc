@@ -4088,12 +4088,20 @@ async fn file_dialogs_list_and_check_in_the_background() {
     a.open_file_dialog(false);
     assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::OpenFile);
     assert_eq!(rows(&a), "Reading…");
+    // a resize now fits the list to its one row; the listing gets the height back
+    let height = a.dialogs.last().unwrap().list_rows_of("files");
+    a.dialogs
+        .last_mut()
+        .unwrap()
+        .fit_text(Rect::new(0, 0, 100, 40));
+    assert_eq!(a.dialogs.last().unwrap().list_rows_of("files"), 1);
     // nothing to choose yet
     key(&mut a, "Enter");
     assert_eq!(a.dialogs.len(), 1);
     assert_eq!(a.tabs.len(), 1);
     next(&mut a);
     assert_eq!(rows(&a), format!("..{sep}|sub{sep}|a.sql"));
+    assert_eq!(a.dialogs.last().unwrap().list_rows_of("files"), height);
 
     // a folder: the dialog stays while it is checked, then shows the folder
     key(&mut a, "Down");

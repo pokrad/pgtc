@@ -582,6 +582,18 @@ impl Dialog {
         }
     }
 
+    /// Visible rows of list `id` (its height).
+    pub fn set_list_rows(&mut self, id: &str, new_rows: u16) {
+        if let Some(WidgetKind::List { rows, .. }) = self
+            .widgets
+            .iter_mut()
+            .find(|w| w.id == id)
+            .map(|w| &mut w.kind)
+        {
+            *rows = new_rows.max(1);
+        }
+    }
+
     /// Replaces the items of a list; the selection moves to `selected`.
     pub fn set_list(
         &mut self,

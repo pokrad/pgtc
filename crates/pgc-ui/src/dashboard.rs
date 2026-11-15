@@ -187,6 +187,7 @@ const R_QUERY_SECS: usize = 8;
 const R_XACT_SECS: usize = 9;
 const R_BACKEND_SECS: usize = 10;
 const R_LEADER: usize = 13;
+const R_BACKEND_START: usize = 15;
 /// Columns before / after the three durations that go to the grid unchanged.
 const R_BEFORE: usize = 8;
 const R_AFTER: usize = 11;
@@ -506,6 +507,10 @@ pub struct Session {
     pub pid: String,
     pub user: String,
     pub database: String,
+    /// When its backend started, as the Sessions list has it: a signal goes only to
+    /// the session that was shown, not to another one that got its PID since (`None`:
+    /// not known).
+    pub started: Option<String>,
 }
 
 /// What colours a Sessions row (computed when the grid is rebuilt).
@@ -820,10 +825,23 @@ impl Dashboard {
         };
         let pid = self.cell(list, pid)?;
         (!pid.is_empty()).then(|| Session {
+            started: self.session_start(&pid),
             pid,
             user: self.cell(list, user).unwrap_or_default(),
             database: self.cell(list, database).unwrap_or_default(),
         })
+    }
+
+    /// Backend start of session `pid` in the Sessions rows read last (empty when the
+    /// user may not see it).
+    fn session_start(&self, pid: &str) -> Option<String> {
+        self.raw[List::Sessions.index()]
+            .as_ref()?
+            .iter()
+            .find(|r| r.get(R_PID).map(String::as_str) == Some(pid))?
+            .get(R_BACKEND_START)
+            .filter(|s| !s.is_empty())
+            .cloned()
     }
 
     /// The tagged sessions, in the order of the Sessions list (D-057).
@@ -840,6 +858,7 @@ impl Dashboard {
                     .is_some_and(|p| self.tags.contains(p))
             })
             .map(|r| Session {
+                started: self.session_start(&text(r, COL_PID)),
                 pid: text(r, COL_PID),
                 user: text(r, COL_USER),
                 database: text(r, COL_DATABASE),
@@ -1684,6 +1703,7 @@ mod tests {
         row[R_STATE] = state.into();
         row[R_BLOCKED_BY] = blocked.into();
         row[R_BACKEND_SECS] = "100".into();
+        row[R_BACKEND_START] = format!("2026-11-15 10:00:{pid}");
         row[19] = format!("query of {pid}");
         row
     }
@@ -1830,6 +1850,16 @@ mod tests {
         assert_eq!(d.grid().row, 1, "moves down");
         d.grid_mut().row = 2;
         assert!(d.toggle_tag());
+        // each with the backend start that was shown: the signal checks it
+        let starts: Vec<Option<String>> =
+            d.signal_targets().into_iter().map(|s| s.started).collect();
+        assert_eq!(
+            starts,
+            [
+                Some("2026-11-15 10:00:10".to_owned()),
+                Some("2026-11-15 10:00:30".to_owned())
+            ]
+        );
         let targets: Vec<String> = d.signal_targets().into_iter().map(|s| s.pid).collect();
         assert_eq!(targets, ["10", "30"]);
         // untag, and an ended session loses its tag

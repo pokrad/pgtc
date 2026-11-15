@@ -288,8 +288,7 @@ fn render_tree(frame: &mut Frame, app: &App, area: Rect) -> Rect {
         Paragraph::new(Line::from("Connections").centered()).style(strip_style),
         strip,
     );
-    let rows = app.tree.rows();
-    if rows.is_empty() {
+    if app.tree.servers.is_empty() {
         let text = vec![
             Line::from(Span::styled(" No connections yet.", hint)),
             Line::from(Span::styled(" F9 → File → New connection…", hint)),
@@ -303,13 +302,11 @@ fn render_tree(frame: &mut Frame, app: &App, area: Rect) -> Rect {
     } else {
         app.theme.get(Role::CoreSelectedUnfocused)
     };
-    let lines: Vec<Line> = rows
-        .iter()
-        .enumerate()
-        .skip(app.tree.offset)
-        .take(inner.height as usize)
-        .map(|(i, row)| {
-            let t = app.tree.row_text(*row);
+    let lines: Vec<Line> = app
+        .tree
+        .visible_texts(app.tree.offset, inner.height as usize)
+        .into_iter()
+        .map(|(i, row, t)| {
             let text = format!(" {}{} {}", "  ".repeat(t.depth), t.marker, t.label);
             let text: String = text.chars().take(width).collect();
             let style = if i == app.tree.cursor {

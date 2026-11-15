@@ -94,6 +94,7 @@ impl App {
         let seq = self.files.seq;
         self.files.listing = Some(seq);
         self.files.probing = None;
+        self.files.list_rows = f.list_rows;
         let job = if places {
             FileJob::Places {
                 seq,
@@ -132,12 +133,16 @@ impl App {
                 entries.iter().map(|e| e.2).collect(),
             ),
         };
+        let rows = self.files.list_rows;
         if let Some(d) = self
             .dialogs
             .iter_mut()
             .rev()
             .find(|d| is_file_dialog(&d.kind))
         {
+            // the height the dialog was made with: a resize while it showed the one
+            // row *Reading…* has fitted it to that row
+            d.set_list_rows("files", rows);
             d.set_list("files", labels, marks, 0);
         }
     }

@@ -62,11 +62,31 @@ async fn dashboard_queries_run_on_a_real_server() {
     let rows = client.query(&sql, &[]).await.unwrap();
     assert!(rows.len() > 100);
     assert_eq!(rows[0].len(), 5);
-    // a PID that is no backend: false (with a warning), not an error
+    // a PID that is no backend: no row, not an error; neither for a session whose
+    // backend start is not the one that was shown (its PID was used again)
+    let own: Option<String> = client
+        .query_one("SELECT pg_catalog.pg_backend_pid()::text", &[])
+        .await
+        .unwrap()
+        .get(0);
     for file in ["cancel.sql", "terminate.sql"] {
         let sql = catalog.render("dashboard", file, ctx).unwrap();
         let pid = Some("1".to_owned());
-        let row = client.query_one(&sql, &[&pid]).await.unwrap();
-        assert_eq!(row.get::<_, Option<String>>(0).as_deref(), Some("false"));
+        let unknown: Option<String> = None;
+        assert!(
+            client
+                .query(&sql, &[&pid, &unknown])
+                .await
+                .unwrap()
+                .is_empty()
+        );
+        let other = Some("1999-01-01 00:00:00".to_owned());
+        assert!(
+            client
+                .query(&sql, &[&own, &other])
+                .await
+                .unwrap()
+                .is_empty()
+        );
     }
 }

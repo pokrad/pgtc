@@ -53,6 +53,9 @@ pub(super) struct FileDialogState {
     pub(super) listing: Option<u64>,
     /// The chosen path that is being checked.
     pub(super) probing: Option<u64>,
+    /// Height of the open dialog's listing (a resize while it shows *Reading…* would
+    /// otherwise leave it one row high).
+    pub(super) list_rows: u16,
 }
 
 /// Closing tabs, quitting, disconnecting (D-019, D-043): the questions on their way

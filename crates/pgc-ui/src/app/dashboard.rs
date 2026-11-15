@@ -506,8 +506,11 @@ impl App {
         let mut pending = Vec::with_capacity(sessions.len());
         for (k, session) in sessions.into_iter().enumerate() {
             let key = first_key + k as u64;
-            conn.handle
-                .lookup_with(key, sql.clone(), vec![Some(session.pid.clone())]);
+            conn.handle.lookup_with(
+                key,
+                sql.clone(),
+                vec![Some(session.pid.clone()), session.started.clone()],
+            );
             pending.push((key, session));
         }
         if pending.len() > 1 {
