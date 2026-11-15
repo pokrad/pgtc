@@ -942,7 +942,7 @@ async fn definition_export_and_load_against_a_real_server() {
         assert_eq!(d.kind, DialogKind::OpenDefinition);
         d.set_text("path", "pgtc_test_ui_src.pgdef");
         d.focus_on("path");
-        a.definition_dialog_done(d);
+        a.definition_dialog_done(d, "ok");
     };
     let tabs = a.tabs.len();
     load(&mut a);

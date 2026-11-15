@@ -55,7 +55,7 @@ fn env_path(env: Env<'_>, name: &str) -> Option<PathBuf> {
         .filter(|p| p.is_absolute())
 }
 
-fn home_dir(os: Os, env: Env<'_>) -> Option<PathBuf> {
+fn home_dir_for(os: Os, env: Env<'_>) -> Option<PathBuf> {
     match os {
         Os::Windows => env_path(env, "USERPROFILE"),
         Os::Mac | Os::Unix => env_path(env, "HOME"),
@@ -67,20 +67,20 @@ fn base_dirs(os: Os, env: Env<'_>) -> Option<(PathBuf, PathBuf)> {
     match os {
         Os::Windows => {
             let roaming = env_path(env, "APPDATA")
-                .or_else(|| Some(home_dir(os, env)?.join("AppData").join("Roaming")))?;
+                .or_else(|| Some(home_dir_for(os, env)?.join("AppData").join("Roaming")))?;
             Some((roaming.clone(), roaming))
         }
         Os::Mac => {
-            let support = home_dir(os, env)?
+            let support = home_dir_for(os, env)?
                 .join("Library")
                 .join("Application Support");
             Some((support.clone(), support))
         }
         Os::Unix => {
             let config = env_path(env, "XDG_CONFIG_HOME")
-                .or_else(|| Some(home_dir(os, env)?.join(".config")))?;
+                .or_else(|| Some(home_dir_for(os, env)?.join(".config")))?;
             let data = env_path(env, "XDG_DATA_HOME")
-                .or_else(|| Some(home_dir(os, env)?.join(".local").join("share")))?;
+                .or_else(|| Some(home_dir_for(os, env)?.join(".local").join("share")))?;
             Some((config, data))
         }
     }
@@ -92,7 +92,7 @@ fn pgpass_for(os: Os, env: Env<'_>) -> Option<PathBuf> {
     }
     match os {
         Os::Windows => Some(base_dirs(os, env)?.0.join("postgresql").join("pgpass.conf")),
-        Os::Mac | Os::Unix => Some(home_dir(os, env)?.join(".pgpass")),
+        Os::Mac | Os::Unix => Some(home_dir_for(os, env)?.join(".pgpass")),
     }
 }
 
@@ -158,6 +158,12 @@ impl Paths {
     pub fn window_file(&self) -> PathBuf {
         self.data_dir.join(WINDOW_FILE)
     }
+}
+
+/// The user's home folder (`USERPROFILE` on Windows, `HOME` elsewhere); `~` in the
+/// file dialogs (D-070).
+pub fn home_dir() -> Option<PathBuf> {
+    home_dir_for(CURRENT_OS, &real_env)
 }
 
 /// PostgreSQL password file (D-008): `PGPASSFILE` if set, otherwise

@@ -406,6 +406,8 @@ pub struct App {
     grid_size: (usize, usize),
     /// Directory shown in the file dialogs.
     file_dir: std::path::PathBuf,
+    /// The file dialogs show the places instead of `file_dir` (D-070).
+    file_places: Option<Vec<pgc_core::places::Place>>,
     /// What to do once a "Save changes?" save has succeeded (D-019).
     after_save: Option<AfterSave>,
     /// Quitting: tabs whose unsaved text the user chose not to save (D-019).
@@ -553,7 +555,8 @@ impl App {
             next_run: 0,
             tick_scheduled: false,
             grid_size: (0, 0),
-            file_dir: std::env::current_dir().unwrap_or_default(),
+            file_dir: pgc_core::places::start_dir(),
+            file_places: None,
             after_save: None,
             bulk: None,
             split_drag: false,
@@ -1394,10 +1397,18 @@ impl App {
         match event {
             DialogEvent::None => {}
             DialogEvent::Cancelled => {
-                if let Some(d) = self.dialogs.pop()
-                    && d.kind == DialogKind::ConfirmProfilerSettings
-                {
-                    self.profiler_answer(d.tag, false);
+                let Some(d) = self.dialogs.pop() else {
+                    return;
+                };
+                match d.kind {
+                    DialogKind::ConfirmProfilerSettings => self.profiler_answer(d.tag, false),
+                    // the next file dialog starts in the folder again (D-070)
+                    DialogKind::OpenFile
+                    | DialogKind::SaveFile
+                    | DialogKind::ExportFile
+                    | DialogKind::SaveDefinition
+                    | DialogKind::OpenDefinition => self.file_places = None,
+                    _ => {}
                 }
             }
             DialogEvent::Button(id) => {
@@ -1464,12 +1475,12 @@ impl App {
                     (DialogKind::ConfirmTerminateBackend, "yes") => {
                         self.send_signal(dialog.tag, crate::dashboard::Signal::Terminate);
                     }
-                    (DialogKind::OpenFile | DialogKind::SaveFile, "ok") => {
-                        self.file_dialog_done(dialog);
-                    }
-                    (DialogKind::ExportFile, "ok") => self.file_dialog_done(dialog),
-                    (DialogKind::SaveDefinition | DialogKind::OpenDefinition, "ok") => {
-                        self.definition_dialog_done(dialog);
+                    (
+                        DialogKind::OpenFile | DialogKind::SaveFile | DialogKind::ExportFile,
+                        "ok" | "places",
+                    ) => self.file_dialog_done(dialog, id),
+                    (DialogKind::SaveDefinition | DialogKind::OpenDefinition, "ok" | "places") => {
+                        self.definition_dialog_done(dialog, id);
                     }
                     (DialogKind::ConfirmDefinitionOverwrite, "yes") => {
                         if let Payload::Database {

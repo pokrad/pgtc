@@ -49,7 +49,7 @@ impl App {
                 title,
                 ext: "pgdef",
                 name,
-                label_width: 12,
+                label_width: 15,
                 list_rows: 14,
                 above: vec![Widget::label(&format!("Database: {database}"))],
                 below: Vec::new(),
@@ -63,14 +63,19 @@ impl App {
         self.dialogs.push(dialog);
     }
 
-    pub(super) fn definition_dialog_done(&mut self, dialog: Dialog) {
+    pub(super) fn definition_dialog_done(&mut self, dialog: Dialog, button: &str) {
         let save = dialog.kind == DialogKind::SaveDefinition;
         let Payload::Database { uid, database, .. } = dialog.payload.clone() else {
             return;
         };
-        let path = match self.picked(&dialog) {
+        let path = match self.picked(&dialog, button) {
             Picked::Nothing => {
                 self.dialogs.push(dialog);
+                return;
+            }
+            Picked::Invalid(text) => {
+                self.dialogs.push(dialog);
+                self.error(&text);
                 return;
             }
             Picked::Folder => {

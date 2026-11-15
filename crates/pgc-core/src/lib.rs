@@ -6,6 +6,7 @@
 pub mod error;
 pub mod logging;
 pub mod paths;
+pub mod places;
 pub mod quote;
 pub mod settings;
 pub mod version;

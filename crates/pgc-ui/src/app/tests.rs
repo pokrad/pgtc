@@ -1461,18 +1461,125 @@ fn double_click_in_the_file_dialog() {
             );
         }
     };
+    let sub = format!("sub{}", std::path::MAIN_SEPARATOR);
     // a single click only selects
-    click(&mut a, "sub/", 1);
+    click(&mut a, &sub, 1);
     assert_eq!(a.file_dir, files);
     assert_eq!(a.dialogs.last().unwrap().focused_id(), Some("files"));
     a.last_click = None; // later, not a double click
     // a double click opens the folder
-    click(&mut a, "sub/", 2);
+    click(&mut a, &sub, 2);
     assert_eq!(a.file_dir, files.join("sub"));
     assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::SaveFile);
     // a double click on a file chooses it: Save asks before overwriting
     click(&mut a, "pick.sql", 2);
     assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::ConfirmOverwrite);
+}
+
+#[test]
+fn typed_paths_in_file_dialogs() {
+    use super::files::resolve;
+    let dir = std::path::Path::new(if cfg!(windows) {
+        r"C:\work\sql"
+    } else {
+        "/work/sql"
+    });
+    let home = std::path::Path::new(if cfg!(windows) {
+        r"C:\Users\me"
+    } else {
+        "/home/me"
+    });
+    let r = |s: &str| resolve(dir, s, Some(home));
+    assert_eq!(r("a.sql"), dir.join("a.sql"));
+    assert_eq!(
+        r("../x/./b.sql"),
+        dir.parent().unwrap().join("x").join("b.sql")
+    );
+    assert_eq!(r("~"), home);
+    assert_eq!(r("~/q.sql"), home.join("q.sql"));
+    assert_eq!(r("../../../.."), dir.ancestors().last().unwrap());
+    if cfg!(windows) {
+        assert_eq!(r("D:"), std::path::PathBuf::from(r"D:\"));
+        assert_eq!(r(r"D:\data\..\x"), std::path::PathBuf::from(r"D:\x"));
+        assert_eq!(r(r"~\q.sql"), home.join("q.sql"));
+        assert_eq!(
+            r(r"\\srv\share\a"),
+            std::path::PathBuf::from(r"\\srv\share\a")
+        );
+    } else {
+        assert_eq!(r("/etc/../tmp"), std::path::PathBuf::from("/tmp"));
+    }
+}
+
+/// Places (D-070): the button lists them in the listing, `..` goes back, a place
+/// opens; Cancel leaves the places.
+#[test]
+fn places_in_the_file_dialog() {
+    let (mut a, dir) = app();
+    let files = dir.path().join("sql");
+    std::fs::create_dir_all(files.join("sub")).unwrap();
+    std::fs::write(files.join("sub").join("q.sql"), "select 1;").unwrap();
+    a.file_dir = files.clone();
+    // a tab with a file: its folder is a place
+    a.open_path(files.join("sub").join("q.sql"));
+    a.open_file_dialog(false);
+    key(&mut a, "Alt+P");
+    let screen = screen_text(&a);
+    assert!(screen.contains("Folder: Places"), "{screen}");
+    assert!(screen.contains("Current file"), "{screen}");
+    let d = a.dialogs.last().unwrap();
+    assert_eq!(d.focused_id(), Some("files"));
+    // `..`: back to the folder
+    key(&mut a, "Enter");
+    assert!(a.file_places.is_none());
+    assert_eq!(a.file_dir, files);
+    // the place of the current file (after `~` when there is a home folder)
+    key(&mut a, "Alt+P");
+    let at = a
+        .file_places
+        .as_ref()
+        .unwrap()
+        .iter()
+        .position(|p| p.note == "Current file");
+    for _ in 0..=at.unwrap() {
+        key(&mut a, "Down");
+    }
+    key(&mut a, "Enter");
+    assert_eq!(a.file_dir, files.join("sub"));
+    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::OpenFile);
+    // Cancel in the places: the next dialog shows the folder
+    key(&mut a, "Alt+P");
+    assert!(a.file_places.is_some());
+    esc(&mut a);
+    assert!(a.dialogs.is_empty());
+    assert!(a.file_places.is_none());
+}
+
+/// A typed path (D-070): a folder opens, a missing folder is an error.
+#[test]
+fn typed_folder_and_missing_folder() {
+    let (mut a, dir) = app();
+    let files = dir.path().join("sql");
+    std::fs::create_dir_all(files.join("sub")).unwrap();
+    a.file_dir = files.join("sub");
+    a.new_query_tab(None);
+    a.run(Command::SaveFileAs);
+    for _ in 0.."query.sql".len() {
+        key(&mut a, "Backspace");
+    }
+    typing(&mut a, "..");
+    key(&mut a, "Enter");
+    assert_eq!(a.file_dir, files);
+    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::SaveFile);
+    for _ in 0.."query.sql".len() {
+        key(&mut a, "Backspace");
+    }
+    typing(&mut a, "missing/x.sql");
+    key(&mut a, "Enter");
+    assert_eq!(a.dialogs.len(), 2);
+    assert_eq!(a.dialogs[0].kind, DialogKind::SaveFile);
+    assert!(a.dialogs[1].error);
+    assert!(!files.join("missing").exists());
 }
 
 #[test]

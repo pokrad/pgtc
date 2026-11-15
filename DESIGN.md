@@ -1246,6 +1246,7 @@ pgtc (binary)
 - **File → Open / Save SQL file:** mc-style dialog with a path input and a directory
   listing (directories first, `*.sql` highlighted); Enter opens a directory or picks a
   file; Save asks before overwriting; files are UTF-8. Save / Save as: D-064.
+  Paths, drives and places: D-070.
 - **Cancel:** if the server has not reacted after `query.cancel_wait_secs` seconds
   (settings, default **5**), pgtc asks whether to close the tab's connection.
 
@@ -2121,6 +2122,39 @@ pgtc (binary)
 - **Crate:** `windows-sys` (MIT / Apache-2.0), Windows-only dependency of the `pgtc`
   binary.
 
+### D-070 — File dialogs: paths, places, drives
+- **Status:** Accepted (refines D-039, D-041, D-042, D-048, D-067)
+- Applies to every file dialog (Open / Save SQL file, Export result, Export / Load
+  database definition); the mc look stays.
+- **Name or path:** the input (label *Name or path*) takes a file name or a path:
+  absolute (`D:\work`, `\server\share\x`, `/etc`), relative (`sub/dir`, `../other`),
+  `~` and `~/…` for the home folder on all platforms; on Windows a drive letter alone
+  (`D:`) means the root of the drive (`D:\`). `..` and `.` are resolved in the shown
+  path. A folder becomes the dialog's folder; a file is opened / saved; a path in a
+  folder that does not exist is an error and the dialog stays open.
+- **Places (as mc / Far's drive menu):** a *Places* button (`Alt+P`) shows the places
+  in the dialog's listing instead of a folder (*Folder:* line *Places*); `Enter` /
+  double click opens one, `..` goes back to the folder. Order: home folder (`~`), the
+  folder of the current tab's file (if any), then by platform:
+  - **Windows:** every drive with its volume label (`C:\  System`); drives from
+    `GetLogicalDrives`, labels only for local drives (network drives: *Network*,
+    CD/DVD: *CD/DVD*), so a disconnected drive does not stop the dialog.
+  - **Linux:** `/`, then the folders in `/media/<user>`, `/run/media/<user>` and
+    `/mnt`.
+  - **macOS:** `/`, then the volumes in `/Volumes`.
+- **`..` at the top of a drive** (Windows, also UNC shares) shows the places; `/` on
+  Linux / macOS has no `..`.
+- **Native separators:** the *Folder:* line and folder entries in the listing use `\`
+  on Windows, `/` elsewhere.
+- **Start folder:** the user's documents folder — Windows: the *Documents* known
+  folder (`SHGetKnownFolderPath`, follows a moved or OneDrive Documents); Linux:
+  `XDG_DOCUMENTS_DIR` from `~/.config/user-dirs.dirs`; macOS: `~/Documents`. A
+  missing folder falls back to the home folder, then to the current directory. Not
+  the current directory of the shell pgtc was started from.
+- The folder is remembered only while pgtc runs (not saved).
+- The place lists are computed in `pgc-core` (D-039); `windows-sys` becomes a
+  Windows-only dependency of `pgc-core` too (D-069).
+
 ---
 
 ## 3. Change log
@@ -2177,6 +2211,7 @@ pgtc (binary)
 | 2026-11-08 | D-035 updated: SSL mode in the connection dialog is a combo box too. |
 | 2026-11-08 | D-038 accepted: editor leaves with F6 / Ctrl+Tab, real tabs with block indent / unindent, line numbers, mc-style find / replace with F3 / Shift+F3, read-only editor for the object view, editor colour roles, lexer checkpoints every 512 lines. |
 | 2026-11-08 | D-039 accepted: `directories` replaced by own path code in `pgc-core` (it pulled in MPL-2.0 `option-ext`); D-007, D-013, D-017, D-028 updated. |
+| 2026-11-15 | D-070 accepted: file dialogs take paths in *Name or path* (absolute, relative, `~`, drive letter alone), a *Places* button (`Alt+P`) lists home, the tab file's folder and the drives (Windows) / `/` and mounted volumes (Linux, macOS) in the listing, `..` at the top of a drive shows the places, native separators; place lists in `pgc-core` with `windows-sys`. D-041 updated. |
 | 2026-11-08 | D-014 updated: built-in colour schemes Tokyo Night and Dracula (24-bit colours). |
 | 2026-11-08 | D-040 accepted: vendored, patched tokio-postgres (command tag, transaction status, column type OIDs). D-041 accepted: Query menu, query tab binding, F6 focus cycle, query keys, result grid look, mc-style file dialog, cancel wait setting (default 5 s). |
 | 2026-11-08 | D-014 updated: readability rules for colour schemes (contrast, visible highlights, underlined hotkeys), enforced by a test; all built-in schemes fixed; text cursor also drawn in reverse video. |
@@ -2251,6 +2286,7 @@ pgtc (binary)
 | 2026-11-14 | D-064 accepted: Save SQL file (`Ctrl+S` in editor and results) writes to the tab's file without a dialog, else does Save as; new *Save SQL file as…* always asks for the file; the full path of the tab's file is shown in a full-width bar above the editor in the inactive-tab colour (shortened from the left, no bar without a file), not in the tab label; the tab status row (D-043) is one full-width bar too. D-014, D-041, D-049 updated. |
 | 2026-11-14 | D-065 accepted: commands in groups (General, Actions, File, Moving, Selecting, Editing, Clipboard and undo, Find, Results, Windows and tabs) — `F1` and Help → Keyboard shortcuts list the keys group by group, with subheadings in larger sections; `Ctrl+Y` deletes the line (or the selected lines), redo is `Ctrl+Shift+Z` / `Alt+Shift+Z`. D-015, D-053 updated. |
 | 2026-11-14 | D-066 accepted: results bar with *Messages* first at a fixed place, then one tab per result set (no *Results* tab, result tabs stay visible on Messages); only *Messages* without a result set; a run shows its first result set, a run without one ends on Messages, an error shows Messages. D-019, D-041 updated. |
+| 2026-11-15 | D-070 updated: file dialogs start in the user's documents folder (Windows *Documents* known folder, Linux `XDG_DOCUMENTS_DIR`, macOS `~/Documents`; else home, else the current directory) instead of the current directory. |
 | 2026-11-14 | D-064 updated: the file bar shows ` *` after the path while the tab's text has unsaved changes. |
 | 2026-11-14 | D-067 accepted: a double click on a dialog list row acts as `Enter` (file dialogs: open the folder / choose the file); two clicks on the same cell within 500 ms. |
 | 2026-11-14 | D-068 accepted: server dashboard `Alt+D` and SQL profiler `Alt+P` in the tree (like `Alt+I`, `Alt+S`), `Ctrl+D` / `Ctrl+P` as second keys. D-057, D-058 updated. |
