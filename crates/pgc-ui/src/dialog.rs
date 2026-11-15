@@ -535,6 +535,15 @@ impl Dialog {
         self.widgets.get(self.focus).map(|w| w.id)
     }
 
+    /// The focus is in a masked input (a password): what is typed there must not be
+    /// shown or logged.
+    pub fn focused_masked(&self) -> bool {
+        matches!(
+            self.widgets.get(self.focus).map(|w| &w.kind),
+            Some(WidgetKind::Input { masked: true, .. })
+        )
+    }
+
     /// Moves the focus to the widget `id`.
     pub fn focus_on(&mut self, id: &str) {
         if let Some(i) = self.widgets.iter().position(|w| w.id == id) {

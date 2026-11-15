@@ -954,17 +954,22 @@ impl App {
     fn dispatch(&mut self, ev: KeyEvent) {
         let combo = KeyCombo::from_event(&ev);
         let cmd = self.command_for(combo);
-        // what the terminal sent and what it became (PGTC_LOG=pgc_ui=trace)
-        tracing::trace!(
-            code = ?ev.code,
-            modifiers = ?ev.modifiers,
-            kind = ?ev.kind,
-            key = %combo,
-            focus = ?self.focus,
-            context = ?self.context(),
-            ?cmd,
-            "key"
-        );
+        // what the terminal sent and what it became (PGTC_LOG=pgc_ui=trace); never
+        // what is typed into a password field
+        if self.dialogs.last().is_some_and(Dialog::focused_masked) {
+            tracing::trace!("key in a password field (not logged)");
+        } else {
+            tracing::trace!(
+                code = ?ev.code,
+                modifiers = ?ev.modifiers,
+                kind = ?ev.kind,
+                key = %combo,
+                focus = ?self.focus,
+                context = ?self.context(),
+                ?cmd,
+                "key"
+            );
+        }
 
         if let Some(dialog) = self.dialogs.last_mut() {
             if cmd == Some(Command::Help) {

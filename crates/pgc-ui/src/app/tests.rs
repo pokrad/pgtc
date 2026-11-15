@@ -1898,6 +1898,11 @@ fn password_required_opens_login_and_auth_failure_reopens_it() {
         a.dialogs.last().unwrap().kind,
         DialogKind::Login { .. }
     ));
+    // the focus is in the password field: its keys are kept out of the key log
+    assert!(a.dialogs.last().unwrap().focused_masked());
+    typing(&mut a, "secret");
+    key(&mut a, "Tab");
+    assert!(!a.dialogs.last().unwrap().focused_masked(), "the checkbox");
     a.dialogs.clear();
     let id = fake_connecting(&mut a, uid);
     a.update(

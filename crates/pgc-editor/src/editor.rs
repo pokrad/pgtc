@@ -93,6 +93,8 @@ struct Group {
     after: (usize, Option<usize>),
     /// Open typing group that further typed characters may join.
     typing: bool,
+    /// Identifies the text this step leads to (new whenever the step changes).
+    id: u64,
 }
 
 /// Lines between lexer checkpoints (D-038).
@@ -204,7 +206,10 @@ pub struct Editor {
     redo: Vec<Group>,
     read_only: bool,
     tab_width: usize,
-    modified: bool,
+    /// The undo step ([`Group::id`], 0 = none) the text was last saved at; `None`:
+    /// not saved in any state the history can come back to.
+    saved: Option<u64>,
+    next_group: u64,
     /// Counts the changes of the text (edits, undo, redo, a new text).
     revision: u64,
     lex: RefCell<LexCache>,
@@ -230,7 +235,8 @@ impl Editor {
             redo: Vec::new(),
             read_only,
             tab_width: tab_width.max(1),
-            modified: false,
+            saved: Some(0),
+            next_group: 0,
             revision: 0,
             lex: RefCell::new(LexCache::default()),
         }
@@ -254,13 +260,25 @@ impl Editor {
         self.read_only
     }
 
+    /// The undo step the text is at now (0 = none).
+    fn step(&self) -> u64 {
+        self.undo.last().map_or(0, |g| g.id)
+    }
+
+    fn new_step(&mut self) -> u64 {
+        self.next_group += 1;
+        self.next_group
+    }
+
+    /// The text differs from what was saved. Undoing (or redoing) back to the saved
+    /// text makes it unmodified again.
     pub fn modified(&self) -> bool {
-        self.modified
+        self.saved != Some(self.step())
     }
 
     /// Marks the text as saved (or changed).
     pub fn set_modified(&mut self, modified: bool) {
-        self.modified = modified;
+        self.saved = if modified { None } else { Some(self.step()) };
     }
 
     /// A number that changes whenever the text does: the same number means the same
@@ -287,7 +305,7 @@ impl Editor {
         self.left = 0;
         self.undo.clear();
         self.redo.clear();
-        self.modified = false;
+        self.saved = Some(0);
         self.revision += 1;
         *self.lex.borrow_mut() = LexCache::default();
     }
@@ -620,7 +638,6 @@ impl Editor {
         self.rope.insert(start, text);
         let line = self.rope.char_to_line(start);
         self.lex.borrow_mut().invalidate_from(line);
-        self.modified = true;
         self.revision += 1;
         if let Some(group) = self.undo.last_mut() {
             group.edits.push(Edit {
@@ -634,11 +651,13 @@ impl Editor {
     /// Runs `f` as one undo group.
     fn edit_group(&mut self, f: impl FnOnce(&mut Self)) {
         self.close_typing();
+        let id = self.new_step();
         self.undo.push(Group {
             edits: Vec::new(),
             before: (self.cursor, self.anchor),
             after: (0, None),
             typing: false,
+            id,
         });
         let cursor_before = self.cursor;
         f(self);
@@ -683,8 +702,11 @@ impl Editor {
             self.cursor = start + text.chars().count();
             self.anchor = None;
             self.finish_group();
+            // the step now leads to another text
+            let id = self.new_step();
             if let Some(g) = self.undo.last_mut() {
                 g.typing = true;
+                g.id = id;
             }
             return;
         }
@@ -813,7 +835,6 @@ impl Editor {
             self.lex.borrow_mut().invalidate_from(line);
         }
         (self.cursor, self.anchor) = group.before;
-        self.modified = true;
         self.revision += 1;
         self.redo.push(group);
     }
@@ -830,7 +851,6 @@ impl Editor {
             self.lex.borrow_mut().invalidate_from(line);
         }
         (self.cursor, self.anchor) = group.after;
-        self.modified = true;
         self.revision += 1;
         self.undo.push(group);
     }
@@ -917,28 +937,66 @@ impl Editor {
             .collect()
     }
 
-    /// The selection is exactly one match of `opts`.
+    /// Matches in `line` with what replaces each: `replacement` itself, or in regex
+    /// mode its expansion (`$1` groups). The match is taken in its line, so a pattern
+    /// that looks at what is around it (`\b`, `\B`, `^`, `$`) sees the same text as
+    /// the search did.
+    fn replacements_in_line(
+        &self,
+        re: &Regex,
+        line: usize,
+        replacement: &str,
+        expand: bool,
+    ) -> Vec<((usize, usize), String)> {
+        let start = self.rope.line_to_char(line);
+        let text = self.line(line);
+        re.captures_iter(&text)
+            .filter_map(|caps| {
+                let m = caps.get(0)?;
+                if m.end() == m.start() {
+                    return None;
+                }
+                let mut new = String::new();
+                if expand {
+                    caps.expand(replacement, &mut new);
+                } else {
+                    new.push_str(replacement);
+                }
+                Some((
+                    (
+                        start + text[..m.start()].chars().count(),
+                        start + text[..m.end()].chars().count(),
+                    ),
+                    new,
+                ))
+            })
+            .collect()
+    }
+
+    /// The selection is exactly one match of `opts` (as the search finds it).
     pub fn selection_matches(&self, opts: &SearchOptions) -> bool {
-        let (Some(text), Ok(re)) = (self.selected_text(), opts.compile()) else {
+        let (Some((a, b)), Ok(re)) = (self.selection(), opts.compile()) else {
             return false;
         };
-        re.find(&text)
-            .is_some_and(|m| m.start() == 0 && m.end() == text.len())
+        self.matches_in_line(&re, self.rope.char_to_line(a))
+            .contains(&(a, b))
     }
 
     /// Replaces the selected match with `replacement` (`$1` groups in regex mode).
     pub fn replace_selected(&mut self, opts: &SearchOptions, replacement: &str) -> bool {
-        if self.read_only || !self.selection_matches(opts) {
+        if self.read_only {
             return false;
         }
-        let Ok(re) = opts.compile() else {
+        let (Some(selection), Ok(re)) = (self.selection(), opts.compile()) else {
             return false;
         };
-        let text = self.selected_text().unwrap_or_default();
-        let new = if opts.regex {
-            re.replace(&text, replacement).into_owned()
-        } else {
-            replacement.to_owned()
+        let line = self.rope.char_to_line(selection.0);
+        let Some((_, new)) = self
+            .replacements_in_line(&re, line, replacement, opts.regex)
+            .into_iter()
+            .find(|(range, _)| *range == selection)
+        else {
+            return false;
         };
         self.replace_selection(&new, false);
         self.scroll_to_cursor();
@@ -957,20 +1015,14 @@ impl Editor {
         let re = opts.compile()?;
         let mut matches = Vec::new();
         for line in 0..self.rope.len_lines() {
-            matches.extend(self.matches_in_line(&re, line));
+            matches.extend(self.replacements_in_line(&re, line, replacement, opts.regex));
         }
         let count = matches.len();
         if count == 0 {
             return Ok(0);
         }
         self.edit_group(|ed| {
-            for (a, b) in matches.into_iter().rev() {
-                let old = ed.rope.slice(a..b).to_string();
-                let new = if opts.regex {
-                    re.replace(&old, replacement).into_owned()
-                } else {
-                    replacement.to_owned()
-                };
+            for ((a, b), new) in matches.into_iter().rev() {
                 ed.replace(a, b, &new);
             }
         });
@@ -1280,5 +1332,85 @@ y"
         e.apply(Action::Delete);
         let inside = e.highlighted_lines(CHECKPOINT_LINES + 3, 1);
         assert_eq!(inside[0].1[0].kind, crate::lexer::TokenKind::Keyword);
+    }
+
+    /// Replacing uses the match as it stands in its line: a pattern that looks at
+    /// what is around it must not be tried on the matched text alone.
+    #[test]
+    fn replace_with_patterns_that_look_around() {
+        let opts = |text: &str| SearchOptions {
+            text: text.to_owned(),
+            case_sensitive: true,
+            whole_words: false,
+            regex: true,
+        };
+        // `\\B`: "at" only inside a word
+        let mut ed = Editor::new("at cat bat\nat", false, 4);
+        assert_eq!(ed.replace_all(&opts(r"\Bat"), "og"), Ok(2));
+        assert_eq!(ed.text(), "at cog bog\nat");
+        // one at a time, with a group
+        let mut ed = Editor::new("xa1 a2", false, 4);
+        let o = opts(r"\Ba(\d)");
+        assert_eq!(ed.find(&o, true), Ok(Some(Found { wrapped: false })));
+        assert!(ed.selection_matches(&o));
+        assert!(ed.replace_selected(&o, "<$1>"));
+        assert_eq!(ed.text(), "x<1> a2");
+        // a selection that only looks like a match is not one
+        let mut ed = Editor::new("xa1 a2", false, 4);
+        ed.set_cursor(4, false);
+        ed.set_cursor(6, true);
+        assert_eq!(ed.selected_text().as_deref(), Some("a2"));
+        assert!(!ed.selection_matches(&o));
+        assert!(!ed.replace_selected(&o, "<$1>"));
+        assert_eq!(ed.text(), "xa1 a2");
+    }
+
+    /// Undo back to the saved text is not "modified"; any other text is.
+    #[test]
+    fn modified_follows_the_saved_text() {
+        let mut ed = Editor::new("a", false, 4);
+        assert!(!ed.modified());
+        ed.apply(Action::Move(Motion::DocEnd, false));
+        ed.apply(Action::Insert("b".into()));
+        assert!(ed.modified());
+        ed.apply(Action::Undo);
+        assert!(!ed.modified(), "back at the loaded text");
+        ed.apply(Action::Redo);
+        assert!(ed.modified());
+
+        ed.set_modified(false); // saved as "ab"
+        ed.apply(Action::Insert("c".into()));
+        assert!(ed.modified());
+        ed.apply(Action::Undo);
+        assert_eq!(ed.text(), "ab");
+        assert!(!ed.modified(), "back at the saved text");
+        // typing joins the open undo step: it is another text than the saved one
+        ed.apply(Action::Insert("d".into()));
+        ed.set_modified(false); // saved as "abd"
+        ed.apply(Action::Insert("e".into()));
+        assert_eq!(ed.text(), "abde");
+        assert!(ed.modified());
+        ed.apply(Action::Undo);
+        assert_eq!(ed.text(), "ab");
+        assert!(ed.modified(), "the typed word is one step: before the save");
+        ed.apply(Action::Redo);
+        assert_eq!(ed.text(), "abde");
+        assert!(ed.modified());
+
+        // saved, changed, undone: unmodified again; a new edit from there is not
+        ed.set_modified(false);
+        ed.apply(Action::Newline);
+        assert!(ed.modified());
+        ed.apply(Action::Undo);
+        assert!(!ed.modified());
+        ed.apply(Action::Undo);
+        assert!(ed.modified(), "before the saved text");
+        ed.apply(Action::Insert("x".into()));
+        assert!(ed.modified(), "the saved text cannot come back");
+        // marked as changed by the application (a generated text)
+        ed.set_text("select 1;");
+        assert!(!ed.modified());
+        ed.set_modified(true);
+        assert!(ed.modified());
     }
 }

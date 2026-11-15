@@ -265,6 +265,28 @@ fn ending(in_transaction: bool, completed: usize, closing: bool) -> Ending {
     }
 }
 
+/// How often a paused result looks whether its connection is still there.
+const PAUSE_CHECK: Duration = Duration::from_secs(1);
+
+/// The next request for a paused result (`Some(None)`: the handle is gone), or `None`
+/// when the connection was lost meanwhile: nothing is read while a result is paused,
+/// so the loss would otherwise show only at the next request (D-019).
+async fn next_or_lost(
+    client: &Client,
+    rx: &mut mpsc::UnboundedReceiver<Request>,
+) -> Option<Option<Request>> {
+    loop {
+        tokio::select! {
+            request = rx.recv() => return Some(request),
+            () = tokio::time::sleep(PAUSE_CHECK) => {
+                if client.is_closed() {
+                    return None;
+                }
+            }
+        }
+    }
+}
+
 /// Message of a paused result that is closed by reading its remaining rows.
 const DRAINING: &str = "Result closed: its remaining rows are read and dropped \
                         (a cancel would abort the open transaction)";
@@ -358,7 +380,13 @@ pub(crate) async fn execute(
                                 });
                                 // Backpressure (D-019): stop reading until the UI asks.
                                 while !fetch_all {
-                                    match rx.recv().await {
+                                    let Some(request) = next_or_lost(client, rx).await else {
+                                        // the stream ends with the error; the
+                                        // connection task reports the loss
+                                        drop_all = true;
+                                        break;
+                                    };
+                                    match request {
                                         Some(Request::FetchMore { run }) if run == req.run => {}
                                         Some(Request::FetchAll { run }) if run == req.run => {
                                             fetch_all = true;
