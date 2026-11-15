@@ -60,6 +60,9 @@ csv = "1.4.0"
 quick-xml = "0.41.0"
 serde_json = "1.0.154"
 
+# Windows console window position (D-069)
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_System_Console", "Win32_UI_WindowsAndMessaging"] }
+
 # Dev-only
 tempfile = "3.27.0"
 

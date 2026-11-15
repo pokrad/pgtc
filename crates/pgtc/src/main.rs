@@ -1,6 +1,7 @@
 //! pgtc — Postgres terminal commander.
 
 mod cli;
+mod window;
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
@@ -26,7 +27,10 @@ async fn main() -> Result<()> {
     tracing::info!("{APP_NAME} {APP_VERSION} starting");
     tracing::debug!(?paths, "user directories");
 
+    // D-069: pgtc's own console window on Windows gets its last place back
+    window::start(&paths);
     let result = run(&cli, paths).await;
+    window::save();
     match &result {
         Ok(()) => tracing::info!("{APP_NAME} exiting"),
         Err(e) => tracing::error!("{APP_NAME} failed: {e:#}"),

@@ -988,7 +988,8 @@ pgtc (binary)
 
 - **Files:**
   - Config dir: `settings.toml` (settings), `keymap.toml` (key overrides, D-016).
-  - Data dir: `developer_templates/` (D-013), `themes/` (D-014), `logs/` (D-029).
+  - Data dir: `developer_templates/` (D-013), `themes/` (D-014), `logs/` (D-029),
+    `window.toml` (Windows window position, D-069).
 - All paths are computed only in `pgc-core` (CLAUDE.md).
 
 ### D-029 — Log file
@@ -2099,6 +2100,27 @@ pgtc (binary)
   mode, pause). No `Ctrl+I` for statistics: most terminals send it as `Tab`.
 - `F1` and Help → Keyboard shortcuts show the keys from the keymap.
 
+### D-069 — Window position on Windows
+- **Status:** Accepted (refines D-003, D-007, D-028)
+- **Only on Windows, only for pgtc's own console window:** pgtc started from Explorer,
+  a shortcut or Win+R gets a new console window. pgtc is then the only process on the
+  console (`GetConsoleProcessList`). Started from cmd, PowerShell or over SSH, other
+  processes share the console and pgtc **never moves a terminal the user opened**.
+- **Classic console (conhost) only:** in Windows Terminal (`WT_SESSION` set, e.g.
+  Windows 11 with WT as default terminal) a program cannot place the window — nothing
+  is done. Linux and macOS: nothing.
+- **Saved:** the window placement (`GetWindowPlacement`): the normal (restored)
+  rectangle and whether the window is **maximized**. Saved on exit and when the window
+  is closed with its close button (console close handler, `CTRL_CLOSE_EVENT`).
+  Minimized is saved as the normal placement.
+- **Restored** at startup before the TUI starts (`SetWindowPlacement`, maximized again
+  if it was). A rectangle on no current monitor is skipped (Windows' default place).
+- **Always on** — no setting.
+- **File:** `window.toml` in the data dir (D-028) — state, not a setting, so not in
+  `settings.toml`. Missing or unreadable file: Windows' default place.
+- **Crate:** `windows-sys` (MIT / Apache-2.0), Windows-only dependency of the `pgtc`
+  binary.
+
 ---
 
 ## 3. Change log
@@ -2232,3 +2254,4 @@ pgtc (binary)
 | 2026-11-14 | D-064 updated: the file bar shows ` *` after the path while the tab's text has unsaved changes. |
 | 2026-11-14 | D-067 accepted: a double click on a dialog list row acts as `Enter` (file dialogs: open the folder / choose the file); two clicks on the same cell within 500 ms. |
 | 2026-11-14 | D-068 accepted: server dashboard `Alt+D` and SQL profiler `Alt+P` in the tree (like `Alt+I`, `Alt+S`), `Ctrl+D` / `Ctrl+P` as second keys. D-057, D-058 updated. |
+| 2026-11-15 | D-069 accepted: on Windows pgtc's own console window (started outside a terminal, classic console only) remembers its position, size and maximized state in `window.toml` (data dir), saved on exit and on the close button, restored at startup; always on; `windows-sys` for the `pgtc` binary. D-028 updated. |

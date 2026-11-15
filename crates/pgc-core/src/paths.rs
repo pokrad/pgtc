@@ -21,6 +21,7 @@ const KEYMAP_FILE: &str = "keymap.toml";
 const TEMPLATES_DIR: &str = "developer_templates";
 const THEMES_DIR: &str = "themes";
 const LOGS_DIR: &str = "logs";
+const WINDOW_FILE: &str = "window.toml";
 
 /// Which rules to apply (the current OS, or another one in tests).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -151,6 +152,11 @@ impl Paths {
     /// `<data>/logs` (D-029)
     pub fn logs_dir(&self) -> PathBuf {
         self.data_dir.join(LOGS_DIR)
+    }
+
+    /// `<data>/window.toml` — position of pgtc's own console window on Windows (D-069)
+    pub fn window_file(&self) -> PathBuf {
+        self.data_dir.join(WINDOW_FILE)
     }
 }
 

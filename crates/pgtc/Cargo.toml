@@ -15,5 +15,13 @@ pgc-core.workspace = true
 pgc-db.workspace = true
 pgc-sql.workspace = true
 pgc-ui.workspace = true
+serde.workspace = true
 tokio.workspace = true
+toml.workspace = true
 tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys.workspace = true

@@ -1650,8 +1650,12 @@ dependencies = [
  "pgc-db",
  "pgc-sql",
  "pgc-ui",
+ "serde",
+ "tempfile",
  "tokio",
+ "toml",
  "tracing",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
