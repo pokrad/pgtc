@@ -275,51 +275,104 @@ impl App {
                 }
             }
             Cmd::Generate { what, table } => {
-                // reading the table would end a paused result (or the stream an
-                // export reads from): refused, as for templates (D-019, D-046)
-                if self
-                    .query()
-                    .is_some_and(|q| q.running.is_some() || q.export.is_some())
-                {
-                    self.error(CONNECTION_BUSY);
+                if *what == crate::psql::Gen::Merge && !version.has(pgc_core::Feature::Merge) {
+                    self.error("MERGE needs PostgreSQL 15 or later.");
                     return;
                 }
-                let sql = match self.sql.render("psql", "generate.sql", ctx) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        self.error(&e.to_string());
-                        return;
-                    }
-                };
                 let tab = self.tabs[self.active_tab].id;
-                let Some(handle) = self
-                    .query()
-                    .and_then(|q| q.conn.as_ref())
-                    .map(|c| c.handle.clone())
-                else {
-                    return;
-                };
-                let name = match &table.0 {
+                let shown = match &table.0 {
                     Some(s) => format!("{s}.{}", table.1),
                     None => table.1.clone(),
                 };
-                self.next_key += 1;
-                self.template_lookups.insert(
-                    self.next_key,
-                    LookupTarget::Generate {
-                        tab,
-                        what: *what,
-                        shown: name,
-                    },
-                );
-                handle.lookup_with(
-                    self.next_key,
-                    sql,
-                    vec![table.0.clone(), Some(table.1.clone())],
-                );
-                self.status = "Reading the table…".to_owned();
+                let target = LookupTarget::Generate {
+                    tab,
+                    what: *what,
+                    shown,
+                };
+                let params = vec![table.0.clone(), Some(table.1.clone())];
+                self.generate_lookup("generate.sql", ctx, params, target, "Reading the table…");
+            }
+            Cmd::View { tables } => {
+                let tab = self.tabs[self.active_tab].id;
+                let shown = tables
+                    .iter()
+                    .map(|t| match &t.0 {
+                        Some(s) => format!("{s}.{}", t.1),
+                        None => t.1.clone(),
+                    })
+                    .collect();
+                let params = crate::psql::view_params(tables);
+                let target = LookupTarget::View { tab, shown };
+                self.generate_lookup("view.sql", ctx, params, target, "Reading the tables…");
             }
         }
+    }
+
+    /// Sends the catalog read of a generate command through the tab's connection.
+    fn generate_lookup(
+        &mut self,
+        file: &str,
+        ctx: RenderContext,
+        params: Vec<Option<String>>,
+        target: LookupTarget,
+        status: &str,
+    ) {
+        // reading the table would end a paused result (or the stream an export
+        // reads from): refused, as for templates (D-019, D-046)
+        if self
+            .query()
+            .is_some_and(|q| q.running.is_some() || q.export.is_some())
+        {
+            self.error(CONNECTION_BUSY);
+            return;
+        }
+        let sql = match self.sql.render("psql", file, ctx) {
+            Ok(s) => s,
+            Err(e) => {
+                self.error(&e.to_string());
+                return;
+            }
+        };
+        let Some(handle) = self
+            .query()
+            .and_then(|q| q.conn.as_ref())
+            .map(|c| c.handle.clone())
+        else {
+            return;
+        };
+        self.next_key += 1;
+        self.template_lookups.insert(self.next_key, target);
+        handle.lookup_with(self.next_key, sql, params);
+        self.status = status.to_owned();
+    }
+
+    /// Answer for `gtv`: the view at the cursor of the tab's editor.
+    pub(super) fn view_loaded(
+        &mut self,
+        tab: u64,
+        shown: &[String],
+        result: Result<Vec<Vec<String>>, String>,
+    ) {
+        let rows = match result {
+            Ok(r) => r,
+            Err(e) => {
+                self.error(&e);
+                return;
+            }
+        };
+        let (tables, fks) = match crate::psql::view_tables(rows, shown.len()) {
+            Ok(t) => t,
+            Err(i) => {
+                self.error(&format!("Did not find a table named \"{}\".", shown[i]));
+                return;
+            }
+        };
+        let Some(i) = self.tab_index(tab) else {
+            return;
+        };
+        let text = crate::psql::generate_view(&tables, &fks) + "\n";
+        self.tabs[i].view.editor.apply(Action::Insert(text));
+        self.status = "Generated the view — name it at [view_name]".to_owned();
     }
 
     /// Catalog queries as a run of the active query tab (results, Messages, time).
@@ -333,13 +386,7 @@ impl App {
             return;
         };
         conn.handle.catalog(pgc_db::CatalogRequest { run, queries });
-        q.start_run(
-            run,
-            Sent {
-                offset: 0,
-                plpgsql_lines: None,
-            },
-        );
+        q.start_run(run, Sent::new(0, ""));
         q.info(command.to_owned());
         self.status = "Executing…".to_owned();
     }
@@ -389,15 +436,24 @@ impl App {
             self.error(&format!("Did not find a table named \"{shown}\"."));
             return;
         };
+        use crate::psql::Gen;
+        if matches!(what, Gen::Merge | Gen::Trigger) && !table.is_table() {
+            let command = if what == Gen::Merge { "gtm" } else { "gtt" };
+            self.error(&format!(
+                "{command} works on tables only; {}.{} is not a table.",
+                table.schema, table.name
+            ));
+            return;
+        }
         let Some(i) = self.tab_index(tab) else {
             return;
         };
         let text = crate::psql::generate(what, &table) + "\n";
         self.tabs[i].view.editor.apply(Action::Insert(text));
-        let todo = if what == crate::psql::Gen::Cursor {
-            "write the loop body at PROCESS THE ROW HERE"
-        } else {
-            "fill in the [values]"
+        let todo = match what {
+            Gen::Cursor => "write the loop body at PROCESS THE ROW HERE",
+            Gen::Trigger => "name the function at [function_name]",
+            _ => "fill in the [values]",
         };
         self.status = format!("Generated for {}.{} — {todo}", table.schema, table.name);
     }

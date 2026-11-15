@@ -826,6 +826,31 @@ pgtc (binary)
   - errors with DETAIL and HINT, and the line number derived from the error position;
     selecting an error jumps to that line in the editor;
   - total execution time at the end.
+- **Positions of messages in the editor** (errors, and notices / warnings the same way;
+  not NOTIFY, not `F4` catalog runs):
+  - the position in the sent text (`position`) gives line and column;
+  - without it, a `CONTEXT` line `PL/pgSQL function inline_code_block line N` (also
+    *compilation of … near line N*) gives line N of the body of the `DO` statement
+    that was running: the statement after the ones that have completed in this run
+    (statements split with the editor's lexer); if that is not a `DO`, the only `DO` of
+    the sent text; else no position. PL/pgSQL mode (D-020) is the same with pgtc's
+    added lines left out;
+  - for an error in a SQL statement inside PL/pgSQL, PostgreSQL's internal position
+    and internal query give the column: the internal query is looked for in the body
+    from line N on (when that context line is the first one, i.e. the statement is in
+    this `DO`); not found, the jump goes to the first non-blank character of the line;
+  - the message gets a psql-style line after its first line: `LINE n: <text of the
+    line>` (n = editor line) and below it a `^` under the column (only `LINE n: …`
+    when the column is not known); long lines are cut around the column with `...`.
+    This line is part of the copied text;
+  - `Enter` or a double click on the message jumps there; with a known column the
+    token at the position is selected. Positions are taken when the message arrives:
+    after editing they are only clamped to the end of the text (they may be off).
+  - **Copy:** `Ctrl+C` / `Ctrl+Insert` copies the message under the cursor (all its
+    lines); `Ctrl+A` selects all messages, then copy copies all of them; moving the
+    cursor ends that selection.
+  - **Context menu** (`F2` / right click) in Messages: *Jump to line*, *Copy message*,
+    *Copy all messages* (`copy_all_messages`, no default key).
   - On error the Messages tab is activated automatically (the Results tab still shows
     result set 1 when switched back).
   - A run that ends **without any result set** (only command tags and notices:
@@ -867,7 +892,8 @@ pgtc (binary)
     `DO $pgc$ <editor text> $pgc$;` — if the text has no `BEGIN ... END`, it is added.
   - No `CREATE` permission is needed; nothing is created or has to be dropped.
   - `RAISE NOTICE` / `INFO` / `WARNING` output appears in the **Messages tab** (D-019),
-    like `PRINT` in SSMS.
+    like `PRINT` in SSMS. Errors and notices jump to the editor line (and column) as
+    in SQL mode (D-019); a position on a line pgtc added has no jump.
   - Limitation: a `DO` block cannot return result rows.
 - **Multi-statement execution:** unchanged — same as pgAdmin (D-019): the text is sent as
   one request.
@@ -1656,7 +1682,9 @@ pgtc (binary)
   - `d` / `d+`, `dp` — tables, views, materialized views, foreign tables, sequences;
   - `dt` / `dv` / `dm` / `ds` — tables / views / materialized views / sequences;
     combined letters add up (`dtv` → tables and views; `E` foreign tables, `i` nothing);
-  - `gts`, `gti`, `gtu`, `gtd`, `gtc` — tables, views, foreign tables;
+  - `gts`, `gti`, `gtu`, `gtd`, `gtc`, `gto`, `gtsi`, `gtv` — tables, views, foreign
+    tables (`gtv` completes the last name typed);
+  - `gtm`, `gtt` — tables;
   - all others — nothing (*No suggestions*).
   Names come from the query tab's name cache (*loading…* until it is read; nothing is
   read while a result runs or is paused). Names on the search path are offered as
@@ -1715,6 +1743,58 @@ pgtc (binary)
     wrapper, so it runs in a PL/pgSQL-mode tab (D-020) and fits into a function body.
     Inside the loop one comment line per field (`-- rec.id  integer, NOT NULL`) and the
     comment `--PROCESS THE ROW HERE` (no placeholder: the block runs as generated).
+  - `gto` *table* — upsert: `INSERT … VALUES (…) ON CONFLICT (key) DO UPDATE SET col =
+    EXCLUDED.col, …`. Columns as *INSERT*, but the key columns are always listed (also
+    when a sequence fills them; otherwise the row never conflicts); generated columns
+    left out; `OVERRIDING SYSTEM VALUE` before `VALUES` when a key column is identity
+    `ALWAYS`. Key as *UPDATE* (primary key, else the unique constraint; the comment on
+    the `ON CONFLICT` line says which). `SET` every other listed column; only key
+    columns → `DO NOTHING`; no key → `ON CONFLICT DO NOTHING  -- no primary key: write
+    a conflict target to update`.
+  - `gtsi` *table* — PL/pgSQL single-row read (SELECT INTO): `DECLARE` one variable
+    per column typed `schema.table.column%TYPE`, then `BEGIN SELECT <every column> INTO STRICT
+    <variables> FROM … WHERE <key> = [column]; --PROCESS THE ROW HERE END;` (frame as
+    `gtc`, `WHERE` as *UPDATE*, placeholders as above). Variable names: `v_` + the
+    column name in lower case with every character other than a letter, digit or `_`
+    turned into `_` (`"Due Date"` → `v_due_date`); a repeated name gets `_2`, `_3`, ….
+  - `gtm` *table* — `MERGE INTO <table> AS t USING (VALUES ([column]::type, …)) AS s
+    (columns) ON t.key = s.key WHEN MATCHED THEN UPDATE SET col = s.col, … WHEN NOT
+    MATCHED THEN INSERT (columns) VALUES (s.columns);`. Columns as `gto`; every value
+    is cast to its column type (a filled-in `VALUES` row is otherwise `text` /
+    `unknown`), its line has the *INSERT* comment. Key as *UPDATE*; no key → `ON
+    [condition]  -- no primary key: write a condition`; only key columns → `WHEN
+    MATCHED THEN DO NOTHING`; identity `ALWAYS` key → `OVERRIDING SYSTEM VALUE` in the
+    insert. No `WHEN NOT MATCHED BY SOURCE` (it would delete every row not in
+    `USING`). Needs PostgreSQL 15 (feature `Merge`, D-011): refused before that with
+    *MERGE needs PostgreSQL 15 or later*. Tables only (not views or foreign tables).
+  - `gtt` *table* — a row trigger: `CREATE OR REPLACE FUNCTION <schema>.[function_name]()
+    RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN … END; $$;` with one comment line per
+    field (`-- NEW. / OLD.id  integer, NOT NULL`), `IF TG_OP = 'INSERT'` / `'UPDATE'` /
+    `'DELETE'` branches with `--PROCESS NEW HERE` / `--PROCESS OLD AND NEW HERE` /
+    `--PROCESS OLD HERE` and `RETURN NEW` / `NEW` / `OLD`, `RETURN NULL` at the end;
+    then `CREATE TRIGGER <table>_trg BEFORE INSERT OR UPDATE OR DELETE ON <table> FOR
+    EACH ROW EXECUTE FUNCTION <schema>.[function_name]();`. The function is in the
+    table's schema; its name is a placeholder on purpose: the script does not run until the developer
+    names the function. Run in SQL mode. Tables only (views need `INSTEAD OF` triggers).
+  - `gtv` *table* [*table* …] — a view over one or more tables (views, foreign
+    tables): `CREATE VIEW <schema>.[view_name] AS SELECT <columns> FROM <first> JOIN …;`
+    in the first table's schema; the view name is a placeholder (does not run until
+    named, as `gtt`). Names separated by spaces (`gtv orders customers "Order Items"`).
+    - *Aliases:* every table gets `T1`, `T2`, `T3`, … in the order typed (`FROM
+      public.orders AS T1`), unquoted, so joins and conditions are easy to write.
+    - *Columns:* every column of every table, one per line, `T1.column`; a column name
+      already used by an earlier table gets `AS table_column` (quoted when needed); the
+      first one keeps its name. The prefix is the table name; the same table twice
+      numbers it (`employees_2_id`).
+    - *Joins:* in the order typed; each table is joined on a foreign key to any table
+      before it, in either direction; several column pairs with `AND`. Several
+      foreign keys to choose from → the first by constraint name, the others listed
+      in the comment (`-- orders_billing_fkey; also: orders_shipping_fkey`). `LEFT
+      JOIN` when the earlier table holds the foreign key and one of its columns allows
+      `NULL` (its rows without a parent stay), else `JOIN`. No foreign key → `JOIN …
+      ON 1=1  -- no foreign key: write the join condition`. Views and foreign tables
+      have none.
+    - A name not found → *Did not find a table named "…"*, nothing inserted.
 
 ### D-055 — Find object in the tree (`Ctrl+F`)
 - **Status:** Accepted (refines D-009, D-036)
@@ -2377,3 +2457,7 @@ pgtc (binary)
 | 2026-11-15 | D-054 updated: autocomplete in the `F4` input — only on `Ctrl+Space` / `Alt+/` (never by itself), for the argument; each command has its own list of object kinds (`d` / `dp`: tables, views, materialized views, foreign tables, sequences; `dt` / `dv` / `dm` / `ds` their kinds, combined letters add up; `gts`–`gtd`: tables, views, foreign tables; the others none); names from the tab's cache (D-052), schema-qualified when not on the search path. D-052 updated. |
 | 2026-11-15 | D-057 updated (ideas from pgCenter, no code or SQL taken): cheap queries only; summary strip of four lines — server role, oldest transaction, longest query, oldest xmin and its PID, deadlocks / conflicts / checksum failures per refresh (above 0 in `dashboard.very_slow`), a Replication line with standby lag and the WAL kept by slots; Sessions columns xmin age and transaction ID; Progress list (`pg_stat_progress_*`). D-059 updated (statement pane for the Progress list). |
 | 2026-11-15 | D-054 updated: generate command `gtc` *table* — PL/pgSQL `DECLARE` of a bound cursor `cur` over every column and `rec record`, then an `OPEN` / `FETCH` / `EXIT WHEN NOT FOUND` / `CLOSE` loop with one comment per field and the comment `--PROCESS THE ROW HERE`; no `DO` wrapper (D-020); autocomplete as `gts`. |
+| 2026-11-15 | D-054 updated: generate commands `gto` *table* (upsert: `INSERT … ON CONFLICT (key) DO UPDATE SET col = EXCLUDED.col`, key columns always listed, `OVERRIDING SYSTEM VALUE` for an identity `ALWAYS` key, `DO NOTHING` without other columns or without a key) and `gtsi` *table* (PL/pgSQL `DECLARE` of `v_column` variables with `%TYPE`, `SELECT … INTO STRICT … WHERE <key> = [column]`, `--PROCESS THE ROW HERE`); autocomplete as `gts`. |
+| 2026-11-15 | D-054 updated: generate commands `gtm` *table* (`MERGE … USING (VALUES ([column]::type, …))`, `WHEN MATCHED` update / `WHEN NOT MATCHED` insert, no `BY SOURCE` delete; PostgreSQL 15+, feature `Merge`) and `gtt` *table* (`BEFORE INSERT OR UPDATE OR DELETE` row trigger with `TG_OP` branches and the fields as comments; function in the table's schema with the name `[function_name]` as a placeholder so the script does not run until named; trigger `<table>_trg`); both tables only; new feature `Merge` in the D-011 feature table. |
+| 2026-11-15 | D-054 updated: generate command `gtv` *table* [*table* …] — `CREATE VIEW <schema>.[view_name]` over one or more tables, aliases `T1`, `T2`, …, every column (`AS table_column` for a name an earlier table already has), joins in the order typed on a foreign key to an earlier table (first by name, others in a comment; `LEFT JOIN` when the earlier table holds a nullable foreign key), `ON 1=1` with a comment without one; the variables + `SELECT INTO` command is `gtsi`. |
+| 2026-11-15 | D-019 updated: positions of messages — errors and notices map to editor line and column from `position`, from `CONTEXT … inline_code_block line N` of the running `DO` (also in SQL mode), with the column from PostgreSQL's internal position and query; psql-style `LINE n:` line with `^` caret in the message (copied too); `Enter` / double click jump and select the token; positions only clamped after edits; `Ctrl+A` + copy copies all messages; Messages context menu *Jump to line*, *Copy message*, *Copy all messages*. D-020 updated. |

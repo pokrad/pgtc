@@ -19,6 +19,11 @@ pub(super) enum LookupTarget {
         what: crate::psql::Gen,
         shown: String,
     },
+    /// Tables of a `gtv` view for query tab `tab` (D-054), names as typed.
+    View {
+        tab: u64,
+        shown: Vec<String>,
+    },
     /// Autocomplete names of query tab `tab` (D-052).
     Names {
         tab: u64,
@@ -31,7 +36,9 @@ impl LookupTarget {
     /// The query tab a lookup was made for; `None` for the template form's lists.
     pub(super) fn tab(&self) -> Option<u64> {
         match self {
-            LookupTarget::Generate { tab, .. } | LookupTarget::Names { tab, .. } => Some(*tab),
+            LookupTarget::Generate { tab, .. }
+            | LookupTarget::View { tab, .. }
+            | LookupTarget::Names { tab, .. } => Some(*tab),
             LookupTarget::Field(..) | LookupTarget::Row(..) => None,
         }
     }
@@ -68,6 +75,7 @@ impl App {
             LookupTarget::Generate { tab, what, shown } => {
                 self.generate_loaded(tab, what, &shown, result)
             }
+            LookupTarget::View { tab, shown } => self.view_loaded(tab, &shown, result),
         }
     }
 

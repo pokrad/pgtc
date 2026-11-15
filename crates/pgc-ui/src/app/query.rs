@@ -85,6 +85,9 @@ impl App {
         let TabBody::Query(_, q) = body else {
             return;
         };
+        let editor = &view.editor;
+        let line_of = |c: usize| editor.line_of_char(c);
+        let lines = LineMap { line_of: &line_of };
         match event {
             DbEvent::Connected {
                 cancel, version, ..
@@ -110,13 +113,6 @@ impl App {
                 let Some(event) = take_export_rows(q, event) else {
                     return;
                 };
-                let editor = &view.editor;
-                let line_of = |c: usize| editor.line_of_char(c);
-                let line_start = |l: usize| editor.line_to_char(l.min(editor.len_lines() - 1));
-                let lines = LineMap {
-                    line_of: &line_of,
-                    line_start: &line_start,
-                };
                 let finished = q.apply(event, &lines);
                 if q.export.is_some() {
                     self.pump_export(tab);
@@ -125,7 +121,7 @@ impl App {
                     self.query_finished(tab);
                 }
             }
-            DbEvent::Notice { notice, .. } => q.notice(&notice),
+            DbEvent::Notice { notice, .. } => q.notice(&notice, &lines),
             DbEvent::Closed { error, .. } => {
                 self.connections.remove(&conn);
                 q.conn = None;
@@ -227,26 +223,23 @@ impl App {
         if text.trim().is_empty() {
             return;
         }
-        let (sql, plpgsql_lines) = if plpgsql {
+        let sent = if plpgsql {
             match crate::query_tab::wrap_plpgsql(&text) {
-                Ok((sql, n)) => (sql, Some(n)),
+                Ok((sql, prefix)) => Sent {
+                    offset,
+                    sql: sql.into(),
+                    prefix,
+                    user_len: text.chars().count(),
+                },
                 Err(e) => {
                     self.error(&e);
                     return;
                 }
             }
         } else {
-            (text, None)
+            Sent::new(offset, &text)
         };
-        self.send_query(
-            i,
-            sql,
-            Sent {
-                offset,
-                plpgsql_lines,
-            },
-            true,
-        );
+        self.send_query(i, sent.sql.to_string(), sent, true);
     }
 
     /// Sends `sql` for the query tab at index `i`.
@@ -280,15 +273,7 @@ impl App {
         if !q.connected() || q.busy() {
             return;
         }
-        self.send_query(
-            i,
-            sql.to_owned(),
-            Sent {
-                offset: 0,
-                plpgsql_lines: None,
-            },
-            false,
-        );
+        self.send_query(i, sql.to_owned(), Sent::new(0, sql), false);
         if let Some(q) = self.tabs[i].query_mut() {
             q.after_run = after;
         }

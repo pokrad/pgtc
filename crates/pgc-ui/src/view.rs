@@ -633,7 +633,8 @@ fn render_results(
                 crate::query_tab::MessageKind::Notice => t.get(Role::MessagesNotice),
                 _ => hint,
             };
-            let style = if focused && i == q.message_cursor {
+            // Ctrl+A: all messages are selected (D-019)
+            let style = if focused && (i == q.message_cursor || q.messages_all_selected) {
                 t.get(Role::GridCursor)
             } else {
                 style

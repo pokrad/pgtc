@@ -1,11 +1,12 @@
--- gts / gti / gtu / gtd (F4, D-054): the columns of one table, view or foreign table.
+-- gts / gti / gtu / gtd / gtc / gto / gtv / gtm / gtt (F4, D-054): the columns of one
+-- table, view or foreign table.
 -- $1 schema or NULL (search path), $2 name. One row per column, all text:
 -- schema, table, column, type, not_null, default (its expression or ''), identity
 -- ('a' / 'd' / ''), generated ('s' / ''), pk_pos (position in the primary key or ''),
 -- uk_pos (position in the first unique constraint whose columns are all NOT NULL),
--- uk_name.
+-- uk_name, relkind.
 WITH t AS (
-    SELECT c.oid, n.nspname, c.relname
+    SELECT c.oid, n.nspname, c.relname, c.relkind
     FROM pg_catalog.pg_class c
     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
     WHERE c.relname = $2::text
@@ -33,7 +34,8 @@ SELECT t.nspname::text, t.relname::text, a.attname::text,
     ''::text, -- no generated columns before PostgreSQL 12
     COALESCE(pg_catalog.array_position((SELECT conkey FROM pk), a.attnum)::text, ''),
     COALESCE(pg_catalog.array_position((SELECT conkey FROM uk), a.attnum)::text, ''),
-    COALESCE((SELECT conname FROM uk)::text, '')
+    COALESCE((SELECT conname FROM uk)::text, ''),
+    t.relkind::text
 FROM t
 JOIN pg_catalog.pg_attribute a ON a.attrelid = t.oid AND a.attnum > 0 AND NOT a.attisdropped
 ORDER BY a.attnum

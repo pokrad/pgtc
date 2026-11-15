@@ -41,17 +41,41 @@ pub enum MessageKind {
 pub struct Message {
     pub kind: MessageKind,
     pub text: String,
-    /// Editor position (char index) to jump to with Enter (errors, D-019).
+    /// Editor position (char index) to jump to with Enter (errors, notices, D-019).
     pub jump: Option<usize>,
+    /// The jump has a column: the token there is selected.
+    pub exact: bool,
 }
 
-/// What was sent, for mapping error positions back to the editor.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// What was sent, for mapping message positions back to the editor.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Sent {
     /// Char index in the editor where the executed text starts.
     pub offset: usize,
-    /// PL/pgSQL mode: lines added before the user's text (D-020).
-    pub plpgsql_lines: Option<usize>,
+    /// The sent text.
+    pub sql: std::sync::Arc<str>,
+    /// Chars pgtc added before the user's text (PL/pgSQL mode, D-020).
+    pub prefix: usize,
+    /// Chars of the user's text.
+    pub user_len: usize,
+}
+
+impl Sent {
+    /// `sql` from editor char index `offset` on, as typed.
+    pub fn new(offset: usize, sql: &str) -> Self {
+        Self {
+            offset,
+            sql: sql.into(),
+            prefix: 0,
+            user_len: sql.chars().count(),
+        }
+    }
+
+    /// Editor char index of char `pos` of the sent text (none on pgtc's added text).
+    fn editor_pos(&self, pos: usize) -> Option<usize> {
+        let user = pos.checked_sub(self.prefix)?;
+        (user <= self.user_len).then_some(self.offset + user)
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -69,12 +93,10 @@ pub struct Running {
     pub asked: bool,
 }
 
-/// Maps between editor positions and lines (for error line jumps).
+/// Editor lines (for the `LINE n:` of messages).
 pub struct LineMap<'a> {
     /// Line of a char index.
     pub line_of: &'a dyn Fn(usize) -> usize,
-    /// Char index where a line starts.
-    pub line_start: &'a dyn Fn(usize) -> usize,
 }
 
 /// A running result export (D-021, D-042).
@@ -151,6 +173,10 @@ pub struct QueryState {
     pub plpgsql: bool,
     pub file: Option<PathBuf>,
     pub sent: Option<Sent>,
+    /// Statements of the run that have completed (the running one is the next).
+    pub completed: usize,
+    /// `Ctrl+A` in Messages: copy copies all of them (D-019).
+    pub messages_all_selected: bool,
     pub after_run: Option<AfterRun>,
     /// Server uid and database of the tab (kept to reconnect, D-041).
     pub binding: Option<(u64, String)>,
@@ -182,6 +208,8 @@ impl QueryState {
             plpgsql: false,
             file: None,
             sent: None,
+            completed: 0,
+            messages_all_selected: false,
             after_run: None,
             binding: None,
             export: None,
@@ -239,6 +267,8 @@ impl QueryState {
         self.active_result = 0;
         self.messages.clear();
         self.message_cursor = 0;
+        self.messages_all_selected = false;
+        self.completed = 0;
         self.show_messages = false;
         self.running = Some(Running {
             started: Instant::now(),
@@ -254,8 +284,34 @@ impl QueryState {
         self.results_visible = true;
     }
 
-    fn push(&mut self, kind: MessageKind, text: String, jump: Option<usize>) {
-        self.messages.push(Message { kind, text, jump });
+    fn push(&mut self, kind: MessageKind, text: String) {
+        self.messages.push(Message {
+            kind,
+            text,
+            jump: None,
+            exact: false,
+        });
+    }
+
+    /// A server message with its editor position and `LINE n:` text (D-019).
+    fn push_server(&mut self, kind: MessageKind, m: &ServerMessage, lines: &LineMap<'_>) {
+        let place = self.sent.as_ref().and_then(|sent| {
+            let at = crate::message_pos::locate(&sent.sql, m, self.completed)?;
+            let pos = sent.editor_pos(at.pos)?;
+            let line_no = (lines.line_of)(pos) + 1;
+            let text = crate::message_pos::line_text(&sent.sql, at.pos, at.exact, line_no);
+            Some((pos, at.exact, text))
+        });
+        let (jump, exact, line) = match place {
+            Some((pos, exact, text)) => (Some(pos), exact, Some(text)),
+            None => (None, false, None),
+        };
+        self.messages.push(Message {
+            kind,
+            text: format_message(m, line.as_deref()),
+            jump,
+            exact,
+        });
     }
 
     /// Applies an event of the running execution. Returns true when it finished.
@@ -288,12 +344,12 @@ impl QueryState {
                 if let Some(r) = self.running.as_mut() {
                     r.closing = false;
                 }
-                self.push(MessageKind::Command, tag, None);
+                self.completed += 1;
+                self.push(MessageKind::Command, tag);
             }
-            QueryEvent::Info(text) => self.push(MessageKind::Info, text, None),
+            QueryEvent::Info(text) => self.push(MessageKind::Info, text),
             QueryEvent::Error(m) => {
-                let jump = self.error_position(&m, lines);
-                self.push(MessageKind::Error, format_server_message(&m), jump);
+                self.push_server(MessageKind::Error, &m, lines);
                 // D-019: on error the Messages tab is shown
                 self.show_messages = true;
                 self.message_cursor = self.messages.len() - 1;
@@ -315,7 +371,6 @@ impl QueryState {
                 self.push(
                     MessageKind::Time,
                     format!("Total time: {}", format_duration(elapsed)),
-                    None,
                 );
                 return true;
             }
@@ -323,36 +378,28 @@ impl QueryState {
         false
     }
 
-    pub fn notice(&mut self, m: &ServerMessage) {
-        self.push(MessageKind::Notice, format_server_message(m), None);
+    pub fn notice(&mut self, m: &ServerMessage, lines: &LineMap<'_>) {
+        self.push_server(MessageKind::Notice, m, lines);
     }
 
     pub fn info(&mut self, text: impl Into<String>) {
-        self.push(MessageKind::Info, text.into(), None);
+        self.push(MessageKind::Info, text.into());
     }
 
-    /// Editor char index for an error: SQL mode from the error position, PL/pgSQL
-    /// mode from "line N" in the context (D-019, D-020).
-    fn error_position(&self, m: &ServerMessage, lines: &LineMap<'_>) -> Option<usize> {
-        let sent = self.sent?;
-        match sent.plpgsql_lines {
-            None => m
-                .position
-                .map(|p| sent.offset + (p as usize).saturating_sub(1)),
-            Some(added) => {
-                let ctx = m.context.as_deref()?;
-                let line: usize = ctx
-                    .split("line ")
-                    .nth(1)?
-                    .split(|c: char| !c.is_ascii_digit())
-                    .next()?
-                    .parse()
-                    .ok()?;
-                let user_line = line.checked_sub(added + 1)?;
-                let base_line = (lines.line_of)(sent.offset);
-                Some((lines.line_start)(base_line + user_line))
-            }
+    /// Text copied from Messages: all of them after `Ctrl+A`, else the one under the
+    /// cursor (D-019).
+    pub fn messages_copy_text(&self) -> Option<String> {
+        if self.messages_all_selected {
+            return self.all_messages_text();
         }
+        self.messages
+            .get(self.message_cursor)
+            .map(|m| m.text.clone())
+    }
+
+    pub fn all_messages_text(&self) -> Option<String> {
+        let texts: Vec<&str> = self.messages.iter().map(|m| m.text.as_str()).collect();
+        (!texts.is_empty()).then(|| texts.join("\n"))
     }
 
     /// Text for the tab label: database, mode and transaction state (D-019, D-020).
@@ -373,9 +420,14 @@ impl QueryState {
     }
 }
 
-/// `ERROR:  message` with DETAIL / HINT / CONTEXT lines (psql style).
-pub fn format_server_message(m: &ServerMessage) -> String {
+/// `ERROR:  message` with psql's `LINE n:` text (if any) and DETAIL / HINT / CONTEXT
+/// lines (psql style).
+fn format_message(m: &ServerMessage, line: Option<&str>) -> String {
     let mut s = format!("{}:  {}", m.severity, m.message);
+    if let Some(l) = line {
+        s.push('\n');
+        s.push_str(l);
+    }
     if let Some(d) = &m.detail {
         s.push_str(&format!("\nDETAIL:  {d}"));
     }
@@ -398,8 +450,8 @@ pub fn format_duration(d: Duration) -> String {
 }
 
 /// PL/pgSQL mode (D-020): wraps the text in a `DO` block; `BEGIN … END` is added when
-/// the text has none. Returns the SQL and the number of lines before the user's text
-/// inside the DO body (for error line mapping).
+/// the text has none. Returns the SQL and the number of chars before the user's text
+/// (for message positions).
 pub fn wrap_plpgsql(text: &str) -> Result<(String, usize), String> {
     if text.contains("$pgc$") {
         return Err("The text contains $pgc$, which PL/pgSQL mode uses as its quote.".to_owned());
@@ -412,9 +464,9 @@ pub fn wrap_plpgsql(text: &str) -> Result<(String, usize), String> {
     let has_block = matches!(words.first().map(String::as_str), Some("declare" | "begin"))
         && words.last().map(String::as_str) == Some("end");
     if has_block {
-        Ok((format!("DO $pgc$\n{text}\n$pgc$;"), 1))
+        Ok((format!("DO $pgc$\n{text}\n$pgc$;"), 9))
     } else {
-        Ok((format!("DO $pgc$\nBEGIN\n{text}\nEND\n$pgc$;"), 2))
+        Ok((format!("DO $pgc$\nBEGIN\n{text}\nEND\n$pgc$;"), 15))
     }
 }
 
@@ -428,10 +480,10 @@ mod tests {
             severity: "ERROR".into(),
             code: "42703".into(),
             message: "column x does not exist".into(),
-            detail: None,
             hint: Some("try y".into()),
             context: context.map(str::to_owned),
             position,
+            ..ServerMessage::default()
         }
     }
 
@@ -439,28 +491,19 @@ mod tests {
     fn plpgsql_wrapping() {
         let (sql, n) = wrap_plpgsql("RAISE NOTICE 'x';").unwrap();
         assert_eq!(sql, "DO $pgc$\nBEGIN\nRAISE NOTICE 'x';\nEND\n$pgc$;");
-        assert_eq!(n, 2);
+        assert_eq!(&sql[n..], "RAISE NOTICE 'x';\nEND\n$pgc$;");
         let (sql, n) = wrap_plpgsql("DECLARE a int;\nBEGIN\n a := 1;\nEND;").unwrap();
         assert!(sql.starts_with("DO $pgc$\nDECLARE"));
-        assert_eq!(n, 1);
+        assert_eq!(&sql[n..n + 7], "DECLARE");
         assert!(wrap_plpgsql("select '$pgc$'").is_err());
     }
 
     #[test]
     fn events_build_results_and_messages() {
         let mut q = QueryState::new(true, false);
-        q.start_run(
-            7,
-            Sent {
-                offset: 10,
-                plpgsql_lines: None,
-            },
-        );
+        q.start_run(7, Sent::new(10, "select x from t"));
         let zero = |_: usize| 0;
-        let line_start = LineMap {
-            line_of: &zero,
-            line_start: &zero,
-        };
+        let line_start = LineMap { line_of: &zero };
         q.apply(
             QueryEvent::ResultStart {
                 columns: vec![Column {
@@ -488,7 +531,11 @@ mod tests {
         q.apply(QueryEvent::Error(msg(Some(5), None)), &line_start);
         assert!(q.show_messages, "errors switch to Messages");
         assert_eq!(q.messages[1].jump, Some(14), "offset 10 + position 5 - 1");
-        assert!(q.messages[1].text.contains("HINT:  try y"));
+        assert!(q.messages[1].exact);
+        assert_eq!(
+            q.messages[1].text,
+            "ERROR:  column x does not exist\nLINE 1: select x from t\n            ^\nHINT:  try y"
+        );
         let done = q.apply(
             QueryEvent::Finished {
                 elapsed: Duration::from_millis(12),
@@ -510,20 +557,14 @@ mod tests {
     #[test]
     fn runs_without_result_sets_show_messages() {
         let zero = |_: usize| 0;
-        let lines = LineMap {
-            line_of: &zero,
-            line_start: &zero,
-        };
-        let sent = Sent {
-            offset: 0,
-            plpgsql_lines: None,
-        };
+        let lines = LineMap { line_of: &zero };
+        let sent = Sent::new(0, "select 1");
         let finished = QueryEvent::Finished {
             elapsed: Duration::from_millis(1),
             status: TxStatus::Idle,
         };
         let mut q = QueryState::new(true, false);
-        q.start_run(1, sent);
+        q.start_run(1, sent.clone());
         q.apply(
             QueryEvent::Command {
                 tag: "INSERT 0 5".into(),
@@ -564,10 +605,7 @@ mod tests {
     #[tokio::test]
     async fn closing_a_paused_result() {
         let zero = |_: usize| 0;
-        let lines = LineMap {
-            line_of: &zero,
-            line_start: &zero,
-        };
+        let lines = LineMap { line_of: &zero };
         let columns = || QueryEvent::ResultStart {
             columns: vec![Column {
                 name: "a".into(),
@@ -589,13 +627,7 @@ mod tests {
             ssl_mode: SslMode::Prefer,
             ssl_root_cert: None,
         });
-        q.start_run(
-            1,
-            Sent {
-                offset: 0,
-                plpgsql_lines: None,
-            },
-        );
+        q.start_run(1, Sent::new(0, "select 1"));
         q.apply(columns(), &lines);
         q.apply(batch(true), &lines);
         assert!(q.paused() && !q.busy());
@@ -625,29 +657,67 @@ mod tests {
 
     #[test]
     fn plpgsql_errors_map_to_editor_lines() {
+        let text = "x := 1;\nRAISE NOTICE 'a';";
+        let (sql, prefix) = wrap_plpgsql(text).unwrap();
         let mut q = QueryState::new(true, false);
         q.start_run(
             1,
             Sent {
-                offset: 0,
-                plpgsql_lines: Some(2),
+                offset: 100,
+                sql: sql.as_str().into(),
+                prefix,
+                user_len: text.chars().count(),
             },
         );
-        // editor lines start at 0, 10, 20, ...
-        let line_of = |c: usize| c / 10;
-        let start = |l: usize| l * 10;
-        let line_start = LineMap {
-            line_of: &line_of,
-            line_start: &start,
-        };
-        q.apply(
-            QueryEvent::Error(msg(
-                Some(1),
-                Some("PL/pgSQL function inline_code_block line 4 at RAISE"),
-            )),
-            &line_start,
-        );
+        let line_of = |c: usize| text[..c - 100].matches('\n').count();
+        let lines = LineMap { line_of: &line_of };
+        let ctx = |n: usize| format!("PL/pgSQL function inline_code_block line {n} at RAISE");
         // body line 4 = user line 2 (body line 1 is empty, line 2 is BEGIN)
-        assert_eq!(q.messages[0].jump, Some(10));
+        q.notice(&msg(None, Some(&ctx(4))), &lines);
+        assert_eq!(q.messages[0].kind, MessageKind::Notice);
+        assert_eq!(q.messages[0].jump, Some(108));
+        assert!(!q.messages[0].exact);
+        assert!(q.messages[0].text.contains("\nLINE 2: RAISE NOTICE 'a';\n"));
+        // the BEGIN pgtc added: no jump, no LINE
+        q.apply(QueryEvent::Error(msg(None, Some(&ctx(2)))), &lines);
+        assert_eq!(q.messages[1].jump, None);
+        assert!(!q.messages[1].text.contains("LINE"));
+    }
+
+    /// A notice of a `DO` in SQL mode jumps to its line in the running `DO` (D-019).
+    #[test]
+    fn notices_of_a_do_in_sql_mode() {
+        let sql =
+            "DO $$ BEGIN RAISE NOTICE 'one'; END $$;\nDO $$\nBEGIN\n  RAISE NOTICE 'two';\nEND $$;";
+        let mut q = QueryState::new(true, false);
+        q.start_run(1, Sent::new(0, sql));
+        let line_of = |c: usize| sql[..c].matches('\n').count();
+        let lines = LineMap { line_of: &line_of };
+        let ctx = |n: usize| ServerMessage {
+            severity: "NOTICE".into(),
+            message: "x".into(),
+            context: Some(format!(
+                "PL/pgSQL function inline_code_block line {n} at RAISE"
+            )),
+            ..ServerMessage::default()
+        };
+        q.notice(&ctx(1), &lines);
+        assert_eq!(q.messages[0].jump, Some(6), "first DO: BEGIN of its line 1");
+        q.apply(QueryEvent::Command { tag: "DO".into() }, &lines);
+        q.notice(&ctx(3), &lines);
+        let jump = q.messages[2].jump.unwrap();
+        assert!(sql[jump..].starts_with("RAISE NOTICE 'two'"));
+        assert!(
+            q.messages[2]
+                .text
+                .starts_with("NOTICE:  x\nLINE 4:   RAISE")
+        );
+
+        // copy: the message under the cursor, or all after Ctrl+A
+        q.message_cursor = 1;
+        assert_eq!(q.messages_copy_text().as_deref(), Some("DO"));
+        q.messages_all_selected = true;
+        let all = q.messages_copy_text().unwrap();
+        assert_eq!(all.lines().filter(|l| l.starts_with("NOTICE")).count(), 2);
     }
 }

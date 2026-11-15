@@ -740,6 +740,18 @@ impl App {
             Command::SqlProfiler => self.dashboard_target().is_some(),
             Command::DbStats => self.db_stats_target().is_some(),
             Command::DbStatsRefresh => self.db_stats().is_some(),
+            // Messages: the context menu (D-019)
+            Command::Accept | Command::Copy if self.focus == Focus::Results => {
+                self.query().is_some_and(|q| {
+                    q.on_messages()
+                        && q.messages
+                            .get(q.message_cursor)
+                            .is_some_and(|m| cmd == Command::Copy || m.jump.is_some())
+                })
+            }
+            Command::CopyAllMessages => self
+                .query()
+                .is_some_and(|q| q.on_messages() && !q.messages.is_empty()),
             Command::Copy | Command::SelectAll if self.db_stats().is_some() => {
                 self.db_stats().is_some_and(|s| !s.grid.rows.is_empty())
             }

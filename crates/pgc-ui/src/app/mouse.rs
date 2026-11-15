@@ -133,7 +133,8 @@ impl App {
             }
             MouseEventKind::Down(MouseButton::Left) if !self.modal() && hits.grid.contains(p) => {
                 self.focus = Focus::Results;
-                self.click_results(p, hits);
+                let double = self.double_click(p);
+                self.click_results(p, hits, double);
             }
             MouseEventKind::ScrollDown | MouseEventKind::ScrollUp
                 if !self.modal() && hits.grid.contains(p) =>
@@ -151,7 +152,7 @@ impl App {
             MouseEventKind::Down(MouseButton::Left) => self.left_click(p, hits),
             MouseEventKind::Down(MouseButton::Right) if !self.modal() && hits.grid.contains(p) => {
                 self.focus = Focus::Results;
-                self.click_results(p, hits);
+                self.click_results(p, hits, false);
                 self.open_results_menu((p.x, p.y + 1));
             }
             MouseEventKind::Down(MouseButton::Right) if !self.modal() && hits.tree.contains(p) => {

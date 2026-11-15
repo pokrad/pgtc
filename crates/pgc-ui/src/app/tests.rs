@@ -502,7 +502,13 @@ fn cursor_follows_the_focused_control() {
 
 /// Draws the app on a test screen and returns its text.
 fn screen_text(a: &App) -> String {
-    let mut terminal = ratatui::Terminal::new(ratatui::backend::TestBackend::new(100, 30)).unwrap();
+    screen_text_sized(a, 100, 30)
+}
+
+/// Draws the app on a test screen of the given size and returns its text.
+fn screen_text_sized(a: &App, width: u16, height: u16) -> String {
+    let mut terminal =
+        ratatui::Terminal::new(ratatui::backend::TestBackend::new(width, height)).unwrap();
     let mut hits = Hits::default();
     terminal
         .draw(|f| crate::view::render(f, a, &mut hits))
@@ -923,14 +929,14 @@ fn psql_window_lists_every_command() {
     let d = a.psql_dialog("");
     a.dialogs.push(d);
     let rows = crate::psql::list_rows();
-    let screen = screen_text(&a);
+    let screen = screen_text_sized(&a, 100, 40);
     assert!(
         screen.contains("dt         [pattern] list tables"),
         "{screen}"
     );
     assert!(!screen.contains("\\dt"), "no psql backslash: {screen}");
     assert!(screen.contains(" pgtc "), "{screen}");
-    assert!(screen.contains("gtc"), "the whole list fits: {screen}");
+    assert!(screen.contains("gtt"), "the whole list fits: {screen}");
     // Down: the next command goes into the input (with a space for its argument)
     key(&mut a, "Down");
     assert_eq!(a.dialogs[0].text("cmd"), Some("l "));
@@ -1686,18 +1692,9 @@ fn query_tab_layout_draws_results_and_messages() {
     a.new_query_tab(None);
     typing(&mut a, "select 1");
     let q = a.query_mut().unwrap();
-    q.start_run(
-        1,
-        Sent {
-            offset: 0,
-            plpgsql_lines: None,
-        },
-    );
+    q.start_run(1, Sent::new(0, ""));
     let none = |_: usize| 0;
-    let lines = LineMap {
-        line_of: &none,
-        line_start: &none,
-    };
+    let lines = LineMap { line_of: &none };
     q.apply(
         pgc_db::QueryEvent::ResultStart {
             columns: vec![pgc_db::Column {
@@ -1728,6 +1725,78 @@ fn query_tab_layout_draws_results_and_messages() {
         text.contains(" Messages (0)  │  1: 2+ rows "),
         "result tabs stay: {text}"
     );
+}
+
+/// D-019: an error shows psql's `LINE n:` with a caret; Enter jumps to it and selects
+/// the token; `Ctrl+A` + copy copies all messages; the Messages context menu.
+#[test]
+fn message_positions_jump_and_copy() {
+    let (mut a, _d) = app();
+    a.new_query_tab(None);
+    let text = "select 1;\nselect nosuchcol from t;";
+    a.editor().set_text(text);
+    let q = a.query_mut().unwrap();
+    q.start_run(1, Sent::new(0, text));
+    let line_of = |c: usize| text[..c].matches('\n').count();
+    let lines = LineMap { line_of: &line_of };
+    q.apply(
+        pgc_db::QueryEvent::Command {
+            tag: "SELECT 1".into(),
+        },
+        &lines,
+    );
+    q.apply(
+        pgc_db::QueryEvent::Error(pgc_db::ServerMessage {
+            severity: "ERROR".into(),
+            message: "column \"nosuchcol\" does not exist".into(),
+            position: Some(18),
+            ..Default::default()
+        }),
+        &lines,
+    );
+    let m = &a.query().unwrap().messages[1];
+    assert_eq!(
+        m.text,
+        format!(
+            "ERROR:  column \"nosuchcol\" does not exist\n\
+             LINE 2: select nosuchcol from t;\n{}^",
+            " ".repeat(15)
+        )
+    );
+    a.focus = Focus::Results;
+    a.query_mut().unwrap().message_cursor = 1;
+    key(&mut a, "Enter");
+    assert_eq!(a.focus, Focus::Tabs);
+    assert_eq!(a.editor().selected_text().as_deref(), Some("nosuchcol"));
+
+    // Ctrl+A, copy: every message; moving the cursor ends the selection
+    a.focus = Focus::Results;
+    key(&mut a, "Ctrl+A");
+    assert!(a.query().unwrap().messages_all_selected);
+    key(&mut a, "Ctrl+C");
+    let all = a.clipboard.paste();
+    assert!(
+        all.starts_with("SELECT 1\nERROR:") && all.contains("LINE 2:"),
+        "{all}"
+    );
+    key(&mut a, "Up");
+    assert!(!a.query().unwrap().messages_all_selected);
+    key(&mut a, "Ctrl+C");
+    assert_eq!(a.clipboard.paste(), "SELECT 1");
+
+    // F2: Jump to line (only on a message with a position), Copy message, Copy all
+    key(&mut a, "F2");
+    let screen = screen_text(&a);
+    for item in ["Jump to line", "Copy message", "Copy all messages"] {
+        assert!(screen.contains(item), "{screen}");
+    }
+    assert!(!a.is_enabled(Command::Accept), "SELECT 1 has no position");
+    assert!(a.is_enabled(Command::CopyAllMessages));
+    a.popup = None;
+    key(&mut a, "Down");
+    assert!(a.is_enabled(Command::Accept));
+    a.run(Command::CopyAllMessages);
+    assert_eq!(a.clipboard.paste(), all);
 }
 
 /// The text cursor is drawn in reverse video too, so it is visible in every
@@ -1979,13 +2048,7 @@ async fn no_lookups_while_a_result_is_running_or_paused() {
         ssl_mode: SslMode::default(),
         ssl_root_cert: None,
     });
-    q.start_run(
-        1,
-        Sent {
-            offset: 0,
-            plpgsql_lines: None,
-        },
-    );
+    q.start_run(1, Sent::new(0, ""));
     let gts = |a: &mut App| {
         let d = a.psql_dialog("gts orders");
         a.run_psql(d, "gts orders");

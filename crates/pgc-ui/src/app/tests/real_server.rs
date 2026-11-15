@@ -168,6 +168,54 @@ async fn psql_commands_against_a_real_server() {
         ),
         "{text}"
     );
+    // gtv: a second table with a nullable foreign key to the first; typed first,
+    // so the first table is joined with LEFT JOIN on that key
+    a.editor().set_text(
+        "CREATE TEMP TABLE pgtc_psql_items (item_id int PRIMARY KEY, \
+         psql_id int REFERENCES pgtc_psql, note text)",
+    );
+    key(&mut a, "F5");
+    pump(&mut a, &mut rx, &hits, idle).await;
+    a.editor().set_text("");
+    a.status.clear();
+    run(&mut a, "gtv pgtc_psql_items pgtc_psql");
+    pump(&mut a, &mut rx, &hits, |a| {
+        a.status.starts_with("Generated")
+    })
+    .await;
+    let text = a.editor().text();
+    assert!(text.contains(".[view_name] AS\nSELECT\n"), "{text}");
+    assert!(
+        text.contains("    T1.note,\n    T2.id,\n    T2.name,\n    T2.note AS pgtc_psql_note\n"),
+        "{text}"
+    );
+    assert!(
+        text.contains(".pgtc_psql AS T2 ON T2.id = T1.psql_id;"),
+        "{text}"
+    );
+    assert!(text.contains("LEFT JOIN "), "{text}");
+    // gtv: a name that does not exist
+    a.editor().set_text("");
+    run(&mut a, "gtv pgtc_psql no_such_table_here");
+    pump(&mut a, &mut rx, &hits, |a| {
+        a.dialogs.last().is_some_and(|d| d.error)
+    })
+    .await;
+    assert!(a.editor().text().is_empty());
+    a.dialogs.clear();
+    // gtt: the trigger function and the trigger, the function name a placeholder
+    a.status.clear();
+    run(&mut a, "gtt pgtc_psql");
+    pump(&mut a, &mut rx, &hits, |a| {
+        a.status.starts_with("Generated")
+    })
+    .await;
+    let text = a.editor().text();
+    assert!(
+        text.contains(".[function_name]()\nRETURNS trigger"),
+        "{text}"
+    );
+    assert!(text.contains("CREATE TRIGGER pgtc_psql_trg"), "{text}");
     // unknown command: an error, the command line stays open
     run(&mut a, "xyz");
     assert_eq!(a.dialogs.len(), 2);
@@ -603,6 +651,15 @@ async fn query_tab_against_a_real_server() {
     key(&mut a, "Enter");
     assert_eq!(a.focus, Focus::Tabs);
     assert_eq!(a.editor().cursor_line_col().0, 1, "cursor on line 2");
+    assert_eq!(a.editor().selected_text().as_deref(), Some("nosuchcol"));
+    let q = a.query().unwrap();
+    assert!(
+        q.messages
+            .iter()
+            .any(|m| m.text.contains("\nLINE 2: select nosuchcol;\n")),
+        "{:?}",
+        q.messages
+    );
 
     // auto commit off: an open transaction shows in the label; Rollback ends it
     a.run(Command::ToggleAutoCommit);
@@ -635,6 +692,38 @@ async fn query_tab_against_a_real_server() {
         q.messages
     );
     assert!(q.messages.iter().any(|m| m.text == "DO"));
+    let notice = q.messages.iter().find(|m| m.text.contains("NOTICE:  hi 2"));
+    assert_eq!(
+        notice.and_then(|m| m.jump),
+        Some(0),
+        "PL/pgSQL mode: user line 1"
+    );
+
+    // SQL mode, DO after another statement (D-019): the notice jumps to its line, the
+    // error in a statement of the body to its column (internal position)
+    a.run(Command::TogglePlpgsql);
+    a.editor().set_text(
+        "select 1;\nDO $$\nBEGIN\n  RAISE NOTICE 'n';\n  INSERT INTO pgtc_nosuch VALUES (1);\nEND $$;",
+    );
+    a.focus = Focus::Tabs;
+    key(&mut a, "F5");
+    pump(&mut a, &mut rx, &hits, |a| !a.query().unwrap().busy()).await;
+    let q = a.query().unwrap();
+    let editor = &a.tabs[a.active_tab].view.editor;
+    let at = |m: &crate::query_tab::Message| m.jump.map(|j| editor.line_of_char(j));
+    let notice = q.messages.iter().find(|m| m.text.starts_with("NOTICE:  n"));
+    assert_eq!(notice.and_then(&at), Some(3), "{:?}", q.messages);
+    let error = q
+        .messages
+        .iter()
+        .position(|m| m.text.contains("pgtc_nosuch"));
+    let error = error.expect("the error");
+    assert_eq!(at(&q.messages[error]), Some(4), "{:?}", q.messages);
+    assert!(q.messages[error].exact, "{:?}", q.messages[error]);
+    a.focus = Focus::Results;
+    a.query_mut().unwrap().message_cursor = error;
+    key(&mut a, "Enter");
+    assert_eq!(a.editor().selected_text().as_deref(), Some("pgtc_nosuch"));
 }
 
 /// Developer template end to end against a real server (D-046); runs only when

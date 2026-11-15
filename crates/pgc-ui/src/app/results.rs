@@ -9,12 +9,20 @@ use crate::menu::{self, Popup};
 use crate::view::Hits;
 
 impl App {
-    /// Context menu of the results pane (D-042).
+    /// Context menu of the results pane (D-042), of Messages (D-019).
     pub(super) fn open_results_menu(&mut self, anchor: (u16, u16)) {
-        let entries = vec![
-            menu::item("E&xport result…", Command::ExportResult),
-            menu::item("&Fetch all", Command::FetchAll),
-        ];
+        let entries = if self.query().is_some_and(|q| q.on_messages()) {
+            vec![
+                menu::item("&Jump to line", Command::Accept),
+                menu::item("&Copy message", Command::Copy),
+                menu::item("Copy &all messages", Command::CopyAllMessages),
+            ]
+        } else {
+            vec![
+                menu::item("E&xport result…", Command::ExportResult),
+                menu::item("&Fetch all", Command::FetchAll),
+            ]
+        };
         self.popup = Some(Popup::new(entries, anchor, &|c| self.is_enabled(c)));
     }
 
@@ -71,28 +79,37 @@ impl App {
         };
         if q.on_messages() {
             let n = q.messages.len();
-            let cursor = &mut q.message_cursor;
-            match cmd {
-                Command::Up => *cursor = cursor.saturating_sub(1),
-                Command::Down => *cursor = (*cursor + 1).min(n.saturating_sub(1)),
-                Command::Home | Command::DocStart => *cursor = 0,
-                Command::End | Command::DocEnd => *cursor = n.saturating_sub(1),
-                Command::Copy => {
-                    let text = q.messages.get(q.message_cursor).map(|m| m.text.clone());
-                    if let Some(text) = text
-                        && self.clipboard.copy(&text)
-                    {
-                        self.effects.push(Effect::Osc52(text));
-                    }
+            let cursor = q.message_cursor;
+            let moved = match cmd {
+                Command::Up => Some(cursor.saturating_sub(1)),
+                Command::Down => Some((cursor + 1).min(n.saturating_sub(1))),
+                Command::Home | Command::DocStart => Some(0),
+                Command::End | Command::DocEnd => Some(n.saturating_sub(1)),
+                _ => None,
+            };
+            if let Some(to) = moved {
+                // moving ends the Ctrl+A selection (D-019)
+                q.message_cursor = to;
+                q.messages_all_selected = false;
+                return true;
+            }
+            let text = match cmd {
+                Command::SelectAll => {
+                    q.messages_all_selected = n > 0;
+                    return true;
                 }
+                Command::Copy => q.messages_copy_text(),
+                Command::CopyAllMessages => q.all_messages_text(),
                 Command::Accept => {
-                    // Enter on an error: jump to its line (D-019)
-                    if let Some(pos) = q.messages.get(q.message_cursor).and_then(|m| m.jump) {
-                        self.focus = Focus::Tabs;
-                        self.editor().set_cursor(pos, false);
-                    }
+                    self.jump_to_message();
+                    return true;
                 }
                 _ => return false,
+            };
+            if let Some(text) = text
+                && self.clipboard.copy(&text)
+            {
+                self.effects.push(Effect::Osc52(text));
             }
             return true;
         }
@@ -129,7 +146,27 @@ impl App {
         true
     }
 
-    pub(super) fn click_results(&mut self, p: Position, hits: &Hits) {
+    /// Enter (or a double click) on a message: to its place in the editor; with a
+    /// known column the token there is selected (D-019).
+    fn jump_to_message(&mut self) {
+        let Some((pos, exact)) = self
+            .query()
+            .and_then(|q| q.messages.get(q.message_cursor))
+            .and_then(|m| Some((m.jump?, m.exact)))
+        else {
+            return;
+        };
+        self.focus = Focus::Tabs;
+        let editor = self.editor();
+        editor.set_cursor(pos, false);
+        if exact && let Some((start, end)) = token_at(editor, editor.cursor()) {
+            editor.set_cursor(start, false);
+            editor.set_cursor(end, true);
+        }
+    }
+
+    /// `double`: the second click of a double click, which jumps like Enter.
+    pub(super) fn click_results(&mut self, p: Position, hits: &Hits, double: bool) {
         let grid = hits.grid;
         let Some(q) = self.query_mut() else {
             return;
@@ -137,12 +174,16 @@ impl App {
         if q.on_messages() {
             let i = (p.y - grid.y) as usize;
             if i < q.messages.len() {
+                q.messages_all_selected = false;
                 q.message_cursor = hits
                     .message_rows
                     .iter()
                     .find(|(_, r)| r.contains(p))
                     .map(|(m, _)| *m)
                     .unwrap_or(q.message_cursor);
+                if double {
+                    self.jump_to_message();
+                }
             }
             return;
         }
@@ -159,4 +200,20 @@ impl App {
         }
         self.after_grid_move();
     }
+}
+
+/// Char range of the editor token at char index `pos` (not whitespace).
+fn token_at(editor: &pgc_editor::Editor, pos: usize) -> Option<(usize, usize)> {
+    let line = editor.line_of_char(pos);
+    let start = editor.line_to_char(line);
+    let (text, tokens) = editor.highlighted_lines(line, 1).pop()?;
+    let byte = text
+        .char_indices()
+        .nth(pos - start)
+        .map_or(text.len(), |(b, _)| b);
+    let t = tokens
+        .iter()
+        .find(|t| t.start <= byte && byte < t.end && !text[t.start..t.end].trim().is_empty())?;
+    let chars = |b: usize| start + text[..b].chars().count();
+    Some((chars(t.start), chars(t.end)))
 }

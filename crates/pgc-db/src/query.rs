@@ -44,7 +44,7 @@ impl From<TransactionStatus> for TxStatus {
 }
 
 /// A notice or error from the server.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ServerMessage {
     /// `ERROR`, `NOTICE`, `WARNING`, `INFO`, ...
     pub severity: String,
@@ -57,6 +57,9 @@ pub struct ServerMessage {
     pub context: Option<String>,
     /// 1-based character position in the sent text.
     pub position: Option<u32>,
+    /// 1-based character position in `internal_query` (a statement PL/pgSQL ran).
+    pub internal_position: Option<u32>,
+    pub internal_query: Option<String>,
 }
 
 impl ServerMessage {
@@ -70,6 +73,14 @@ impl ServerMessage {
             context: e.where_().map(str::to_owned),
             position: match e.position() {
                 Some(ErrorPosition::Original(p)) => Some(*p),
+                _ => None,
+            },
+            internal_position: match e.position() {
+                Some(ErrorPosition::Internal { position, .. }) => Some(*position),
+                _ => None,
+            },
+            internal_query: match e.position() {
+                Some(ErrorPosition::Internal { query, .. }) => Some(query.clone()),
                 _ => None,
             },
         }
@@ -87,10 +98,7 @@ impl ServerMessage {
             severity: "NOTIFY".to_owned(),
             code: String::new(),
             message,
-            detail: None,
-            hint: None,
-            context: None,
-            position: None,
+            ..Self::default()
         }
     }
 
@@ -101,10 +109,7 @@ impl ServerMessage {
                 severity: "ERROR".to_owned(),
                 code: String::new(),
                 message: crate::describe(e),
-                detail: None,
-                hint: None,
-                context: None,
-                position: None,
+                ..Self::default()
             },
         }
     }
@@ -204,6 +209,8 @@ pub(crate) async fn catalog(
                 // the position is in pgtc's query, not in the editor text
                 let mut m = ServerMessage::from_error(&e);
                 m.position = None;
+                m.internal_position = None;
+                m.internal_query = None;
                 emit(QueryEvent::Error(m));
                 break;
             }

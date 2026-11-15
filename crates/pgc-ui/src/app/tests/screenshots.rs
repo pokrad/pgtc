@@ -54,18 +54,9 @@ async fn scheme_preview_html() {
                 typing(&mut a, line);
             }
             let q = a.query_mut().unwrap();
-            q.start_run(
-                1,
-                Sent {
-                    offset: 0,
-                    plpgsql_lines: None,
-                },
-            );
+            q.start_run(1, Sent::new(0, ""));
             let none = |_: usize| 0;
-            let lines = LineMap {
-                line_of: &none,
-                line_start: &none,
-            };
+            let lines = LineMap { line_of: &none };
             let col = |n: &str, t| pgc_db::Column {
                 name: n.into(),
                 type_oid: t,
@@ -249,18 +240,9 @@ async fn readme_screenshots() {
             typing(&mut a, line);
         }
         let q = a.query_mut().unwrap();
-        q.start_run(
-            1,
-            Sent {
-                offset: 0,
-                plpgsql_lines: None,
-            },
-        );
+        q.start_run(1, Sent::new(0, ""));
         let none = |_: usize| 0;
-        let lines = LineMap {
-            line_of: &none,
-            line_start: &none,
-        };
+        let lines = LineMap { line_of: &none };
         let col = |n: &str, t| pgc_db::Column {
             name: n.into(),
             type_oid: t,

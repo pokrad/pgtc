@@ -15,6 +15,7 @@ mod hotkey;
 mod keymap;
 mod keys;
 mod menu;
+mod message_pos;
 mod objects;
 mod profiler;
 mod psql;

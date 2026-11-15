@@ -205,6 +205,7 @@ commands! {
     PrevResult = "prev_result", "Previous result set", Results;
     NextResultTab = "next_result_tab", "Next result set, then Messages", Results;
     PrevResultTab = "prev_result_tab", "Previous result set or Messages", Results;
+    CopyAllMessages = "copy_all_messages", "Copy all messages", Results;
     ResultsSmaller = "results_smaller", "Make the results (statement pane) smaller", Results;
     ResultsLarger = "results_larger", "Make the results (statement pane) larger", Results;
     // server dashboard (D-057)

@@ -89,6 +89,8 @@ features! {
     ProgressAnalyze = 130000;
     ProgressBaseBackup = 130000;
     ProgressCopy = 140000;
+    // F4 generate command gtm (D-054)
+    Merge = 150000;
 }
 
 impl Feature {
