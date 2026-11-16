@@ -93,8 +93,8 @@ Help → Keyboard shortcuts lists every key. All keys can be changed in `keymap.
 (Help → Keyboard shortcuts shows where it is).
 
 **Help:** the full manual — every feature explained step by step, with screenshots —
-is in [docs/help](docs/help/index.html): open `docs/help/index.html` in a browser
-(it works offline).
+is at <https://pokrad.github.io/pgtc/help/>. The same pages are in the source:
+open `docs/help/index.html` in a browser (it works offline).
 
 `Esc` followed by a digit works as an F-key in terminals that do not pass F-keys
 through. Alt+arrows also work from PuTTY in its default setting (Alt sent as an `Esc`
