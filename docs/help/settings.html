@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings, colours and keys — pgtc Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+<main>
+<h1>Settings, colours and keys</h1>
+<p class="lead">The Settings dialog, the colour schemes — the six that come with pgtc and your own — and how to give
+any command another key.</p>
+
+<h2 id="dialog">The Settings dialog</h2>
+<figure class="small">
+  <img src="img/settings.svg" alt="The Settings dialog" loading="lazy">
+  <figcaption><span class="menu">Settings → Settings…</span></figcaption>
+</figure>
+<p>Open it with <span class="menu">Settings → Settings…</span> (<kbd>F9</kbd>, then <kbd>Alt+S</kbd> for the <i>Settings</i> menu, <kbd>Enter</kbd>). Change what
+you like and press <kbd>Enter</kbd> on <span class="ui">OK</span>; <kbd>Esc</kbd> leaves everything as it was. The
+settings are saved at once and are there the next time you start pgtc.</p>
+
+<h3>Appearance</h3>
+<div class="tablewrap"><table>
+<tr><th>Setting</th><th>Default</th><th>Meaning</th></tr>
+<tr><td class="k"><span class="ui">Colour scheme</span></td><td>Classic</td><td>The colours of the whole program. See <a href="#schemes">Colour schemes</a>. The screen changes as soon as you pick a scheme in the list, so you can try them.</td></tr>
+<tr><td class="k"><span class="ui">ASCII frames (+ - |)</span></td><td>off</td><td>Draw all frames and lines with the plain characters <code>+ - = |</code> instead of line-drawing characters. See <a href="#ascii">below</a>.</td></tr>
+</table></div>
+
+<h3>Tree and connections</h3>
+<div class="tablewrap"><table>
+<tr><th>Setting</th><th>Default</th><th>Meaning</th></tr>
+<tr><td class="k"><span class="ui">Connect timeout (s)</span></td><td>10</td><td>How long pgtc waits for a server to answer when connecting, in seconds (1 – 3,600). Raise it for servers behind a slow VPN.</td></tr>
+<tr><td class="k"><span class="ui">Show system objects in the tree</span></td><td>off</td><td>Also show <code>pg_toast</code> and temporary schemas, template databases, <code>pg_*</code> roles and the objects of extensions. Applies to the tree and to <a href="tree.html#find">Find object</a>.</td></tr>
+</table></div>
+
+<h3>Query tabs</h3>
+<div class="tablewrap"><table>
+<tr><th>Setting</th><th>Default</th><th>Meaning</th></tr>
+<tr><td class="k"><span class="ui">Rows per batch</span></td><td>1000</td><td>How many rows of a result are fetched at a time (1 – 1,000,000). See <a href="query.html#batches">Large results</a>. A larger batch means fewer pauses when scrolling, a smaller one a quicker first screen.</td></tr>
+<tr><td class="k"><span class="ui">Cancel wait (s)</span></td><td>5</td><td>After a cancel request, how long pgtc waits before it offers to close the connection (1 – 3,600). See <a href="query.html#cancel">Cancelling</a>.</td></tr>
+<tr><td class="k"><span class="ui">Auto commit in new query tabs</span></td><td>on</td><td>The <a href="query.html#tx">Auto commit</a> switch a new query tab starts with.</td></tr>
+<tr><td class="k"><span class="ui">Auto rollback on error in new tabs</span></td><td>off</td><td>The <i>Auto rollback on error</i> switch a new query tab starts with.</td></tr>
+<tr><td class="k"><span class="ui">Ask to save query tabs when closing</span></td><td>on</td><td>Off: a query tab with unsaved text closes without the <i>Save them?</i> question — the text is discarded. Also when quitting and disconnecting.</td></tr>
+</table></div>
+<p>The two <i>Auto…</i> settings are only the starting values for tabs you open from now on. Tabs that are already open
+keep their own switches (<span class="menu">Query</span> menu).</p>
+
+<h3>Clipboard</h3>
+<div class="tablewrap"><table>
+<tr><th>Setting</th><th>Default</th><th>Meaning</th></tr>
+<tr><td class="k"><span class="ui">System clipboard</span></td><td>on</td><td>Use the clipboard of the machine pgtc runs on, for copy and paste with other programs.</td></tr>
+<tr><td class="k"><span class="ui">OSC 52 clipboard (terminal, SSH)</span></td><td>on</td><td>When copying over SSH, also send the text to your terminal, which puts it into the clipboard of the machine you sit at.</td></tr>
+</table></div>
+<p>Both are explained in <a href="editor.html#clipboard">Copy and paste</a>. Turn OSC 52 off if your terminal prints
+strange characters when you copy; turn the system clipboard off if you do not want pgtc to touch it.</p>
+
+<p>A number outside its range, or a text where a number belongs, gives an error on <span class="ui">OK</span>; the
+dialog stays open so you can correct it.</p>
+
+<h2 id="ascii">ASCII frames</h2>
+<figure>
+  <img src="img/ascii-frames.svg" alt="pgtc with ASCII frames" loading="lazy">
+  <figcaption>The same window with <span class="ui">ASCII frames</span> on.</figcaption>
+</figure>
+<p>pgtc draws its frames with line-drawing characters (<code>║ ═ ╔ │ ─ ┌</code>). A few terminals, fonts and old serial
+consoles do not have them and show letters, question marks or gaps instead. With
+<span class="ui">ASCII frames</span> checked, the outer frames are drawn with <code>+ = |</code>, the inner lines and
+the frames of dialogs and menus with <code>+ - |</code>. Everything else stays the same.</p>
+<p>If your screen is so garbled that you cannot find the dialog: quit pgtc and set the option in the settings file —
+<code>ascii_frames = true</code> under <code>[ui]</code> (see <a href="#file">below</a>).</p>
+
+<h2 id="schemes">Colour schemes</h2>
+<figure class="small">
+  <img src="img/settings-scheme.svg" alt="The list of colour schemes" loading="lazy">
+  <figcaption>The list of schemes. Move through it with <kbd>Up</kbd> / <kbd>Down</kbd>; <kbd>Enter</kbd> takes one.</figcaption>
+</figure>
+<div class="tablewrap"><table>
+<tr><th>Scheme</th><th>Look</th><th>Needs</th></tr>
+<tr><td><b>Classic</b> (default)</td><td>The look of Midnight Commander: blue panels, cyan highlight, grey dialogs.</td><td>Only the 16 basic colours — works on every terminal.</td></tr>
+<tr><td><b>Dark</b></td><td>Light text on a dark background.</td><td>16 colours.</td></tr>
+<tr><td><b>Light</b></td><td>Dark text on a light background.</td><td>16 colours.</td></tr>
+<tr><td><b>Terminal default</b></td><td>Uses your terminal's own background and text colour, and only its 16 colours — pgtc looks like the rest of your terminal.</td><td>Nothing. The choice for limited terminals and for terminals with a colour theme you like.</td></tr>
+<tr><td><b>Tokyo Night</b></td><td>The “Night” palette of the Tokyo Night theme.</td><td rowspan="2">A terminal with true colour (24-bit): Windows Terminal, iTerm2, kitty, WezTerm, Alacritty, GNOME Terminal, Konsole and most modern ones.</td></tr>
+<tr><td><b>Dracula</b></td><td>The palette of the Dracula theme.</td></tr>
+</table></div>
+<div class="shots">
+<figure><img src="img/scheme-classic.svg" alt="Classic" loading="lazy"><figcaption>Classic</figcaption></figure>
+<figure><img src="img/scheme-dark.svg" alt="Dark" loading="lazy"><figcaption>Dark</figcaption></figure>
+<figure><img src="img/scheme-light.svg" alt="Light" loading="lazy"><figcaption>Light</figcaption></figure>
+<figure><img src="img/scheme-terminal-default.svg" alt="Terminal default" loading="lazy"><figcaption>Terminal default</figcaption></figure>
+<figure><img src="img/scheme-tokyo-night.svg" alt="Tokyo Night" loading="lazy"><figcaption>Tokyo Night</figcaption></figure>
+<figure><img src="img/scheme-dracula.svg" alt="Dracula" loading="lazy"><figcaption>Dracula</figcaption></figure>
+</div>
+<ul>
+  <li>The 16-colour schemes look a little different in every terminal, because each terminal has its own idea of
+      “blue” or “cyan”. The pictures show the colours of Windows Terminal.</li>
+  <li>If Tokyo Night or Dracula show wrong or blocky colours, your terminal (or the SSH client, or <code>screen</code> /
+      <code>tmux</code> in between) does not pass true colour: use one of the first four.</li>
+  <li>In every scheme the highlighted letters of menus and buttons are also underlined, and the text cursor is drawn
+      in reverse, so both stay visible whatever your terminal does with colours.</li>
+</ul>
+
+<h3 id="own-scheme">Your own colour scheme</h3>
+<p>A colour scheme is a small text file. Put a file ending in <code>.toml</code> into the <code>themes</code> folder
+and it appears in the list of the Settings dialog (restart pgtc if it does not show up):</p>
+<div class="tablewrap"><table>
+<tr><th>Platform</th><th>Themes folder</th></tr>
+<tr><td>Linux</td><td><code>~/.local/share/pgtc/themes</code></td></tr>
+<tr><td>macOS</td><td><code>~/Library/Application Support/pgtc/themes</code></td></tr>
+<tr><td>Windows</td><td><code>%APPDATA%\pgtc\themes</code></td></tr>
+</table></div>
+<p>A scheme only has to say what it changes. Everything it does not mention is taken from <i>Classic</i>. This
+complete file makes “Classic with a green editor”:</p>
+<pre><code>name = "Green editor"
+
+[editor]
+text        = "lightgreen on black"
+keyword     = "white on black bold"
+string      = "lightyellow on black"
+number      = "lightcyan on black"
+comment     = "darkgray on black italic"
+selection   = "black on lightgreen"
+line_number = "green on black"</code></pre>
+<h4>Writing a colour</h4>
+<p>Every entry is <code>"<i>text colour</i> on <i>background colour</i>"</code>, optionally followed by one or more of
+<code>bold</code>, <code>dim</code>, <code>italic</code>, <code>underlined</code>, <code>reversed</code>.</p>
+<div class="tablewrap"><table>
+<tr><th>Colour</th><th>Write</th></tr>
+<tr><td>The 8 normal colours</td><td><code>black</code> <code>red</code> <code>green</code> <code>yellow</code> (or <code>brown</code>) <code>blue</code> <code>magenta</code> <code>cyan</code> <code>lightgray</code></td></tr>
+<tr><td>The 8 bright colours</td><td><code>darkgray</code> <code>lightred</code> <code>lightgreen</code> <code>lightyellow</code> <code>lightblue</code> <code>lightmagenta</code> <code>lightcyan</code> <code>white</code></td></tr>
+<tr><td>The terminal's own colour</td><td><code>default</code></td></tr>
+<tr><td>An exact colour (true colour terminals)</td><td><code>#rrggbb</code>, for example <code>#ffb86c</code></td></tr>
+</table></div>
+<h4>What can be coloured</h4>
+<div class="tablewrap"><table>
+<tr><th>Section</th><th>Entry</th><th>Colours</th></tr>
+<tr><td rowspan="6"><code>[core]</code></td><td><code>normal</code></td><td>The object tree and the background of the window.</td></tr>
+<tr><td><code>border</code></td><td>Frames and lines.</td></tr>
+<tr><td><code>title</code>, <code>title_focused</code></td><td>The <i>Connections</i> title of the tree, without / with the focus.</td></tr>
+<tr><td><code>selected</code></td><td>The cursor row of the tree and of lists, with the focus.</td></tr>
+<tr><td><code>selected_unfocused</code></td><td>The cursor row while the focus is elsewhere.</td></tr>
+<tr><td><code>hint</code></td><td>Quiet texts such as <i>loading…</i>.</td></tr>
+<tr><td rowspan="3"><code>[menu]</code></td><td><code>normal</code>, <code>hotkey</code></td><td>The menu bar, the pull-down and context menus, the autocomplete list; the highlighted letters.</td></tr>
+<tr><td><code>selected</code>, <code>selected_hotkey</code></td><td>The highlighted item.</td></tr>
+<tr><td><code>disabled</code></td><td>Items that cannot run now.</td></tr>
+<tr><td rowspan="5"><code>[dialog]</code></td><td><code>normal</code>, <code>title</code>, <code>hotkey</code></td><td>Dialogs: text, title, highlighted letters.</td></tr>
+<tr><td><code>focus</code>, <code>focus_hotkey</code></td><td>The button or list row that has the focus.</td></tr>
+<tr><td><code>input</code>, <code>input_focus</code></td><td>Input fields, without / with the focus.</td></tr>
+<tr><td><code>disabled</code></td><td>Parts that cannot be used.</td></tr>
+<tr><td><code>shadow</code></td><td>The shadow of a dialog.</td></tr>
+<tr><td><code>[error]</code></td><td><code>normal</code>, <code>title</code></td><td>Error messages.</td></tr>
+<tr><td rowspan="3"><code>[tabs]</code></td><td><code>bar</code>, <code>inactive</code></td><td>The tab strip; tabs that are not shown; the file bar.</td></tr>
+<tr><td><code>active</code></td><td>The shown tab while its part has the focus.</td></tr>
+<tr><td><code>active_unfocused</code></td><td>The shown tab while the focus is elsewhere.</td></tr>
+<tr><td rowspan="2"><code>[status]</code></td><td><code>normal</code></td><td>The status row of a tab.</td></tr>
+<tr><td><code>window</code></td><td>The bottom line of the screen.</td></tr>
+<tr><td rowspan="3"><code>[editor]</code></td><td><code>text</code>, <code>line_number</code></td><td>Plain text; the line numbers.</td></tr>
+<tr><td><code>keyword</code>, <code>string</code>, <code>number</code>, <code>comment</code>, <code>quoted_ident</code>, <code>operator</code></td><td>The parts of SQL.</td></tr>
+<tr><td><code>selection</code></td><td>Selected text.</td></tr>
+<tr><td rowspan="2"><code>[grid]</code></td><td><code>header</code>, <code>row_number</code></td><td>The column names; the row numbers.</td></tr>
+<tr><td><code>cursor</code>, <code>null</code></td><td>The cell cursor; <code>[null]</code>.</td></tr>
+<tr><td><code>[messages]</code></td><td><code>error</code>, <code>notice</code>, <code>info</code></td><td>The lines of <i>Messages</i>.</td></tr>
+<tr><td rowspan="3"><code>[dashboard]</code></td><td><code>graph</code></td><td>The graphs.</td></tr>
+<tr><td><code>blocked</code>, <code>blocking</code>, <code>idle_in_transaction</code>, <code>tagged</code></td><td>Session rows.</td></tr>
+<tr><td><code>slow</code>, <code>very_slow</code></td><td>Durations from 1 s / from 10 s; warning values of the summary.</td></tr>
+</table></div>
+<div class="tip"><p>The easiest start: the schemes that come with pgtc are in the folder <code>themes</code> of the source
+code. Copy <code>dracula.toml</code>, give it a new <code>name</code>, and change colours.</p></div>
+<p>Choose colours that differ clearly: text needs contrast with its background, and the cursor row, inputs and the
+focused button must stand out from their surroundings.</p>
+
+<h2 id="keymap">Changing keys: keymap.toml</h2>
+<p>Every command of pgtc has a name and can be given any key. Key changes are written into a file,
+<code>keymap.toml</code>, in pgtc's configuration folder:</p>
+<div class="tablewrap"><table>
+<tr><th>Platform</th><th>File</th></tr>
+<tr><td>Linux</td><td><code>~/.config/pgtc/keymap.toml</code></td></tr>
+<tr><td>macOS</td><td><code>~/Library/Application Support/pgtc/keymap.toml</code></td></tr>
+<tr><td>Windows</td><td><code>%APPDATA%\pgtc\keymap.toml</code></td></tr>
+</table></div>
+<p>The exact path on your machine is shown at the end of <span class="menu">Help → Keyboard shortcuts</span>. The file
+does not exist until you create it; it is read when pgtc starts.</p>
+
+<h3>The file</h3>
+<pre><code># keymap.toml — only what differs from the built-in keys
+
+[editor]
+execute = ["F5", "Ctrl+Enter"]     # two keys for one command
+commit = "Alt+C"                   # a command that has no built-in key
+rollback = "Alt+R"
+
+[results]
+export_result = "Alt+X"
+
+[tree]
+quick_search = "Alt+S"             # only this key; Ctrl+S no longer searches
+drop_object = []                   # no key at all: F8 does nothing in the tree</code></pre>
+<ul>
+  <li>The file has one <b>section per part of the window</b>; a line gives a command its key or keys <b>in that
+      part</b>.</li>
+  <li>A line <b>replaces</b> all built-in keys of that command in that section. To keep a built-in key and add one,
+      list both.</li>
+  <li><code>[]</code> takes all keys away from a command.</li>
+  <li>Commands you do not mention keep their built-in keys.</li>
+</ul>
+
+<h3>Sections</h3>
+<div class="tablewrap"><table>
+<tr><th>Section</th><th>Keys work when the focus is in…</th></tr>
+<tr><td class="k"><code>[global]</code></td><td>any part — unless that part uses the key for something else.</td></tr>
+<tr><td class="k"><code>[tree]</code></td><td>the object tree.</td></tr>
+<tr><td class="k"><code>[editor]</code></td><td>the SQL editor, an object definition, a statement pane.</td></tr>
+<tr><td class="k"><code>[results]</code></td><td>the result grid and <i>Messages</i> of a query tab.</td></tr>
+<tr><td class="k"><code>[dashboard]</code>, <code>[profiler]</code>, <code>[db_stats]</code></td><td>the list of that tab.</td></tr>
+<tr><td class="k"><code>[dialog]</code></td><td>dialogs, menus and lists.</td></tr>
+</table></div>
+<p>pgtc looks for a pressed key first in the section of the focused part, then in <code>[global]</code>. That is why
+<kbd>Ctrl+R</kbd> can refresh in the tree and hide the results in a query tab: it is bound to different commands in
+<code>[tree]</code> and <code>[editor]</code>.</p>
+<p>A command used in several parts must be bound in each: to run with <kbd>Ctrl+Enter</kbd> from the editor <b>and</b>
+from the results, write <code>execute = …</code> under <code>[editor]</code> and under <code>[results]</code>.</p>
+
+<h3>Key names</h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Write</th></tr>
+<tr><td>Modifiers</td><td><code>Ctrl</code>, <code>Alt</code>, <code>Shift</code>, joined to the key with <code>+</code>: <code>Ctrl+Shift+Z</code></td></tr>
+<tr><td>Function keys</td><td><code>F1</code> … <code>F24</code></td></tr>
+<tr><td>Named keys</td><td><code>Esc</code> <code>Tab</code> <code>Enter</code> <code>Space</code> <code>Backspace</code> <code>Delete</code> <code>Insert</code> <code>Home</code> <code>End</code> <code>PageUp</code> (<code>PgUp</code>) <code>PageDown</code> (<code>PgDn</code>) <code>Up</code> <code>Down</code> <code>Left</code> <code>Right</code></td></tr>
+<tr><td>Letters, digits, signs</td><td>The character itself: <code>Ctrl+E</code>, <code>Alt+1</code>, <code>Alt+/</code>, <code>Alt+.</code></td></tr>
+</table></div>
+<p>Upper and lower case do not matter (<code>ctrl+e</code> = <code>Ctrl+E</code>). Key names are texts: always in quotes.</p>
+
+<h3>Command names</h3>
+<p>The names — <code>execute</code>, <code>commit</code>, <code>quick_search</code>, … — are in the last column of the
+<a href="reference.html#keys">Keyboard reference</a>, together with the section each one belongs to. The commands that
+have no built-in key are listed at its end.</p>
+
+<h3>If something is wrong in the file</h3>
+<ul>
+  <li>An unknown section, command or key name is <b>skipped</b>; the rest of the file is used. pgtc tells you at start
+      what it skipped.</li>
+  <li>If you give the same key to two commands of one section, the later one has it — and you are told.</li>
+  <li>If the file cannot be read as TOML at all (a missing quote), pgtc starts with the built-in keys.</li>
+</ul>
+<p>After a change, restart pgtc and check with <kbd>F1</kbd> or <span class="menu">Help → Keyboard shortcuts</span>: both
+show your keys.</p>
+<div class="warn"><p>Choose keys your terminal really delivers. Many terminals keep some combinations for themselves —
+see <a href="trouble.html#keys">If a key does not work</a>. Keys with <kbd>Alt</kbd> and the function keys are the
+safest choice.</p></div>
+
+<h2 id="file">The settings file</h2>
+<p>Everything the Settings dialog saves — and your saved connections — is in <code>settings.toml</code>, next to
+<code>keymap.toml</code>. You normally never touch it. A few settings exist <b>only</b> there:</p>
+<div class="tablewrap"><table>
+<tr><th>Section and key</th><th>Default</th><th>Meaning</th></tr>
+<tr><td class="k"><code>[editor]</code> <code>tab_width</code></td><td><code>4</code></td><td>How many columns wide a tab character is shown.</td></tr>
+<tr><td class="k"><code>[editor]</code> <code>line_numbers</code></td><td><code>true</code></td><td>Show line numbers in the editor.</td></tr>
+<tr><td class="k"><code>[ui]</code> <code>tree_width</code></td><td>a third of the window</td><td>The width of the object tree in columns. Written when you drag the tree's border.</td></tr>
+<tr><td class="k"><code>[export]</code> <code>format</code>, <code>csv_separator</code>, <code>csv_bom</code></td><td><code>csv</code>, <code>comma</code>, <code>false</code></td><td>The last choices of the export dialog.</td></tr>
+</table></div>
+<pre><code>[ui]
+color_scheme = "Dracula"
+show_system_objects = false
+ascii_frames = false
+
+[query]
+batch_rows = 1000
+auto_commit = true
+auto_rollback = false
+cancel_wait_secs = 5
+ask_save = true
+
+[clipboard]
+system = true
+osc52 = true
+
+[connection]
+connect_timeout_secs = 10
+
+[editor]
+tab_width = 2
+line_numbers = true
+
+[[servers]]
+name = "local"
+host = "localhost"
+port = 5432
+database = "postgres"
+username = "postgres"
+ssl_mode = "prefer"
+
+[[servers]]
+name = "production"
+host = "db.example.com"
+port = 5432
+database = "adventureworks"
+username = "app"
+ssl_mode = "verify-full"
+ssl_root_cert = "/etc/ssl/our-ca.pem"</code></pre>
+<ul>
+  <li>Edit the file only while pgtc is <b>not running</b> — pgtc writes it when you change a setting or a connection.</li>
+  <li>A key that is missing has its default. A key pgtc does not know is ignored.</li>
+  <li>Each <code>[[servers]]</code> block is one saved connection. <b>Passwords are never in this file</b>; they are
+      in <a href="connections.html#passwords"><code>.pgpass</code></a>.</li>
+  <li>To move your setup to another machine, copy <code>settings.toml</code>, <code>keymap.toml</code>, and the
+      <code>themes</code> and <code>developer_templates</code> folders. All locations are listed in
+      <a href="reference.html#files">Reference → Files and folders</a>.</li>
+</ul>
+
+<h2 id="menu">The other items of the Settings menu</h2>
+<div class="tablewrap"><table>
+<tr><th>Item</th><th>What it does</th></tr>
+<tr><td class="k"><span class="menu">Run setup</span></td><td>Runs every installation step, like <code>pgtc --setup</code>, and shows the result of each step in a message.</td></tr>
+<tr><td class="k"><span class="menu">Install templates</span></td><td>Copies the <a href="templates.html">developer templates</a> that come with pgtc into your templates folder, like <code>pgtc --install-templates</code>. Asks before overwriting when the folder exists.</td></tr>
+<tr><td class="k"><span class="menu">Show templates folder</span></td><td>Shows the path of the templates folder. (pgtc cannot open a file manager for you — least of all over SSH.)</td></tr>
+</table></div>
+</main>
+<script src="help.js"></script>
+</body>
+</html>

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference — pgtc Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+<main>
+<h1>Reference</h1>
+<p class="lead">Everything in one place: the command line, every key, every menu item, and every file and folder
+pgtc uses.</p>
+
+<h2 id="cli">Command line</h2>
+<pre><code>pgtc [OPTION]... [DBNAME [USERNAME]]</code></pre>
+<p>The connection options are those of <code>psql</code>, so what you know from there works here.</p>
+<div class="tablewrap"><table>
+<tr><th>Option</th><th>Meaning</th></tr>
+<tr><td class="k"><code>-h</code>, <code>--host HOSTNAME</code></td><td>Host name of the server, or the directory of its Unix socket.</td></tr>
+<tr><td class="k"><code>-p</code>, <code>--port PORT</code></td><td>Port of the server.</td></tr>
+<tr><td class="k"><code>-U</code>, <code>--username USERNAME</code></td><td>User to connect as.</td></tr>
+<tr><td class="k"><code>-d</code>, <code>--dbname DBNAME</code></td><td>Database to connect to — or a connection URI.</td></tr>
+<tr><td class="k"><code>-w</code>, <code>--no-password</code></td><td>Never ask for a password. If one is needed and not known, connecting fails.</td></tr>
+<tr><td class="k"><code>-W</code>, <code>--password</code></td><td>Always ask for a password.</td></tr>
+<tr><td class="k"><code>--setup</code></td><td>Run every installation step (today: install the developer templates), print one line per step, and exit. The exit code is not zero if a step failed.</td></tr>
+<tr><td class="k"><code>--install-templates</code></td><td>Copy the developer templates that come with pgtc into your templates folder, and exit. If the folder exists, pgtc asks <code>[y/N]</code> before overwriting its own templates.</td></tr>
+<tr><td class="k"><code>-?</code>, <code>--help</code></td><td>Show the options and exit. (<code>-h</code> is the host, as in psql.)</td></tr>
+<tr><td class="k"><code>-V</code>, <code>--version</code></td><td>Show the version and exit.</td></tr>
+</table></div>
+<p><code>DBNAME</code> and <code>USERNAME</code> without an option letter are used when <code>-d</code> / <code>-U</code> are
+not given: <code>pgtc adventureworks postgres</code>.</p>
+
+<h3>Examples</h3>
+<pre><code>pgtc                                         start with the saved connections
+pgtc adventureworks                          database adventureworks on localhost, as your OS user
+pgtc -h db.example.com -U app adventureworks
+pgtc -h db.example.com -p 5433 -U app -W adventureworks
+pgtc postgresql://app@db.example.com/adventureworks
+pgtc "postgresql://app@db.example.com:5433/adventureworks?sslmode=verify-full"
+pgtc --setup</code></pre>
+
+<h3>Connection URIs</h3>
+<pre><code>postgresql://[user[:password]@][host][:port][/dbname][?sslmode=...&amp;sslrootcert=...]</code></pre>
+<p>Also with <code>postgres://</code>. Put a URI that contains <code>?</code> or <code>&amp;</code> in quotes, or the shell
+will misread it.</p>
+
+<h3>Environment variables</h3>
+<div class="tablewrap"><table>
+<tr><th>Variable</th><th>Meaning</th></tr>
+<tr><td class="k"><code>PGHOST</code>, <code>PGPORT</code>, <code>PGUSER</code>, <code>PGDATABASE</code></td><td>Defaults for host, port, user and database.</td></tr>
+<tr><td class="k"><code>PGSSLMODE</code>, <code>PGSSLROOTCERT</code></td><td>Defaults for the SSL mode and the root certificate file.</td></tr>
+<tr><td class="k"><code>PGPASSWORD</code></td><td>The password (used for this run only; not saved).</td></tr>
+<tr><td class="k"><code>PGPASSFILE</code></td><td>Another location of the <a href="connections.html#passwords">password file</a>.</td></tr>
+<tr><td class="k"><code>PGTC_LOG</code></td><td>The detail of pgtc's own <a href="#log">log</a>.</td></tr>
+</table></div>
+<p><b>What wins:</b> a URI, then the options, then the environment variables, then the built-in defaults — host
+<code>localhost</code>, port <code>5432</code>, user = your operating-system user, database = the user name, SSL mode
+<code>prefer</code>.</p>
+<p><b>What happens with the connection:</b> when you give any connection argument, pgtc saves the connection (unless
+one with the same host, port, database, user and SSL mode is already saved) and connects it at start.</p>
+
+<h2 id="keys">Keyboard reference</h2>
+<p>The built-in keys, by the part of the window they work in. The last column is the name of the command in
+<a href="settings.html#keymap"><code>keymap.toml</code></a>. Inside pgtc, <kbd>F1</kbd> shows the keys that work now and
+<span class="menu">Help → Keyboard shortcuts</span> shows all keys <i>as you have set them</i>.</p>
+<figure>
+  <img src="img/shortcuts.svg" alt="Help → Keyboard shortcuts" loading="lazy">
+  <figcaption><span class="menu">Help → Keyboard shortcuts</span>: every key of your keymap, in a scrolling window. At
+  its end it shows where your <code>keymap.toml</code> is.</figcaption>
+</figure>
+
+<h3>Everywhere <code>[global]</code></h3>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th><th>Command</th></tr>
+<tr><td class="k"><kbd>F1</kbd></td><td>The keys that work now</td><td><code>help</code></td></tr>
+<tr><td class="k"><kbd>F9</kbd></td><td>Open the menu bar</td><td><code>menu</code></td></tr>
+<tr><td class="k"><kbd>F10</kbd></td><td>Quit pgtc</td><td><code>quit</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+N</kbd></td><td>New query tab</td><td><code>new_query</code></td></tr>
+<tr><td class="k"><kbd>F6</kbd>, <kbd>Ctrl+Tab</kbd></td><td>Switch between the object tree and the right frame</td><td><code>switch_panel</code></td></tr>
+<tr><td class="k"><kbd>Alt+1</kbd>, <kbd>Ctrl+1</kbd></td><td>Focus the object tree</td><td><code>focus_tree</code></td></tr>
+<tr><td class="k"><kbd>Alt+2</kbd>, <kbd>Ctrl+2</kbd></td><td>Focus the right frame (the part last used)</td><td><code>focus_right</code></td></tr>
+<tr><td class="k"><kbd>Alt+Down</kbd>, <kbd>Ctrl+Shift+Down</kbd></td><td>Lower part of the right frame (results, messages, statement pane)</td><td><code>focus_lower</code></td></tr>
+<tr><td class="k"><kbd>Alt+Up</kbd>, <kbd>Ctrl+Shift+Up</kbd></td><td>Upper part of the right frame (editor, list)</td><td><code>focus_upper</code></td></tr>
+<tr><td class="k"><kbd>Alt+Right</kbd></td><td>Next tab</td><td><code>next_tab</code></td></tr>
+<tr><td class="k"><kbd>Alt+Left</kbd></td><td>Previous tab</td><td><code>prev_tab</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+W</kbd></td><td>Close the tab</td><td><code>close_tab</code></td></tr>
+</table></div>
+
+<h3>Object tree <code>[tree]</code></h3>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th><th>Command</th></tr>
+<tr><td class="k"><kbd>Up</kbd>, <kbd>Down</kbd></td><td>Up / down</td><td><code>up</code>, <code>down</code></td></tr>
+<tr><td class="k"><kbd>Left</kbd>, <kbd>Right</kbd></td><td>Collapse / expand</td><td><code>left</code>, <code>right</code></td></tr>
+<tr><td class="k"><kbd>PgUp</kbd>, <kbd>PgDn</kbd></td><td>Page up / down</td><td><code>page_up</code>, <code>page_down</code></td></tr>
+<tr><td class="k"><kbd>Home</kbd>, <kbd>End</kbd></td><td>First / last row</td><td><code>home</code>, <code>end</code></td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>Expand or collapse the row</td><td><code>accept</code></td></tr>
+<tr><td class="k"><kbd>F2</kbd></td><td>Context menu</td><td><code>context_menu</code></td></tr>
+<tr><td class="k"><kbd>F3</kbd></td><td>Show the object in a new tab</td><td><code>show_in_new_tab</code></td></tr>
+<tr><td class="k"><kbd>F8</kbd></td><td>Delete the saved connection</td><td><code>drop_object</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Refresh the object tree</td><td><code>refresh_tree</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+E</kbd></td><td>Edit the shown definition in a new query tab</td><td><code>edit_in_query_tab</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+B</kbd></td><td>Select the top 100 rows of the table or view in a new query tab</td><td><code>select_top_rows</code></td></tr>
+<tr><td class="k"><kbd>Alt+S</kbd>, <kbd>Ctrl+S</kbd></td><td>Quick search</td><td><code>quick_search</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+F</kbd></td><td>Find an object below the selected tree row</td><td><code>find_object</code></td></tr>
+<tr><td class="k"><kbd>Alt+D</kbd>, <kbd>Ctrl+D</kbd></td><td>Server dashboard of the selected server or database</td><td><code>dashboard</code></td></tr>
+<tr><td class="k"><kbd>Alt+P</kbd>, <kbd>Ctrl+P</kbd></td><td>SQL profiler</td><td><code>sql_profiler</code></td></tr>
+<tr><td class="k"><kbd>Alt+I</kbd></td><td>Statistics of the selected database</td><td><code>db_stats</code></td></tr>
+<tr><td class="k">—</td><td>Show / hide system objects</td><td><code>toggle_system_objects</code></td></tr>
+</table></div>
+
+<h3>Editor and object view <code>[editor]</code></h3>
+<p>Also used by the read-only object view and the statement pane, where the editing keys do nothing.</p>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th><th>Command</th></tr>
+<tr><td class="k"><kbd>F5</kbd></td><td>Execute the selection or the whole script</td><td><code>execute</code></td></tr>
+<tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td>Cancel the running query</td><td><code>cancel_query</code></td></tr>
+<tr><td class="k"><kbd>F7</kbd></td><td>Generate SQL from developer template</td><td><code>new_from_template</code></td></tr>
+<tr><td class="k"><kbd>F4</kbd></td><td>psql-style command line</td><td><code>psql_command</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+Space</kbd>, <kbd>Alt+/</kbd></td><td>Autocomplete: names and keywords</td><td><code>complete</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+P</kbd></td><td>PL/pgSQL mode on / off</td><td><code>toggle_plpgsql</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+E</kbd></td><td>Edit the shown definition (or statement) in a new query tab</td><td><code>edit_in_query_tab</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+S</kbd></td><td>Save SQL file</td><td><code>save_file</code></td></tr>
+<tr><td class="k">Arrows</td><td>Move</td><td><code>up</code>, <code>down</code>, <code>left</code>, <code>right</code></td></tr>
+<tr><td class="k"><kbd>PgUp</kbd>, <kbd>PgDn</kbd></td><td>Page up / down</td><td><code>page_up</code>, <code>page_down</code></td></tr>
+<tr><td class="k"><kbd>Home</kbd>, <kbd>End</kbd></td><td>Start / end of the line</td><td><code>home</code>, <code>end</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+Home</kbd>, <kbd>Ctrl+End</kbd></td><td>Start / end of the text</td><td><code>doc_start</code>, <code>doc_end</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+Left</kbd>, <kbd>Ctrl+Right</kbd></td><td>Word left / right</td><td><code>word_left</code>, <code>word_right</code></td></tr>
+<tr><td class="k"><kbd>Shift</kbd>+arrows</td><td>Select</td><td><code>select_left</code>, <code>select_right</code>, <code>select_up</code>, <code>select_down</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+Shift+Left</kbd>, <kbd>Ctrl+Shift+Right</kbd></td><td>Select word left / right</td><td><code>select_word_left</code>, <code>select_word_right</code></td></tr>
+<tr><td class="k"><kbd>Shift+Home</kbd>, <kbd>Shift+End</kbd></td><td>Select to the start / end of the line</td><td><code>select_home</code>, <code>select_end</code></td></tr>
+<tr><td class="k"><kbd>Shift+PgUp</kbd>, <kbd>Shift+PgDn</kbd></td><td>Select a page up / down</td><td><code>select_page_up</code>, <code>select_page_down</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+Shift+Home</kbd>, <kbd>Alt+Shift+Home</kbd></td><td>Select to the start of the text</td><td><code>select_doc_start</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+Shift+End</kbd>, <kbd>Alt+Shift+End</kbd></td><td>Select to the end of the text</td><td><code>select_doc_end</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+A</kbd></td><td>Select all</td><td><code>select_all</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+C</kbd>, <kbd>Ctrl+Insert</kbd></td><td>Copy</td><td><code>copy</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+X</kbd>, <kbd>Shift+Delete</kbd></td><td>Cut</td><td><code>cut</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+V</kbd>, <kbd>Shift+Insert</kbd></td><td>Paste</td><td><code>paste</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+Z</kbd></td><td>Undo</td><td><code>undo</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+Shift+Z</kbd>, <kbd>Alt+Shift+Z</kbd></td><td>Redo</td><td><code>redo</code></td></tr>
+<tr><td class="k"><kbd>Tab</kbd>, <kbd>Shift+Tab</kbd></td><td>Indent / unindent</td><td><code>indent</code>, <code>unindent</code></td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>New line</td><td><code>newline</code></td></tr>
+<tr><td class="k"><kbd>Backspace</kbd>, <kbd>Delete</kbd></td><td>Delete left / right</td><td><code>backspace</code>, <code>delete</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+Backspace</kbd>, <kbd>Ctrl+Delete</kbd></td><td>Delete the word left / right</td><td><code>delete_word_left</code>, <code>delete_word_right</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+Y</kbd></td><td>Delete the line (the selected lines)</td><td><code>delete_line</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+F</kbd></td><td>Find / replace</td><td><code>find</code></td></tr>
+<tr><td class="k"><kbd>F3</kbd></td><td>Find next</td><td><code>find_next</code></td></tr>
+<tr><td class="k"><kbd>Shift+F3</kbd>, <kbd>Alt+F3</kbd></td><td>Find previous</td><td><code>find_prev</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Show / hide the results</td><td><code>toggle_results</code></td></tr>
+<tr><td class="k"><kbd>Alt+M</kbd></td><td>Switch between results and messages</td><td><code>show_messages</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+PgDn</kbd>, <kbd>Alt+PgDn</kbd></td><td>Next result set</td><td><code>next_result</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+PgUp</kbd>, <kbd>Alt+PgUp</kbd></td><td>Previous result set</td><td><code>prev_result</code></td></tr>
+<tr><td class="k"><kbd>Alt+End</kbd></td><td>Fetch all rows</td><td><code>fetch_all</code></td></tr>
+<tr><td class="k"><kbd>Alt+Shift+Up</kbd>, <kbd>Alt+Shift+Down</kbd></td><td>Results smaller / larger</td><td><code>results_smaller</code>, <code>results_larger</code></td></tr>
+</table></div>
+
+<h3>Results and messages <code>[results]</code></h3>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th><th>Command</th></tr>
+<tr><td class="k">Arrows, <kbd>PgUp</kbd>, <kbd>PgDn</kbd>, <kbd>Home</kbd>, <kbd>End</kbd></td><td>Move the cell cursor</td><td><code>up</code> … <code>end</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+Home</kbd>, <kbd>Ctrl+End</kbd></td><td>First / last row</td><td><code>doc_start</code>, <code>doc_end</code></td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>Messages: jump to the line of the error</td><td><code>accept</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+C</kbd>, <kbd>Ctrl+Insert</kbd></td><td>Copy the cell / the message</td><td><code>copy</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+A</kbd></td><td>Select all</td><td><code>select_all</code></td></tr>
+<tr><td class="k"><kbd>F2</kbd></td><td>Context menu</td><td><code>context_menu</code></td></tr>
+<tr><td class="k"><kbd>Alt+Right</kbd></td><td>Next result set, then Messages</td><td><code>next_result_tab</code></td></tr>
+<tr><td class="k"><kbd>Alt+Left</kbd></td><td>Previous result set or Messages</td><td><code>prev_result_tab</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+PgDn</kbd>, <kbd>Alt+PgDn</kbd></td><td>Next result set</td><td><code>next_result</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+PgUp</kbd>, <kbd>Alt+PgUp</kbd></td><td>Previous result set</td><td><code>prev_result</code></td></tr>
+<tr><td class="k"><kbd>Alt+M</kbd></td><td>Switch between results and messages</td><td><code>show_messages</code></td></tr>
+<tr><td class="k"><kbd>Alt+End</kbd></td><td>Fetch all rows</td><td><code>fetch_all</code></td></tr>
+<tr><td class="k"><kbd>Alt+Shift+Up</kbd>, <kbd>Alt+Shift+Down</kbd></td><td>Results smaller / larger</td><td><code>results_smaller</code>, <code>results_larger</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Show / hide the results</td><td><code>toggle_results</code></td></tr>
+<tr><td class="k"><kbd>F5</kbd></td><td>Execute</td><td><code>execute</code></td></tr>
+<tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td>Cancel the running query</td><td><code>cancel_query</code></td></tr>
+<tr><td class="k"><kbd>F4</kbd></td><td>psql-style command line</td><td><code>psql_command</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+P</kbd></td><td>PL/pgSQL mode on / off</td><td><code>toggle_plpgsql</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+S</kbd></td><td>Save SQL file</td><td><code>save_file</code></td></tr>
+<tr><td class="k">—</td><td>Export the result</td><td><code>export_result</code></td></tr>
+<tr><td class="k">—</td><td>Copy all messages</td><td><code>copy_all_messages</code></td></tr>
+</table></div>
+
+<h3>Server dashboard <code>[dashboard]</code></h3>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th><th>Command</th></tr>
+<tr><td class="k"><kbd>F5</kbd></td><td>Refresh now (connects again when needed)</td><td><code>dashboard_refresh</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+P</kbd></td><td>Pause / resume the refresh</td><td><code>dashboard_pause</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+T</kbd></td><td>Refresh interval (0.5, 1, 2, 5, 10, 30 s)</td><td><code>dashboard_interval</code></td></tr>
+<tr><td class="k"><kbd>Alt+I</kbd></td><td>Hide / show idle sessions</td><td><code>hide_idle_sessions</code></td></tr>
+<tr><td class="k"><kbd>Alt+T</kbd></td><td>Session duration: query, transaction or backend time</td><td><code>duration_mode</code></td></tr>
+<tr><td class="k"><kbd>Insert</kbd></td><td>Tag / untag the session</td><td><code>tag_session</code></td></tr>
+<tr><td class="k"><kbd>Esc</kbd></td><td>Untag all sessions</td><td><code>clear_tags</code></td></tr>
+<tr><td class="k"><kbd>Alt+Right</kbd>, <kbd>Ctrl+PgDn</kbd>, <kbd>Alt+PgDn</kbd></td><td>Next dashboard list</td><td><code>next_list</code></td></tr>
+<tr><td class="k"><kbd>Alt+Left</kbd>, <kbd>Ctrl+PgUp</kbd>, <kbd>Alt+PgUp</kbd></td><td>Previous dashboard list</td><td><code>prev_list</code></td></tr>
+<tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td>Cancel the query of the selected session</td><td><code>cancel_backend</code></td></tr>
+<tr><td class="k"><kbd>F8</kbd></td><td>Terminate the selected session</td><td><code>terminate_backend</code></td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>Show the whole row (full query text)</td><td><code>show_row</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+E</kbd></td><td>The statement in a new query tab</td><td><code>edit_in_query_tab</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Show / hide the statement pane</td><td><code>toggle_results</code></td></tr>
+<tr><td class="k"><kbd>Alt+Shift+Up</kbd>, <kbd>Alt+Shift+Down</kbd></td><td>Statement pane smaller / larger</td><td><code>results_smaller</code>, <code>results_larger</code></td></tr>
+<tr><td class="k"><kbd>F2</kbd></td><td>Context menu</td><td><code>context_menu</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+C</kbd>, <kbd>Ctrl+Insert</kbd>; <kbd>Ctrl+A</kbd></td><td>Copy; select all</td><td><code>copy</code>, <code>select_all</code></td></tr>
+<tr><td class="k">Arrows, <kbd>PgUp</kbd>, <kbd>PgDn</kbd>, <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>Ctrl+Home</kbd>, <kbd>Ctrl+End</kbd></td><td>Move in the list</td><td><code>up</code> … <code>doc_end</code></td></tr>
+</table></div>
+
+<h3>SQL profiler <code>[profiler]</code></h3>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th><th>Command</th></tr>
+<tr><td class="k"><kbd>F5</kbd></td><td>Start / stop the profiler</td><td><code>profiler_start_stop</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+P</kbd></td><td>Pause / resume</td><td><code>profiler_pause</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+F</kbd></td><td>Filter the entries</td><td><code>profiler_filter</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+L</kbd></td><td>Clear the entries</td><td><code>profiler_clear</code></td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>Show the whole entry</td><td><code>show_row</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+E</kbd></td><td>The statement in a new query tab</td><td><code>edit_in_query_tab</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Show / hide the statement pane</td><td><code>toggle_results</code></td></tr>
+<tr><td class="k"><kbd>Alt+Shift+Up</kbd>, <kbd>Alt+Shift+Down</kbd></td><td>Statement pane smaller / larger</td><td><code>results_smaller</code>, <code>results_larger</code></td></tr>
+<tr><td class="k"><kbd>F2</kbd></td><td>Context menu</td><td><code>context_menu</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+C</kbd>, <kbd>Ctrl+Insert</kbd>; <kbd>Ctrl+A</kbd></td><td>Copy; select all</td><td><code>copy</code>, <code>select_all</code></td></tr>
+<tr><td class="k">Arrows, <kbd>PgUp</kbd>, <kbd>PgDn</kbd>, <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>Ctrl+Home</kbd>, <kbd>Ctrl+End</kbd></td><td>Move in the list</td><td><code>up</code> … <code>doc_end</code></td></tr>
+</table></div>
+
+<h3>Database statistics <code>[db_stats]</code></h3>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th><th>Command</th></tr>
+<tr><td class="k"><kbd>F5</kbd></td><td>Read the statistics again (connects again when needed)</td><td><code>db_stats_refresh</code></td></tr>
+<tr><td class="k"><kbd>F2</kbd></td><td>Context menu</td><td><code>context_menu</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+C</kbd>, <kbd>Ctrl+Insert</kbd>; <kbd>Ctrl+A</kbd></td><td>Copy; select all</td><td><code>copy</code>, <code>select_all</code></td></tr>
+<tr><td class="k">Arrows, <kbd>PgUp</kbd>, <kbd>PgDn</kbd>, <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>Ctrl+Home</kbd>, <kbd>Ctrl+End</kbd></td><td>Move in the list</td><td><code>up</code> … <code>doc_end</code></td></tr>
+</table></div>
+
+<h3>Dialogs, menus and lists <code>[dialog]</code></h3>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th><th>Command</th></tr>
+<tr><td class="k"><kbd>Tab</kbd>, <kbd>Shift+Tab</kbd></td><td>Next / previous field</td><td><code>next_field</code>, <code>prev_field</code></td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>Open / choose / OK</td><td><code>accept</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+Enter</kbd></td><td>OK from any field (where the terminal reports Ctrl+Enter)</td><td><code>dialog_ok</code></td></tr>
+<tr><td class="k"><kbd>Esc</kbd>, <kbd>F10</kbd></td><td>Cancel / close</td><td><code>cancel</code></td></tr>
+<tr><td class="k"><kbd>Space</kbd></td><td>Toggle the checkbox</td><td><code>toggle</code></td></tr>
+<tr><td class="k">Arrows, <kbd>PgUp</kbd>, <kbd>PgDn</kbd>, <kbd>Home</kbd>, <kbd>End</kbd></td><td>Move</td><td><code>up</code> … <code>end</code></td></tr>
+<tr><td class="k"><kbd>Backspace</kbd>, <kbd>Delete</kbd></td><td>Delete left / right</td><td><code>backspace</code>, <code>delete</code></td></tr>
+</table></div>
+
+<h3>Other keys</h3>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th></tr>
+<tr><td class="k"><kbd>Esc</kbd>, digit</td><td><kbd>F1</kbd> … <kbd>F10</kbd> (<kbd>Esc</kbd> <kbd>1</kbd> … <kbd>Esc</kbd> <kbd>0</kbd>), for terminals without F-keys</td></tr>
+<tr><td class="k"><kbd>F9</kbd>, letter</td><td>The menu with that underlined letter</td></tr>
+<tr><td class="k"><kbd>Alt</kbd>+letter</td><td>The dialog field with that underlined letter</td></tr>
+</table></div>
+
+<h3>Commands without a default key</h3>
+<p>They are in the menus and can be given a key in <code>keymap.toml</code>:</p>
+<p><code>commit</code>, <code>rollback</code>, <code>toggle_auto_commit</code>, <code>toggle_auto_rollback</code>,
+<code>export_result</code>, <code>copy_all_messages</code>, <code>save_file_as</code>, <code>open_file</code>,
+<code>toggle_system_objects</code>, <code>new_connection</code>, <code>edit_connection</code>, <code>delete_connection</code>,
+<code>connect</code>, <code>disconnect</code>, <code>export_definition</code>, <code>load_definition</code>, <code>settings</code>,
+<code>run_setup</code>, <code>install_templates</code>, <code>show_templates_folder</code>, <code>keyboard_shortcuts</code>,
+<code>third_party_licences</code>, <code>about</code>.</p>
+
+<h2 id="menus">Menu reference</h2>
+<p>Open the menu bar with <kbd>F9</kbd>. The key column shows the built-in key of the command, and in brackets the part
+of the window where that key works.</p>
+<div class="tablewrap"><table>
+<tr><th>Menu</th><th>Item</th><th>Key</th><th>Notes</th></tr>
+<tr><td rowspan="10">File</td><td>New connection…</td><td></td><td>Save a new server connection</td></tr>
+<tr><td>Connect</td><td></td><td rowspan="2">The server selected in the tree</td></tr>
+<tr><td>Disconnect</td><td></td></tr>
+<tr><td>New query</td><td class="k"><kbd>Ctrl+N</kbd></td><td rowspan="2">Needs a database (or an object below it) selected in the tree</td></tr>
+<tr><td>Open SQL file…</td><td></td></tr>
+<tr><td>Save SQL file</td><td class="k"><kbd>Ctrl+S</kbd></td><td rowspan="2">In a query tab</td></tr>
+<tr><td>Save SQL file as…</td><td></td></tr>
+<tr><td>Export database definition…</td><td></td><td rowspan="2">Needs a database selected in the tree</td></tr>
+<tr><td>Load database definition…</td><td></td></tr>
+<tr><td>Quit</td><td class="k"><kbd>F10</kbd></td><td></td></tr>
+<tr><td rowspan="7">View</td><td>Refresh object tree</td><td class="k"><kbd>Ctrl+R</kbd> (tree)</td><td></td></tr>
+<tr><td>Edit in new query tab</td><td class="k"><kbd>Ctrl+E</kbd></td><td>The shown definition or statement</td></tr>
+<tr><td>Select top 100 rows</td><td class="k"><kbd>Ctrl+B</kbd> (tree)</td><td>Tables and views</td></tr>
+<tr><td>Find object…</td><td class="k"><kbd>Ctrl+F</kbd> (tree)</td><td></td></tr>
+<tr><td>Next tab</td><td class="k"><kbd>Alt+Right</kbd></td><td></td></tr>
+<tr><td>Previous tab</td><td class="k"><kbd>Alt+Left</kbd></td><td></td></tr>
+<tr><td>Close tab</td><td class="k"><kbd>Ctrl+W</kbd></td><td>Not the default tab</td></tr>
+<tr><td rowspan="13">Query</td><td>Execute</td><td class="k"><kbd>F5</kbd></td><td rowspan="13">Enabled in a query tab</td></tr>
+<tr><td>Cancel</td><td class="k"><kbd>Alt+Shift+C</kbd></td></tr>
+<tr><td>Fetch all</td><td class="k"><kbd>Alt+End</kbd></td></tr>
+<tr><td>Export result…</td><td></td></tr>
+<tr><td>Commit</td><td></td></tr>
+<tr><td>Rollback</td><td></td></tr>
+<tr><td>Auto commit <code>[x]</code></td><td></td></tr>
+<tr><td>Auto rollback on error <code>[x]</code></td><td></td></tr>
+<tr><td>PL/pgSQL mode <code>[x]</code></td><td class="k"><kbd>Ctrl+P</kbd></td></tr>
+<tr><td>Show/hide results</td><td class="k"><kbd>Ctrl+R</kbd></td></tr>
+<tr><td>Results / Messages</td><td class="k"><kbd>Alt+M</kbd></td></tr>
+<tr><td>Next result set</td><td class="k"><kbd>Ctrl+PgDn</kbd></td></tr>
+<tr><td>Previous result set</td><td class="k"><kbd>Ctrl+PgUp</kbd></td></tr>
+<tr><td rowspan="4">Tools</td><td>Generate SQL from developer template…</td><td class="k"><kbd>F7</kbd></td><td rowspan="2">In a connected query tab</td></tr>
+<tr><td>psql command…</td><td class="k"><kbd>F4</kbd></td></tr>
+<tr><td>Server dashboard</td><td class="k"><kbd>Alt+D</kbd> (tree)</td><td rowspan="2">Needs a connected server</td></tr>
+<tr><td>SQL profiler</td><td class="k"><kbd>Alt+P</kbd> (tree)</td></tr>
+<tr><td rowspan="4">Settings</td><td>Settings…</td><td></td><td></td></tr>
+<tr><td>Run setup</td><td></td><td>As <code>pgtc --setup</code></td></tr>
+<tr><td>Install templates</td><td></td><td>As <code>pgtc --install-templates</code></td></tr>
+<tr><td>Show templates folder</td><td></td><td></td></tr>
+<tr><td rowspan="3">Help</td><td>Keyboard shortcuts</td><td></td><td>Every key of your keymap, and the path of <code>keymap.toml</code></td></tr>
+<tr><td>Third-party licences</td><td></td><td></td></tr>
+<tr><td>About pgtc</td><td></td><td>Version, copyright, licence</td></tr>
+</table></div>
+
+<h2 id="files">Files and folders</h2>
+<div class="tablewrap"><table>
+<tr><th>Platform</th><th>Config folder</th><th>Data folder</th></tr>
+<tr><td>Linux</td><td><code>~/.config/pgtc</code> (or <code>$XDG_CONFIG_HOME/pgtc</code>)</td><td><code>~/.local/share/pgtc</code> (or <code>$XDG_DATA_HOME/pgtc</code>)</td></tr>
+<tr><td>macOS</td><td colspan="2"><code>~/Library/Application Support/pgtc</code></td></tr>
+<tr><td>Windows</td><td colspan="2"><code>%APPDATA%\pgtc</code></td></tr>
+</table></div>
+<div class="tablewrap"><table>
+<tr><th>File or folder</th><th>In</th><th>What</th></tr>
+<tr><td class="k"><code>settings.toml</code></td><td>config</td><td>Settings and saved connections (no passwords)</td></tr>
+<tr><td class="k"><code>keymap.toml</code></td><td>config</td><td>Your key changes (you create it)</td></tr>
+<tr><td class="k"><code>developer_templates/</code></td><td>data</td><td>Developer templates</td></tr>
+<tr><td class="k"><code>themes/</code></td><td>data</td><td>Your own colour schemes</td></tr>
+<tr><td class="k"><code>logs/</code></td><td>data</td><td>Log files <code>pgtc.YYYY-MM-DD.log</code>, one per day; the last 7 are kept</td></tr>
+<tr><td class="k"><code>profiler_restore.toml</code></td><td>data</td><td>Logging settings the profiler changed and has not put back yet (no passwords)</td></tr>
+<tr><td class="k"><code>window.toml</code></td><td>data</td><td>Windows only: position of pgtc's own console window</td></tr>
+<tr><td class="k"><code>.pgpass</code> / <code>pgpass.conf</code></td><td>PostgreSQL's place</td><td>Passwords — <code>~/.pgpass</code>, <code>%APPDATA%\postgresql\pgpass.conf</code>, or <code>PGPASSFILE</code></td></tr>
+</table></div>
+
+<h3 id="log">Log</h3>
+<p>pgtc never prints to the terminal while it runs; it writes a log file. The level is <code>info</code>; set the
+environment variable <code>PGTC_LOG</code> for more, e.g. <code>PGTC_LOG=debug</code> or <code>PGTC_LOG=pgc_db=trace</code>.</p>
+
+<h3>Window position (Windows)</h3>
+<p>Started from Explorer, a shortcut or Win+R, pgtc gets its own classic console window; its position and maximized
+state are saved on exit and restored at the next start. A terminal you opened yourself (cmd, PowerShell, Windows
+Terminal, SSH) is never moved.</p>
+
+<h2 id="about">About and licences</h2>
+<figure class="small">
+  <img src="img/about.svg" alt="About pgtc" loading="lazy">
+  <figcaption><span class="menu">Help → About pgtc</span>.</figcaption>
+</figure>
+<p>pgtc is released under the <b>PostgreSQL Licence</b>. Its catalog queries are adapted from the SQL templates of
+pgAdmin 4, which has the same licence.</p>
+<figure>
+  <img src="img/licences.svg" alt="Third-party licences" loading="lazy">
+  <figcaption><span class="menu">Help → Third-party licences</span>: the licence of pgAdmin's SQL and of every library
+  pgtc is built from, each with the list of what it applies to.</figcaption>
+</figure>
+</main>
+<script src="help.js"></script>
+</body>
+</html>

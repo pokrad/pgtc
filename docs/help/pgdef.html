@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Database definition: export and load — pgtc Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+<main>
+<h1>Database definition: export and load</h1>
+<p class="lead">Save the whole <b>structure</b> of a database — not its data — into one file. Later, load that file
+against another database: pgtc compares the two and writes the SQL that brings the database to the structure in the
+file.</p>
+
+<h2 id="why">What it is good for</h2>
+<ul>
+  <li><b>Bring test or production up to date.</b> Export the definition of your development database; load it against
+      the test database; review and run the script. Only the differences are in it.</li>
+  <li><b>Clone a structure.</b> Load a definition into an empty database: the script creates everything.</li>
+  <li><b>Keep the structure in version control.</b> The file is text with a fixed order, so two exports of the same
+      structure are identical and a change shows as a clean diff.</li>
+  <li><b>See what changed.</b> Load last month's file against today's database… or simply compare two files with any
+      diff tool.</li>
+</ul>
+<div class="note"><p>This is about <b>structure</b>: tables, columns, constraints, indexes, views, functions, … No rows
+are exported or copied. For data, use <code>pg_dump</code>, or <a href="files.html#export">export a result</a>.</p></div>
+
+<h2 id="export">Exporting a definition</h2>
+<ol class="steps">
+  <li>In the object tree, put the cursor on the <b>database</b> (the database row itself).</li>
+  <li>Choose <span class="menu">File → Export database definition…</span> — or <kbd>F2</kbd> on the database and
+      <span class="menu">Export database definition…</span>.</li>
+  <li>Choose the folder and type a file name ending in <code>.pgdef</code>, for example
+      <code>adventureworks.pgdef</code>, then <kbd>Enter</kbd>. An existing file is overwritten only after a question.</li>
+</ol>
+<figure class="mid">
+  <img src="img/pgdef-export.svg" alt="Export database definition dialog" loading="lazy">
+  <figcaption>The export dialog names the database it will export. <code>.pgdef</code> files are highlighted.</figcaption>
+</figure>
+<p>pgtc reads the structure through a connection of its own (<i>Reading the structure of adventureworks…</i>), writes
+the file in the background and then says <i>Definition of adventureworks exported to …</i> in the status line. You can
+keep working meanwhile.</p>
+<p>The export always takes <b>the whole database</b>; there is nothing to choose.</p>
+<p>The menu item is available only while a database row is selected.</p>
+
+<h2 id="file">The .pgdef file</h2>
+<p>A <code>.pgdef</code> file is <a href="https://www.json.org">JSON</a> — readable text. This is the start of a small
+one:</p>
+<pre><code>{
+  "format": 1,
+  "schemas": [
+    {
+      "name": "sales",
+      "tables": [
+        {
+          "name": "customer",
+          "columns": [
+            {
+              "name": "customerid",
+              "type": "integer",
+              "not_null": true
+            },
+            {
+              "name": "personid",
+              "type": "integer"
+            },
+            {
+              "name": "createdby",
+              "type": "text",
+              "not_null": true,
+              "default": "CURRENT_USER"
+            }
+          ],
+          "constraints": [
+            {
+              "name": "PK_Customer_CustomerID",
+              "kind": "primary_key",
+              "definition": "PRIMARY KEY (customerid)"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}</code></pre>
+<ul>
+  <li><b>Always the same order.</b> Schemas, tables, functions and so on are sorted by name (columns keep their order
+      in the table). The same structure always gives the same file, byte for byte.</li>
+  <li><b>Only structure.</b> The file has no date, no server version, no owners and no privileges. A file exported
+      on Monday and one exported on Friday differ only if the structure differs.</li>
+  <li><b>Self-contained.</b> Copy it to another machine, mail it, commit it.</li>
+  <li><code>"format": 1</code> is the version of the file layout. A file with a higher number, written by a newer
+      pgtc, is refused with <i>This definition file was written by a newer pgtc (format N).</i></li>
+</ul>
+<div class="tip"><p>To get syntax colours for <code>.pgdef</code> files in your editor, tell it once that
+<code>.pgdef</code> is JSON.</p></div>
+
+<h3 id="covered">What is in the file — and what is not</h3>
+<div class="tablewrap"><table>
+<tr><th>Included</th><th>Details</th></tr>
+<tr><td>Extensions</td><td>Name and schema. Objects that belong to an extension are not listed one by one — <code>CREATE EXTENSION</code> brings them.</td></tr>
+<tr><td>Schemas</td><td>With their comments.</td></tr>
+<tr><td>Types</td><td>Enum, composite, domain, range.</td></tr>
+<tr><td>Sequences</td><td>Type, start, increment, limits, cache, cycle, the column that owns them.</td></tr>
+<tr><td>Tables</td><td>Columns (type, NOT NULL, default, identity, generated); constraints (primary key, unique, foreign key, check, exclude); indexes; triggers; rules; row-security policies; partitioning and partitions; storage options; comments.</td></tr>
+<tr><td>Views, materialized views</td><td>Their query, options, and for materialized views their indexes.</td></tr>
+<tr><td>Functions, procedures</td><td>Arguments, result type and the full definition.</td></tr>
+<tr><td>Comments</td><td>On all of the above.</td></tr>
+</table></div>
+<div class="tablewrap"><table>
+<tr><th>Not included</th><th>Why it matters</th></tr>
+<tr><td>Owners and privileges (<code>GRANT</code>)</td><td>A load never changes who owns an object or who may use it. New objects belong to the user who runs the script.</td></tr>
+<tr><td>Roles, tablespaces</td><td>They belong to the server, not to the database.</td></tr>
+<tr><td>Foreign data wrappers and foreign tables, publications, subscriptions, event triggers, casts, operators, aggregates, collations, full-text search objects</td><td>Not covered yet. If your database uses them, create them by hand.</td></tr>
+<tr><td>Data</td><td>No rows.</td></tr>
+</table></div>
+
+<h2 id="load">Loading a definition</h2>
+<p>Loading compares a file with a <b>live database that already exists</b> and writes a script. It changes nothing by
+itself.</p>
+<ol class="steps">
+  <li>In the object tree, put the cursor on the database you want to <b>bring up to date</b> — the target. (For a
+      clone, create an empty database first — <code>CREATE DATABASE …</code> in a query tab — refresh the tree and
+      select it.)</li>
+  <li>Choose <span class="menu">File → Load database definition…</span> — or <kbd>F2</kbd> on the database.</li>
+  <li>Pick the <code>.pgdef</code> file.</li>
+  <li>pgtc reads the file, reads the structure of the database, and compares them (the status line shows
+      <i>Reading the structure of …</i>, then <i>Comparing the definition with …</i>).</li>
+  <li>A <b>new query tab</b> opens, connected to the target database, with the script. The status line says
+      <i>Sync script for adventureworks: review it, then run it with F5</i>.</li>
+  <li><b>Read the script.</b> Then run it with <kbd>F5</kbd> — or save it, or change it, or close the tab.</li>
+</ol>
+<figure>
+  <img src="img/pgdef-script.svg" alt="A sync script in a query tab" loading="lazy">
+  <figcaption>The script for a database that lacks two columns, a table with its index and foreign key, and has an
+  older version of a view.</figcaption>
+</figure>
+<p>If the database already has the structure of the file, no tab opens; a message says
+<i>The structure of adventureworks already matches the definition file.</i></p>
+
+<h3 id="script">Reading the script</h3>
+<pre><code>-- Sync script generated by pgtc: brings this database to the structure of the
+-- definition file. Objects that exist only in the database are kept.
+-- Review it before running.
+
+ALTER TABLE sales.customer ADD COLUMN note text;
+ALTER TABLE sales.customer ADD COLUMN createdby text NOT NULL DEFAULT CURRENT_USER;
+
+CREATE TABLE sales.customernote (
+    customernoteid bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+    customerid integer NOT NULL,
+    note text NOT NULL,
+    CONSTRAINT customernote_pkey PRIMARY KEY (customernoteid)
+);
+
+CREATE OR REPLACE VIEW sales.vcustomeroverview AS
+SELECT c.customerid, c.territoryid, count(n.*) AS notes FROM sales.customer c LEFT JOIN ...;
+
+CREATE INDEX ix_customernote_customerid ON sales.customernote USING btree (customerid);
+
+ALTER TABLE sales.customernote ADD CONSTRAINT customernote_customerid_fkey
+    FOREIGN KEY (customerid) REFERENCES sales.customer(customerid);</code></pre>
+<p>This is a real script: the file had two more columns in <code>sales.customer</code>, a new table
+<code>sales.customernote</code>, and a changed view. Notice:</p>
+<ul>
+  <li><b>Only what differs.</b> The four columns <code>sales.customer</code> already has are not mentioned.</li>
+  <li><b>Precise statements.</b> A missing column is an <code>ALTER TABLE … ADD COLUMN</code>, not a new table.</li>
+  <li><b>The right order.</b> The new table comes before the view that reads it; the foreign key is added at the
+      end, when both tables exist. pgtc sorts the statements by what depends on what; tables that refer to each
+      other in a circle get their foreign keys afterwards.</li>
+</ul>
+
+<h3 id="rules">The rules of a load</h3>
+<div class="tip">
+<p><b>A load adds and changes. It never removes what exists only in the database.</b> A table, column, function or
+index that is in the database but not in the file stays exactly as it is. You cannot lose an object by loading an
+older file.</p>
+</div>
+<div class="tablewrap"><table>
+<tr><th>Situation</th><th>What the script does</th></tr>
+<tr><td>Object is in the file, not in the database</td><td><code>CREATE</code> it.</td></tr>
+<tr><td>Object is in the database, not in the file</td><td>Nothing.</td></tr>
+<tr><td>A column is missing; a column's type, default or NOT NULL differs</td><td><code>ALTER TABLE</code>.</td></tr>
+<tr><td>A view or function differs</td><td>Replace it as a whole: <code>CREATE OR REPLACE</code>, or — where PostgreSQL does not allow that, for example when the result type of a function changed — drop it and create it again.</td></tr>
+<tr><td>A constraint, index, trigger, rule, policy or materialized view differs</td><td>Drop it and create it again — these cannot be altered.</td></tr>
+<tr><td>A generated column's expression differs</td><td>Drop the column and add it again.</td></tr>
+<tr><td>A table's <b>partitioning</b> differs</td><td>Re-create the table, <b>keeping the data</b> — see below.</td></tr>
+</table></div>
+
+<h4>Tables are never dropped without a copy</h4>
+<p>The only reason pgtc ever re-creates a table is a change of its partitioning (PostgreSQL cannot alter that). The
+script then:</p>
+<ol>
+  <li>copies the table with all its rows into <code>_TableCopy_&lt;name&gt;</code> in the same schema;</li>
+  <li>drops the table and creates it as the file says — plus any columns and parts that exist only in the database;</li>
+  <li>loads the rows back, lets identity values continue after them, and re-attaches its sequences;</li>
+  <li>ends with a <b>commented-out</b> line for each copy:
+      <pre><code>-- DROP TABLE sales."_TableCopy_orders";</code></pre>
+      The copies stay until <b>you</b> remove them, once you are sure everything went well.</li>
+</ol>
+
+<h4>What a load cannot know</h4>
+<ul>
+  <li><b>Renames.</b> If you renamed <code>note</code> to <code>remark</code>, the file has <code>remark</code> and the
+      database has <code>note</code>: the script adds <code>remark</code> and leaves <code>note</code>. Rename by hand
+      (<code>ALTER TABLE … RENAME COLUMN</code>) <b>before</b> loading.</li>
+  <li><b>Data.</b> Adding a <code>NOT NULL</code> column without a default to a table that has rows fails, as it would
+      by hand. Changing a type may need a <code>USING</code> expression. The script is a starting point — edit it
+      where your data needs it.</li>
+  <li><b>Owners and privileges</b> are never touched.</li>
+</ul>
+
+<h3>Running the script safely</h3>
+<ul>
+  <li>The script is one text and runs as <b>one transaction</b> (see <a href="query.html#script">Scripts</a>): if a
+      statement fails, nothing is changed. Fix the cause and run it again.</li>
+  <li>Want to look before you commit? Turn off <span class="menu">Query → Auto commit</span> before <kbd>F5</kbd>,
+      check the result, then <span class="menu">Query → Commit</span> or <span class="menu">Rollback</span>.</li>
+  <li>Save the script (<kbd>Ctrl+S</kbd>) if the same change must be run on other databases, or reviewed by someone.</li>
+  <li>Afterwards, <kbd>Ctrl+R</kbd> on the database in the tree shows the new objects. Loading the same file again
+      should now answer that the structure already matches.</li>
+</ul>
+
+<h2 id="example">Example: from development to test</h2>
+<ol class="steps">
+  <li>Connect the development server. Select its database <code>adventureworks</code> and choose
+      <span class="menu">File → Export database definition…</span>; save as <code>adventureworks.pgdef</code>.</li>
+  <li>Connect the test server. Select <b>its</b> <code>adventureworks</code> database and choose
+      <span class="menu">File → Load database definition…</span>; pick the file.</li>
+  <li>Read the script in the new tab. It lists exactly what test is missing.</li>
+  <li><kbd>F5</kbd>. Done — test now has every table, column, view and function of development, and has kept
+      everything that only test had.</li>
+</ol>
+</main>
+<script src="help.js"></script>
+</body>
+</html>

@@ -1,0 +1,370 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="646" viewBox="0 0 1080 646" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15" shape-rendering="crispEdges" xml:space="preserve">
+<rect width="1080" height="646" fill="#0037da"/>
+<rect x="0" y="0" width="63.5" height="19.5" fill="#3a96dd"/>
+<rect x="63" y="0" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="0" width="63.5" height="19.5" fill="#3a96dd"/>
+<text x="27" y="14.25" fill="#0c0c0c" text-decoration="underline">F</text>
+<text x="36 45 54" y="14.25" fill="#0c0c0c">ile</text>
+<rect x="63" y="19" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="19" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0 9 18 27 36 45 54" y="33.25" fill="#cccccc">╔══════</text>
+<text x="72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441" y="33.25" fill="#0c0c0c">┌─────────────────────────────────────────</text>
+<text x="459 468 477 486 495 504 513 522" y="33.25" fill="#0037da">Keyboard</text>
+<text x="540 549 558 567 576 585 594 603 612" y="33.25" fill="#0037da">shortcuts</text>
+<text x="630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783 792 801 810 819 828 837 846 855 864 873 882 891 900 909 918 927 936 945 954 963 972 981 990 999" y="33.25" fill="#0c0c0c">─────────────────────────────────────────┐</text>
+<text x="1017 1026" y="33.25" fill="#767676">══</text>
+<text x="1035 1044 1053 1062 1071" y="33.25" fill="#cccccc">════╗</text>
+<rect x="9" y="38" width="1008.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="38" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="52.25" fill="#cccccc">║</text>
+<text x="72" y="52.25" fill="#0c0c0c">│</text>
+<text x="90 99 108 117 126 135 144 153 162 171" y="52.25" fill="#0037da" text-decoration="underline">Everywhere</text>
+<text x="999" y="52.25" fill="#0c0c0c">│</text>
+<text x="1071" y="52.25" fill="#cccccc">║</text>
+<rect x="63" y="57" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="57" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0 9 18 27 36 45 54" y="71.25" fill="#cccccc">╟──────</text>
+<text x="72" y="71.25" fill="#0c0c0c">│</text>
+<text x="108 117 126 135 144 153 162" y="71.25" fill="#0037da" text-decoration="underline">General</text>
+<text x="999" y="71.25" fill="#0c0c0c">│</text>
+<text x="1017 1026" y="71.25" fill="#767676">──</text>
+<text x="1035 1044 1053 1062 1071" y="71.25" fill="#cccccc">────╢</text>
+<rect x="63" y="76" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="76" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="90.25" fill="#cccccc">║</text>
+<text x="18" y="90.25" fill="#cccccc">▼</text>
+<text x="36 45 54" y="90.25" fill="#cccccc">loc</text>
+<text x="72" y="90.25" fill="#0c0c0c">│</text>
+<text x="126 135" y="90.25" fill="#0c0c0c">F1</text>
+<text x="360 369 378" y="90.25" fill="#0c0c0c">The</text>
+<text x="396 405 414 423" y="90.25" fill="#0c0c0c">keys</text>
+<text x="441 450 459 468" y="90.25" fill="#0c0c0c">that</text>
+<text x="486 495 504 513" y="90.25" fill="#0c0c0c">work</text>
+<text x="531 540 549" y="90.25" fill="#0c0c0c">now</text>
+<text x="999" y="90.25" fill="#0c0c0c">│</text>
+<text x="1071" y="90.25" fill="#cccccc">║</text>
+<rect x="63" y="95" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="95" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="109.25" fill="#cccccc">║</text>
+<text x="36" y="109.25" fill="#cccccc">▼</text>
+<text x="54" y="109.25" fill="#cccccc">D</text>
+<text x="72" y="109.25" fill="#0c0c0c">│</text>
+<text x="126 135" y="109.25" fill="#0c0c0c">F9</text>
+<text x="360 369 378 387" y="109.25" fill="#0c0c0c">Open</text>
+<text x="405 414 423" y="109.25" fill="#0c0c0c">the</text>
+<text x="441 450 459 468" y="109.25" fill="#0c0c0c">menu</text>
+<text x="486 495 504" y="109.25" fill="#0c0c0c">bar</text>
+<text x="999" y="109.25" fill="#0c0c0c">│</text>
+<text x="1071" y="109.25" fill="#cccccc">║</text>
+<rect x="9" y="114" width="1008.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="114" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="128.25" fill="#cccccc">║</text>
+<text x="54" y="128.25" fill="#0c0c0c">▼</text>
+<text x="72" y="128.25" fill="#0c0c0c">│</text>
+<text x="126 135 144" y="128.25" fill="#0c0c0c">F10</text>
+<text x="360 369 378 387" y="128.25" fill="#0c0c0c">Quit</text>
+<text x="405 414 423 432" y="128.25" fill="#0c0c0c">pgtc</text>
+<text x="999" y="128.25" fill="#0c0c0c">│</text>
+<text x="1071" y="128.25" fill="#cccccc">║</text>
+<rect x="63" y="133" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="133" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="147.25" fill="#cccccc">║</text>
+<text x="72" y="147.25" fill="#0c0c0c">│</text>
+<text x="108 117 126 135" y="147.25" fill="#0037da" text-decoration="underline">File</text>
+<text x="999" y="147.25" fill="#0c0c0c">│</text>
+<text x="1071" y="147.25" fill="#cccccc">║</text>
+<rect x="63" y="152" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="152" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="166.25" fill="#cccccc">║</text>
+<text x="72" y="166.25" fill="#0c0c0c">│</text>
+<text x="126 135 144 153 162 171" y="166.25" fill="#0c0c0c">Ctrl+N</text>
+<text x="360 369 378" y="166.25" fill="#0c0c0c">New</text>
+<text x="396 405 414 423 432" y="166.25" fill="#0c0c0c">query</text>
+<text x="450 459 468" y="166.25" fill="#0c0c0c">tab</text>
+<text x="999" y="166.25" fill="#0c0c0c">│</text>
+<text x="1071" y="166.25" fill="#cccccc">║</text>
+<rect x="63" y="171" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="171" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="185.25" fill="#cccccc">║</text>
+<text x="72" y="185.25" fill="#0c0c0c">│</text>
+<text x="108 117 126 135 144 153 162" y="185.25" fill="#0037da" text-decoration="underline">Windows</text>
+<text x="180 189 198" y="185.25" fill="#0037da" text-decoration="underline">and</text>
+<text x="216 225 234 243" y="185.25" fill="#0037da" text-decoration="underline">tabs</text>
+<text x="999" y="185.25" fill="#0c0c0c">│</text>
+<text x="1071" y="185.25" fill="#cccccc">║</text>
+<rect x="63" y="190" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="190" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="204.25" fill="#cccccc">║</text>
+<text x="72" y="204.25" fill="#0c0c0c">│</text>
+<text x="126 135 144 153 162 171 180 189 198" y="204.25" fill="#0c0c0c">Ctrl+Tab,</text>
+<text x="216 225" y="204.25" fill="#0c0c0c">F6</text>
+<text x="360 369 378 387 396 405" y="204.25" fill="#0c0c0c">Switch</text>
+<text x="423 432 441 450 459 468 477" y="204.25" fill="#0c0c0c">between</text>
+<text x="495 504 513" y="204.25" fill="#0c0c0c">the</text>
+<text x="531 540 549 558 567 576" y="204.25" fill="#0c0c0c">object</text>
+<text x="594 603 612 621" y="204.25" fill="#0c0c0c">tree</text>
+<text x="639 648 657" y="204.25" fill="#0c0c0c">and</text>
+<text x="675 684 693" y="204.25" fill="#0c0c0c">the</text>
+<text x="711 720 729 738 747" y="204.25" fill="#0c0c0c">right</text>
+<text x="765 774 783 792 801" y="204.25" fill="#0c0c0c">frame</text>
+<text x="999" y="204.25" fill="#0c0c0c">│</text>
+<text x="1071" y="204.25" fill="#cccccc">║</text>
+<rect x="63" y="209" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="209" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="223.25" fill="#cccccc">║</text>
+<text x="72" y="223.25" fill="#0c0c0c">│</text>
+<text x="126 135 144 153 162 171 180 189 198" y="223.25" fill="#0c0c0c">Alt+Right</text>
+<text x="360 369 378 387" y="223.25" fill="#0c0c0c">Next</text>
+<text x="405 414 423" y="223.25" fill="#0c0c0c">tab</text>
+<text x="999" y="223.25" fill="#0c0c0c">│</text>
+<text x="1071" y="223.25" fill="#cccccc">║</text>
+<rect x="63" y="228" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="228" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="242.25" fill="#cccccc">║</text>
+<text x="72" y="242.25" fill="#0c0c0c">│</text>
+<text x="126 135 144 153 162 171 180 189" y="242.25" fill="#0c0c0c">Alt+Left</text>
+<text x="360 369 378 387 396 405 414 423" y="242.25" fill="#0c0c0c">Previous</text>
+<text x="441 450 459" y="242.25" fill="#0c0c0c">tab</text>
+<text x="999" y="242.25" fill="#0c0c0c">│</text>
+<text x="1071" y="242.25" fill="#cccccc">║</text>
+<rect x="63" y="247" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="247" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="261.25" fill="#cccccc">║</text>
+<text x="72" y="261.25" fill="#0c0c0c">│</text>
+<text x="126 135 144 153 162 171" y="261.25" fill="#0c0c0c">Ctrl+W</text>
+<text x="360 369 378 387 396" y="261.25" fill="#0c0c0c">Close</text>
+<text x="414 423 432" y="261.25" fill="#0c0c0c">the</text>
+<text x="450 459 468" y="261.25" fill="#0c0c0c">tab</text>
+<text x="999" y="261.25" fill="#0c0c0c">│</text>
+<text x="1071" y="261.25" fill="#cccccc">║</text>
+<rect x="63" y="266" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="266" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="280.25" fill="#cccccc">║</text>
+<text x="72" y="280.25" fill="#0c0c0c">│</text>
+<text x="126 135 144 153 162 171" y="280.25" fill="#0c0c0c">Alt+1,</text>
+<text x="189 198 207 216 225 234" y="280.25" fill="#0c0c0c">Ctrl+1</text>
+<text x="360 369 378 387 396" y="280.25" fill="#0c0c0c">Focus</text>
+<text x="414 423 432" y="280.25" fill="#0c0c0c">the</text>
+<text x="450 459 468 477 486 495" y="280.25" fill="#0c0c0c">object</text>
+<text x="513 522 531 540" y="280.25" fill="#0c0c0c">tree</text>
+<text x="999" y="280.25" fill="#0c0c0c">│</text>
+<text x="1071" y="280.25" fill="#cccccc">║</text>
+<rect x="63" y="285" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="285" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="299.25" fill="#cccccc">║</text>
+<text x="72" y="299.25" fill="#0c0c0c">│</text>
+<text x="126 135 144 153 162 171" y="299.25" fill="#0c0c0c">Alt+2,</text>
+<text x="189 198 207 216 225 234" y="299.25" fill="#0c0c0c">Ctrl+2</text>
+<text x="360 369 378 387 396" y="299.25" fill="#0c0c0c">Focus</text>
+<text x="414 423 432" y="299.25" fill="#0c0c0c">the</text>
+<text x="450 459 468 477 486" y="299.25" fill="#0c0c0c">right</text>
+<text x="504 513 522 531 540" y="299.25" fill="#0c0c0c">frame</text>
+<text x="558 567 576 585" y="299.25" fill="#0c0c0c">(the</text>
+<text x="603 612 621 630" y="299.25" fill="#0c0c0c">part</text>
+<text x="648 657 666 675" y="299.25" fill="#0c0c0c">last</text>
+<text x="693 702 711 720 729" y="299.25" fill="#0c0c0c">used)</text>
+<text x="999" y="299.25" fill="#0c0c0c">│</text>
+<text x="1071" y="299.25" fill="#cccccc">║</text>
+<rect x="63" y="304" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="304" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="318.25" fill="#cccccc">║</text>
+<text x="72" y="318.25" fill="#0c0c0c">│</text>
+<text x="126 135 144 153 162 171 180 189 198" y="318.25" fill="#0c0c0c">Alt+Down,</text>
+<text x="216 225 234 243 252 261 270 279 288 297 306 315 324 333 342" y="318.25" fill="#0c0c0c">Ctrl+Shift+Down</text>
+<text x="369 378 387 396 405" y="318.25" fill="#0c0c0c">Lower</text>
+<text x="423 432 441 450" y="318.25" fill="#0c0c0c">part</text>
+<text x="468 477" y="318.25" fill="#0c0c0c">of</text>
+<text x="495 504 513" y="318.25" fill="#0c0c0c">the</text>
+<text x="531 540 549 558 567" y="318.25" fill="#0c0c0c">right</text>
+<text x="585 594 603 612 621" y="318.25" fill="#0c0c0c">frame</text>
+<text x="639 648 657 666 675 684 693 702 711" y="318.25" fill="#0c0c0c">(results,</text>
+<text x="729 738 747 756 765 774 783 792 801" y="318.25" fill="#0c0c0c">messages,</text>
+<text x="819 828 837 846 855 864 873 882 891" y="318.25" fill="#0c0c0c">statement</text>
+<text x="909 918 927 936 945" y="318.25" fill="#0c0c0c">pane)</text>
+<text x="999" y="318.25" fill="#0c0c0c">│</text>
+<text x="1071" y="318.25" fill="#cccccc">║</text>
+<rect x="63" y="323" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="323" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="337.25" fill="#cccccc">║</text>
+<text x="72" y="337.25" fill="#0c0c0c">│</text>
+<text x="126 135 144 153 162 171 180" y="337.25" fill="#0c0c0c">Alt+Up,</text>
+<text x="198 207 216 225 234 243 252 261 270 279 288 297 306" y="337.25" fill="#0c0c0c">Ctrl+Shift+Up</text>
+<text x="360 369 378 387 396" y="337.25" fill="#0c0c0c">Upper</text>
+<text x="414 423 432 441" y="337.25" fill="#0c0c0c">part</text>
+<text x="459 468" y="337.25" fill="#0c0c0c">of</text>
+<text x="486 495 504" y="337.25" fill="#0c0c0c">the</text>
+<text x="522 531 540 549 558" y="337.25" fill="#0c0c0c">right</text>
+<text x="576 585 594 603 612" y="337.25" fill="#0c0c0c">frame</text>
+<text x="630 639 648 657 666 675 684 693" y="337.25" fill="#0c0c0c">(editor,</text>
+<text x="711 720 729 738 747" y="337.25" fill="#0c0c0c">list)</text>
+<text x="999" y="337.25" fill="#0c0c0c">│</text>
+<text x="1071" y="337.25" fill="#cccccc">║</text>
+<rect x="63" y="342" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="342" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="356.25" fill="#cccccc">║</text>
+<text x="72" y="356.25" fill="#0c0c0c">│</text>
+<text x="999" y="356.25" fill="#0c0c0c">│</text>
+<text x="1071" y="356.25" fill="#cccccc">║</text>
+<rect x="63" y="361" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="361" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="375.25" fill="#cccccc">║</text>
+<text x="72" y="375.25" fill="#0c0c0c">│</text>
+<text x="90 99 108 117 126 135" y="375.25" fill="#0037da" text-decoration="underline">Object</text>
+<text x="153 162 171 180" y="375.25" fill="#0037da" text-decoration="underline">tree</text>
+<text x="999" y="375.25" fill="#0c0c0c">│</text>
+<text x="1017 1026" y="375.25" fill="#767676">──</text>
+<text x="1035 1044 1053 1062 1071" y="375.25" fill="#cccccc">────╢</text>
+<rect x="63" y="380" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="380" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="394.25" fill="#cccccc">║</text>
+<text x="72" y="394.25" fill="#0c0c0c">│</text>
+<text x="108 117 126 135 144 153 162" y="394.25" fill="#0037da" text-decoration="underline">Actions</text>
+<text x="999" y="394.25" fill="#0c0c0c">│</text>
+<text x="1071" y="394.25" fill="#cccccc">║</text>
+<rect x="63" y="399" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="399" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="413.25" fill="#cccccc">║</text>
+<text x="72" y="413.25" fill="#0c0c0c">│</text>
+<text x="126 135" y="413.25" fill="#0c0c0c">F2</text>
+<text x="360 369 378 387 396 405 414" y="413.25" fill="#0c0c0c">Context</text>
+<text x="432 441 450 459" y="413.25" fill="#0c0c0c">menu</text>
+<text x="999" y="413.25" fill="#0c0c0c">│</text>
+<text x="1017 1026" y="413.25" fill="#767676">──</text>
+<text x="1035 1044 1053 1062 1071" y="413.25" fill="#cccccc">────╢</text>
+<rect x="63" y="418" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="418" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="432.25" fill="#cccccc">║</text>
+<text x="54" y="432.25" fill="#cccccc">►</text>
+<text x="72" y="432.25" fill="#0c0c0c">│</text>
+<text x="126 135" y="432.25" fill="#0c0c0c">F3</text>
+<text x="360 369 378 387" y="432.25" fill="#0c0c0c">Show</text>
+<text x="405 414 423" y="432.25" fill="#0c0c0c">the</text>
+<text x="441 450 459 468 477 486" y="432.25" fill="#0c0c0c">object</text>
+<text x="504 513" y="432.25" fill="#0c0c0c">in</text>
+<text x="531" y="432.25" fill="#0c0c0c">a</text>
+<text x="549 558 567" y="432.25" fill="#0c0c0c">new</text>
+<text x="585 594 603" y="432.25" fill="#0c0c0c">tab</text>
+<text x="999" y="432.25" fill="#0c0c0c">│</text>
+<text x="1071" y="432.25" fill="#cccccc">║</text>
+<rect x="63" y="437" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="437" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="451.25" fill="#cccccc">║</text>
+<text x="36" y="451.25" fill="#cccccc">►</text>
+<text x="54" y="451.25" fill="#cccccc">L</text>
+<text x="72" y="451.25" fill="#0c0c0c">│</text>
+<text x="126 135" y="451.25" fill="#0c0c0c">F8</text>
+<text x="360 369 378 387 396 405" y="451.25" fill="#0c0c0c">Delete</text>
+<text x="423 432 441" y="451.25" fill="#0c0c0c">the</text>
+<text x="459 468 477 486 495" y="451.25" fill="#0c0c0c">saved</text>
+<text x="513 522 531 540 549 558 567 576 585 594" y="451.25" fill="#0c0c0c">connection</text>
+<text x="999" y="451.25" fill="#0c0c0c">│</text>
+<text x="1071" y="451.25" fill="#cccccc">║</text>
+<rect x="63" y="456" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="456" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="470.25" fill="#cccccc">║</text>
+<text x="36" y="470.25" fill="#cccccc">►</text>
+<text x="54" y="470.25" fill="#cccccc">T</text>
+<text x="72" y="470.25" fill="#0c0c0c">│</text>
+<text x="126 135 144 153 162 171" y="470.25" fill="#0c0c0c">Ctrl+R</text>
+<text x="360 369 378 387 396 405 414" y="470.25" fill="#0c0c0c">Refresh</text>
+<text x="432 441 450" y="470.25" fill="#0c0c0c">the</text>
+<text x="468 477 486 495 504 513" y="470.25" fill="#0c0c0c">object</text>
+<text x="531 540 549 558" y="470.25" fill="#0c0c0c">tree</text>
+<text x="999" y="470.25" fill="#0c0c0c">│</text>
+<text x="1071" y="470.25" fill="#cccccc">║</text>
+<rect x="63" y="475" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="475" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="489.25" fill="#cccccc">║</text>
+<text x="18" y="489.25" fill="#cccccc">►</text>
+<text x="36 45 54" y="489.25" fill="#cccccc">pro</text>
+<text x="72" y="489.25" fill="#0c0c0c">│</text>
+<text x="126 135 144 153 162 171" y="489.25" fill="#0c0c0c">Ctrl+E</text>
+<text x="360 369 378 387" y="489.25" fill="#0c0c0c">Edit</text>
+<text x="405 414 423" y="489.25" fill="#0c0c0c">the</text>
+<text x="441 450 459 468 477" y="489.25" fill="#0c0c0c">shown</text>
+<text x="495 504 513 522 531 540 549 558 567 576" y="489.25" fill="#0c0c0c">definition</text>
+<text x="594 603 612" y="489.25" fill="#0c0c0c">(or</text>
+<text x="630 639 648 657 666 675 684 693 702 711" y="489.25" fill="#0c0c0c">statement)</text>
+<text x="729 738" y="489.25" fill="#0c0c0c">in</text>
+<text x="756" y="489.25" fill="#0c0c0c">a</text>
+<text x="774 783 792" y="489.25" fill="#0c0c0c">new</text>
+<text x="810 819 828 837 846" y="489.25" fill="#0c0c0c">query</text>
+<text x="864 873 882" y="489.25" fill="#0c0c0c">tab</text>
+<text x="999" y="489.25" fill="#0c0c0c">│</text>
+<text x="1071" y="489.25" fill="#cccccc">║</text>
+<rect x="63" y="494" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="494" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="508.25" fill="#cccccc">║</text>
+<text x="72" y="508.25" fill="#0c0c0c">│</text>
+<text x="126 135 144 153 162 171" y="508.25" fill="#0c0c0c">Ctrl+B</text>
+<text x="360 369 378 387 396 405" y="508.25" fill="#0c0c0c">Select</text>
+<text x="423 432 441" y="508.25" fill="#0c0c0c">the</text>
+<text x="459 468 477" y="508.25" fill="#0c0c0c">top</text>
+<text x="495 504 513" y="508.25" fill="#0c0c0c">100</text>
+<text x="531 540 549 558" y="508.25" fill="#0c0c0c">rows</text>
+<text x="576 585" y="508.25" fill="#0c0c0c">of</text>
+<text x="603 612 621" y="508.25" fill="#0c0c0c">the</text>
+<text x="639 648 657 666 675" y="508.25" fill="#0c0c0c">table</text>
+<text x="693 702" y="508.25" fill="#0c0c0c">or</text>
+<text x="720 729 738 747" y="508.25" fill="#0c0c0c">view</text>
+<text x="765 774" y="508.25" fill="#0c0c0c">in</text>
+<text x="792" y="508.25" fill="#0c0c0c">a</text>
+<text x="810 819 828" y="508.25" fill="#0c0c0c">new</text>
+<text x="846 855 864 873 882" y="508.25" fill="#0c0c0c">query</text>
+<text x="900 909 918" y="508.25" fill="#0c0c0c">tab</text>
+<text x="999" y="508.25" fill="#0c0c0c">│</text>
+<text x="1071" y="508.25" fill="#cccccc">║</text>
+<rect x="63" y="513" width="918.5" height="19.5" fill="#cccccc"/>
+<rect x="990" y="513" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="513" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="527.25" fill="#cccccc">║</text>
+<text x="72" y="527.25" fill="#0c0c0c">│</text>
+<text x="126 135 144 153 162 171" y="527.25" fill="#0c0c0c">Alt+D,</text>
+<text x="189 198 207 216 225 234" y="527.25" fill="#0c0c0c">Ctrl+D</text>
+<text x="360 369 378 387 396 405" y="527.25" fill="#0c0c0c">Server</text>
+<text x="423 432 441 450 459 468 477 486 495" y="527.25" fill="#0c0c0c">dashboard</text>
+<text x="513 522" y="527.25" fill="#0c0c0c">of</text>
+<text x="540 549 558" y="527.25" fill="#0c0c0c">the</text>
+<text x="576 585 594 603 612 621 630 639" y="527.25" fill="#0c0c0c">selected</text>
+<text x="657 666 675 684 693 702" y="527.25" fill="#0c0c0c">server</text>
+<text x="720 729" y="527.25" fill="#0c0c0c">or</text>
+<text x="747 756 765 774 783 792 801 810" y="527.25" fill="#0c0c0c">database</text>
+<text x="981" y="527.25" fill="#f2f2f2">▼</text>
+<text x="999" y="527.25" fill="#0c0c0c">│</text>
+<text x="1071" y="527.25" fill="#cccccc">║</text>
+<rect x="63" y="532" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="532" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="546.25" fill="#cccccc">║</text>
+<text x="72" y="546.25" fill="#0c0c0c">│</text>
+<text x="999" y="546.25" fill="#0c0c0c">│</text>
+<text x="1071" y="546.25" fill="#cccccc">║</text>
+<rect x="63" y="551" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="551" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="565.25" fill="#cccccc">║</text>
+<text x="72" y="565.25" fill="#0c0c0c">│</text>
+<text x="486 495" y="565.25" fill="#0c0c0c">[&lt;</text>
+<text x="513" y="565.25" fill="#0037da" text-decoration="underline">C</text>
+<text x="522 531 540 549" y="565.25" fill="#0c0c0c">lose</text>
+<text x="567 576" y="565.25" fill="#0c0c0c">&gt;]</text>
+<text x="999" y="565.25" fill="#0c0c0c">│</text>
+<text x="1071" y="565.25" fill="#cccccc">║</text>
+<rect x="63" y="570" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="570" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="584.25" fill="#cccccc">║</text>
+<text x="72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783 792 801 810 819 828 837 846 855 864 873 882 891 900 909 918 927 936 945 954 963 972 981 990 999" y="584.25" fill="#0c0c0c">└──────────────────────────────────────────────────────────────────────────────────────────────────────┘</text>
+<text x="1017 1026" y="584.25" fill="#767676">──</text>
+<text x="1035 1044 1053 1062 1071" y="584.25" fill="#cccccc">────╢</text>
+<rect x="63" y="589" width="954.5" height="19.5" fill="#cccccc"/>
+<rect x="1017" y="589" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="1035" y="589" width="36.5" height="19.5" fill="#3a96dd"/>
+<text x="0" y="603.25" fill="#cccccc">║</text>
+<text x="1017 1026" y="603.25" fill="#767676">Co</text>
+<text x="1035" y="603.25" fill="#0c0c0c">l</text>
+<text x="1053" y="603.25" fill="#0c0c0c">1</text>
+<text x="1071" y="603.25" fill="#cccccc">║</text>
+<rect x="81" y="608" width="954.5" height="19.5" fill="#0c0c0c"/>
+<text x="0 9 18 27 36 45 54 63 72" y="622.25" fill="#cccccc">╚════════</text>
+<text x="81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783 792 801 810 819 828 837 846 855 864 873 882 891 900 909 918 927 936 945 954 963 972 981 990 999 1008 1017 1026" y="622.25" fill="#767676">══════════════════════╝╚══════════════════════════════════════════════════════════════════════════════════</text>
+<text x="1035 1044 1053 1062 1071" y="622.25" fill="#cccccc">════╝</text>
+<rect x="0" y="627" width="1080.5" height="19.5" fill="#3a96dd"/>
+</svg>

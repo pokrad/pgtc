@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Query tabs — pgtc Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+<main>
+<h1>Query tabs</h1>
+<p class="lead">Where you write and run SQL: executing, results, messages and errors, cancelling, transactions,
+PL/pgSQL mode, and what happens when a tab closes.</p>
+
+<figure>
+  <img src="img/query.svg" alt="A query tab" loading="lazy">
+  <figcaption>A query tab: the editor above, the results bar and the result grid below, the tab's status row at the
+  bottom.</figcaption>
+</figure>
+
+<h2 id="open">Opening a query tab</h2>
+<p>A query tab always belongs to <b>one database</b>. You choose it in the tree:</p>
+<ol class="steps">
+  <li>Put the tree cursor on a database, or on anything inside it (a schema, a table, a column…).</li>
+  <li>Press <kbd>Ctrl+N</kbd> — from any part of the window. Or: <span class="menu">File → New query</span>, or
+      <span class="menu">New query</span> in the context menu (<kbd>F2</kbd>).</li>
+</ol>
+<p>The tab is named <i>Query 1 – adventureworks</i>, opens its <b>own connection</b> to that database, and the cursor
+is in the editor. <i>Messages</i> shows <i>Connecting…</i> and then <i>Connected to …</i>.</p>
+<ul>
+  <li>With the cursor on a server row or on <i>Login/Group Roles</i> / <i>Tablespaces</i> there is no database:
+      <kbd>Ctrl+N</kbd> only shows a hint in the status line.</li>
+  <li>Open as many query tabs as you like, also several for the same database — each has its own connection,
+      transaction and session settings.</li>
+  <li>Other ways to get a query tab: <kbd>Ctrl+B</kbd> on a table (<a href="tree.html#top">first 100 rows</a>),
+      <kbd>Ctrl+E</kbd> on an object (<a href="objects.html#edit">its definition</a>),
+      <span class="menu">File → Open SQL file…</span> (<a href="files.html">a file</a>).</li>
+</ul>
+
+<h2 id="layout">The parts of a query tab</h2>
+<div class="tablewrap"><table>
+<tr><th>Part</th><th>What it shows</th></tr>
+<tr><td><b>File bar</b></td><td>Only when the tab has a file: its full path, with <code>*</code> while there are unsaved changes.</td></tr>
+<tr><td><b>Editor</b></td><td>Your SQL. See <a href="editor.html">SQL editor and autocomplete</a>.</td></tr>
+<tr><td><b>Results bar</b></td><td><code>Messages (n)</code>, then one label per result set: <code>1: 12 rows</code>, <code>2: 1,000+ rows</code>.</td></tr>
+<tr><td><b>Results</b></td><td>The grid of the chosen result set, or the messages.</td></tr>
+<tr><td><b>Tab status row</b></td><td>Left: the connection (<code>local · postgres@adventureworks</code>), the transaction state, <i>PL/pgSQL</i> when that mode is on. Then what is happening. Right: the cursor position.</td></tr>
+</table></div>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th></tr>
+<tr><td class="k"><kbd>Alt+Down</kbd> / <kbd>Alt+Up</kbd></td><td>From the editor to the results, and back.</td></tr>
+<tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Hides the results (the editor gets the whole tab) or shows them again.</td></tr>
+<tr><td class="k"><kbd>Alt+Shift+Up</kbd> / <kbd>Alt+Shift+Down</kbd></td><td>Makes the results smaller / larger. With the mouse: drag the line above the results bar.</td></tr>
+<tr><td class="k"><kbd>F6</kbd></td><td>To the object tree and back.</td></tr>
+</table></div>
+
+<h2 id="run">Executing: F5</h2>
+<p><kbd>F5</kbd> (or <span class="menu">Query → Execute</span>) runs</p>
+<ul>
+  <li>the <b>selected text</b>, if something is selected;</li>
+  <li>otherwise the <b>whole text</b> of the editor.</li>
+</ul>
+<figure>
+  <img src="img/query-selection.svg" alt="Executing a selection" loading="lazy">
+  <figcaption>Three statements in the editor; the second line is selected, so <kbd>F5</kbd> runs only that
+  statement.</figcaption>
+</figure>
+<div class="tip"><p>To run one statement of a script: put the cursor at its start, press <kbd>Shift+End</kbd> (or
+<kbd>Shift+Down</kbd> for several lines) to select it, then <kbd>F5</kbd>.</p></div>
+
+<p>While the statement runs, the tab status row shows <i>Executing…</i> with the elapsed time and the key that
+cancels:</p>
+<figure>
+  <img src="img/query-running.svg" alt="A running query" loading="lazy">
+</figure>
+<p>You do not have to wait: switch to another tab, browse the tree, run something in a second query tab. Rows are
+shown as soon as they arrive. When the run ends, the status row says <i>Execution finished in …</i> or
+<i>Execution failed after …</i>.</p>
+
+<h3 id="script">Scripts: several statements at once</h3>
+<p>The text is sent to the server as <b>one request</b>, exactly as pgAdmin does. PostgreSQL then treats a script of
+several statements as <b>one transaction</b>:</p>
+<ul>
+  <li>if one statement fails, the statements <b>before</b> it are rolled back too, and the ones after it do not run;</li>
+  <li>statements that cannot run inside a transaction — <code>VACUUM</code>, <code>CREATE DATABASE</code>,
+      <code>CREATE INDEX CONCURRENTLY</code>, <code>ALTER SYSTEM</code> — fail when they are part of a script. Run them
+      alone: select just that statement and press <kbd>F5</kbd>;</li>
+  <li>a script that contains its own <code>BEGIN</code> / <code>COMMIT</code> controls its transactions itself.</li>
+</ul>
+<p>Each statement that returns rows gives its own result set; each statement leaves its command tag in
+<i>Messages</i>.</p>
+
+<h2 id="results">Results</h2>
+<h3>The results bar</h3>
+<figure>
+  <img src="img/query-multi.svg" alt="Several result sets" loading="lazy">
+  <figcaption>A script with three <code>SELECT</code>s: three result sets. The second one is shown.</figcaption>
+</figure>
+<p><code>Messages (n)</code> is always the first label. After it comes one label for each result set, with its number
+and row count. The label that is shown is highlighted.</p>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th></tr>
+<tr><td class="k"><kbd>Ctrl+PgDn</kbd> / <kbd>Ctrl+PgUp</kbd></td><td>Next / previous result set — also from the editor. Second keys: <kbd>Alt+PgDn</kbd> / <kbd>Alt+PgUp</kbd>.</td></tr>
+<tr><td class="k"><kbd>Alt+M</kbd></td><td>Switches between the result set and <i>Messages</i> — also from the editor.</td></tr>
+<tr><td class="k"><kbd>Alt+Right</kbd> / <kbd>Alt+Left</kbd></td><td>In the results: through all labels in a circle, <i>1 → 2 → … → Messages → 1</i>.</td></tr>
+<tr><td class="k">click</td><td>A label shows that result set.</td></tr>
+</table></div>
+<p>After every run the <b>first</b> result set is shown. A run that returns no rows at all (an <code>UPDATE</code>, DDL,
+a <code>DO</code> block) ends on <i>Messages</i>; a <code>SELECT</code> that finds nothing shows its empty grid with the
+column names.</p>
+
+<h3 id="grid">The grid</h3>
+<p>Move into the grid with <kbd>Alt+Down</kbd>. It has a cell cursor.</p>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th></tr>
+<tr><td class="k">Arrows</td><td>Move the cell cursor; the grid scrolls sideways for wide results.</td></tr>
+<tr><td class="k"><kbd>PgUp</kbd> / <kbd>PgDn</kbd></td><td>A page up / down.</td></tr>
+<tr><td class="k"><kbd>Home</kbd> / <kbd>End</kbd></td><td>First / last column of the row.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Home</kbd> / <kbd>Ctrl+End</kbd></td><td>First / last loaded row.</td></tr>
+<tr><td class="k"><kbd>Ctrl+C</kbd> or <kbd>Ctrl+Insert</kbd></td><td>Copies the value of the cell — the whole value, also when the grid shows it shortened.</td></tr>
+<tr><td class="k"><kbd>Ctrl+A</kbd>, then <kbd>Ctrl+C</kbd></td><td>Copies the whole result set: tab-separated, with a header row — ready to paste into a spreadsheet.</td></tr>
+<tr><td class="k"><kbd>Alt+End</kbd></td><td>Fetch all rows (see below).</td></tr>
+<tr><td class="k"><kbd>F2</kbd></td><td>Context menu: <i>Export result…</i>, <i>Fetch all</i>.</td></tr>
+</table></div>
+<p>How values are shown:</p>
+<ul>
+  <li>The first column is the <b>row number</b>.</li>
+  <li><code>[null]</code>, in a quiet colour, is a NULL — different from an empty text.</li>
+  <li>Numbers are right-aligned, everything else left-aligned.</li>
+  <li>A column is as wide as its name and the values loaded so far, but at most 40 characters; a longer value ends
+      with <code>…</code>.</li>
+  <li>A line break inside a value is shown as <code>↵</code>, a tab as <code>→</code>. Copying gives the real characters.</li>
+</ul>
+<figure class="mid">
+  <img src="img/results-menu.svg" alt="Results context menu" loading="lazy">
+  <figcaption><kbd>F2</kbd> in the grid.</figcaption>
+</figure>
+
+<h3 id="batches">Large results: 1,000 rows at a time</h3>
+<figure>
+  <img src="img/query-more.svg" alt="A paused result" loading="lazy">
+  <figcaption>The first 1,000 rows of a large table. The label says <code>1,000+ rows</code>, the status row
+  <i>1,000 rows loaded – more available</i>.</figcaption>
+</figure>
+<p>pgtc does not read a million rows just because you forgot a <code>LIMIT</code>. It takes the first
+<b>1,000 rows</b> (the <i>batch</i>; the number is a <a href="settings.html">setting</a>), shows them, and <b>stops
+reading</b>. The server waits.</p>
+<ul>
+  <li>When you scroll near the end of the loaded rows, the next 1,000 are fetched by themselves.</li>
+  <li><kbd>Alt+End</kbd> — <span class="menu">Query → Fetch all</span> — reads all the rest.</li>
+  <li>The label shows <code>1,000+</code> for as long as there are more rows.</li>
+</ul>
+<div class="warn">
+<p><b>A paused result is a query that is still running on the server.</b> It keeps its snapshot and its locks until
+it ends. It ends when you fetch all rows, cancel it (<kbd>Alt+Shift+C</kbd>), run the next statement in the tab, or
+close the tab. Do not leave a paused result open for hours on a busy database.</p>
+</div>
+<p>While a result is paused, the tab's connection is busy. Things that need it — autocomplete reading new names,
+<kbd>F7</kbd> templates, the generate commands of <kbd>F4</kbd> — tell you to finish or close the result first.</p>
+<p><b>What “closing” a paused result does.</b> When you run the next statement (or commit, or roll back) while a
+result is paused, pgtc must end the old query first:</p>
+<ul>
+  <li>if nothing can be lost — no transaction was open and the result belongs to the first statement of the run —
+      the query is simply cancelled;</li>
+  <li>otherwise the remaining rows are <b>read and thrown away</b>, because cancelling would abort the transaction and
+      undo what the script did before. The status row shows <i>Closing the result…</i>. For a very large result
+      this takes as long as reading it; <kbd>Alt+Shift+C</kbd> then cancels for real (and, like any cancel, aborts the
+      transaction).</li>
+</ul>
+
+<h2 id="messages">Messages</h2>
+<figure>
+  <img src="img/query-multi-messages.svg" alt="Messages after a script" loading="lazy">
+  <figcaption><i>Messages</i> after the script above: one command tag per statement and the total time.</figcaption>
+</figure>
+<p><i>Messages</i> is the log of the tab's last run, in the order things happened:</p>
+<div class="tablewrap"><table>
+<tr><th>Line</th><th>Meaning</th></tr>
+<tr><td class="k"><code>UPDATE 2</code>, <code>INSERT 0 5</code>, <code>CREATE TABLE</code>, <code>SELECT 13</code></td><td>The <b>command tag</b> of each completed statement — how many rows it changed or returned.</td></tr>
+<tr><td class="k"><code>NOTICE:  …</code>, <code>WARNING:  …</code>, <code>INFO:  …</code></td><td>Messages of the server and of <code>RAISE</code> in your functions. They appear <b>while</b> the statement runs.</td></tr>
+<tr><td class="k"><code>ERROR:  …</code></td><td>An error, with its <code>DETAIL</code> and <code>HINT</code> lines and the place in your text.</td></tr>
+<tr><td class="k"><code>BEGIN</code>, <code>ROLLBACK</code></td><td>What pgtc did by itself for the transaction settings of the tab.</td></tr>
+<tr><td class="k"><code>NOTIFY:  channel "name" (pid 1234): payload</code></td><td>A notification from <code>LISTEN</code> / <code>NOTIFY</code>. It arrives whenever the server sends it, also between runs.</td></tr>
+<tr><td class="k"><code>Total time: 21 ms</code></td><td>The time of the whole run.</td></tr>
+</table></div>
+<p>The number in <code>Messages (n)</code> is the number of messages. Move in them with <kbd>Up</kbd> / <kbd>Down</kbd>.</p>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th></tr>
+<tr><td class="k"><kbd>Enter</kbd> (or a double click)</td><td>On an error or notice with a known place: jumps to that line in the editor.</td></tr>
+<tr><td class="k"><kbd>Ctrl+C</kbd></td><td>Copies the message under the cursor, with all its lines.</td></tr>
+<tr><td class="k"><kbd>Ctrl+A</kbd>, then <kbd>Ctrl+C</kbd></td><td>Copies all messages.</td></tr>
+<tr><td class="k"><kbd>F2</kbd></td><td>Context menu: <i>Jump to line</i>, <i>Copy message</i>, <i>Copy all messages</i>.</td></tr>
+</table></div>
+
+<h3 id="errors">Errors</h3>
+<figure>
+  <img src="img/query-error.svg" alt="An error in Messages" loading="lazy">
+  <figcaption>A mistyped column name. <i>Messages</i> opens by itself and shows the line and, with <code>^</code>, the
+  exact place.</figcaption>
+</figure>
+<p>When a statement fails:</p>
+<ul>
+  <li><i>Messages</i> is shown automatically, and the bottom line of the window says
+      <i>Execution failed after … — see Messages</i>;</li>
+  <li>the error is followed — as in psql — by <code>LINE n:</code> with the text of the line (<i>n</i> is the line
+      number <b>in your editor</b>, also when you ran only a selection), and a <code>^</code> under the place of the
+      error;</li>
+  <li><code>DETAIL:</code> and <code>HINT:</code> lines of the server follow;</li>
+  <li>the result sets of statements that had already finished stay available in the results bar — but remember that
+      a failed script is rolled back as a whole.</li>
+</ul>
+<p>Put the cursor on the error and press <kbd>Enter</kbd>: the focus moves to the editor, onto the place of the error,
+and the word there is selected — type the correction and press <kbd>F5</kbd> again.</p>
+<figure>
+  <img src="img/query-error-jump.svg" alt="After jumping to the error" loading="lazy">
+  <figcaption>After <kbd>Enter</kbd> on the error: <code>s.salesqouta</code> is selected in the editor.</figcaption>
+</figure>
+<p>This also works for errors <b>inside a <code>DO</code> block</b> and in PL/pgSQL mode: pgtc works out the line of
+your text from the server's <code>CONTEXT</code>. The place is the one at the time of the error; if you edit the text
+afterwards, a jump may be a little off.</p>
+<figure class="mid">
+  <img src="img/messages-menu.svg" alt="Messages context menu" loading="lazy">
+  <figcaption><kbd>F2</kbd> in <i>Messages</i>.</figcaption>
+</figure>
+
+<h2 id="cancel">Cancelling a query</h2>
+<p><kbd>Alt+Shift+C</kbd> — <span class="menu">Query → Cancel</span> — asks the server to stop the running statement.
+This is PostgreSQL's real cancel request, the same as <kbd>Ctrl+C</kbd> in psql: the statement ends with the error
+<i>canceling statement due to user request</i>, and its transaction is aborted.</p>
+<ul>
+  <li>The same key ends a <b>paused</b> result and stops a running <b>export</b>.</li>
+  <li>Sometimes a server does not react — for example while it waits for the network. If nothing has happened after
+      <b>5 seconds</b> (a <a href="settings.html">setting</a>), pgtc asks: <i>The server did not react to the cancel
+      request. Close this query tab's connection?</i> — <span class="ui">Close connection</span> ends the query for
+      certain (an open transaction is lost); <span class="ui">Keep waiting</span> waits on. Only this tab is affected.
+      It keeps its text, and the next <kbd>F5</kbd> connects it again.</li>
+</ul>
+
+<h2 id="tx">Transactions</h2>
+<p>Each query tab has two switches, in the <span class="menu">Query</span> menu (an <code>[x]</code> shows that a switch
+is on):</p>
+<div class="tablewrap"><table>
+<tr><th>Switch</th><th>Default</th><th>On</th><th>Off</th></tr>
+<tr><td><b>Auto commit</b></td><td>on</td><td>Every run is committed when it ends without an error. This is how psql behaves.</td><td>pgtc starts a transaction with your first statement and leaves it <b>open</b>. Nothing is permanent until you choose <span class="menu">Query → Commit</span>.</td></tr>
+<tr><td><b>Auto rollback on error</b></td><td>off</td><td>When a statement fails inside an open transaction, pgtc rolls the transaction back at once.</td><td>The transaction stays in the failed state until you roll it back yourself. Until then every statement is refused by the server.</td></tr>
+</table></div>
+<p>The switches of a <b>new</b> tab come from <a href="settings.html">Settings</a>; each tab then keeps its own.</p>
+
+<h3>Working with auto commit off</h3>
+<figure>
+  <img src="img/tx-open.svg" alt="An open transaction" loading="lazy">
+  <figcaption>Auto commit is off. <i>Messages</i> shows the <code>BEGIN</code> pgtc sent; the tab is marked
+  <code>(tx)</code> and its status row says <i>Transaction open</i>.</figcaption>
+</figure>
+<ol class="steps">
+  <li>Turn off <span class="menu">Query → Auto commit</span>.</li>
+  <li>Run your changes. Look at the result — run a <code>SELECT</code> in the same tab to check it.</li>
+  <li>Choose <span class="menu">Query → Commit</span> to keep the changes, or <span class="menu">Query → Rollback</span>
+      to undo them.</li>
+</ol>
+<p>The state of the tab's transaction is always visible:</p>
+<div class="tablewrap"><table>
+<tr><th>Tab label</th><th>Status row</th><th>Meaning</th></tr>
+<tr><td></td><td></td><td>No transaction is open.</td></tr>
+<tr><td class="k"><code>(tx)</code></td><td><i>Transaction open</i></td><td>Changes are waiting for Commit or Rollback. Rows you changed are locked for others.</td></tr>
+<tr><td></td><td><i>Transaction failed – rollback</i></td><td>A statement failed inside the transaction. Choose <span class="menu">Query → Rollback</span>.</td></tr>
+</table></div>
+<p><i>Commit</i>, <i>Rollback</i> and the two switches have no key of their own; they are in the
+<span class="menu">Query</span> menu (<kbd>F9</kbd>, then <kbd>Alt+Q</kbd>). You can give them keys in
+<a href="settings.html#keymap"><code>keymap.toml</code></a>. Writing <code>COMMIT;</code> or <code>ROLLBACK;</code> in the
+editor and running it works just as well.</p>
+<div class="warn"><p>An open transaction holds its locks and keeps old row versions from being cleaned up. The
+<a href="dashboard.html">dashboard</a> shows such sessions as <i>idle in transaction</i>. Do not go to lunch with
+<code>(tx)</code> on a tab of a production database.</p></div>
+
+<h2 id="plpgsql">PL/pgSQL mode</h2>
+<p>Normally the editor holds SQL. In <b>PL/pgSQL mode</b> it holds procedural code — variables, <code>IF</code>, loops,
+<code>RAISE</code> — that you can run directly, without creating a function. It is PostgreSQL's answer to running a
+T-SQL batch in SQL Server Management Studio.</p>
+<ol class="steps">
+  <li>Press <kbd>Ctrl+P</kbd> in the query tab (or <span class="menu">Query → PL/pgSQL mode</span>). The tab label gets
+      <code>[PL/pgSQL]</code>, the status row <i>PL/pgSQL</i>.</li>
+  <li>Write the block: an optional <code>DECLARE</code> part and <code>BEGIN … END;</code>. If you write only
+      statements, pgtc adds <code>BEGIN</code> and <code>END</code> for you.</li>
+  <li>Press <kbd>F5</kbd>.</li>
+</ol>
+<figure>
+  <img src="img/plpgsql.svg" alt="PL/pgSQL mode" loading="lazy">
+  <figcaption>A loop over the sales territories. Each <code>RAISE NOTICE</code> is a line in <i>Messages</i>.</figcaption>
+</figure>
+<p>pgtc runs the text as an anonymous block: <code>DO $pgc$ … $pgc$;</code>. That means:</p>
+<ul>
+  <li>nothing is created on the server and you need no <code>CREATE</code> privilege;</li>
+  <li><code>RAISE NOTICE</code> is your “print”: its output appears in <i>Messages</i> while the block runs;</li>
+  <li>errors and notices jump to the right line of your text with <kbd>Enter</kbd>, as in SQL mode;</li>
+  <li>a block <b>cannot return rows</b>. To look at data, <code>RAISE NOTICE</code> it, or write the rows into a
+      temporary table and select from it in SQL mode;</li>
+  <li>the text must not contain <code>$pgc$</code>.</li>
+</ul>
+<p><kbd>Ctrl+P</kbd> again switches back to SQL mode. The mode belongs to the tab; other tabs are not affected.
+The commands <code>gtc</code> and <code>gtsi</code> of the <a href="psql.html#generate">F4 command line</a> write
+PL/pgSQL skeletons for a table.</p>
+
+<h2 id="close">Closing a query tab and quitting</h2>
+<p><kbd>Ctrl+W</kbd>, a click on the tab's <code>×</code>, or <span class="menu">View → Close tab</span> closes the
+tab. Two things can be lost, so pgtc asks about each:</p>
+<div class="shots">
+<figure><img src="img/save-changes.svg" alt="Save changes question" loading="lazy"><figcaption>Text that is not saved in a file.</figcaption></figure>
+<figure><img src="img/tx-close.svg" alt="Open transaction question" loading="lazy"><figcaption>An open transaction.</figcaption></figure>
+</div>
+<div class="tablewrap"><table>
+<tr><th>Question</th><th>Answers</th></tr>
+<tr><td><i>… has unsaved changes. Save them?</i></td><td><span class="ui">Yes</span> saves to the tab's file, or asks for a file name if it has none; the tab closes only when the file was written. <span class="ui">No</span> discards the text. <span class="ui">Cancel</span> keeps the tab open.</td></tr>
+<tr><td><i>This query tab has an open transaction.</i></td><td><span class="ui">Commit</span> commits and then closes. <span class="ui">Rollback</span> closes; the server rolls the transaction back. <span class="ui">Cancel</span> keeps the tab open.</td></tr>
+</table></div>
+<ul>
+  <li>The first question can be turned off: <span class="menu">Settings → Settings…</span>,
+      <span class="ui">Ask to save query tabs when closing</span>. Unsaved text is then discarded without a question.</li>
+  <li>A statement that is still running is cancelled when its tab closes.</li>
+  <li><b>Quitting</b> (<kbd>F10</kbd>) asks the first question for each query tab with unsaved text, one tab at a
+      time — you see the tab it asks about — and then one question for all open transactions:
+      <span class="ui">Commit all</span> / <span class="ui">Rollback all</span> / <span class="ui">Cancel</span>.
+      <span class="ui">Cancel</span> at any point stops quitting.</li>
+  <li><b>Disconnecting a server</b> closes its query tabs with the same questions.</li>
+</ul>
+
+<h2 id="limits">Good to know</h2>
+<ul>
+  <li><b>Lost connection.</b> If a tab's connection is lost, the tab keeps its text and says <i>not connected</i>;
+      the next <kbd>F5</kbd> connects again. If the tab no longer knows its database, it asks you to select one in
+      the tree.</li>
+  <li><b><code>COPY … FROM STDIN</code> / <code>TO STDOUT</code></b> — copying to or from the client — is not supported
+      yet; the server's error is shown. <code>COPY</code> to or from a file on the server works, as does
+      <a href="files.html#export">exporting a result</a>.</li>
+  <li><b>psql's backslash commands</b> inside a script are not understood. The everyday ones are available on
+      <kbd>F4</kbd> — see <a href="psql.html">psql-style commands</a>.</li>
+  <li><b>Session settings</b> (<code>SET search_path …</code>, <code>SET ROLE …</code>) belong to the tab's connection
+      and stay until the tab closes.</li>
+</ul>
+</main>
+<script src="help.js"></script>
+</body>
+</html>

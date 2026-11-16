@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="522" height="247" viewBox="0 0 522 247" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15" shape-rendering="crispEdges" xml:space="preserve">
+<rect width="522" height="247" fill="#0037da"/>
+<rect x="0" y="0" width="504.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="0" width="18.5" height="19.5" fill="#3a96dd"/>
+<text x="504 513" y="14.25" fill="#0c0c0c">as</text>
+<rect x="0" y="19" width="504.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="19" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207" y="33.25" fill="#0c0c0c">┌──────────────────────</text>
+<text x="225 234 243 252 261 270" y="33.25" fill="#0037da">Filter</text>
+<text x="288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486" y="33.25" fill="#0c0c0c">──────────────────────┐</text>
+<text x="504 513" y="33.25" fill="#767676">tu</text>
+<rect x="0" y="38" width="153.5" height="19.5" fill="#cccccc"/>
+<rect x="153" y="38" width="81.5" height="19.5" fill="#3a96dd"/>
+<rect x="234" y="38" width="9.5" height="19.5" fill="#0c0c0c"/>
+<rect x="243" y="38" width="234.5" height="19.5" fill="#3a96dd"/>
+<rect x="477" y="38" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="38" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="52.25" fill="#0c0c0c">│</text>
+<text x="27" y="52.25" fill="#0037da" text-decoration="underline">U</text>
+<text x="36 45 54 63" y="52.25" fill="#0c0c0c">ser:</text>
+<text x="153 162 171 180 189 198 207 216 225" y="52.25" fill="#0c0c0c" font-weight="700">reporting</text>
+<text x="486" y="52.25" fill="#0c0c0c">│</text>
+<text x="504 513" y="52.25" fill="#767676">tu</text>
+<rect x="0" y="57" width="153.5" height="19.5" fill="#cccccc"/>
+<rect x="153" y="57" width="324.5" height="19.5" fill="#3a96dd"/>
+<rect x="477" y="57" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="57" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="71.25" fill="#0c0c0c">│</text>
+<text x="27" y="71.25" fill="#0037da" text-decoration="underline">D</text>
+<text x="36 45 54 63 72 81 90 99" y="71.25" fill="#0c0c0c">atabase:</text>
+<text x="486" y="71.25" fill="#0c0c0c">│</text>
+<text x="504 513" y="71.25" fill="#767676">tu</text>
+<rect x="0" y="76" width="153.5" height="19.5" fill="#cccccc"/>
+<rect x="153" y="76" width="324.5" height="19.5" fill="#3a96dd"/>
+<rect x="477" y="76" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="76" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="90.25" fill="#0c0c0c">│</text>
+<text x="27" y="90.25" fill="#0037da" text-decoration="underline">P</text>
+<text x="36 45 54" y="90.25" fill="#0c0c0c">ID:</text>
+<text x="486" y="90.25" fill="#0c0c0c">│</text>
+<text x="504 513" y="90.25" fill="#767676">tu</text>
+<rect x="0" y="95" width="153.5" height="19.5" fill="#cccccc"/>
+<rect x="153" y="95" width="324.5" height="19.5" fill="#3a96dd"/>
+<rect x="477" y="95" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="95" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="109.25" fill="#0c0c0c">│</text>
+<text x="27" y="109.25" fill="#0037da" text-decoration="underline">A</text>
+<text x="36 45 54 63 72 81 90 99 108 117 126" y="109.25" fill="#0c0c0c">pplication:</text>
+<text x="486" y="109.25" fill="#0c0c0c">│</text>
+<text x="504 513" y="109.25" fill="#767676">tu</text>
+<rect x="0" y="114" width="153.5" height="19.5" fill="#cccccc"/>
+<rect x="153" y="114" width="324.5" height="19.5" fill="#3a96dd"/>
+<rect x="477" y="114" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="114" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="128.25" fill="#0c0c0c">│</text>
+<text x="27" y="128.25" fill="#0037da" text-decoration="underline">T</text>
+<text x="36 45 54" y="128.25" fill="#0c0c0c">ext</text>
+<text x="72 81 90 99 108 117 126 135 144" y="128.25" fill="#0c0c0c">contains:</text>
+<text x="486" y="128.25" fill="#0c0c0c">│</text>
+<text x="504 513" y="128.25" fill="#767676">tu</text>
+<rect x="0" y="133" width="504.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="133" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="147.25" fill="#0c0c0c">│</text>
+<text x="27 36 45 54 63" y="147.25" fill="#0c0c0c">Empty</text>
+<text x="81 90 99 108 117 126" y="147.25" fill="#0c0c0c">fields</text>
+<text x="144 153 162 171 180" y="147.25" fill="#0c0c0c">match</text>
+<text x="198 207 216 225 234 243 252 261 270 279 288" y="147.25" fill="#0c0c0c">everything.</text>
+<text x="486" y="147.25" fill="#0c0c0c">│</text>
+<text x="504 513" y="147.25" fill="#767676">tu</text>
+<rect x="0" y="152" width="504.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="152" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="166.25" fill="#0c0c0c">│</text>
+<text x="486" y="166.25" fill="#0c0c0c">│</text>
+<text x="504 513" y="166.25" fill="#767676">tu</text>
+<rect x="0" y="171" width="504.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="171" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="185.25" fill="#0c0c0c">│</text>
+<text x="162 171" y="185.25" fill="#0c0c0c">[&lt;</text>
+<text x="189" y="185.25" fill="#0037da" text-decoration="underline">O</text>
+<text x="198" y="185.25" fill="#0c0c0c">K</text>
+<text x="216 225" y="185.25" fill="#0c0c0c">&gt;]</text>
+<text x="243" y="185.25" fill="#0c0c0c">[</text>
+<text x="261" y="185.25" fill="#0037da" text-decoration="underline">C</text>
+<text x="270 279 288 297 306" y="185.25" fill="#0c0c0c">ancel</text>
+<text x="324" y="185.25" fill="#0c0c0c">]</text>
+<text x="486" y="185.25" fill="#0c0c0c">│</text>
+<text x="504 513" y="185.25" fill="#767676">tu</text>
+<rect x="0" y="190" width="504.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="190" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486" y="204.25" fill="#0c0c0c">└────────────────────────────────────────────────────┘</text>
+<rect x="0" y="209" width="504.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="209" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="18" y="228" width="504.5" height="19.5" fill="#0c0c0c"/>
+</svg>

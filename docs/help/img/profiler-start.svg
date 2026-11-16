@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="612" height="342" viewBox="0 0 612 342" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15" shape-rendering="crispEdges" xml:space="preserve">
+<rect width="612" height="342" fill="#0037da"/>
+<rect x="0" y="0" width="594.5" height="19.5" fill="#c50f1f"/>
+<rect x="0" y="19" width="594.5" height="19.5" fill="#c50f1f"/>
+<rect x="594" y="19" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225" y="33.25" fill="#f2f2f2">┌────────────────────────</text>
+<text x="243 252 261" y="33.25" fill="#f2f2f2" font-weight="700">SQL</text>
+<text x="279 288 297 306 315 324 333 342" y="33.25" fill="#f2f2f2" font-weight="700">profiler</text>
+<text x="360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576" y="33.25" fill="#f2f2f2">────────────────────────┐</text>
+<text x="594 603" y="33.25" fill="#767676">──</text>
+<rect x="0" y="38" width="594.5" height="19.5" fill="#c50f1f"/>
+<rect x="594" y="38" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="52.25" fill="#f2f2f2">│</text>
+<text x="27 36" y="52.25" fill="#f2f2f2">To</text>
+<text x="54 63 72 81" y="52.25" fill="#f2f2f2">show</text>
+<text x="99 108 117 126 135" y="52.25" fill="#f2f2f2">every</text>
+<text x="153 162 171 180 189 198 207 216 225 234" y="52.25" fill="#f2f2f2">statement,</text>
+<text x="252 261 270 279" y="52.25" fill="#f2f2f2">pgtc</text>
+<text x="297 306 315 324 333 342 351" y="52.25" fill="#f2f2f2">changes</text>
+<text x="369 378 387 396 405" y="52.25" fill="#f2f2f2">these</text>
+<text x="423 432 441 450 459 468" y="52.25" fill="#f2f2f2">server</text>
+<text x="486 495 504 513 522 531 540 549" y="52.25" fill="#f2f2f2">settings</text>
+<text x="576" y="52.25" fill="#f2f2f2">│</text>
+<text x="594 603" y="52.25" fill="#767676">ic</text>
+<rect x="0" y="57" width="594.5" height="19.5" fill="#c50f1f"/>
+<rect x="594" y="57" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="71.25" fill="#f2f2f2">│</text>
+<text x="27 36 45 54 63 72" y="71.25" fill="#f2f2f2">(ALTER</text>
+<text x="90 99 108 117 126 135" y="71.25" fill="#f2f2f2">SYSTEM</text>
+<text x="153 162 171" y="71.25" fill="#f2f2f2">and</text>
+<text x="189" y="71.25" fill="#f2f2f2">a</text>
+<text x="207 216 225 234 243 252 261 270 279 288 297 306 315" y="71.25" fill="#f2f2f2">configuration</text>
+<text x="333 342 351 360 369 378 387" y="71.25" fill="#f2f2f2">reload,</text>
+<text x="405 414" y="71.25" fill="#f2f2f2">no</text>
+<text x="432 441 450 459 468 477 486 495 504" y="71.25" fill="#f2f2f2">restart):</text>
+<text x="576" y="71.25" fill="#f2f2f2">│</text>
+<rect x="0" y="76" width="594.5" height="19.5" fill="#c50f1f"/>
+<rect x="594" y="76" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="90.25" fill="#f2f2f2">│</text>
+<text x="576" y="90.25" fill="#f2f2f2">│</text>
+<rect x="0" y="95" width="594.5" height="19.5" fill="#c50f1f"/>
+<rect x="594" y="95" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="109.25" fill="#f2f2f2">│</text>
+<text x="45 54 63 72 81 90 99 108 117 126 135 144 153 162 171" y="109.25" fill="#f2f2f2">log_destination</text>
+<text x="189" y="109.25" fill="#f2f2f2">=</text>
+<text x="207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342" y="109.25" fill="#f2f2f2">'stderr,jsonlog'</text>
+<text x="576" y="109.25" fill="#f2f2f2">│</text>
+<rect x="0" y="114" width="594.5" height="19.5" fill="#c50f1f"/>
+<rect x="594" y="114" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="128.25" fill="#f2f2f2">│</text>
+<text x="45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270" y="128.25" fill="#f2f2f2">log_min_duration_statement</text>
+<text x="288" y="128.25" fill="#f2f2f2">=</text>
+<text x="306 315 324" y="128.25" fill="#f2f2f2">'0'</text>
+<text x="576" y="128.25" fill="#f2f2f2">│</text>
+<rect x="0" y="133" width="594.5" height="19.5" fill="#c50f1f"/>
+<rect x="594" y="133" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="147.25" fill="#f2f2f2">│</text>
+<text x="576" y="147.25" fill="#f2f2f2">│</text>
+<rect x="0" y="152" width="594.5" height="19.5" fill="#c50f1f"/>
+<rect x="594" y="152" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="166.25" fill="#f2f2f2">│</text>
+<text x="27 36 45 54" y="166.25" fill="#f2f2f2">They</text>
+<text x="72 81 90" y="166.25" fill="#f2f2f2">are</text>
+<text x="108 117 126" y="166.25" fill="#f2f2f2">put</text>
+<text x="144 153 162 171" y="166.25" fill="#f2f2f2">back</text>
+<text x="189 198" y="166.25" fill="#f2f2f2">on</text>
+<text x="216 225 234 243 252" y="166.25" fill="#f2f2f2">Stop,</text>
+<text x="270 279 288 297" y="166.25" fill="#f2f2f2">when</text>
+<text x="315 324 333" y="166.25" fill="#f2f2f2">the</text>
+<text x="351 360 369" y="166.25" fill="#f2f2f2">tab</text>
+<text x="387 396 405 414 423 432" y="166.25" fill="#f2f2f2">closes</text>
+<text x="450 459 468" y="166.25" fill="#f2f2f2">and</text>
+<text x="486 495 504 513" y="166.25" fill="#f2f2f2">when</text>
+<text x="531 540 549 558" y="166.25" fill="#f2f2f2">pgtc</text>
+<text x="576" y="166.25" fill="#f2f2f2">│</text>
+<rect x="0" y="171" width="594.5" height="19.5" fill="#c50f1f"/>
+<rect x="594" y="171" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="185.25" fill="#f2f2f2">│</text>
+<text x="27 36 45 54 63 72" y="185.25" fill="#f2f2f2">quits.</text>
+<text x="90 99" y="185.25" fill="#f2f2f2">If</text>
+<text x="117 126 135 144" y="185.25" fill="#f2f2f2">pgtc</text>
+<text x="162 171 180 189" y="185.25" fill="#f2f2f2">ends</text>
+<text x="207 216 225 234 243 252 261" y="185.25" fill="#f2f2f2">without</text>
+<text x="279 288 297 306" y="185.25" fill="#f2f2f2">that</text>
+<text x="324 333 342 351 360 369 378" y="185.25" fill="#f2f2f2">(crash,</text>
+<text x="396 405 414 423 432 441 450 459" y="185.25" fill="#f2f2f2">killed),</text>
+<text x="477 486 495 504" y="185.25" fill="#f2f2f2">they</text>
+<text x="522 531 540 549" y="185.25" fill="#f2f2f2">stay</text>
+<text x="576" y="185.25" fill="#f2f2f2">│</text>
+<rect x="0" y="190" width="594.5" height="19.5" fill="#c50f1f"/>
+<rect x="594" y="190" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="204.25" fill="#f2f2f2">│</text>
+<text x="27 36 45 54 63 72 81 90" y="204.25" fill="#f2f2f2">changed.</text>
+<text x="108 117 126 135 144 153 162" y="204.25" fill="#f2f2f2">Logging</text>
+<text x="180 189 198 207 216" y="204.25" fill="#f2f2f2">every</text>
+<text x="234 243 252 261 270 279 288 297 306" y="204.25" fill="#f2f2f2">statement</text>
+<text x="324 333 342 351" y="204.25" fill="#f2f2f2">adds</text>
+<text x="369 378 387 396" y="204.25" fill="#f2f2f2">load</text>
+<text x="414 423" y="204.25" fill="#f2f2f2">on</text>
+<text x="441" y="204.25" fill="#f2f2f2">a</text>
+<text x="459 468 477 486" y="204.25" fill="#f2f2f2">busy</text>
+<text x="504 513 522 531 540 549 558" y="204.25" fill="#f2f2f2">server.</text>
+<text x="576" y="204.25" fill="#f2f2f2">│</text>
+<rect x="0" y="209" width="594.5" height="19.5" fill="#c50f1f"/>
+<rect x="594" y="209" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="223.25" fill="#f2f2f2">│</text>
+<text x="576" y="223.25" fill="#f2f2f2">│</text>
+<rect x="0" y="228" width="594.5" height="19.5" fill="#c50f1f"/>
+<rect x="594" y="228" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="242.25" fill="#f2f2f2">│</text>
+<text x="27 36 45 54 63 72" y="242.25" fill="#f2f2f2">Change</text>
+<text x="90 99 108 117 126" y="242.25" fill="#f2f2f2">them?</text>
+<text x="576" y="242.25" fill="#f2f2f2">│</text>
+<rect x="0" y="247" width="594.5" height="19.5" fill="#c50f1f"/>
+<rect x="594" y="247" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="261.25" fill="#f2f2f2">│</text>
+<text x="576" y="261.25" fill="#f2f2f2">│</text>
+<rect x="0" y="266" width="225.5" height="19.5" fill="#c50f1f"/>
+<rect x="306" y="266" width="27.5" height="19.5" fill="#c50f1f"/>
+<rect x="333" y="266" width="9.5" height="19.5" fill="#cccccc"/>
+<rect x="342" y="266" width="252.5" height="19.5" fill="#c50f1f"/>
+<rect x="594" y="266" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="280.25" fill="#f2f2f2">│</text>
+<text x="225 234" y="280.25" fill="#f2f2f2">[&lt;</text>
+<text x="252" y="280.25" fill="#f9f1a5" text-decoration="underline">Y</text>
+<text x="261 270" y="280.25" fill="#f2f2f2">es</text>
+<text x="288 297" y="280.25" fill="#f2f2f2">&gt;]</text>
+<text x="315" y="280.25" fill="#f2f2f2">[</text>
+<text x="333" y="280.25" fill="#0037da" text-decoration="underline">N</text>
+<text x="342" y="280.25" fill="#f2f2f2">o</text>
+<text x="360" y="280.25" fill="#f2f2f2">]</text>
+<text x="576" y="280.25" fill="#f2f2f2">│</text>
+<rect x="0" y="285" width="594.5" height="19.5" fill="#c50f1f"/>
+<rect x="594" y="285" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576" y="299.25" fill="#f2f2f2">└──────────────────────────────────────────────────────────────┘</text>
+<rect x="0" y="304" width="594.5" height="19.5" fill="#c50f1f"/>
+<rect x="594" y="304" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="18" y="323" width="594.5" height="19.5" fill="#0c0c0c"/>
+<text x="0 9" y="337.25" fill="#cccccc">──</text>
+<text x="18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603" y="337.25" fill="#767676">──────────────────────────────────────────────────────────────────</text>
+</svg>

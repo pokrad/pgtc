@@ -122,6 +122,11 @@ dependencies.
   - README screenshots (`docs/screenshots/*.svg`, Dracula scheme, drawn by pgtc's
     renderer with sample data) after visible UI changes (PowerShell):
     `$env:PGTC_SCREENSHOT_DIR="$PWD\docs\screenshots"; cargo test -p pgc-ui readme_screenshots -- --ignored`
+  - User help (`docs/help/*.html`, one page per chapter; menu in `help.js`) and its
+    screenshots (`docs/help/img/*.svg`, Classic scheme, sample data in the shape of
+    AdventureWorks, scenes in `app/tests/help_screenshots.rs`). After visible UI
+    changes redraw them and update the chapter that describes the change (PowerShell):
+    `$env:PGTC_HELP_DIR="$PWD\docs\help\img"; cargo test -p pgc-ui help_screenshots -- --ignored`
   - After adding or upgrading a dependency, regenerate the crate licence list (it fails
     on a licence not accepted by D-017):
     `cargo about generate -c THIRD_PARTY_LICENSES/about.toml THIRD_PARTY_LICENSES/about.hbs -o THIRD_PARTY_LICENSES/rust-crates.txt`

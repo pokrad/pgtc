@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SQL profiler — pgtc Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+<main>
+<h1>SQL profiler</h1>
+<p class="lead">See <b>every statement</b> the server runs, as it happens: who ran it, how long it took, with which
+parameters, and whether it failed. What SQL Server Profiler is for SQL Server.</p>
+
+<figure>
+  <img src="img/profiler.svg" alt="The SQL profiler" loading="lazy">
+  <figcaption>The profiler at work. The list shows the statements; the pane below shows the selected one in full,
+  with its parameters.</figcaption>
+</figure>
+
+<h2 id="what">What it is for</h2>
+<ul>
+  <li><b>What does this application really send?</b> Click through the application and read its SQL — also the
+      statements an ORM or a framework writes for you.</li>
+  <li><b>Which statement is slow?</b> Every entry has its duration.</li>
+  <li><b>Why does it fail?</b> Errors appear with the statement that caused them.</li>
+  <li><b>With which values?</b> Prepared statements are shown with their parameters.</li>
+</ul>
+<p>The <a href="dashboard.html">dashboard</a> shows what is running <i>at this moment</i>; a statement that takes two
+milliseconds is never seen there. The profiler shows <i>everything</i>, one line per statement.</p>
+
+<h2 id="how">How it works — and what that means for you</h2>
+<p>PostgreSQL has no “trace” connection. The only place where it writes down every statement is its <b>server
+log</b>. The profiler therefore:</p>
+<ol>
+  <li>tells the server to log every statement with its duration, in a form a program can read;</li>
+  <li>reads the new lines of the log once a second — <b>through its own database connection</b>, with server
+      functions. It needs no access to the server's files, so it works over any connection, also to a server far
+      away;</li>
+  <li>puts the server's settings back when you stop.</li>
+</ol>
+<div class="tablewrap"><table>
+<tr><th>Requirement</th><th>Details</th></tr>
+<tr><td><b>The log collector must be on</b></td><td>The server must run with <code>logging_collector = on</code>. Most installations do. If it is off, the profiler only tells you: turning it on needs a restart of the server, which pgtc never does.</td></tr>
+<tr><td><b>Rights</b></td><td>You must be a <b>superuser</b>, or have both the role <code>pg_read_server_files</code> (to read the log) and the right to run <code>ALTER SYSTEM</code> (to change the logging settings). Without them, <i>Start</i> answers with an error that names what is missing.</td></tr>
+<tr><td><b>Managed services</b></td><td>Cloud database services usually give you neither right; the profiler cannot be used there.</td></tr>
+<tr><td><b>It is server-wide</b></td><td>Logging is a setting of the whole server: while the profiler runs, the statements of <b>all</b> databases and users are logged. Use the <a href="#filter">filter</a> to see only yours.</td></tr>
+</table></div>
+<div class="warn">
+<p><b>On a busy production server, think first.</b> Logging every statement makes the log grow fast and costs a
+little time per statement. For a few minutes of looking this is fine; do not leave the profiler running over the
+weekend.</p>
+</div>
+
+<h2 id="open">Opening the profiler</h2>
+<p>Put the tree cursor on a <b>connected server</b> or on one of its <b>databases</b> and press <kbd>Alt+P</kbd> (also
+<kbd>Ctrl+P</kbd>) — or choose <span class="menu">Tools → SQL profiler</span>, or <span class="menu">SQL profiler</span> in
+the context menu.</p>
+<figure>
+  <img src="img/profiler-stopped.svg" alt="The profiler before Start" loading="lazy">
+  <figcaption>The profiler tab just opened: <i>Stopped</i>. Nothing has been changed on the server yet.</figcaption>
+</figure>
+<ul>
+  <li>There is <b>one profiler tab per server</b>, named <i>Profiler: local</i>. Opening it again switches to it.</li>
+  <li>Opened from a database row, the filter is already set to that database.</li>
+  <li>The tab has its own connection, to the server's maintenance database. Its own statements never appear in
+      the list.</li>
+  <li>Opening the tab does nothing on the server. Everything starts with <kbd>F5</kbd>.</li>
+</ul>
+
+<h2 id="start">Start</h2>
+<ol class="steps">
+  <li>Press <kbd>F5</kbd>. pgtc reads the server's logging settings and checks your rights.</li>
+  <li>If settings have to change, pgtc <b>asks first</b> and lists exactly what it will set:
+    <figure class="mid">
+      <img src="img/profiler-start.svg" alt="The question before Start" loading="lazy">
+    </figure>
+    <div class="tablewrap"><table>
+    <tr><th>Setting</th><th>Set to</th><th>Why</th></tr>
+    <tr><td class="k"><code>log_min_duration_statement</code></td><td><code>0</code></td><td>Log every statement, with its duration.</td></tr>
+    <tr><td class="k"><code>log_destination</code></td><td>the current value plus <code>jsonlog</code> (PostgreSQL 15 and newer) or <code>csvlog</code> (older)</td><td>A log format a program can read reliably. Your existing log (<code>stderr</code>) is kept as it is. If the server already writes one of these formats, nothing is added.</td></tr>
+    </table></div>
+  </li>
+  <li>Answer <span class="ui">Yes</span>. The settings are applied with <code>ALTER SYSTEM</code> and a reload of the
+      configuration — <b>no restart</b>, no interruption for anybody.</li>
+</ol>
+<p>The header changes to <i>Running</i> and statements start to appear. Only statements logged <b>after</b> Start are
+shown; the profiler does not read the old part of the log.</p>
+<p>If nothing needs to change — the server already logs everything in a readable format — there is no question and
+the profiler simply starts.</p>
+
+<h2 id="list">Reading the list</h2>
+<div class="tablewrap"><table>
+<tr><th>Column</th><th>Meaning</th></tr>
+<tr><td>Time</td><td>When the statement ended, on the server's clock.</td></tr>
+<tr><td>Duration ms</td><td>How long it ran, in milliseconds. Empty for an error.</td></tr>
+<tr><td>PID</td><td>The session that ran it. The same PID = the same connection, so you can follow one client through its statements.</td></tr>
+<tr><td>User, Database</td><td>Who ran it, and where.</td></tr>
+<tr><td>Statement</td><td>The SQL text.</td></tr>
+<tr><td>Detail</td><td>For a prepared statement: its parameters (<code>$1 = '771'</code>). For an error: the error message.</td></tr>
+<tr><td>Kind</td><td><i>statement</i> — sent as plain SQL; <i>execute</i> — a prepared statement being executed; <i>error</i>.</td></tr>
+<tr><td>Application, Client</td><td>The program's name and the client's address.</td></tr>
+</table></div>
+<ul>
+  <li>New entries are added <b>at the bottom</b>. While the cursor is on the last row it follows them; move up and
+      the list stays where you are, while new entries keep arriving below.</li>
+  <li><b>Errors</b> are drawn in the error colour. Their <i>Statement</i> is the SQL that failed.</li>
+  <li>The header line counts: <i>Running · 9 shown (9 read)</i> — <i>read</i> is everything that came from the log,
+      <i>shown</i> is what passes the filter.</li>
+  <li>The list keeps the newest <b>100,000</b> entries; older ones are dropped.</li>
+</ul>
+<p>The list is the usual grid: arrows, <kbd>PgUp</kbd> / <kbd>PgDn</kbd>, <kbd>Home</kbd> / <kbd>End</kbd>, sideways
+scrolling for the columns at the right; <kbd>Ctrl+C</kbd> copies the cell, <kbd>Ctrl+A</kbd> then <kbd>Ctrl+C</kbd> the
+whole list.</p>
+
+<h3 id="pane">The statement pane</h3>
+<p>Under the list, the selected entry's statement is shown <b>in full</b>, formatted as it was sent, with SQL colours.
+Above the statement, as SQL comments, are</p>
+<ul>
+  <li>its parameters — <code>-- Parameters: $1 = '75123', $2 = '2', …</code> — for a prepared statement;</li>
+  <li>the error message — <code>-- ERROR: …</code> — for a failed one.</li>
+</ul>
+<p>Because they are comments, a copy of the pane's text is still a valid SQL script that carries its own
+explanation.</p>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th></tr>
+<tr><td class="k"><kbd>Alt+Down</kbd> / <kbd>Alt+Up</kbd></td><td>Into the pane (to scroll, select, copy, search with <kbd>Ctrl+F</kbd>) / back to the list.</td></tr>
+<tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Hide / show the pane.</td></tr>
+<tr><td class="k"><kbd>Alt+Shift+Up</kbd> / <kbd>Alt+Shift+Down</kbd></td><td>Pane smaller / larger; or drag its upper line.</td></tr>
+<tr><td class="k"><kbd>Ctrl+E</kbd></td><td><b>Open the statement in a new query tab</b>, connected to the database it ran in. There you can run it again, change it, or put <code>EXPLAIN ANALYZE</code> in front of it to see why it is slow.</td></tr>
+</table></div>
+
+<h3>The whole entry</h3>
+<figure>
+  <img src="img/profiler-entry.svg" alt="A profiler entry in full" loading="lazy">
+  <figcaption><kbd>Enter</kbd> on an entry: all its fields in one window.</figcaption>
+</figure>
+
+<h2 id="filter">Filtering</h2>
+<p>On a shared server the list fills with other people's statements. Press <kbd>Ctrl+F</kbd>:</p>
+<figure class="small">
+  <img src="img/profiler-filter.svg" alt="The profiler's filter dialog" loading="lazy">
+</figure>
+<div class="tablewrap"><table>
+<tr><th>Field</th><th>Shows only entries…</th></tr>
+<tr><td class="k"><span class="ui">User</span></td><td>of this user.</td></tr>
+<tr><td class="k"><span class="ui">Database</span></td><td>in this database.</td></tr>
+<tr><td class="k"><span class="ui">PID</span></td><td>of this one session.</td></tr>
+<tr><td class="k"><span class="ui">Application</span></td><td>from this application.</td></tr>
+<tr><td class="k"><span class="ui">Text contains</span></td><td>whose statement contains this text (upper and lower case do not matter) — for example a table name.</td></tr>
+</table></div>
+<ul>
+  <li>An empty field matches everything. Several fields must all match.</li>
+  <li>The line under the header shows the active filter (or <i>No filter (Ctrl+F)</i>).</li>
+  <li>The filter is applied by pgtc to the entries it has read. So <b>changing the filter also changes what is
+      already in the list</b> — nothing is lost: clear the filter and everything read is shown again.</li>
+</ul>
+<div class="tip"><p><b>To follow one application session:</b> find one of its statements, note its PID, and filter by
+that PID. You then see exactly the conversation of that one connection.</p></div>
+
+<h2 id="pause">Pause and clear</h2>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th></tr>
+<tr><td class="k"><kbd>Ctrl+P</kbd></td><td><b>Pause:</b> the list stops growing so you can read it in peace. The server keeps logging. <kbd>Ctrl+P</kbd> again resumes, continuing in the log where it stopped — nothing is skipped.</td></tr>
+<tr><td class="k"><kbd>Ctrl+L</kbd></td><td><b>Clear:</b> empties the list. Useful right before the action you want to observe.</td></tr>
+</table></div>
+<p>A typical session: start the profiler, set the filter to your application, <kbd>Ctrl+L</kbd>, do <b>one</b> thing in
+the application, press <kbd>Ctrl+P</kbd>, and read what that one thing sent.</p>
+
+<h2 id="stop">Stop</h2>
+<p><kbd>F5</kbd> again stops the profiler. pgtc <b>puts the logging settings back</b> exactly as they were — a value
+that was set in <code>postgresql.auto.conf</code> before is set to that value again, any other is reset — and reloads
+the configuration. The entries stay in the list for reading.</p>
+<p>The same happens by itself when you</p>
+<ul>
+  <li>close the profiler tab,</li>
+  <li>disconnect the server,</li>
+  <li>quit pgtc — quitting waits for it; the status line shows <i>Restoring logging settings…</i></li>
+</ul>
+
+<h3 id="restore">If pgtc could not put the settings back</h3>
+<p>If pgtc is killed, the machine crashes, or the connection is lost while the profiler runs, the server keeps
+logging every statement. pgtc does not forget this:</p>
+<ul>
+  <li>When it changes the settings, it notes — in its own file <code>profiler_restore.toml</code> — for which server,
+      when, and how to undo each change. No password is stored.</li>
+  <li>The next time <b>you connect that server</b> in pgtc, it looks at the settings. If they are still as the
+      profiler left them, it asks:<br>
+      <i>pgtc ended without putting back these logging settings on … (changed …): … Put them back now?</i></li>
+</ul>
+<div class="tablewrap"><table>
+<tr><th>Answer</th><th>What happens</th></tr>
+<tr><td class="k"><span class="ui">Yes</span></td><td>The settings are put back and the configuration is reloaded, now.</td></tr>
+<tr><td class="k"><span class="ui">Not now</span></td><td>Nothing; pgtc asks again at the next connect.</td></tr>
+<tr><td class="k"><span class="ui">Forget</span></td><td>pgtc drops its note and will not ask again — choose this if you want to keep the settings.</td></tr>
+</table></div>
+<p>If somebody has changed the settings in the meantime, pgtc drops its note silently. If putting them back fails —
+you connected as a user without the rights — the note stays and the question comes again.</p>
+<p>To undo the change by hand, as a superuser (if these two settings were not set with <code>ALTER SYSTEM</code> before
+the profiler ran):</p>
+<pre><code>ALTER SYSTEM RESET log_min_duration_statement;
+ALTER SYSTEM RESET log_destination;
+SELECT pg_reload_conf();</code></pre>
+
+<h2 id="status">The tab status row</h2>
+<p><code>local · postgres@postgres</code> — the profiler's own connection — and at the right the state:
+<i>Stopped</i>, <i>Running</i> or <i>Paused</i>, with the number of entries shown and read.</p>
+
+<h2 id="limits">Limits</h2>
+<ul>
+  <li><b>Statements inside functions</b> are not listed one by one: the log has one line for the
+      <code>SELECT my_function()</code> that the client sent, with the total time.</li>
+  <li><b>Language of the server.</b> The profiler recognises statement lines by the English words of the server's
+      messages. On a server with <code>lc_messages</code> in another language, every line with a duration is still
+      shown, but with the message as the server wrote it.</li>
+  <li>The profiler reads at most 1 MB of log per second. On a server that logs more than that, the list falls
+      behind; it catches up when the load drops, or when you stop.</li>
+  <li>The entries cannot be exported to a file yet; copy them (<kbd>Ctrl+A</kbd>, <kbd>Ctrl+C</kbd>).</li>
+</ul>
+
+<h2 id="keys">All profiler keys</h2>
+<figure class="mid">
+  <img src="img/profiler-menu.svg" alt="The profiler's context menu" loading="lazy">
+  <figcaption><kbd>F2</kbd> in the list.</figcaption>
+</figure>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th></tr>
+<tr><td class="k"><kbd>F5</kbd></td><td>Start / stop.</td></tr>
+<tr><td class="k"><kbd>Ctrl+P</kbd></td><td>Pause / resume.</td></tr>
+<tr><td class="k"><kbd>Ctrl+F</kbd></td><td>Filter.</td></tr>
+<tr><td class="k"><kbd>Ctrl+L</kbd></td><td>Clear the list.</td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>Show the whole entry.</td></tr>
+<tr><td class="k"><kbd>Ctrl+E</kbd></td><td>The statement in a new query tab.</td></tr>
+<tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Show / hide the statement pane.</td></tr>
+<tr><td class="k"><kbd>Alt+Down</kbd> / <kbd>Alt+Up</kbd></td><td>Statement pane / list.</td></tr>
+<tr><td class="k"><kbd>Ctrl+C</kbd>, <kbd>Ctrl+A</kbd></td><td>Copy; select all.</td></tr>
+<tr><td class="k"><kbd>F2</kbd></td><td>Context menu.</td></tr>
+</table></div>
+</main>
+<script src="help.js"></script>
+</body>
+</html>

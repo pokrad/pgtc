@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting — pgtc Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+<main>
+<h1>Troubleshooting</h1>
+<p class="lead">Keys that do nothing, a screen that looks wrong, connections that fail, and answers to the questions
+that come up most.</p>
+
+<h2 id="keys">If a key does not work</h2>
+<p>pgtc only gets the keys your <b>terminal</b> passes on. Every terminal keeps some key combinations for itself — to
+switch its own tabs, to scroll, to change the input language — and some cannot tell certain combinations apart at
+all. This is the most common surprise in any terminal program.</p>
+<p>Three things always help:</p>
+<ol>
+  <li><b>Use the second key.</b> The commands that are often affected have one — see the table.</li>
+  <li><b>Use the menu.</b> <kbd>F9</kbd> (or <kbd>Esc</kbd> <kbd>9</kbd>) reaches nearly every command.</li>
+  <li><b>Give the command another key</b> in <a href="settings.html#keymap"><code>keymap.toml</code></a>.</li>
+</ol>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What happens instead</th><th>Use</th></tr>
+<tr><td class="k"><kbd>F1</kbd> … <kbd>F10</kbd></td><td>Nothing, or the terminal's own help or menu opens (GNOME Terminal: <kbd>F1</kbd>, <kbd>F10</kbd>). Common over some SSH clients and on Mac keyboards.</td><td><kbd>Esc</kbd> then a digit: <kbd>Esc</kbd> <kbd>5</kbd> = <kbd>F5</kbd>, <kbd>Esc</kbd> <kbd>0</kbd> = <kbd>F10</kbd>. On a Mac also <kbd>Fn</kbd> + the key.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Tab</kbd></td><td>The terminal switches its own tabs, or pgtc receives a plain <kbd>Tab</kbd>.</td><td><kbd>F6</kbd>, or <kbd>Alt+1</kbd> / <kbd>Alt+2</kbd>.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Shift+Z</kbd> (redo)</td><td>Arrives as <kbd>Ctrl+Z</kbd> and undoes once more.</td><td><kbd>Alt+Shift+Z</kbd>.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Space</kbd> (autocomplete)</td><td>Switches the input language (macOS, Windows input methods).</td><td><kbd>Alt+/</kbd>.</td></tr>
+<tr><td class="k"><kbd>Ctrl+PgUp</kbd> / <kbd>Ctrl+PgDn</kbd></td><td>GNOME Terminal and xfce Terminal switch their own tabs.</td><td><kbd>Alt+PgUp</kbd> / <kbd>Alt+PgDn</kbd>.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Shift+Home</kbd> / <kbd>End</kbd></td><td>Windows Terminal scrolls its buffer.</td><td><kbd>Alt+Shift+Home</kbd> / <kbd>Alt+Shift+End</kbd>.</td></tr>
+<tr><td class="k"><kbd>Shift+F3</kbd> (find previous)</td><td>Lost in some Linux terminals.</td><td><kbd>Alt+F3</kbd>.</td></tr>
+<tr><td class="k"><kbd>Alt+Shift</kbd> + arrows (resize the results)</td><td>Windows Terminal moves between its panes.</td><td>Drag the line above the results with the mouse.</td></tr>
+<tr><td class="k"><kbd>Shift+PgUp</kbd> / <kbd>Shift+PgDn</kbd></td><td>GNOME Terminal, xterm and Konsole scroll their buffer.</td><td><kbd>Shift</kbd> + arrows, or the mouse.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Backspace</kbd></td><td>Arrives as a plain <kbd>Backspace</kbd> in many terminals.</td><td>Select the word with <kbd>Ctrl+Shift+Left</kbd> and delete it.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Enter</kbd> (OK from any field)</td><td>Arrives as a plain <kbd>Enter</kbd> in most terminals.</td><td><kbd>Tab</kbd> to the <span class="ui">OK</span> button.</td></tr>
+<tr><td class="k"><kbd>Ctrl+1</kbd>, <kbd>Ctrl+2</kbd>, <kbd>Ctrl+Shift</kbd> + arrows</td><td>Not reported by most terminals.</td><td><kbd>Alt+1</kbd>, <kbd>Alt+2</kbd>, <kbd>Alt</kbd> + arrows.</td></tr>
+<tr><td class="k"><kbd>Ctrl+A</kbd> (select all)</td><td>Inside GNU <code>screen</code>, it is screen's command key.</td><td>Press <kbd>Ctrl+A</kbd> <kbd>A</kbd>, change screen's command key, or use <code>tmux</code>.</td></tr>
+<tr><td class="k">Every <kbd>Alt</kbd> key</td><td>macOS Terminal and iTerm2 type special characters (<code>å</code>, <code>∂</code>) instead.</td><td>Turn on <i>Use Option as Meta key</i> (Terminal: Settings → Profiles → Keyboard; iTerm2: Profiles → Keys → Left Option key: Esc+).</td></tr>
+<tr><td class="k"><kbd>Alt</kbd> + letter</td><td>On Windows or Linux desktops, the terminal's window menu opens.</td><td>Turn off the terminal's menu shortcuts (“menu access keys”) in its settings.</td></tr>
+</table></div>
+<div class="tip">
+<p><b>Terminals that pass every key.</b> Terminals with the “kitty keyboard protocol” — kitty, WezTerm, foot, Ghostty,
+recent Alacritty, iTerm2 when it is enabled — report all of these keys exactly as pressed; pgtc switches the protocol
+on by itself. The Windows console and Windows Terminal also report most of them.</p>
+</div>
+<h3>PuTTY</h3>
+<p><kbd>Alt</kbd> + arrows work with PuTTY's default settings. In PuTTY 0.77 and newer you can also choose
+<i>Terminal → Keyboard → Arrow keys with modifiers: xterm-style</i>.</p>
+<h3>Finding out what a key does</h3>
+<p>Press <kbd>F1</kbd>: if the key is in the list but pressing it does nothing — or something else — the terminal is
+keeping or changing it. If it is not in the list, the command is not available where you are.</p>
+
+<h2 id="screen">The screen looks wrong</h2>
+<div class="tablewrap"><table>
+<tr><th>You see</th><th>Why</th><th>Do</th></tr>
+<tr><td>Frames made of letters (<code>q</code>, <code>x</code>, <code>l</code>), question marks or boxes</td><td>The terminal or its font has no line-drawing characters, or it is not set to UTF-8.</td><td>Set the terminal to UTF-8; or turn on <a href="settings.html#ascii">ASCII frames</a>.</td></tr>
+<tr><td>Frames with small gaps, columns that do not line up</td><td>A font that is not monospaced, or one that draws line characters narrower.</td><td>Choose a monospaced font in the terminal (Cascadia Mono, Consolas, DejaVu Sans Mono, Menlo).</td></tr>
+<tr><td>Wrong or blocky colours in <i>Tokyo Night</i> / <i>Dracula</i></td><td>The terminal, the SSH client, or <code>screen</code> / <code>tmux</code> in between does not pass true colour.</td><td>Use <i>Classic</i>, <i>Dark</i>, <i>Light</i> or <i>Terminal default</i>.</td></tr>
+<tr><td>Text that is hard to read in one scheme</td><td>Terminals define the 16 basic colours differently.</td><td>Try another scheme, or change your terminal's palette.</td></tr>
+<tr><td>The screen is garbled after the window was resized or the connection hiccuped</td><td>The terminal lost part of the picture.</td><td>Resize the window a little; pgtc draws everything again.</td></tr>
+<tr><td>The terminal is unusable after pgtc ended badly</td><td>It was left in “raw” mode — rare; pgtc restores the terminal also when it crashes.</td><td>Type <code>reset</code> and press <kbd>Enter</kbd> (you may not see what you type).</td></tr>
+<tr><td>The window is too small for a dialog</td><td>The terminal window has too few rows or columns.</td><td>Enlarge the terminal window or choose a smaller font.</td></tr>
+</table></div>
+
+<h2 id="connect">Connecting fails</h2>
+<div class="tablewrap"><table>
+<tr><th>Message or symptom</th><th>Likely cause</th><th>Check</th></tr>
+<tr><td>Nothing happens for 10 seconds, then a timeout</td><td>The host is not reachable: wrong name or port, a firewall, a VPN that is not up.</td><td>Host and port of the connection. From the same machine: <code>psql -h … -p …</code>. Raise <i>Connect timeout</i> for slow links.</td></tr>
+<tr><td><i>Connection refused</i></td><td>No server listens there: PostgreSQL is not running, listens on another port, or only on <code>localhost</code> (<code>listen_addresses</code>).</td><td>The server's <code>postgresql.conf</code>.</td></tr>
+<tr><td><i>password authentication failed</i></td><td>Wrong password — maybe an old one saved in <code>.pgpass</code>.</td><td>The login dialog comes back: type the right one and check <span class="ui">Save password</span> to replace the saved one.</td></tr>
+<tr><td><i>no pg_hba.conf entry for host …</i></td><td>The server does not allow this user / database / address — or requires SSL.</td><td>The server's <code>pg_hba.conf</code>; try SSL mode <code>require</code>.</td></tr>
+<tr><td>A certificate error with <code>verify-ca</code> / <code>verify-full</code></td><td>The server's certificate is not signed by an authority your system trusts, or is issued for another host name.</td><td>Set <span class="ui">Root cert. file</span> to your authority's certificate; connect with the host name that is in the certificate.</td></tr>
+<tr><td>The password is asked every time</td><td>It is not saved — or <code>.pgpass</code> is ignored.</td><td>Check <span class="ui">Save password</span>. On Linux / macOS: <code>chmod 600 ~/.pgpass</code>.</td></tr>
+<tr><td>The server is refused after connecting</td><td>It is older than PostgreSQL 11.</td><td>pgtc supports 11 and newer.</td></tr>
+<tr><td>A warning <i>not yet verified with pgtc</i></td><td>The server is newer than the versions pgtc was tested with.</td><td>Only a notice; go on. If a list in the tree fails, look for a newer pgtc.</td></tr>
+<tr><td>A database cannot be opened in the tree</td><td>You have no <code>CONNECT</code> right on it, or it does not allow connections (<code>template0</code>).</td><td>—</td></tr>
+</table></div>
+
+<h2 id="faq">Questions and answers</h2>
+
+<h3>“New query” and “Open SQL file” are disabled</h3>
+<p>A query tab needs a database. Put the tree cursor on a database — or on anything inside one — on a connected
+server. On a server row, a role or a tablespace there is no database to open the tab for.</p>
+
+<h3>F7 says “No developer templates”</h3>
+<p>The templates are not installed yet: <span class="menu">Settings → Install templates</span>, or
+<code>pgtc --setup</code> on the command line.</p>
+
+<h3>F7, F4 or autocomplete say I should finish or close the result first</h3>
+<p>The tab has a <b>paused result</b> — its label shows <code>1,000+ rows</code> — or an export is running. The tab's
+connection is busy with it. Press <kbd>Alt+End</kbd> to fetch the remaining rows, or <kbd>Alt+Shift+C</kbd> to end the
+result; then try again. See <a href="query.html#batches">Large results</a>.</p>
+
+<h3>A statement says it “cannot run inside a transaction block”</h3>
+<p>A script of several statements is sent as one piece and runs as one transaction. <code>VACUUM</code>,
+<code>CREATE DATABASE</code>, <code>CREATE INDEX CONCURRENTLY</code>, <code>ALTER SYSTEM</code> and a few others cannot
+do that. Select just that statement and press <kbd>F5</kbd> — with <i>Auto commit</i> on.</p>
+
+<h3>My script failed in the middle. What was changed?</h3>
+<p>Nothing — unless the script contains its own <code>COMMIT</code>s. PostgreSQL runs a script sent as one piece as one
+transaction and rolls all of it back on an error. Fix the statement the error points to and run the script again.</p>
+
+<h3>Every statement answers “current transaction is aborted”</h3>
+<p>The tab has <i>Auto commit</i> off and a statement failed: the transaction is in the failed state (the status row
+says <i>Transaction failed – rollback</i>). Choose <span class="menu">Query → Rollback</span>. To have pgtc do that by
+itself, turn on <span class="menu">Query → Auto rollback on error</span>.</p>
+
+<h3>I created a table but the tree does not show it</h3>
+<p>The tree shows what it loaded. Put the cursor on the schema (or on <i>Tables</i>) and press <kbd>Ctrl+R</kbd>.</p>
+
+<h3>Autocomplete does not offer a new table or column</h3>
+<p>Each query tab reads the names once. It reads them again after <b>that tab</b> runs a <code>CREATE</code> /
+<code>ALTER</code> / <code>DROP</code>, and after a refresh of the tree (<kbd>Ctrl+R</kbd> there). Do one of the two.</p>
+
+<h3>Copy does not reach my clipboard over SSH</h3>
+<p>Over SSH the text travels to your machine through your terminal (“OSC 52”). The terminal must support it and allow
+it — Windows Terminal, iTerm2, kitty, WezTerm and Alacritty do; in some it is a setting (iTerm2: <i>Applications in
+terminal may access clipboard</i>; <code>tmux</code>: <code>set -g set-clipboard on</code>). In pgtc,
+<i>OSC 52 clipboard</i> must be on in Settings. If your terminal cannot do it, select the text with the terminal
+itself: hold <kbd>Shift</kbd> and drag.</p>
+
+<h3>Paste with Ctrl+V pastes something old (over SSH)</h3>
+<p>Over SSH, <kbd>Ctrl+V</kbd> can only reach the clipboard of the remote machine or pgtc's own buffer. To paste what
+you copied on <b>your</b> machine, use the terminal's paste: <kbd>Ctrl+Shift+V</kbd>, <kbd>Shift+Insert</kbd> or the
+right mouse button.</p>
+
+<h3>Where did my exported file go?</h3>
+<p>To the machine pgtc <b>runs on</b>, into the folder shown in the dialog's <span class="ui">Folder:</span> line. Over
+SSH that is the server; fetch the file with <code>scp</code> or <code>sftp</code>.</p>
+
+<h3>I cannot select text with the mouse to copy it out of the terminal</h3>
+<p>pgtc uses the mouse itself. Hold <kbd>Shift</kbd> while you drag and the terminal selects as usual.</p>
+
+<h3>A SQL file does not open because it is not UTF-8</h3>
+<p>pgtc reads SQL files as UTF-8. Convert the file, for example:
+<code>iconv -f WINDOWS-1250 -t UTF-8 old.sql &gt; new.sql</code>.</p>
+
+<h3>The profiler does not start</h3>
+<ul>
+  <li><i>logging_collector is off</i> — set <code>logging_collector = on</code> in <code>postgresql.conf</code> and restart
+      the server. pgtc does not restart servers.</li>
+  <li>Missing rights — you need to be a superuser, or to have <code>pg_read_server_files</code> and the right to run
+      <code>ALTER SYSTEM</code>.</li>
+  <li>A managed cloud database — usually neither is possible there.</li>
+</ul>
+<p>See <a href="profiler.html#how">SQL profiler</a>.</p>
+
+<h3>pgtc asks about “logging settings” when I connect</h3>
+<p>The profiler was running when pgtc last ended without being able to stop it, and the server still logs every
+statement. Answer <span class="ui">Yes</span> to put the settings back. See
+<a href="profiler.html#restore">If pgtc could not put the settings back</a>.</p>
+
+<h3>The dashboard shows “-” for some values, or no query text for other sessions</h3>
+<p>PostgreSQL shows those details only to superusers and to members of <code>pg_monitor</code>. Ask for that role:
+<code>GRANT pg_monitor TO your_user;</code></p>
+
+<h3>Cancel or terminate in the dashboard is refused</h3>
+<p>You may signal your own sessions; for others you need to be a superuser or a member of
+<code>pg_signal_backend</code>. Sessions of superusers can only be ended by superusers.</p>
+
+<h3>Can I change a table / drop an object with a dialog?</h3>
+<p>No — pgtc writes SQL for you to review instead. To change an object: <kbd>Ctrl+E</kbd> on it
+(<a href="objects.html#edit">Edit in new query tab</a>). To create or drop one: <kbd>F7</kbd>
+(<a href="templates.html">developer templates</a>). To write statements for a table's rows: <kbd>F4</kbd> and
+<code>gti</code>, <code>gtu</code>, … (<a href="psql.html#generate">generate commands</a>).</p>
+
+<h3>Can I edit the rows of a result in the grid?</h3>
+<p>No. The grid is for reading and copying. Change data with <code>UPDATE</code> / <code>INSERT</code> / <code>DELETE</code>;
+<code>gtu table</code> on <kbd>F4</kbd> writes the statement with every column for you.</p>
+
+<h3>Can I see the query plan?</h3>
+<p>Put <code>EXPLAIN</code> or <code>EXPLAIN (ANALYZE, BUFFERS)</code> in front of the statement and run it: the plan is
+the result set. (Remember that <code>EXPLAIN ANALYZE</code> really executes the statement.)</p>
+
+<h3>How do I move my settings to another machine?</h3>
+<p>Copy <code>settings.toml</code> and <code>keymap.toml</code> from the config folder and the <code>themes</code> and
+<code>developer_templates</code> folders from the data folder — see
+<a href="reference.html#files">Files and folders</a>. Passwords are in <code>.pgpass</code>.</p>
+
+<h2 id="log">The log file</h2>
+<p>pgtc never prints messages onto the screen it draws on. What it has to report goes into a log file, one per day,
+in the <code>logs</code> folder of its data folder:</p>
+<div class="tablewrap"><table>
+<tr><th>Platform</th><th>Log folder</th></tr>
+<tr><td>Linux</td><td><code>~/.local/share/pgtc/logs</code></td></tr>
+<tr><td>macOS</td><td><code>~/Library/Application Support/pgtc/logs</code></td></tr>
+<tr><td>Windows</td><td><code>%APPDATA%\pgtc\logs</code></td></tr>
+</table></div>
+<p>The files are named <code>pgtc.2026-11-16.log</code>; the last 7 are kept. For a problem you can repeat, start pgtc
+with more detail and look at the end of today's file:</p>
+<pre><code>PGTC_LOG=debug pgtc                 Linux, macOS
+$env:PGTC_LOG="debug"; pgtc         Windows PowerShell
+set PGTC_LOG=debug &amp;&amp; pgtc          Windows cmd</code></pre>
+<p><code>PGTC_LOG=pgc_db=trace</code> logs only the database layer, in full detail.</p>
+</main>
+<script src="help.js"></script>
+</body>
+</html>

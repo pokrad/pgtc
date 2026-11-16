@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Developer templates — pgtc Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+<main>
+<h1>Developer templates (F7)</h1>
+<p class="lead">Pick a template, fill in a short form, and get complete, ready-to-run SQL in your editor:
+<code>CREATE TABLE</code>, <code>CREATE FUNCTION</code>, <code>DROP INDEX</code> and more. The templates are plain text
+files — you can add your own.</p>
+
+<h2 id="install">Installing the templates</h2>
+<p>pgtc reads templates from <b>one folder in your user directory</b>. The templates that come with pgtc are built
+into the program and must be copied there once:</p>
+<ul>
+  <li>on the command line: <code>pgtc --setup</code> or <code>pgtc --install-templates</code>;</li>
+  <li>or in the program: <span class="menu">Settings → Install templates</span> (or
+      <span class="menu">Settings → Run setup</span>).</li>
+</ul>
+<p>Until then <kbd>F7</kbd> answers <i>No developer templates — run Settings → Install templates</i>.</p>
+<p>When the folder already exists — for example after you updated pgtc — installing asks first whether to overwrite
+the templates that come with pgtc. <b>Yes</b> brings them up to date; <b>No</b> changes nothing. In both cases:</p>
+<ul>
+  <li>pgtc never deletes a template file;</li>
+  <li>files with other names — <b>your own templates</b> — are never touched.</li>
+</ul>
+<p><span class="menu">Settings → Show templates folder</span> tells you where the folder is (see also
+<a href="#where">below</a>).</p>
+
+<h2 id="use">Using a template</h2>
+<ol class="steps">
+  <li>Go to a <b>connected query tab</b> and put the cursor where the SQL should be inserted.</li>
+  <li>Press <kbd>F7</kbd> (<kbd>Esc</kbd> <kbd>7</kbd>, or
+      <span class="menu">Tools → Generate SQL from developer template…</span>).</li>
+  <li>Choose a template in the <a href="#picker">picker</a> and press <kbd>Enter</kbd>.</li>
+  <li>Fill in the <a href="#form">form</a>. The preview on the right shows the SQL as it grows.</li>
+  <li>Press <kbd>Enter</kbd> on <span class="ui">OK</span> (or <kbd>Ctrl+Enter</kbd> from any field, where your terminal
+      supports it). The SQL is inserted into the editor at the cursor; a selection is replaced.</li>
+  <li>Read it, change it if you like, and run it with <kbd>F5</kbd>.</li>
+</ol>
+<p><b>A template never runs anything.</b> It only writes text into your editor.</p>
+<p>The tab must be connected, because the lists in the form — schemas, tables, types — are read from the tab's
+database. While a result of the tab is paused (more rows available) or an export runs, <kbd>F7</kbd> asks you to
+finish or close the result first.</p>
+
+<h2 id="picker">The picker</h2>
+<figure>
+  <img src="img/tpl-picker.svg" alt="The template picker" loading="lazy">
+  <figcaption>The picker, with <i>Create table</i> selected. The line under the list is the description of the
+  selected template.</figcaption>
+</figure>
+<p>The picker shows the templates as a tree: the folders are the categories (<i>Functions</i>, <i>Indexes</i>,
+<i>Tables</i>, …), the rows below are the templates.</p>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th></tr>
+<tr><td class="k"><kbd>Up</kbd> / <kbd>Down</kbd>, <kbd>PgUp</kbd> / <kbd>PgDn</kbd></td><td>Move in the tree.</td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>Opens the form of the selected template.</td></tr>
+<tr><td class="k"><kbd>Alt+S</kbd></td><td>Jumps to the <span class="ui">Search</span> box.</td></tr>
+<tr><td class="k"><kbd>Esc</kbd></td><td>Closes the picker.</td></tr>
+</table></div>
+<h3>Searching</h3>
+<figure class="small">
+  <img src="img/tpl-search.svg" alt="Searching the picker" loading="lazy">
+  <figcaption><code>drop</code> typed into <span class="ui">Search</span>: only the DROP templates are left.</figcaption>
+</figure>
+<p>Type into <span class="ui">Search</span>: the tree keeps only the templates whose <b>name or description</b>
+contains the text. So <code>index</code> finds <i>Create index</i> and <i>Drop index</i>, and <code>enum</code> finds
+<i>Create enum type</i> and — through its description — <i>Drop type</i>.</p>
+
+<h3 id="builtin">The templates that come with pgtc</h3>
+<div class="tablewrap"><table>
+<tr><th>Category</th><th>Template</th><th>It asks for</th></tr>
+<tr><td rowspan="4">Functions</td><td>Create function</td><td>Schema, name, arguments (name, type, default), return type, language, volatility, security definer, body</td></tr>
+<tr><td>Create procedure</td><td>Schema, name, arguments, body</td></tr>
+<tr><td>Drop function</td><td>The function (with its argument types), IF EXISTS, dependent objects</td></tr>
+<tr><td>Drop procedure</td><td>The procedure, IF EXISTS, dependent objects</td></tr>
+<tr><td rowspan="2">Indexes</td><td>Create index</td><td>Table, name, UNIQUE, CONCURRENTLY, method, columns or expressions with their order, NULLS NOT DISTINCT, WHERE</td></tr>
+<tr><td>Drop index</td><td>The index, IF EXISTS, dependent objects</td></tr>
+<tr><td rowspan="2">Roles</td><td>Create role</td><td>Name, login, create databases, member of</td></tr>
+<tr><td>Drop role</td><td>The role, IF EXISTS, and optionally a role to hand its objects over to</td></tr>
+<tr><td rowspan="2">Schemas</td><td>Create schema</td><td>Name, owner, IF NOT EXISTS</td></tr>
+<tr><td>Drop schema</td><td>The schema, IF EXISTS, dependent objects</td></tr>
+<tr><td rowspan="2">Sequences</td><td>Create sequence</td><td>Schema, name, start, increment, owned by</td></tr>
+<tr><td>Drop sequence</td><td>The sequence, IF EXISTS, dependent objects</td></tr>
+<tr><td rowspan="2">Tables</td><td>Create table</td><td>Schema, name, IF NOT EXISTS, columns (name, type, NOT NULL, primary key, default)</td></tr>
+<tr><td>Drop table</td><td>The table, IF EXISTS, dependent objects</td></tr>
+<tr><td rowspan="2">Triggers</td><td>Create trigger with function</td><td>Table, name, timing, on insert / update / delete, row or statement level, body</td></tr>
+<tr><td>Drop trigger</td><td>The trigger (with its table), IF EXISTS, dependent objects</td></tr>
+<tr><td rowspan="4">Types</td><td>Create enum type</td><td>Schema, name, labels</td></tr>
+<tr><td>Create domain</td><td>Schema, name, base type, NOT NULL, CHECK</td></tr>
+<tr><td>Drop type</td><td>The type (enum, composite, range), IF EXISTS, dependent objects</td></tr>
+<tr><td>Drop domain</td><td>The domain, IF EXISTS, dependent objects</td></tr>
+<tr><td rowspan="4">Views</td><td>Create view</td><td>Schema, name, query</td></tr>
+<tr><td>Create materialized view</td><td>Schema, name, query, WITH DATA</td></tr>
+<tr><td>Drop view</td><td>The view, IF EXISTS, dependent objects</td></tr>
+<tr><td>Drop materialized view</td><td>The materialized view, IF EXISTS, dependent objects</td></tr>
+</table></div>
+
+<h2 id="form">The form</h2>
+<figure>
+  <img src="img/tpl-table.svg" alt="The Create table form" loading="lazy">
+  <figcaption><i>Create table</i>: the form on the left, the live preview of the SQL on the right.</figcaption>
+</figure>
+<p>The form fills the window. On the left are the fields of the template, on the right the <b>preview</b>: the SQL
+that <span class="ui">OK</span> would insert, rebuilt after every change. On a narrow terminal the preview is below
+the form.</p>
+<ul>
+  <li>A <code>*</code> after a label marks a field that must be filled in.</li>
+  <li>The line above the buttons shows the <b>help text</b> of the field you are in, if the template has one.</li>
+  <li>If something is missing or wrong — a required field is empty, a name is not valid — the preview shows the
+      problem instead of SQL, and <span class="ui">OK</span> does not insert anything.</li>
+</ul>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th></tr>
+<tr><td class="k"><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd></td><td>Next / previous field or button.</td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>On <span class="ui">OK</span>: inserts the SQL. On a drop-down: opens it. On a list: edits the row. In a SQL box: a new line.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Enter</kbd></td><td>OK from any field (where the terminal reports it).</td></tr>
+<tr><td class="k"><kbd>Esc</kbd></td><td>Closes the form without inserting anything.</td></tr>
+</table></div>
+
+<h3>The kinds of fields</h3>
+<div class="tablewrap"><table>
+<tr><th>Field</th><th>Looks like</th><th>How to use it</th></tr>
+<tr><td>Text</td><td>An input line</td><td>Type. Used for things that are not names: a return type, a default expression.</td></tr>
+<tr><td>Name</td><td>An input line</td><td>Type a PostgreSQL name. It is checked, and quoted in the SQL when needed — type <code>Order Items</code>, get <code>"Order Items"</code>.</td></tr>
+<tr><td>Number</td><td>An input line</td><td>Type a number.</td></tr>
+<tr><td>Checkbox</td><td><code>[ ]</code> / <code>[x]</code></td><td><kbd>Space</kbd> toggles it.</td></tr>
+<tr><td>Drop-down</td><td>A value with <code>▼</code></td><td><kbd>Enter</kbd> or <kbd>Space</kbd> opens the list; <kbd>Left</kbd> / <kbd>Right</kbd> change the value directly. See <a href="window.html#dialogs">drop-down lists</a>.</td></tr>
+<tr><td>List</td><td>Rows with buttons below</td><td>See <a href="#lists">Lists</a>.</td></tr>
+<tr><td>SQL box</td><td>A framed editor with the field's name as its title</td><td>See <a href="#sqlbox">SQL boxes</a>.</td></tr>
+</table></div>
+
+<h3>Drop-downs filled from the database</h3>
+<figure>
+  <img src="img/tpl-drop.svg" alt="Drop table with its table list open" loading="lazy">
+  <figcaption><i>Drop table</i>: the list of the database's tables, open. <i>type to filter</i> and <code>16/19</code>
+  in the frame: typing narrows the list; the 16th of 19 entries is selected.</figcaption>
+</figure>
+<p>Fields such as <i>Schema</i>, <i>Table</i>, <i>Owner</i> list the real objects of the tab's database, read when the
+form opens (<i>loading…</i> for a moment). Objects are shown with their schema (<code>sales.customer</code>), functions
+with their argument types. System schemas and objects that belong to extensions are left out.</p>
+<p>A long list is filtered by typing: open it and type a part of the name.</p>
+
+<h3 id="prefill">The form picks up the tree's selection</h3>
+<p>If the object selected in the <b>object tree</b> belongs to the same server and database as the query tab, the form
+uses it as its starting value:</p>
+<ul>
+  <li>a table selected in the tree → <i>Drop table</i> already shows that table, <i>Create index</i> already has it as
+      its table;</li>
+  <li>a table (or anything else) inside a schema → <i>Create table</i>, <i>Create function</i> … start with that
+      schema;</li>
+  <li>a trigger selected → <i>Drop trigger</i> shows that trigger and its table.</li>
+</ul>
+<p>So the quick way to drop a table is: select it in the tree, go to a query tab, <kbd>F7</kbd>, <i>Drop table</i>,
+<kbd>Enter</kbd> — the statement is written. You can always choose another value in the drop-down.</p>
+
+<h3 id="lists">Lists: columns, arguments, labels</h3>
+<p>A list field holds any number of rows — the columns of a table, the arguments of a function. Each row is shown in
+one line; below the list are its buttons.</p>
+<figure>
+  <img src="img/tpl-row.svg" alt="Editing a row of the Columns list" loading="lazy">
+  <figcaption><span class="ui">Edit</span> on the column <code>note</code>: a small dialog with the fields of one row.</figcaption>
+</figure>
+<div class="tablewrap"><table>
+<tr><th>Button</th><th>What it does</th></tr>
+<tr><td class="k"><span class="ui">Add</span></td><td>Opens the row dialog, empty; <span class="ui">OK</span> adds the row at the end.</td></tr>
+<tr><td class="k"><span class="ui">Edit</span></td><td>Opens the row dialog with the selected row. <kbd>Enter</kbd> on a row does the same.</td></tr>
+<tr><td class="k"><span class="ui">Delete</span></td><td>Removes the selected row.</td></tr>
+<tr><td class="k"><span class="ui">Up</span> / <span class="ui">Down</span></td><td>Move the selected row — the order of the rows is the order in the SQL.</td></tr>
+</table></div>
+<p>In the list, <kbd>Up</kbd> / <kbd>Down</kbd> select a row; <kbd>Tab</kbd> goes on to the buttons.</p>
+
+<h3 id="sqlbox">SQL boxes</h3>
+<figure>
+  <img src="img/tpl-function.svg" alt="Create function with its Body box" loading="lazy">
+  <figcaption><i>Create function</i>: the <span class="ui">Body</span> box takes all the room the form has left. The
+  bottom line shows the help text of the field.</figcaption>
+</figure>
+<p>A field that takes several lines of SQL — a function body, the query of a view, a <code>CHECK</code> expression — is
+a small SQL editor inside the form.</p>
+<ul>
+  <li>The usual <a href="editor.html">editor keys</a> work: moving, selecting, copy and paste, undo, syntax colours.</li>
+  <li><a href="editor.html#autocomplete">Autocomplete</a> works as in the query tab; <kbd>Esc</kbd> closes only its
+      list, not the form.</li>
+  <li><kbd>Enter</kbd> makes a new line; <kbd>Tab</kbd> leaves the box for the next field.</li>
+  <li>You can paste a long text into it.</li>
+</ul>
+
+<h3>The DROP templates</h3>
+<p>Every DROP template has the same two options:</p>
+<div class="tablewrap"><table>
+<tr><th>Option</th><th>Default</th><th>Meaning</th></tr>
+<tr><td class="k"><span class="ui">IF EXISTS</span></td><td>off</td><td>On: no error if the object is not there.</td></tr>
+<tr><td class="k"><span class="ui">Dependent objects</span></td><td><code>RESTRICT</code></td><td><code>RESTRICT</code>: the drop fails if anything depends on the object — nothing else is dropped by accident. <code>CASCADE</code>: everything that depends on it is dropped too (views on a table, foreign keys pointing to it, …).</td></tr>
+</table></div>
+<p><i>Drop role</i> has no <code>CASCADE</code>, because PostgreSQL has none for roles. Instead it offers
+<span class="ui">Reassign owned objects to</span>: choose a role, and the script starts with</p>
+<pre><code>REASSIGN OWNED BY old_role TO new_role;
+DROP OWNED BY old_role;
+DROP ROLE old_role;</code></pre>
+<p>with a comment reminding you that the first two statements act on the <b>current database only</b> — a role that
+owns objects in several databases needs them run in each.</p>
+
+<h2 id="own">Writing your own templates</h2>
+<p>A template is a text file with the extension <code>.pgtemplate</code>. There is no template editor in pgtc: write
+the file with any text editor and put it into the templates folder. pgtc looks into the folder while it runs and
+offers every template it finds.</p>
+
+<h3 id="where">Where the files go</h3>
+<div class="tablewrap"><table>
+<tr><th>Platform</th><th>Templates folder</th></tr>
+<tr><td>Linux</td><td><code>~/.local/share/pgtc/developer_templates</code></td></tr>
+<tr><td>macOS</td><td><code>~/Library/Application Support/pgtc/developer_templates</code></td></tr>
+<tr><td>Windows</td><td><code>%APPDATA%\pgtc\developer_templates</code></td></tr>
+</table></div>
+<pre><code>developer_templates/
+    default/                          templates for every server version
+        Functions/
+            function.pgtemplate
+            drop_function.pgtemplate
+        Tables/
+            table.pgtemplate
+        Our team/                     your own category
+            audit_table.pgtemplate
+    12_plus/                          replacements for PostgreSQL 12 and newer
+        Triggers/
+            trigger.pgtemplate</code></pre>
+<ul>
+  <li>The first level is a <b>version folder</b>. Put your templates into <code>default</code>.</li>
+  <li>The folder below it is the <b>category</b> shown in the picker. Make a new folder to make a new category.</li>
+  <li>The file name can be anything; the picker shows the <code>name</code> written in the file.</li>
+</ul>
+<h4>Version folders</h4>
+<p>A template sometimes has to be different for newer servers. Put the newer variant, <b>under the same folder and
+file name</b>, into a folder called <code>N_plus</code> — <code>15_plus</code>, <code>16_plus</code>. For the server of
+the query tab, pgtc uses the file from the newest version folder that is not newer than the server; if no version
+folder has the file, the one in <code>default</code>. (For small differences you do not need this — see
+<a href="#body">server checks</a> in the body.)</p>
+<div class="warn"><p>If you change a template that comes with pgtc, <b>save it under another file name</b> (and give it
+another <code>name</code>). Installing the templates again overwrites the files that come with pgtc, but never
+touches files with other names.</p></div>
+
+<h3 id="format">The file</h3>
+<p>A template has two parts, each started by a line <code>+++</code>:</p>
+<pre><code>+++
+header: the name, the description and the fields of the form
++++
+body: the SQL, with places where the values of the fields go</code></pre>
+<p>Here is a complete, small template — a table that every team has its own rules for. Save it as
+<code>default/Our team/lookup_table.pgtemplate</code>:</p>
+<pre><code>+++
+name        = "Create lookup table"
+description = "A code / name table with our standard columns"
+
+[[param]]
+name     = "schema"
+label    = "Schema"
+type     = "choice"
+source   = "schemas"
+default  = "public"
+required = true
+
+[[param]]
+name     = "name"
+label    = "Table name"
+type     = "identifier"
+required = true
+help     = "Singular, lower case: country, orderstatus"
+
+[[param]]
+name    = "code_length"
+label   = "Length of the code"
+type    = "number"
+default = "10"
+
+[[param]]
+name  = "with_audit"
+label = "Audit columns (modifiedby, modifieddate)"
+type  = "bool"
++++
+CREATE TABLE {{ schema|ident }}.{{ name|ident }} (
+    code varchar({{ code_length }}) NOT NULL,
+    name text NOT NULL,
+{% if with_audit %}
+    modifiedby text NOT NULL DEFAULT CURRENT_USER,
+    modifieddate timestamp NOT NULL DEFAULT now(),
+{% endif %}
+    CONSTRAINT {{ (name ~ "_pkey")|ident }} PRIMARY KEY (code)
+);
+
+COMMENT ON TABLE {{ schema|ident }}.{{ name|ident }} IS 'Lookup table';</code></pre>
+<p>Press <kbd>F7</kbd>: the picker has a new category <i>Our team</i> with <i>Create lookup table</i>, and the form has
+four fields.</p>
+<figure class="small">
+  <img src="img/tpl-own-picker.svg" alt="The picker with the new category" loading="lazy">
+  <figcaption>The picker with the new category <i>Our team</i>.</figcaption>
+</figure>
+<figure>
+  <img src="img/tpl-own.svg" alt="The form of the example template" loading="lazy">
+  <figcaption>The example template in pgtc: its four fields, the help text of <span class="ui">Table name</span> at the
+  bottom, and the SQL it writes.</figcaption>
+</figure>
+
+<h3 id="header">The header</h3>
+<p>The header is written in <a href="https://toml.io">TOML</a>: <code>key = value</code> lines; texts in double quotes.</p>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>Meaning</th></tr>
+<tr><td class="k"><code>name</code></td><td>The label in the picker. Without it, the file name is shown.</td></tr>
+<tr><td class="k"><code>description</code></td><td>One line shown under the picker's tree, and searched by the search box.</td></tr>
+<tr><td class="k"><code>[[param]]</code></td><td>Starts one field of the form. The fields appear in the order written.</td></tr>
+</table></div>
+<p>Inside a <code>[[param]]</code>:</p>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>Needed</th><th>Meaning</th></tr>
+<tr><td class="k"><code>name</code></td><td>yes</td><td>The name of the value in the body: <code>{{ name }}</code>. Letters, digits, <code>_</code>.</td></tr>
+<tr><td class="k"><code>type</code></td><td>yes</td><td>The kind of field — see the next table.</td></tr>
+<tr><td class="k"><code>label</code></td><td></td><td>The text shown in the form. Without it, the <code>name</code>.</td></tr>
+<tr><td class="k"><code>required</code></td><td></td><td><code>true</code>: the field must be filled in; the form marks it with <code>*</code>.</td></tr>
+<tr><td class="k"><code>default</code></td><td></td><td>The value the field starts with.</td></tr>
+<tr><td class="k"><code>help</code></td><td></td><td>A hint shown at the bottom of the form while the field has the focus.</td></tr>
+</table></div>
+
+<h3 id="types">Field types</h3>
+<div class="tablewrap"><table>
+<tr><th><code>type</code></th><th>The form shows</th><th>Extra keys</th><th>In the body</th></tr>
+<tr><td class="k"><code>text</code></td><td>An input line</td><td></td><td>The text as typed.</td></tr>
+<tr><td class="k"><code>identifier</code></td><td>An input line, checked as a PostgreSQL name</td><td></td><td>The name; write <code>{{ x|ident }}</code> to get it quoted when needed.</td></tr>
+<tr><td class="k"><code>number</code></td><td>An input line for a number</td><td></td><td>The number.</td></tr>
+<tr><td class="k"><code>bool</code></td><td>A checkbox</td><td></td><td>True or false: <code>{% if x %}…{% endif %}</code>.</td></tr>
+<tr><td class="k"><code>choice</code></td><td>A drop-down</td><td>One of: <code>options = ["a", "b"]</code> — fixed values;<br><code>source = "tables"</code> — a built-in list from the database (below);<br><code>query = "SELECT …"</code> — your own list: a query that returns one column of names</td><td>The chosen value.</td></tr>
+<tr><td class="k"><code>sql</code></td><td>A SQL box, 5 rows high</td><td><code>fill = true</code>: the box takes all rows the form has left</td><td>The text, with its line breaks.</td></tr>
+<tr><td class="k"><code>list</code></td><td>A list of rows with Add / Edit / Delete / Up / Down</td><td><code>[[param.fields]]</code> blocks: the fields of one row, written like <code>[[param]]</code></td><td>A sequence of rows: <code>{% for r in x %}{{ r.field }}{% endfor %}</code>.</td></tr>
+</table></div>
+<p>A list is written like this — the fields of a row are indented only for readability:</p>
+<pre><code>[[param]]
+name     = "columns"
+label    = "Columns"
+type     = "list"
+required = true
+  [[param.fields]]
+  name     = "col_name"
+  label    = "Name"
+  type     = "identifier"
+  required = true
+  [[param.fields]]
+  name    = "col_type"
+  label   = "Type"
+  type    = "text"
+  default = "text"</code></pre>
+
+<h3 id="sources">Lists from the database: <code>source</code></h3>
+<div class="tablewrap"><table>
+<tr><th><code>source</code></th><th>Lists</th><th><code>{{ value|ident }}</code> writes</th></tr>
+<tr><td class="k"><code>schemas</code></td><td>Schemas</td><td><code>sales</code></td></tr>
+<tr><td class="k"><code>tables</code></td><td>Tables, partitioned tables, foreign tables</td><td><code>sales.customer</code></td></tr>
+<tr><td class="k"><code>views</code></td><td>Views</td><td><code>sales.vsalesperson</code></td></tr>
+<tr><td class="k"><code>materialized_views</code></td><td>Materialized views</td><td><code>sales.mv</code></td></tr>
+<tr><td class="k"><code>sequences</code></td><td>Sequences</td><td><code>sales.customer_customerid_seq</code></td></tr>
+<tr><td class="k"><code>functions</code></td><td>Functions, with their argument types</td><td><code>sales.customer_total(integer, integer)</code></td></tr>
+<tr><td class="k"><code>procedures</code></td><td>Procedures, with their argument types</td><td><code>sales.close_month(date)</code></td></tr>
+<tr><td class="k"><code>types</code></td><td>Data types for columns: the common built-in types and your own</td><td><code>integer</code>, <code>sales.mytype</code></td></tr>
+<tr><td class="k"><code>user_types</code></td><td>Your own types (enum, composite, range) — no domains</td><td><code>sales.orderstatus</code></td></tr>
+<tr><td class="k"><code>domains</code></td><td>Domains</td><td><code>public."Flag"</code></td></tr>
+<tr><td class="k"><code>indexes</code></td><td>Indexes that can be dropped on their own (not those of constraints)</td><td><code>sales.ix_customer_territoryid</code></td></tr>
+<tr><td class="k"><code>triggers</code></td><td>Triggers, with their table</td><td><code>trg ON sales.customer</code></td></tr>
+<tr><td class="k"><code>roles</code></td><td>Roles</td><td><code>reporting</code></td></tr>
+</table></div>
+<ul>
+  <li>Names are quoted where PostgreSQL needs it — <code>sales."Order Items"</code> — you do not have to think about it.</li>
+  <li>A value from the database has parts you can use on their own: <code>{{ table.schema }}</code> and
+      <code>{{ table.name }}</code>; a function value also has <code>args</code>, a trigger value <code>table</code>.</li>
+  <li>These built-in sources are the ones the <a href="#prefill">tree's selection</a> fills in. A list from your own
+      <code>query</code> is not pre-filled.</li>
+</ul>
+
+<h3 id="body">The body</h3>
+<p>The body is the SQL, with <a href="https://jinja.palletsprojects.com/templates/">Jinja</a> marks where the form's
+values go. You need only a few of them:</p>
+<div class="tablewrap"><table>
+<tr><th>Write</th><th>Meaning</th></tr>
+<tr><td class="k"><code>{{ name }}</code></td><td>The value of field <code>name</code>, as it is.</td></tr>
+<tr><td class="k"><code>{{ name|ident }}</code></td><td>The value as a correctly quoted identifier. <b>Use it for every name</b> — schema, table, column, function.</td></tr>
+<tr><td class="k"><code>{% if flag %} … {% endif %}</code></td><td>The text between is written only if the checkbox is checked — or, for other fields, only if the field is not empty. <code>{% else %}</code> is allowed.</td></tr>
+<tr><td class="k"><code>{% if method != "btree" %} … {% endif %}</code></td><td>Comparing a value.</td></tr>
+<tr><td class="k"><code>{% for c in columns %} … {% endfor %}</code></td><td>Repeats the text for every row of a list; inside, <code>{{ c.col_name }}</code> is a field of the row.</td></tr>
+<tr><td class="k"><code>{% if not loop.last %},{% endif %}</code></td><td>Inside a <code>for</code>: a comma after every row except the last.</td></tr>
+<tr><td class="k"><code>{{ (name ~ "_pkey")|ident }}</code></td><td><code>~</code> joins texts: here a constraint name made from the table name.</td></tr>
+<tr><td class="k"><code>{% if has("NullsNotDistinct") %} … {% endif %}</code></td><td>A <b>server check</b>: the text is written only if the tab's server has that feature. Lets one template serve several PostgreSQL versions.</td></tr>
+</table></div>
+<p>The complete body of <i>Create table</i>, as an example of a list and a condition:</p>
+<pre><code>{% set pk = columns|selectattr("primary_key")|list %}
+CREATE TABLE {% if if_not_exists %}IF NOT EXISTS {% endif %}{{ schema|ident }}.{{ name|ident }} (
+{% for c in columns %}
+    {{ c.col_name|ident }} {{ c.col_type }}{% if c.not_null or c.primary_key %} NOT NULL{% endif %}{% if c.col_default %} DEFAULT {{ c.col_default }}{% endif %}{% if not loop.last or pk %},{% endif %}
+
+{% endfor %}
+{% if pk %}
+    CONSTRAINT {{ (name ~ "_pkey")|ident }} PRIMARY KEY ({% for c in pk %}{{ c.col_name|ident }}{% if not loop.last %}, {% endif %}{% endfor %})
+{% endif %}
+);</code></pre>
+<p>A line that holds only a <code>{% … %}</code> mark leaves no empty line in the result.</p>
+
+<h3>Tips</h3>
+<ul>
+  <li><b>Start from a copy.</b> The installed files in <code>default/</code> show every field type in use. Copy one
+      to a new name and change it.</li>
+  <li><b>Test in the form.</b> Save the file, press <kbd>F7</kbd>, open the template: the preview shows the result at
+      once. A mistake in the file — a missing quote in the header, an unknown field in the body — is reported
+      instead of the SQL.</li>
+  <li><b>Keep the form short.</b> Ask for what differs each time; write the rest into the body.</li>
+  <li>Not possible (for now): showing or hiding a field depending on another one, checking one field against
+      another, forms with several pages. An <code>{% if %}</code> in the body covers most of these.</li>
+</ul>
+</main>
+<script src="help.js"></script>
+</body>
+</html>

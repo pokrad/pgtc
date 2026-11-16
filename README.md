@@ -92,6 +92,10 @@ shows the keys that work right now** in the part of the window that has the focu
 Help → Keyboard shortcuts lists every key. All keys can be changed in `keymap.toml`
 (Help → Keyboard shortcuts shows where it is).
 
+**Help:** the full manual — every feature explained step by step, with screenshots —
+is in [docs/help](docs/help/index.html): open `docs/help/index.html` in a browser
+(it works offline).
+
 `Esc` followed by a digit works as an F-key in terminals that do not pass F-keys
 through. Alt+arrows also work from PuTTY in its default setting (Alt sent as an `Esc`
 prefix); in PuTTY 0.77+ the xterm style for arrow keys with modifiers

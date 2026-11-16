@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connections — pgtc Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+<main>
+<h1>Connections</h1>
+<p class="lead">Saving servers, connecting and disconnecting, passwords, SSL — and how many connections pgtc really
+opens.</p>
+
+<h2 id="saved">Saved connections</h2>
+<p>A <b>saved connection</b> describes one server: a name, where it is, and who you are there. The saved connections
+are the top rows of the object tree. They are stored in pgtc's settings file — <b>without</b> their passwords.</p>
+
+<h3>Saving a new connection</h3>
+<ol class="steps">
+  <li>Choose <span class="menu">File → New connection…</span> (<kbd>F9</kbd>, <kbd>Enter</kbd>).</li>
+  <li>The dialog opens with the usual values of a local server already filled in:
+<figure class="small">
+  <img src="img/conn-empty.svg" alt="The New connection dialog as it opens." loading="lazy">
+  <figcaption>The New connection dialog as it opens.</figcaption>
+</figure>
+  </li>
+  <li>Fill in the fields:
+    <figure class="small">
+      <img src="img/conn-new.svg" alt="New connection dialog, filled in" loading="lazy">
+      <figcaption>Filled in for a second server.</figcaption>
+    </figure>
+    <div class="tablewrap"><table>
+    <tr><th>Field</th><th>Meaning</th><th>Default</th></tr>
+    <tr><td class="k"><span class="ui">Name</span></td><td>Your name for the connection, shown in the tree and in every tab's status row. Any text.</td><td></td></tr>
+    <tr><td class="k"><span class="ui">Host</span></td><td>Host name or IP address of the server, or the directory of its Unix socket.</td><td><code>localhost</code></td></tr>
+    <tr><td class="k"><span class="ui">Port</span></td><td>TCP port, 1 – 65535.</td><td><code>5432</code></td></tr>
+    <tr><td class="k"><span class="ui">Maintenance DB</span></td><td>The database pgtc connects to for the server itself: to list the databases, roles and tablespaces, and for the server-wide dashboard and the profiler. Any database you may connect to.</td><td><code>postgres</code></td></tr>
+    <tr><td class="k"><span class="ui">User name</span></td><td>The PostgreSQL role to log in as.</td><td><code>postgres</code></td></tr>
+    <tr><td class="k"><span class="ui">Password</span></td><td>Optional. Shown as <code>*</code>. Leave it empty to be asked when connecting, or when the password is already in <code>.pgpass</code>.</td><td></td></tr>
+    <tr><td class="k"><span class="ui">Save password</span></td><td>Write the password to <code>.pgpass</code> after the first successful connect (see <a href="#passwords">Passwords</a>).</td><td>off</td></tr>
+    <tr><td class="k"><span class="ui">SSL mode</span></td><td>How the connection is encrypted (see <a href="#ssl">SSL</a>).</td><td><code>prefer</code></td></tr>
+    <tr><td class="k"><span class="ui">Root cert. file</span></td><td>Optional: a certificate file to trust instead of the system's certificates.</td><td></td></tr>
+    </table></div>
+  </li>
+  <li>Press <kbd>Enter</kbd> (<span class="ui">OK</span>). A wrong value — for example a port that is not a number —
+      shows an error and the dialog stays open.</li>
+</ol>
+<p>The new server appears in the tree, not connected yet.</p>
+
+<h3>Changing or deleting a saved connection</h3>
+<figure class="mid">
+  <img src="img/server-menu.svg" alt="Context menu of a server" loading="lazy">
+  <figcaption><kbd>F2</kbd> on a server row.</figcaption>
+</figure>
+<ul>
+  <li><b>Edit:</b> put the cursor on the server, press <kbd>F2</kbd> and choose <span class="menu">Edit connection…</span>.
+      The same dialog opens with the saved values.</li>
+  <li><b>Delete:</b> <kbd>F8</kbd> on the server, or <span class="menu">Delete connection</span> in its context menu.
+      pgtc asks first:
+      <figure class="small"><img src="img/conn-delete.svg" alt="Delete connection question" loading="lazy"></figure>
+      Deleting a connected server also disconnects it — with the questions described under
+      <a href="#disconnect">Disconnecting</a>. Only pgtc's entry is deleted; nothing happens on the server, and a
+      password saved in <code>.pgpass</code> stays there.</li>
+</ul>
+
+<h2 id="connect">Connecting</h2>
+<figure>
+  <img src="img/conn-disconnected.svg" alt="A server that is not connected" loading="lazy">
+  <figcaption>The cursor is on <i>production</i>, which is not connected: the right side shows what is saved for it.</figcaption>
+</figure>
+<ol class="steps">
+  <li>Put the cursor on the server in the tree.</li>
+  <li>Press <kbd>F2</kbd> and choose <span class="menu">Connect</span> — or use <span class="menu">File → Connect</span>.
+<figure class="">
+  <img src="img/conn-menu.svg" alt="The context menu of the server: Connect is its first item." loading="lazy">
+  <figcaption>The context menu of the server: Connect is its first item.</figcaption>
+</figure>
+  </li>
+  <li>If pgtc does not know the password, the <a href="#login">login dialog</a> asks for it.</li>
+</ol>
+<p>While connecting, the row says so; then it becomes <i>name (connected)</i> and opens to show <i>Databases</i>,
+<i>Login/Group Roles</i> and <i>Tablespaces</i>. The window status line shows the server's version.</p>
+<ul>
+  <li>Several servers can be connected at the same time.</li>
+  <li>If the server does not answer, connecting gives up after the <b>connect timeout</b> — 10 seconds by default,
+      changeable in <a href="settings.html">Settings</a>.</li>
+  <li>A server <b>older than PostgreSQL 11</b> is refused with a message.</li>
+  <li>A server <b>newer than the newest verified version</b> (18) connects, with the warning
+      <i>“PostgreSQL N – not yet verified with pgtc”</i>.</li>
+</ul>
+
+<h3 id="info">What the server row shows</h3>
+<figure>
+  <img src="img/server-info.svg" alt="Information about a connected server" loading="lazy">
+  <figcaption>The cursor on a connected server: its data, its version and every configuration setting.</figcaption>
+</figure>
+<p>With the cursor on a server, the <i>Default</i> tab shows — as SQL comments — the saved data, the state, and for a
+connected server the <b>version</b> and the <b>whole configuration</b>: every setting the server shows to your user,
+sorted by name, with</p>
+<ul>
+  <li>its value, as <code>SHOW</code> prints it (<code>6GB</code>, <code>5min</code>);</li>
+  <li>where the value comes from: <i>default</i>, <i>configuration file</i> (with the file and the line, when the server
+      tells you), <i>client</i>, <i>override</i>, …;</li>
+  <li><code>(restart needed)</code> when the value was changed in the file but only takes effect after a server restart.</li>
+</ul>
+<p>The settings are read the first time you select the server row and kept until you disconnect; <kbd>Ctrl+R</kbd> on
+the server row reads them again. Move into the text with <kbd>F6</kbd> and use <kbd>Ctrl+F</kbd> to find a setting.</p>
+
+<h2 id="login">The login dialog</h2>
+<figure class="small">
+  <img src="img/conn-login.svg" alt="Login dialog" loading="lazy">
+</figure>
+<p>pgtc looks for the password in this order: the connection dialog (this session), a connection URI,
+the environment variable <code>PGPASSWORD</code>, the <code>.pgpass</code> file. If none has it and the server asks for
+one, the login dialog appears.</p>
+<ul>
+  <li>Type the password and press <kbd>Enter</kbd>.</li>
+  <li>Check <span class="ui">Save password</span> to write it to <code>.pgpass</code> once the login has succeeded.</li>
+  <li>If the password is wrong, the dialog comes back with the server's error message.</li>
+  <li><kbd>Esc</kbd> gives up; the server stays disconnected.</li>
+</ul>
+<p>The password is then kept in memory until you quit pgtc and used for every further connection to that server —
+you are asked once, not once per tab.</p>
+
+<h2 id="passwords">Passwords: the .pgpass file</h2>
+<p>pgtc stores passwords <b>only</b> in PostgreSQL's standard password file. It is the same file that <code>psql</code>,
+<code>pg_dump</code> and other PostgreSQL programs read, so passwords you already have there work in pgtc at once, and
+passwords saved by pgtc work in those programs. pgtc uses no operating-system keyring — the file also works on servers
+without a desktop and over SSH.</p>
+<div class="tablewrap"><table>
+<tr><th>Platform</th><th>The file</th></tr>
+<tr><td>Linux, macOS</td><td><code>~/.pgpass</code></td></tr>
+<tr><td>Windows</td><td><code>%APPDATA%\postgresql\pgpass.conf</code></td></tr>
+<tr><td>Any</td><td>The file named by the environment variable <code>PGPASSFILE</code>, if it is set.</td></tr>
+</table></div>
+<p>One line per password:</p>
+<pre><code>hostname:port:database:username:password
+
+# examples
+localhost:5432:postgres:postgres:s3cret
+db.example.com:5432:*:app:another-password</code></pre>
+<ul>
+  <li><code>*</code> in one of the first four fields matches anything.</li>
+  <li>The <b>first</b> matching line is used.</li>
+  <li>Lines starting with <code>#</code> are comments. A <code>:</code> or <code>\</code> inside a value is written
+      <code>\:</code> or <code>\\</code>.</li>
+  <li>On Linux and macOS the file is <b>ignored</b> unless only you can read it (<code>chmod 600 ~/.pgpass</code>) —
+      the same rule as in psql.</li>
+</ul>
+<h3>What “Save password” does</h3>
+<p>After a successful connect, pgtc writes one line for the server's host, port, maintenance database and user:</p>
+<ul>
+  <li>a line for the same host, port, database and user is <b>replaced</b>;</li>
+  <li>otherwise a line is <b>added</b> at the end;</li>
+  <li>all other lines and comments stay as they are;</li>
+  <li>a file that does not exist is created — on Linux and macOS readable only by you.</li>
+</ul>
+<div class="warn"><p><code>.pgpass</code> is plain text. Anyone who can read the file can read the passwords; it is
+protected only by its file permissions.</p></div>
+
+<h2 id="ssl">SSL (TLS)</h2>
+<p>The <span class="ui">SSL mode</span> of a connection has the same five values and the same meaning as in psql:</p>
+<div class="tablewrap"><table>
+<tr><th>SSL mode</th><th>Encrypted?</th><th>Is the server's certificate checked?</th></tr>
+<tr><td class="k"><code>disable</code></td><td>Never</td><td>—</td></tr>
+<tr><td class="k"><code>prefer</code> (default)</td><td>If the server offers it; otherwise not</td><td>No</td></tr>
+<tr><td class="k"><code>require</code></td><td>Always; no connection without it</td><td>No</td></tr>
+<tr><td class="k"><code>verify-ca</code></td><td>Always</td><td>Yes: it must be signed by a trusted authority</td></tr>
+<tr><td class="k"><code>verify-full</code></td><td>Always</td><td>Yes, and it must be issued for the host name you connect to</td></tr>
+</table></div>
+<ul>
+  <li><b>Trusted authorities</b> are those of the operating system's certificate store. If you fill in
+      <span class="ui">Root cert. file</span>, <b>only</b> the certificates in that file are trusted — use it for a
+      server with a certificate from your own authority.</li>
+  <li>For a server on the internet, use <code>verify-full</code>: only it protects against a server that pretends to
+      be yours.</li>
+  <li>Client certificates (logging in with a certificate) are not supported yet.</li>
+</ul>
+
+<h2 id="many">How many connections pgtc opens</h2>
+<p>A PostgreSQL connection belongs to one database, and a connection that runs a long statement cannot do anything
+else. So pgtc opens connections as they are needed:</p>
+<div class="tablewrap"><table>
+<tr><th>Connection</th><th>Opened when</th><th>Closed when</th></tr>
+<tr><td>The <b>server</b> connection (to the maintenance database)</td><td>You connect the server</td><td>You disconnect it</td></tr>
+<tr><td>One per <b>database opened in the tree</b></td><td>You open the database's row</td><td>You disconnect the server</td></tr>
+<tr><td>One per <b>query tab</b></td><td>The tab opens</td><td>The tab closes</td></tr>
+<tr><td>One per <b>dashboard</b>, <b>profiler</b> and <b>statistics</b> tab</td><td>The tab opens</td><td>The tab closes</td></tr>
+<tr><td>Short-lived ones for <i>Find object</i> on a whole server and for exporting / loading a definition</td><td>While that work runs</td><td>When it ends</td></tr>
+</table></div>
+<p>Because every query tab has its own connection:</p>
+<ul>
+  <li>a long query never blocks the tree or another tab;</li>
+  <li>each tab has its own transaction, its own <code>SET</code> values and its own temporary tables;</li>
+  <li>cancelling a query, or losing its connection, affects only that tab.</li>
+</ul>
+<p>Each tab shows its connection in its status row: <code>local · postgres@adventureworks</code> is the saved connection
+<i>local</i>, user <code>postgres</code>, database <code>adventureworks</code>.</p>
+<p>When a tab closes, pgtc ends its session properly: a running statement is cancelled first, an open transaction is
+rolled back by the server. The server log gets no “unexpected EOF” lines from pgtc.</p>
+
+<h2 id="disconnect">Disconnecting</h2>
+<p>Put the cursor on the server and choose <span class="menu">Disconnect</span> (<kbd>F2</kbd>, or the
+<span class="menu">File</span> menu).</p>
+<p><b>Disconnecting closes everything of that server:</b> its query tabs, its object tabs, its dashboard, profiler
+and statistics tabs. Before anything is closed, pgtc asks what quitting would ask:</p>
+<ol>
+  <li>for each query tab of the server with unsaved text: <i>Save them?</i> (unless you turned that question off);</li>
+  <li>if tabs have an open transaction: <span class="ui">Commit all</span> / <span class="ui">Rollback all</span> /
+      <span class="ui">Cancel</span>.</li>
+</ol>
+<p><span class="ui">Cancel</span> at any of these questions stops the disconnect; nothing is closed. Afterwards no
+connection to that server is left open.</p>
+<p>If a connection is lost (the server restarted, the network failed), the status line says so and the server's row
+closes; connect again as usual. A query tab that lost its connection keeps its text.</p>
+
+<h2 id="cli">Connecting from the command line</h2>
+<pre><code>pgtc -h db.example.com -p 5432 -U app adventureworks
+pgtc postgresql://app@db.example.com/adventureworks?sslmode=verify-full</code></pre>
+<p>When you start pgtc with connection options, it saves that connection — unless you already have one with the same
+host, port, database, user and SSL mode — and connects at once. The options and the environment variables are the same
+as psql's; they are listed in <a href="reference.html#cli">Reference → Command line</a>.</p>
+<ul>
+  <li><code>-W</code> always asks for the password; <code>-w</code> never asks (a missing password is then an error).</li>
+  <li>A password given in a URI or in <code>PGPASSWORD</code> is used for this run only and is not written anywhere.</li>
+</ul>
+</main>
+<script src="help.js"></script>
+</body>
+</html>

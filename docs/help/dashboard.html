@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Server dashboard — pgtc Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+<main>
+<h1>Server dashboard</h1>
+<p class="lead">A live view of what a server is doing: graphs, a health summary, the sessions and what they run,
+who blocks whom, the progress of maintenance commands, locks — and the keys to cancel a query or end a session.</p>
+
+<figure>
+  <img src="img/dashboard.svg" alt="The server dashboard" loading="lazy">
+  <figcaption>The dashboard of the database <code>adventureworks</code>: graphs at the top, the summary in the middle,
+  the <i>Sessions</i> list below.</figcaption>
+</figure>
+
+<h2 id="open">Opening the dashboard</h2>
+<p>Put the tree cursor on a row of a <b>connected</b> server and press <kbd>Alt+D</kbd> (also <kbd>Ctrl+D</kbd>) — or
+choose <span class="menu">Tools → Server dashboard</span>, or <span class="menu">Server dashboard</span> in the context
+menu (<kbd>F2</kbd>).</p>
+<div class="tablewrap"><table>
+<tr><th>Cursor is on…</th><th>The dashboard shows</th><th>Tab name</th></tr>
+<tr><td>the server row (or <i>Databases</i>, a role, a tablespace)</td><td>The <b>whole server</b>: all databases together.</td><td><i>Dashboard: local</i></td></tr>
+<tr><td>a database, or anything inside it</td><td><b>That database</b> only: its sessions, its transactions, its locks.</td><td><i>Dashboard: local · adventureworks</i></td></tr>
+</table></div>
+<ul>
+  <li>The dashboard is a <b>tab</b>. It stays open beside your query tabs and keeps refreshing while you work
+      elsewhere. Close it like any tab: <kbd>Ctrl+W</kbd>.</li>
+  <li>Opening it again for the same server and database switches to the tab that is already open. You can have a
+      server-wide dashboard and dashboards of single databases at the same time.</li>
+  <li>It has its <b>own connection</b>, which is left out of all its numbers and lists — you never see the dashboard
+      watching itself.</li>
+  <li>If its connection is lost, the tab says so; <kbd>F5</kbd> connects again.</li>
+</ul>
+<div class="note"><p><b>Is it safe on a busy production server?</b> Yes. Every dashboard query reads only the
+statistics PostgreSQL keeps in memory (<code>pg_stat_activity</code> and its relatives, <code>pg_locks</code>). None
+scans a table, and none takes a lock that could make another session wait. A list is read only while you look
+at it.</p></div>
+
+<h3>What you may see</h3>
+<p>PostgreSQL shows the details of other users' sessions (their query text, their wait events) only to superusers and
+members of the role <code>pg_monitor</code> / <code>pg_read_all_stats</code>. As an ordinary user you see all sessions,
+but the query text only of your own. A few summary values need those rights too and show <code>-</code> without them.</p>
+
+<h2 id="refresh">Refreshing</h2>
+<p>The dashboard reads new values every <b>2 seconds</b>. The right end of the tab status row shows the rhythm:
+<i>Refresh every 2 s</i>.</p>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th></tr>
+<tr><td class="k"><kbd>F5</kbd></td><td>Refresh now.</td></tr>
+<tr><td class="k"><kbd>Ctrl+P</kbd></td><td>Pause — the screen freezes so you can read it — and resume.</td></tr>
+<tr><td class="k"><kbd>Ctrl+T</kbd></td><td>Next refresh interval: 0.5 → 1 → 2 → 5 → 10 → 30 seconds, and round again.</td></tr>
+</table></div>
+<p>A refresh is sent only when the previous one has been answered, so a slow server is never flooded. During a
+refresh the cursor of the list stays on the same session, even when the rows change their order.</p>
+
+<h2 id="graphs">The graphs</h2>
+<p>Five boxes, each with a title, a small graph of the last readings (the newest at the right) and the current
+numbers.</p>
+<div class="tablewrap"><table>
+<tr><th>Box</th><th>Numbers</th><th>What it tells you</th></tr>
+<tr><td><b>Sessions</b></td><td>total · active · idle</td><td>How many clients are connected and how many are working right now.</td></tr>
+<tr><td><b>Transactions per second</b></td><td>total · commits · rollbacks</td><td>The throughput. Many rollbacks usually mean an application that fails and retries.</td></tr>
+<tr><td><b>Tuples in</b></td><td>inserts · updates · deletes per second</td><td>How much is being written.</td></tr>
+<tr><td><b>Tuples out</b></td><td>fetched · returned per second</td><td>How much is being read. <i>Returned</i> far above <i>fetched</i> points to sequential scans reading rows that are then thrown away.</td></tr>
+<tr><td><b>Block I/O</b></td><td>reads · hits per second</td><td><i>Hits</i> were found in PostgreSQL's cache, <i>reads</i> had to come from the operating system or the disk.</td></tr>
+</table></div>
+<p>The rates are computed from two readings. On a wide window the five boxes are in one row, otherwise in two. On a
+low window the graphs are the first thing to go, to leave room for the list.</p>
+
+<h2 id="summary">The summary</h2>
+<p>Four lines between the graphs and the lists — the health of the server at a glance.</p>
+<div class="tablewrap"><table>
+<tr><th>Line</th><th>Value</th><th>Meaning</th></tr>
+<tr><td rowspan="6"><b>Global</b></td><td><i>primary</i> / <i>standby</i></td><td>Whether the server accepts writes or is a replica.</td></tr>
+<tr><td><i>up 14 d 00 h</i></td><td>Time since the server started.</td></tr>
+<tr><td><i>size 1,250 MB (+4,096 bytes/s)</i></td><td>Size of the databases shown, and how fast it grows. Read at most every 30 seconds (and on <kbd>F5</kbd>), because asking for it is not free.</td></tr>
+<tr><td><i>cache hit 98.91 %</i></td><td>Share of block requests answered from the cache, between the last two readings. On a server with enough memory it is close to 100 %.</td></tr>
+<tr><td><i>rollback</i> ratio</td><td>Share of transactions that were rolled back.</td></tr>
+<tr><td>temporary files</td><td>Number and size of the files queries are spilling to disk right now (sorts and hashes too big for <code>work_mem</code>). PostgreSQL 12+, needs monitoring rights.</td></tr>
+<tr><td rowspan="6"><b>Sessions</b></td><td><i>41 / 200</i></td><td>Client sessions out of <code>max_connections</code>. Close to the limit, new clients are refused.</td></tr>
+<tr><td><i>active</i>, <i>idle</i></td><td>Working now / waiting for the client's next command.</td></tr>
+<tr><td><i>idle in transaction</i>, <i>aborted</i></td><td>Sessions that opened a transaction and are doing nothing (the second: after an error). They hold locks and hold back clean-up. A few, briefly, is normal; one that stays for minutes is a problem.</td></tr>
+<tr><td><i>waiting</i></td><td>Sessions waiting for a lock another session holds. Look at <a href="#blocking">Blocking</a>.</td></tr>
+<tr><td>oldest transaction, longest query</td><td>How long the oldest open transaction and the longest running query have been going.</td></tr>
+<tr><td>oldest xmin and its PID</td><td>The session whose old snapshot prevents VACUUM from removing dead rows — “who is holding back vacuum”. The number is the age in transactions.</td></tr>
+<tr><td rowspan="2"><b>Workers</b></td><td><i>autovacuum 1 / 3</i>, <i>parallel 2 / 8</i>, <i>logical replication 0 / 4</i></td><td>Background workers in use, out of their configured maximum.</td></tr>
+<tr><td><i>deadlocks</i>, conflicts, checksum failures</td><td>How many happened since the previous refresh. A value above 0 is shown in the warning colour.</td></tr>
+<tr><td rowspan="3"><b>Replication</b></td><td><i>WAL senders 2 / 10</i>, <i>receivers</i>, <i>slots 2 / 10</i></td><td>Replication connections and slots in use.</td></tr>
+<tr><td><i>lag 16 kB</i></td><td>How far the slowest standby is behind, in bytes of WAL (on a primary; needs monitoring rights).</td></tr>
+<tr><td><i>slot WAL 48 MB</i></td><td>The most WAL one replication slot forces the server to keep. A slot nobody reads from makes this grow until the disk is full.</td></tr>
+</table></div>
+<p>On a database dashboard the <i>Sessions</i> line counts that database only; workers, replication and temporary
+files are always those of the whole server.</p>
+
+<h2 id="lists">The lists</h2>
+<p>Below the summary is a bar with six lists: <i>Sessions · Blocking · Progress · Locks · Prepared transactions ·
+Configuration</i>. The one shown is highlighted and has its number of rows.</p>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th></tr>
+<tr><td class="k"><kbd>Alt+Right</kbd> / <kbd>Alt+Left</kbd></td><td>Next / previous list. Also <kbd>Ctrl+PgDn</kbd> / <kbd>Ctrl+PgUp</kbd> and <kbd>Alt+PgDn</kbd> / <kbd>Alt+PgUp</kbd>.</td></tr>
+<tr><td class="k">Arrows, <kbd>PgUp</kbd> / <kbd>PgDn</kbd>, <kbd>Home</kbd> / <kbd>End</kbd></td><td>Move in the list; it scrolls sideways — the lists are wide.</td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>Shows the whole row in a window — every column, the full query text.</td></tr>
+<tr><td class="k"><kbd>Ctrl+C</kbd></td><td>Copies the cell. <kbd>Ctrl+A</kbd>, then <kbd>Ctrl+C</kbd>: the whole list.</td></tr>
+<tr><td class="k"><kbd>F2</kbd></td><td>The context menu with all dashboard commands.</td></tr>
+</table></div>
+<p>The lists are the same grid as query results: see <a href="query.html#grid">The grid</a>.</p>
+
+<h3 id="sessions">Sessions</h3>
+<p>One row per server process.</p>
+<div class="tablewrap"><table>
+<tr><th>Column</th><th>Meaning</th></tr>
+<tr><td>PID</td><td>The process number of the session on the server — its identity for cancel and terminate.</td></tr>
+<tr><td>Database, User, Application, Client</td><td>Who it is: the database, the role, the program's name (<code>application_name</code>), the client's address.</td></tr>
+<tr><td>State</td><td><i>active</i> — running a statement; <i>idle</i> — waiting for the client; <i>idle in transaction</i> — in an open transaction, waiting for the client; <i>idle in transaction (aborted)</i> — the same after an error.</td></tr>
+<tr><td>Wait event</td><td>What an active session is waiting for, if anything: <i>Lock: transactionid</i> (another session's lock), <i>IO: DataFileRead</i> (the disk), <i>Client: ClientRead</i> (the client).</td></tr>
+<tr><td>Blocked by</td><td>The PID(s) of the session(s) holding the lock this one waits for.</td></tr>
+<tr><td>Duration</td><td>How long — see <a href="#duration">below</a>.</td></tr>
+<tr><td>Xmin age</td><td>How old the session's snapshot is, in transactions. A large number: this session keeps dead rows from being cleaned up.</td></tr>
+<tr><td>Transaction ID</td><td>Filled in once the transaction has changed something. Empty: it has written nothing yet, so ending it costs nothing.</td></tr>
+<tr><td>Leader PID</td><td>For a parallel worker: the session it works for (PostgreSQL 13+). Workers are listed right after their leader.</td></tr>
+<tr><td>Query ID</td><td>The identifier of the statement, as in <code>pg_stat_statements</code> (PostgreSQL 14+).</td></tr>
+<tr><td>Backend start, Transaction start, Query start</td><td>When the session connected, opened its transaction, started its statement.</td></tr>
+<tr><td>Backend type</td><td><i>client backend</i> for clients; <i>autovacuum worker</i>, <i>walsender</i>, … for the server's own processes.</td></tr>
+<tr><td>Query</td><td>The statement it is running — or, for an idle session, the last one it ran.</td></tr>
+</table></div>
+
+<h4>Row colours</h4>
+<div class="tablewrap"><table>
+<tr><th>Colour (theme role)</th><th>The session…</th></tr>
+<tr><td><code>dashboard.idle_in_transaction</code></td><td>is idle in a transaction.</td></tr>
+<tr><td><code>dashboard.blocking</code></td><td>holds a lock that others are waiting for.</td></tr>
+<tr><td><code>dashboard.blocked</code></td><td>is waiting for a lock.</td></tr>
+<tr><td><code>dashboard.slow</code> / <code>dashboard.very_slow</code> (the Duration cell)</td><td>has been running for 1 second or more / 10 seconds or more.</td></tr>
+<tr><td><code>dashboard.tagged</code></td><td>is tagged by you.</td></tr>
+</table></div>
+<p>In the picture at the top, the first row is the trouble-maker: <i>idle in transaction</i> for over twelve minutes,
+and the second row — an <code>UPDATE</code> of the same table — is waiting for its lock (<i>Lock: transactionid</i>; the
+column <i>Blocked by</i>, further right, names PID 41377).</p>
+
+<h4 id="duration">Duration and order</h4>
+<p><kbd>Alt+T</kbd> changes what the <i>Duration</i> column measures; the column title names it:</p>
+<div class="tablewrap"><table>
+<tr><th>Mode</th><th>Measures</th><th>Use it to find</th></tr>
+<tr><td><b>Query</b> (default)</td><td>Time since the running statement started.</td><td>Slow queries.</td></tr>
+<tr><td><b>Transaction</b></td><td>Time since the transaction started.</td><td>Transactions that stay open too long.</td></tr>
+<tr><td><b>Backend</b></td><td>Time since the session connected.</td><td>Old connections.</td></tr>
+</table></div>
+<p>The sessions are sorted by this duration, longest first — the interesting ones are at the top.</p>
+<p><kbd>Alt+I</kbd> hides the sessions in state <i>idle</i> (and shows them again): on a server with hundreds of
+pooled connections, what is left is what is actually happening.</p>
+
+<h4 id="pane">The statement pane</h4>
+<figure>
+  <img src="img/dashboard-pane.svg" alt="The dashboard with its statement pane" loading="lazy">
+  <figcaption>With the statement pane: the query of the session under the cursor, in full, with SQL colours.</figcaption>
+</figure>
+<p>Below the <i>Sessions</i>, <i>Blocking</i> and <i>Progress</i> lists is a pane with the <b>whole statement</b> of the
+row under the cursor. It is a read-only SQL view: you can scroll, select, copy and search in it.</p>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th></tr>
+<tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Hides the pane — more rows for the list — or shows it.</td></tr>
+<tr><td class="k"><kbd>Alt+Down</kbd> / <kbd>Alt+Up</kbd></td><td>Into the pane / back to the list.</td></tr>
+<tr><td class="k"><kbd>Alt+Shift+Up</kbd> / <kbd>Alt+Shift+Down</kbd></td><td>Pane smaller / larger; or drag its upper line with the mouse.</td></tr>
+<tr><td class="k"><kbd>Ctrl+E</kbd></td><td>Opens the statement in a <b>new query tab</b> connected to the session's database — to run it yourself, or to put <code>EXPLAIN</code> in front of it.</td></tr>
+</table></div>
+
+<h4>The whole row</h4>
+<figure>
+  <img src="img/dashboard-row.svg" alt="A session shown in full" loading="lazy">
+  <figcaption><kbd>Enter</kbd> on a session: every column, readable without scrolling sideways.</figcaption>
+</figure>
+
+<h3 id="blocking">Blocking</h3>
+<figure>
+  <img src="img/dashboard-blocking.svg" alt="The Blocking list" loading="lazy">
+  <figcaption>PID 41377 blocks PID 41502. The pane shows what the <b>blocker</b> last ran.</figcaption>
+</figure>
+<p>One row for every pair “this session blocks that session” — the answer to <i>why does my query hang?</i></p>
+<div class="tablewrap"><table>
+<tr><th>Columns</th><th>Meaning</th></tr>
+<tr><td>Blocker PID, Database, Blocker user, Blocker state, Transaction time</td><td>The session that holds the lock, and how long its transaction has been open.</td></tr>
+<tr><td>Blocked PID, Blocked user</td><td>The session that waits.</td></tr>
+<tr><td>Lock type, Mode, Relation</td><td>The lock the waiting session asked for.</td></tr>
+<tr><td>Waiting for</td><td>How long it has been waiting. The longest wait is at the top.</td></tr>
+<tr><td>Blocker query, Blocked query</td><td>What each of them runs.</td></tr>
+</table></div>
+<p>The typical case is the one in the picture: the blocker is <i>idle in transaction</i> — an application (or a person)
+changed a row and never committed. Cancelling does not help there, because the blocker runs nothing; the fix is to
+commit or roll back in that application, or to <a href="#signals">terminate</a> the blocker's session. Cancel and
+terminate in this list act on the <b>blocker</b>.</p>
+
+<h3 id="progress">Progress</h3>
+<figure>
+  <img src="img/dashboard-progress.svg" alt="The Progress list" loading="lazy">
+  <figcaption>An autovacuum and a <code>CREATE INDEX CONCURRENTLY</code> at work.</figcaption>
+</figure>
+<p>Long maintenance commands report how far they are. This list shows them:</p>
+<div class="tablewrap"><table>
+<tr><th>Command</th><th>Since PostgreSQL</th></tr>
+<tr><td><code>VACUUM</code>, including autovacuum</td><td>11</td></tr>
+<tr><td><code>CLUSTER</code>, <code>VACUUM FULL</code>, <code>CREATE INDEX</code>, <code>REINDEX</code></td><td>12</td></tr>
+<tr><td><code>ANALYZE</code>, base backups</td><td>13</td></tr>
+<tr><td><code>COPY</code></td><td>14</td></tr>
+</table></div>
+<p>Columns: PID, database, user, command, relation, <b>phase</b> (what it is doing now, in PostgreSQL's words),
+<b>Done %</b> and <b>Done</b> (<code>1,240 / 3,105 blocks</code>; bytes for COPY and backups; the percentage is empty
+when the total is not known), <b>Running for</b>, and the query. The longest-running is at the top. The percentage is
+that of the current phase — a command with several phases starts again from 0.</p>
+
+<h3 id="locks">Locks</h3>
+<figure>
+  <img src="img/dashboard-locks.svg" alt="The Locks list" loading="lazy">
+</figure>
+<p>Every lock held or awaited, as in <code>pg_locks</code>: the PID, the kind of lock and what it is on (database,
+relation, page, tuple, transaction), the <b>mode</b>, and <b>Granted</b> — <i>false</i> means the session is still
+waiting for it. For the question “who blocks whom”, <i>Blocking</i> is easier; this list is for the details.</p>
+
+<h3 id="prepared">Prepared transactions</h3>
+<figure class="">
+  <img src="img/dashboard-prepared.svg" alt="One prepared transaction that has not been committed yet." loading="lazy">
+  <figcaption>One prepared transaction that has not been committed yet.</figcaption>
+</figure>
+<p>Transactions prepared for a two-phase commit (<code>PREPARE TRANSACTION</code>) and not yet committed or rolled
+back: name, database, owner, transaction, when it was prepared. A forgotten one holds its locks and holds back
+vacuum for ever — an empty list is what you want to see unless your application uses two-phase commit.</p>
+
+<h3 id="config">Configuration</h3>
+<figure>
+  <img src="img/dashboard-configuration.svg" alt="The Configuration list" loading="lazy">
+</figure>
+<p>The server's settings with their category, value, unit and description — the values as the server stores them
+(<code>shared_buffers</code> <i>262144</i> in units of <i>8kB</i>). For the same settings with their source and file,
+select the <a href="connections.html#info">server row in the tree</a>.</p>
+
+<h2 id="signals">Cancelling a query, terminating a session</h2>
+<p>In the <i>Sessions</i>, <i>Blocking</i> and <i>Progress</i> lists you can act on the row under the cursor:</p>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>Command</th><th>What it does</th><th>Use it when</th></tr>
+<tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td><b>Cancel query</b></td><td>Stops the statement the session is running (<code>pg_cancel_backend</code>). The session stays connected; its transaction is aborted.</td><td>A query runs too long or was started by mistake.</td></tr>
+<tr><td class="k"><kbd>F8</kbd></td><td><b>Terminate session</b></td><td>Ends the session (<code>pg_terminate_backend</code>). Its open transaction is rolled back; the client loses its connection.</td><td>A session is idle in a transaction and blocks others, or does not react to cancel.</td></tr>
+</table></div>
+<figure class="small">
+  <img src="img/dashboard-terminate.svg" alt="Terminate session question" loading="lazy">
+  <figcaption>pgtc always asks first, naming the PID, the user and the database.</figcaption>
+</figure>
+<ul>
+  <li>The result is shown in the status line; if the server refuses — you may signal only your own sessions unless
+      you are a superuser or a member of <code>pg_signal_backend</code> — you see its error.</li>
+  <li>Terminating an autovacuum worker is harmless (it starts again later); terminating a replication sender breaks
+      replication until the standby reconnects. Read the <i>Backend type</i> first.</li>
+</ul>
+
+<h3 id="tags">Several sessions at once: tagging</h3>
+<figure>
+  <img src="img/dashboard-tags.svg" alt="Tagged sessions" loading="lazy">
+  <figcaption>Two sessions tagged with <kbd>Insert</kbd>; the duration column switched to transaction time.</figcaption>
+</figure>
+<p>As with files in Midnight Commander:</p>
+<ol class="steps">
+  <li>In <i>Sessions</i>, press <kbd>Insert</kbd> on a session: it is tagged (shown in the tag colour) and the cursor
+      moves down. <kbd>Insert</kbd> on a tagged session removes the tag.</li>
+  <li>Tag all the sessions you mean.</li>
+  <li>Press <kbd>Alt+Shift+C</kbd> or <kbd>F8</kbd>. The command now acts on <b>all tagged sessions</b>, after one
+      question that says how many.</li>
+</ol>
+<p><kbd>Esc</kbd> removes all tags. The tag of a session that has ended disappears with it.</p>
+
+<h2 id="keys">All dashboard keys</h2>
+<figure class="mid">
+  <img src="img/dashboard-menu.svg" alt="The dashboard's context menu" loading="lazy">
+  <figcaption><kbd>F2</kbd>: every command of the dashboard with its key.</figcaption>
+</figure>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th></tr>
+<tr><td class="k"><kbd>F5</kbd></td><td>Refresh now; connect again after a lost connection.</td></tr>
+<tr><td class="k"><kbd>Ctrl+P</kbd></td><td>Pause / resume.</td></tr>
+<tr><td class="k"><kbd>Ctrl+T</kbd></td><td>Refresh interval.</td></tr>
+<tr><td class="k"><kbd>Alt+Right</kbd> / <kbd>Alt+Left</kbd></td><td>Next / previous list.</td></tr>
+<tr><td class="k"><kbd>Alt+I</kbd></td><td>Hide / show idle sessions.</td></tr>
+<tr><td class="k"><kbd>Alt+T</kbd></td><td>Duration mode.</td></tr>
+<tr><td class="k"><kbd>Insert</kbd> / <kbd>Esc</kbd></td><td>Tag the session / remove all tags.</td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>Show the whole row.</td></tr>
+<tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td>Cancel query.</td></tr>
+<tr><td class="k"><kbd>F8</kbd></td><td>Terminate session.</td></tr>
+<tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Show / hide the statement pane.</td></tr>
+<tr><td class="k"><kbd>Ctrl+E</kbd></td><td>The statement in a new query tab.</td></tr>
+<tr><td class="k"><kbd>Ctrl+C</kbd></td><td>Copy.</td></tr>
+</table></div>
+</main>
+<script src="help.js"></script>
+</body>
+</html>

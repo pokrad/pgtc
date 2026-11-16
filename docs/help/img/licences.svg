@@ -1,0 +1,427 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="646" viewBox="0 0 1080 646" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15" shape-rendering="crispEdges" xml:space="preserve">
+<rect width="1080" height="646" fill="#0037da"/>
+<rect x="0" y="0" width="144.5" height="19.5" fill="#3a96dd"/>
+<rect x="144" y="0" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="0" width="153.5" height="19.5" fill="#3a96dd"/>
+<text x="27" y="14.25" fill="#0c0c0c" text-decoration="underline">F</text>
+<text x="36 45 54" y="14.25" fill="#0c0c0c">ile</text>
+<text x="99" y="14.25" fill="#0c0c0c" text-decoration="underline">V</text>
+<text x="108 117 126" y="14.25" fill="#0c0c0c">iew</text>
+<rect x="144" y="19" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="19" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0 9 18 27 36 45 54 63 72 81 90 99 108 117 126 135" y="33.25" fill="#cccccc">╔═══════════════</text>
+<text x="153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423" y="33.25" fill="#0c0c0c">┌──────────────────────────────</text>
+<text x="441 450 459 468 477 486 495 504 513 522 531" y="33.25" fill="#0037da">Third-party</text>
+<text x="549 558 567 576 585 594 603 612" y="33.25" fill="#0037da">licences</text>
+<text x="630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783 792 801 810 819 828 837 846 855 864 873 882 891 900 909" y="33.25" fill="#0c0c0c">───────────────────────────────┐</text>
+<text x="927 936" y="33.25" fill="#767676">══</text>
+<text x="945 954 963 972 981 990 999 1008 1017 1026 1035 1044 1053 1062 1071" y="33.25" fill="#cccccc">══════════════╗</text>
+<rect x="9" y="38" width="918.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="38" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="52.25" fill="#cccccc">║</text>
+<text x="99 108 117 126 135" y="52.25" fill="#0c0c0c">Conne</text>
+<text x="153" y="52.25" fill="#0c0c0c">│</text>
+<text x="171 180 189 198 207 216 225" y="52.25" fill="#0037da" text-decoration="underline">pgAdmin</text>
+<text x="243" y="52.25" fill="#0037da" text-decoration="underline">4</text>
+<text x="261 270 279" y="52.25" fill="#0037da" text-decoration="underline">SQL</text>
+<text x="297 306 315 324 333 342 351 360 369" y="52.25" fill="#0037da" text-decoration="underline">templates</text>
+<text x="387 396 405 414 423 432 441 450 459 468 477" y="52.25" fill="#0037da" text-decoration="underline">(PostgreSQL</text>
+<text x="495 504 513 522 531 540 549 558" y="52.25" fill="#0037da" text-decoration="underline">Licence)</text>
+<text x="909" y="52.25" fill="#0c0c0c">│</text>
+<text x="1071" y="52.25" fill="#cccccc">║</text>
+<rect x="144" y="57" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="57" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0 9 18 27 36 45 54 63 72 81 90 99 108 117 126 135" y="71.25" fill="#cccccc">╟───────────────</text>
+<text x="153" y="71.25" fill="#0c0c0c">│</text>
+<text x="909" y="71.25" fill="#0c0c0c">│</text>
+<text x="927 936" y="71.25" fill="#767676">──</text>
+<text x="945 954 963 972 981 990 999 1008 1017 1026 1035 1044 1053 1062 1071" y="71.25" fill="#cccccc">──────────────╢</text>
+<rect x="144" y="76" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="76" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="90.25" fill="#cccccc">║</text>
+<text x="18" y="90.25" fill="#cccccc">▼</text>
+<text x="36 45 54 63 72" y="90.25" fill="#cccccc">local</text>
+<text x="90 99 108 117 126 135" y="90.25" fill="#cccccc">(conne</text>
+<text x="153" y="90.25" fill="#0c0c0c">│</text>
+<text x="171 180 189 198" y="90.25" fill="#0c0c0c">Used</text>
+<text x="216 225 234" y="90.25" fill="#0c0c0c">by:</text>
+<text x="909" y="90.25" fill="#0c0c0c">│</text>
+<text x="1071" y="90.25" fill="#cccccc">║</text>
+<rect x="144" y="95" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="95" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="109.25" fill="#cccccc">║</text>
+<text x="36" y="109.25" fill="#cccccc">▼</text>
+<text x="54 63 72 81 90 99 108 117 126" y="109.25" fill="#cccccc">Databases</text>
+<text x="153" y="109.25" fill="#0c0c0c">│</text>
+<text x="189 198 207 216 225 234" y="109.25" fill="#0c0c0c">pgtc's</text>
+<text x="252 261 270 279 288 297 306" y="109.25" fill="#0c0c0c">catalog</text>
+<text x="324 333 342 351 360 369 378" y="109.25" fill="#0c0c0c">queries</text>
+<text x="396 405 414 423" y="109.25" fill="#0c0c0c">(the</text>
+<text x="441 450 459 468 477 486 495 504" y="109.25" fill="#0c0c0c">embedded</text>
+<text x="522 531 540 549" y="109.25" fill="#0c0c0c">sql/</text>
+<text x="567 576 585 594 603 612 621 630" y="109.25" fill="#0c0c0c">folder),</text>
+<text x="648 657 666 675 684 693 702" y="109.25" fill="#0c0c0c">adapted</text>
+<text x="720 729 738 747" y="109.25" fill="#0c0c0c">from</text>
+<text x="765 774 783" y="109.25" fill="#0c0c0c">the</text>
+<text x="801 810 819" y="109.25" fill="#0c0c0c">SQL</text>
+<text x="909" y="109.25" fill="#0c0c0c">│</text>
+<text x="927" y="109.25" fill="#767676">)</text>
+<text x="945 954" y="109.25" fill="#f9f1a5">AS</text>
+<text x="972 981 990 999 1008" y="109.25" fill="#cccccc">total</text>
+<text x="1071" y="109.25" fill="#cccccc">║</text>
+<rect x="9" y="114" width="918.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="114" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="128.25" fill="#cccccc">║</text>
+<text x="54" y="128.25" fill="#0c0c0c">▼</text>
+<text x="72 81 90 99 108 117 126 135" y="128.25" fill="#0c0c0c">adventur</text>
+<text x="153" y="128.25" fill="#0c0c0c">│</text>
+<text x="189 198 207 216 225 234 243 252 261" y="128.25" fill="#0c0c0c">templates</text>
+<text x="279 288" y="128.25" fill="#0c0c0c">of</text>
+<text x="306 315 324 333 342 351 360" y="128.25" fill="#0c0c0c">pgAdmin</text>
+<text x="378 387" y="128.25" fill="#0c0c0c">4:</text>
+<text x="405 414 423" y="128.25" fill="#0c0c0c">the</text>
+<text x="441 450 459 468 477 486" y="128.25" fill="#0c0c0c">object</text>
+<text x="504 513 522 531" y="128.25" fill="#0c0c0c">tree</text>
+<text x="549 558 567 576 585 594 603 612 621 630 639 648" y="128.25" fill="#0c0c0c">(nodes.sql),</text>
+<text x="666 675 684 693 702 711" y="128.25" fill="#0c0c0c">object</text>
+<text x="729 738 747 756 765 774 783 792 801 810" y="128.25" fill="#0c0c0c">properties</text>
+<text x="828 837 846" y="128.25" fill="#0c0c0c">and</text>
+<text x="909" y="128.25" fill="#0c0c0c">│</text>
+<text x="1071" y="128.25" fill="#cccccc">║</text>
+<rect x="144" y="133" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="133" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="147.25" fill="#cccccc">║</text>
+<text x="72" y="147.25" fill="#cccccc">►</text>
+<text x="90 99 108 117 126" y="147.25" fill="#cccccc">Casts</text>
+<text x="153" y="147.25" fill="#0c0c0c">│</text>
+<text x="189 198 207 216 225 234 243 252 261 270 279 288" y="147.25" fill="#0c0c0c">definitions.</text>
+<text x="306 315 324 333" y="147.25" fill="#0c0c0c">Each</text>
+<text x="351 360 369 378 387 396 405" y="147.25" fill="#0c0c0c">adapted</text>
+<text x="423 432 441 450" y="147.25" fill="#0c0c0c">file</text>
+<text x="468 477 486 495 504" y="147.25" fill="#0c0c0c">names</text>
+<text x="522 531 540" y="147.25" fill="#0c0c0c">its</text>
+<text x="558 567 576 585 594 603 612" y="147.25" fill="#0c0c0c">pgAdmin</text>
+<text x="630 639 648 657 666 675 684" y="147.25" fill="#0c0c0c">source.</text>
+<text x="909" y="147.25" fill="#0c0c0c">│</text>
+<text x="1071" y="147.25" fill="#cccccc">║</text>
+<rect x="144" y="152" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="152" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="166.25" fill="#cccccc">║</text>
+<text x="72" y="166.25" fill="#cccccc">►</text>
+<text x="90 99 108 117 126 135" y="166.25" fill="#cccccc">Catalo</text>
+<text x="153" y="166.25" fill="#0c0c0c">│</text>
+<text x="909" y="166.25" fill="#0c0c0c">│</text>
+<text x="1071" y="166.25" fill="#cccccc">║</text>
+<rect x="144" y="171" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="171" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="185.25" fill="#cccccc">║</text>
+<text x="72" y="185.25" fill="#cccccc">►</text>
+<text x="90 99 108 117 126" y="185.25" fill="#cccccc">Event</text>
+<text x="153" y="185.25" fill="#0c0c0c">│</text>
+<text x="171 180 189 198 207 216 225" y="185.25" fill="#0c0c0c">pgAdmin</text>
+<text x="243" y="185.25" fill="#0c0c0c">4</text>
+<text x="909" y="185.25" fill="#0c0c0c">│</text>
+<text x="1071" y="185.25" fill="#cccccc">║</text>
+<rect x="144" y="190" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="190" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="204.25" fill="#cccccc">║</text>
+<text x="72" y="204.25" fill="#cccccc">►</text>
+<text x="90 99 108 117 126 135" y="204.25" fill="#cccccc">Extens</text>
+<text x="153" y="204.25" fill="#0c0c0c">│</text>
+<text x="171 180 189 198 207 216 225 234 243" y="204.25" fill="#0c0c0c">=========</text>
+<text x="909" y="204.25" fill="#0c0c0c">│</text>
+<text x="1071" y="204.25" fill="#cccccc">║</text>
+<rect x="144" y="209" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="209" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="223.25" fill="#cccccc">║</text>
+<text x="72" y="223.25" fill="#cccccc">►</text>
+<text x="90 99 108 117 126 135" y="223.25" fill="#cccccc">Foreig</text>
+<text x="153" y="223.25" fill="#0c0c0c">│</text>
+<text x="909" y="223.25" fill="#0c0c0c">│</text>
+<text x="1071" y="223.25" fill="#cccccc">║</text>
+<rect x="144" y="228" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="228" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="242.25" fill="#cccccc">║</text>
+<text x="72" y="242.25" fill="#cccccc">►</text>
+<text x="90 99 108 117 126 135" y="242.25" fill="#cccccc">Langua</text>
+<text x="153" y="242.25" fill="#0c0c0c">│</text>
+<text x="171 180 189 198" y="242.25" fill="#0c0c0c">This</text>
+<text x="216 225 234 243 252 261 270 279" y="242.25" fill="#0c0c0c">software</text>
+<text x="297 306" y="242.25" fill="#0c0c0c">is</text>
+<text x="324 333 342 351 360 369 378 387" y="242.25" fill="#0c0c0c">released</text>
+<text x="405 414 423 432 441" y="242.25" fill="#0c0c0c">under</text>
+<text x="459 468 477" y="242.25" fill="#0c0c0c">the</text>
+<text x="495 504 513 522 531 540 549 558 567 576" y="242.25" fill="#0c0c0c">PostgreSQL</text>
+<text x="594 603 612 621 630 639 648 657" y="242.25" fill="#0c0c0c">licence.</text>
+<text x="909" y="242.25" fill="#0c0c0c">│</text>
+<text x="1071" y="242.25" fill="#cccccc">║</text>
+<rect x="144" y="247" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="247" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="261.25" fill="#cccccc">║</text>
+<text x="72" y="261.25" fill="#cccccc">►</text>
+<text x="90 99 108 117 126 135" y="261.25" fill="#cccccc">Public</text>
+<text x="153" y="261.25" fill="#0c0c0c">│</text>
+<text x="909" y="261.25" fill="#0c0c0c">│</text>
+<text x="1071" y="261.25" fill="#cccccc">║</text>
+<rect x="144" y="266" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="266" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="280.25" fill="#cccccc">║</text>
+<text x="72" y="280.25" fill="#cccccc">▼</text>
+<text x="90 99 108 117 126 135" y="280.25" fill="#cccccc">Schema</text>
+<text x="153" y="280.25" fill="#0c0c0c">│</text>
+<text x="171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783 792 801 810 819 828 837 846 855 864 873" y="280.25" fill="#0c0c0c">-------------------------------------------------------------------------------</text>
+<text x="909" y="280.25" fill="#0c0c0c">│</text>
+<text x="1071" y="280.25" fill="#cccccc">║</text>
+<rect x="144" y="285" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="285" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="299.25" fill="#cccccc">║</text>
+<text x="90" y="299.25" fill="#cccccc">►</text>
+<text x="108 117 126 135" y="299.25" fill="#cccccc">huma</text>
+<text x="153" y="299.25" fill="#0c0c0c">│</text>
+<text x="171 180 189 198 207 216 225 234 243" y="299.25" fill="#0c0c0c">Copyright</text>
+<text x="261 270 279" y="299.25" fill="#0c0c0c">(C)</text>
+<text x="297 306 315 324" y="299.25" fill="#0c0c0c">2013</text>
+<text x="342" y="299.25" fill="#0c0c0c">-</text>
+<text x="360 369 378 387 396" y="299.25" fill="#0c0c0c">2026,</text>
+<text x="414 423 432" y="299.25" fill="#0c0c0c">The</text>
+<text x="450 459 468 477 486 495 504" y="299.25" fill="#0c0c0c">pgAdmin</text>
+<text x="522 531 540 549 558 567 576 585 594 603 612" y="299.25" fill="#0c0c0c">Development</text>
+<text x="630 639 648 657" y="299.25" fill="#0c0c0c">Team</text>
+<text x="909" y="299.25" fill="#0c0c0c">│</text>
+<text x="1071" y="299.25" fill="#cccccc">║</text>
+<rect x="144" y="304" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="304" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="318.25" fill="#cccccc">║</text>
+<text x="90" y="318.25" fill="#cccccc">►</text>
+<text x="108 117 126 135" y="318.25" fill="#cccccc">pers</text>
+<text x="153" y="318.25" fill="#0c0c0c">│</text>
+<text x="909" y="318.25" fill="#0c0c0c">│</text>
+<text x="1071" y="318.25" fill="#cccccc">║</text>
+<rect x="144" y="323" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="323" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="337.25" fill="#cccccc">║</text>
+<text x="90" y="337.25" fill="#cccccc">►</text>
+<text x="108 117 126 135" y="337.25" fill="#cccccc">prod</text>
+<text x="153" y="337.25" fill="#0c0c0c">│</text>
+<text x="171 180 189 198 207 216 225 234 243 252" y="337.25" fill="#0c0c0c">Permission</text>
+<text x="270 279" y="337.25" fill="#0c0c0c">to</text>
+<text x="297 306 315 324" y="337.25" fill="#0c0c0c">use,</text>
+<text x="342 351 360 369 378" y="337.25" fill="#0c0c0c">copy,</text>
+<text x="396 405 414 423 432 441 450" y="337.25" fill="#0c0c0c">modify,</text>
+<text x="468 477 486" y="337.25" fill="#0c0c0c">and</text>
+<text x="504 513 522 531 540 549 558 567 576 585" y="337.25" fill="#0c0c0c">distribute</text>
+<text x="603 612 621 630" y="337.25" fill="#0c0c0c">this</text>
+<text x="648 657 666 675 684 693 702 711" y="337.25" fill="#0c0c0c">software</text>
+<text x="729 738 747" y="337.25" fill="#0c0c0c">and</text>
+<text x="765 774 783" y="337.25" fill="#0c0c0c">its</text>
+<text x="909" y="337.25" fill="#0c0c0c">│</text>
+<text x="1071" y="337.25" fill="#cccccc">║</text>
+<rect x="144" y="342" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="342" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="356.25" fill="#cccccc">║</text>
+<text x="90" y="356.25" fill="#cccccc">►</text>
+<text x="108 117 126 135" y="356.25" fill="#cccccc">publ</text>
+<text x="153" y="356.25" fill="#0c0c0c">│</text>
+<text x="171 180 189 198 207 216 225 234 243 252 261 270 279" y="356.25" fill="#0c0c0c">documentation</text>
+<text x="297 306 315" y="356.25" fill="#0c0c0c">for</text>
+<text x="333 342 351" y="356.25" fill="#0c0c0c">any</text>
+<text x="369 378 387 396 405 414 423 432" y="356.25" fill="#0c0c0c">purpose,</text>
+<text x="450 459 468 477 486 495 504" y="356.25" fill="#0c0c0c">without</text>
+<text x="522 531 540 549" y="356.25" fill="#0c0c0c">fee,</text>
+<text x="567 576 585" y="356.25" fill="#0c0c0c">and</text>
+<text x="603 612 621 630 639 648 657" y="356.25" fill="#0c0c0c">without</text>
+<text x="675" y="356.25" fill="#0c0c0c">a</text>
+<text x="693 702 711 720 729 738 747" y="356.25" fill="#0c0c0c">written</text>
+<text x="765 774 783 792 801 810 819 828 837" y="356.25" fill="#0c0c0c">agreement</text>
+<text x="855 864" y="356.25" fill="#0c0c0c">is</text>
+<text x="909" y="356.25" fill="#0c0c0c">│</text>
+<text x="1071" y="356.25" fill="#cccccc">║</text>
+<rect x="144" y="361" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="361" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="375.25" fill="#cccccc">║</text>
+<text x="90" y="375.25" fill="#cccccc">►</text>
+<text x="108 117 126 135" y="375.25" fill="#cccccc">purc</text>
+<text x="153" y="375.25" fill="#0c0c0c">│</text>
+<text x="171 180 189 198 207 216" y="375.25" fill="#0c0c0c">hereby</text>
+<text x="234 243 252 261 270 279 288 297" y="375.25" fill="#0c0c0c">granted,</text>
+<text x="315 324 333 342 351 360 369 378" y="375.25" fill="#0c0c0c">provided</text>
+<text x="396 405 414 423" y="375.25" fill="#0c0c0c">that</text>
+<text x="441 450 459" y="375.25" fill="#0c0c0c">the</text>
+<text x="477 486 495 504 513" y="375.25" fill="#0c0c0c">above</text>
+<text x="531 540 549 558 567 576 585 594 603" y="375.25" fill="#0c0c0c">copyright</text>
+<text x="621 630 639 648 657 666" y="375.25" fill="#0c0c0c">notice</text>
+<text x="684 693 702" y="375.25" fill="#0c0c0c">and</text>
+<text x="720 729 738 747" y="375.25" fill="#0c0c0c">this</text>
+<text x="765 774 783 792 801 810 819 828 837" y="375.25" fill="#0c0c0c">paragraph</text>
+<text x="855 864 873" y="375.25" fill="#0c0c0c">and</text>
+<text x="909" y="375.25" fill="#0c0c0c">│</text>
+<text x="927 936" y="375.25" fill="#767676">──</text>
+<text x="945 954 963 972 981 990 999 1008 1017 1026 1035 1044 1053 1062 1071" y="375.25" fill="#cccccc">──────────────╢</text>
+<rect x="144" y="380" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="380" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="394.25" fill="#cccccc">║</text>
+<text x="90" y="394.25" fill="#cccccc">►</text>
+<text x="108 117 126 135" y="394.25" fill="#cccccc">sale</text>
+<text x="153" y="394.25" fill="#0c0c0c">│</text>
+<text x="171 180 189" y="394.25" fill="#0c0c0c">the</text>
+<text x="207 216 225 234 243 252 261 270 279" y="394.25" fill="#0c0c0c">following</text>
+<text x="297 306 315" y="394.25" fill="#0c0c0c">two</text>
+<text x="333 342 351 360 369 378 387 396 405 414" y="394.25" fill="#0c0c0c">paragraphs</text>
+<text x="432 441 450 459 468 477" y="394.25" fill="#0c0c0c">appear</text>
+<text x="495 504" y="394.25" fill="#0c0c0c">in</text>
+<text x="522 531 540" y="394.25" fill="#0c0c0c">all</text>
+<text x="558 567 576 585 594 603 612" y="394.25" fill="#0c0c0c">copies.</text>
+<text x="909" y="394.25" fill="#0c0c0c">│</text>
+<text x="1071" y="394.25" fill="#cccccc">║</text>
+<rect x="144" y="399" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="399" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="413.25" fill="#cccccc">║</text>
+<text x="72" y="413.25" fill="#cccccc">►</text>
+<text x="90 99 108 117 126 135" y="413.25" fill="#cccccc">Subscr</text>
+<text x="153" y="413.25" fill="#0c0c0c">│</text>
+<text x="909" y="413.25" fill="#0c0c0c">│</text>
+<text x="927 936" y="413.25" fill="#767676">──</text>
+<text x="945 954 963 972 981 990 999 1008 1017 1026 1035 1044 1053 1062 1071" y="413.25" fill="#cccccc">──────────────╢</text>
+<rect x="144" y="418" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="418" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="432.25" fill="#cccccc">║</text>
+<text x="54" y="432.25" fill="#cccccc">►</text>
+<text x="72 81 90 99 108 117 126 135" y="432.25" fill="#cccccc">postgres</text>
+<text x="153" y="432.25" fill="#0c0c0c">│</text>
+<text x="171 180" y="432.25" fill="#0c0c0c">IN</text>
+<text x="198 207" y="432.25" fill="#0c0c0c">NO</text>
+<text x="225 234 243 252 261" y="432.25" fill="#0c0c0c">EVENT</text>
+<text x="279 288 297 306 315" y="432.25" fill="#0c0c0c">SHALL</text>
+<text x="333 342 351" y="432.25" fill="#0c0c0c">THE</text>
+<text x="369 378 387 396 405 414 423" y="432.25" fill="#0c0c0c">PGADMIN</text>
+<text x="441 450 459 468 477 486 495 504 513 522 531" y="432.25" fill="#0c0c0c">DEVELOPMENT</text>
+<text x="549 558 567 576" y="432.25" fill="#0c0c0c">TEAM</text>
+<text x="594 603" y="432.25" fill="#0c0c0c">BE</text>
+<text x="621 630 639 648 657 666" y="432.25" fill="#0c0c0c">LIABLE</text>
+<text x="684 693" y="432.25" fill="#0c0c0c">TO</text>
+<text x="711 720 729" y="432.25" fill="#0c0c0c">ANY</text>
+<text x="747 756 765 774 783" y="432.25" fill="#0c0c0c">PARTY</text>
+<text x="801 810 819" y="432.25" fill="#0c0c0c">FOR</text>
+<text x="909" y="432.25" fill="#0c0c0c">│</text>
+<text x="1071" y="432.25" fill="#cccccc">║</text>
+<rect x="144" y="437" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="437" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="451.25" fill="#cccccc">║</text>
+<text x="36" y="451.25" fill="#cccccc">►</text>
+<text x="54 63 72 81 90 99 108 117 126 135" y="451.25" fill="#cccccc">Login/Grou</text>
+<text x="153" y="451.25" fill="#0c0c0c">│</text>
+<text x="171 180 189 198 207 216 225" y="451.25" fill="#0c0c0c">DIRECT,</text>
+<text x="243 252 261 270 279 288 297 306 315" y="451.25" fill="#0c0c0c">INDIRECT,</text>
+<text x="333 342 351 360 369 378 387 396" y="451.25" fill="#0c0c0c">SPECIAL,</text>
+<text x="414 423 432 441 450 459 468 477 486 495 504" y="451.25" fill="#0c0c0c">INCIDENTAL,</text>
+<text x="522 531" y="451.25" fill="#0c0c0c">OR</text>
+<text x="549 558 567 576 585 594 603 612 621 630 639 648 657" y="451.25" fill="#0c0c0c">CONSEQUENTIAL</text>
+<text x="675 684 693 702 711 720 729 738" y="451.25" fill="#0c0c0c">DAMAGES,</text>
+<text x="756 765 774 783 792 801 810 819 828" y="451.25" fill="#0c0c0c">INCLUDING</text>
+<text x="846 855 864 873" y="451.25" fill="#0c0c0c">LOST</text>
+<text x="909" y="451.25" fill="#0c0c0c">│</text>
+<text x="1071" y="451.25" fill="#cccccc">║</text>
+<rect x="144" y="456" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="456" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="470.25" fill="#cccccc">║</text>
+<text x="36" y="470.25" fill="#cccccc">►</text>
+<text x="54 63 72 81 90 99 108 117 126 135" y="470.25" fill="#cccccc">Tablespace</text>
+<text x="153" y="470.25" fill="#0c0c0c">│</text>
+<text x="171 180 189 198 207 216 225 234" y="470.25" fill="#0c0c0c">PROFITS,</text>
+<text x="252 261 270 279 288 297 306" y="470.25" fill="#0c0c0c">ARISING</text>
+<text x="324 333 342" y="470.25" fill="#0c0c0c">OUT</text>
+<text x="360 369" y="470.25" fill="#0c0c0c">OF</text>
+<text x="387 396 405" y="470.25" fill="#0c0c0c">THE</text>
+<text x="423 432 441" y="470.25" fill="#0c0c0c">USE</text>
+<text x="459 468" y="470.25" fill="#0c0c0c">OF</text>
+<text x="486 495 504 513" y="470.25" fill="#0c0c0c">THIS</text>
+<text x="531 540 549 558 567 576 585 594" y="470.25" fill="#0c0c0c">SOFTWARE</text>
+<text x="612 621 630" y="470.25" fill="#0c0c0c">AND</text>
+<text x="648 657 666" y="470.25" fill="#0c0c0c">ITS</text>
+<text x="684 693 702 711 720 729 738 747 756 765 774 783 792 801" y="470.25" fill="#0c0c0c">DOCUMENTATION,</text>
+<text x="819 828 837 846" y="470.25" fill="#0c0c0c">EVEN</text>
+<text x="864 873" y="470.25" fill="#0c0c0c">IF</text>
+<text x="909" y="470.25" fill="#0c0c0c">│</text>
+<text x="1071" y="470.25" fill="#cccccc">║</text>
+<rect x="144" y="475" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="475" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="489.25" fill="#cccccc">║</text>
+<text x="18" y="489.25" fill="#cccccc">►</text>
+<text x="36 45 54 63 72 81 90 99 108 117" y="489.25" fill="#cccccc">production</text>
+<text x="153" y="489.25" fill="#0c0c0c">│</text>
+<text x="171 180 189" y="489.25" fill="#0c0c0c">THE</text>
+<text x="207 216 225 234 243 252 261" y="489.25" fill="#0c0c0c">PGADMIN</text>
+<text x="279 288 297 306 315 324 333 342 351 360 369" y="489.25" fill="#0c0c0c">DEVELOPMENT</text>
+<text x="387 396 405 414" y="489.25" fill="#0c0c0c">TEAM</text>
+<text x="432 441 450" y="489.25" fill="#0c0c0c">HAS</text>
+<text x="468 477 486 495" y="489.25" fill="#0c0c0c">BEEN</text>
+<text x="513 522 531 540 549 558 567" y="489.25" fill="#0c0c0c">ADVISED</text>
+<text x="585 594" y="489.25" fill="#0c0c0c">OF</text>
+<text x="612 621 630" y="489.25" fill="#0c0c0c">THE</text>
+<text x="648 657 666 675 684 693 702 711 720 729 738" y="489.25" fill="#0c0c0c">POSSIBILITY</text>
+<text x="756 765" y="489.25" fill="#0c0c0c">OF</text>
+<text x="783 792 801 810" y="489.25" fill="#0c0c0c">SUCH</text>
+<text x="828 837 846 855 864 873 882" y="489.25" fill="#0c0c0c">DAMAGE.</text>
+<text x="909" y="489.25" fill="#0c0c0c">│</text>
+<text x="1071" y="489.25" fill="#cccccc">║</text>
+<rect x="144" y="494" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="494" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="508.25" fill="#cccccc">║</text>
+<text x="153" y="508.25" fill="#0c0c0c">│</text>
+<text x="909" y="508.25" fill="#0c0c0c">│</text>
+<text x="1071" y="508.25" fill="#cccccc">║</text>
+<rect x="144" y="513" width="747.5" height="19.5" fill="#cccccc"/>
+<rect x="900" y="513" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="513" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="527.25" fill="#cccccc">║</text>
+<text x="153" y="527.25" fill="#0c0c0c">│</text>
+<text x="171 180 189" y="527.25" fill="#0c0c0c">THE</text>
+<text x="207 216 225 234 243 252 261" y="527.25" fill="#0c0c0c">PGADMIN</text>
+<text x="279 288 297 306 315 324 333 342 351 360 369" y="527.25" fill="#0c0c0c">DEVELOPMENT</text>
+<text x="387 396 405 414" y="527.25" fill="#0c0c0c">TEAM</text>
+<text x="432 441 450 459 468 477 486 495 504 513 522 531" y="527.25" fill="#0c0c0c">SPECIFICALLY</text>
+<text x="549 558 567 576 585 594 603 612 621" y="527.25" fill="#0c0c0c">DISCLAIMS</text>
+<text x="639 648 657" y="527.25" fill="#0c0c0c">ANY</text>
+<text x="675 684 693 702 711 720 729 738 747 756 765" y="527.25" fill="#0c0c0c">WARRANTIES,</text>
+<text x="783 792 801 810 819 828 837 846 855 864" y="527.25" fill="#0c0c0c">INCLUDING,</text>
+<text x="891" y="527.25" fill="#f2f2f2">▼</text>
+<text x="909" y="527.25" fill="#0c0c0c">│</text>
+<text x="1071" y="527.25" fill="#cccccc">║</text>
+<rect x="144" y="532" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="532" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="546.25" fill="#cccccc">║</text>
+<text x="153" y="546.25" fill="#0c0c0c">│</text>
+<text x="909" y="546.25" fill="#0c0c0c">│</text>
+<text x="1071" y="546.25" fill="#cccccc">║</text>
+<rect x="144" y="551" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="551" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="565.25" fill="#cccccc">║</text>
+<text x="153" y="565.25" fill="#0c0c0c">│</text>
+<text x="486 495" y="565.25" fill="#0c0c0c">[&lt;</text>
+<text x="513" y="565.25" fill="#0037da" text-decoration="underline">C</text>
+<text x="522 531 540 549" y="565.25" fill="#0c0c0c">lose</text>
+<text x="567 576" y="565.25" fill="#0c0c0c">&gt;]</text>
+<text x="909" y="565.25" fill="#0c0c0c">│</text>
+<text x="1071" y="565.25" fill="#cccccc">║</text>
+<rect x="144" y="570" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="570" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="584.25" fill="#cccccc">║</text>
+<text x="153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783 792 801 810 819 828 837 846 855 864 873 882 891 900 909" y="584.25" fill="#0c0c0c">└───────────────────────────────────────────────────────────────────────────────────┘</text>
+<text x="927 936" y="584.25" fill="#767676">──</text>
+<text x="945 954 963 972 981 990 999 1008 1017 1026 1035 1044 1053 1062 1071" y="584.25" fill="#cccccc">──────────────╢</text>
+<rect x="144" y="589" width="783.5" height="19.5" fill="#cccccc"/>
+<rect x="927" y="589" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="945" y="589" width="126.5" height="19.5" fill="#3a96dd"/>
+<text x="0" y="603.25" fill="#cccccc">║</text>
+<text x="927 936" y="603.25" fill="#767676">ms</text>
+<text x="963 972" y="603.25" fill="#0c0c0c">Ln</text>
+<text x="990 999" y="603.25" fill="#0c0c0c">1,</text>
+<text x="1017 1026 1035" y="603.25" fill="#0c0c0c">Col</text>
+<text x="1053" y="603.25" fill="#0c0c0c">1</text>
+<text x="1071" y="603.25" fill="#cccccc">║</text>
+<rect x="162" y="608" width="783.5" height="19.5" fill="#0c0c0c"/>
+<text x="0 9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153" y="622.25" fill="#cccccc">╚═════════════════</text>
+<text x="162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783 792 801 810 819 828 837 846 855 864 873 882 891 900 909 918 927 936" y="622.25" fill="#767676">═════════════╝╚════════════════════════════════════════════════════════════════════════</text>
+<text x="945 954 963 972 981 990 999 1008 1017 1026 1035 1044 1053 1062 1071" y="622.25" fill="#cccccc">══════════════╝</text>
+<rect x="0" y="627" width="1080.5" height="19.5" fill="#3a96dd"/>
+</svg>

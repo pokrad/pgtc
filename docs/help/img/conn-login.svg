@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="558" height="266" viewBox="0 0 558 266" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15" shape-rendering="crispEdges" xml:space="preserve">
+<rect width="558" height="266" fill="#0037da"/>
+<rect x="0" y="0" width="540.5" height="19.5" fill="#cccccc"/>
+<rect x="0" y="19" width="540.5" height="19.5" fill="#cccccc"/>
+<rect x="540" y="19" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225" y="33.25" fill="#0c0c0c">┌────────────────────────</text>
+<text x="243 252 261 270 279" y="33.25" fill="#0037da">Login</text>
+<text x="297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522" y="33.25" fill="#0c0c0c">─────────────────────────┐</text>
+<rect x="0" y="38" width="540.5" height="19.5" fill="#cccccc"/>
+<rect x="540" y="38" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="52.25" fill="#0c0c0c">│</text>
+<text x="27 36 45 54 63 72 81 90 99 108 117" y="52.25" fill="#0c0c0c">Connection:</text>
+<text x="135 144 153 162 171 180 189 198 207 216" y="52.25" fill="#0c0c0c">production</text>
+<text x="522" y="52.25" fill="#0c0c0c">│</text>
+<rect x="0" y="57" width="540.5" height="19.5" fill="#cccccc"/>
+<rect x="540" y="57" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="71.25" fill="#0c0c0c">│</text>
+<text x="27 36 45 54 63 72 81" y="71.25" fill="#0c0c0c">Server:</text>
+<text x="135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297" y="71.25" fill="#0c0c0c">db.example.com:5432</text>
+<text x="522" y="71.25" fill="#0c0c0c">│</text>
+<rect x="0" y="76" width="540.5" height="19.5" fill="#cccccc"/>
+<rect x="540" y="76" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="90.25" fill="#0c0c0c">│</text>
+<text x="27 36 45 54 63 72 81 90 99" y="90.25" fill="#0c0c0c">Database:</text>
+<text x="135 144 153 162 171 180 189 198 207 216 225 234 243 252" y="90.25" fill="#0c0c0c">adventureworks</text>
+<text x="522" y="90.25" fill="#0c0c0c">│</text>
+<rect x="0" y="95" width="540.5" height="19.5" fill="#cccccc"/>
+<rect x="540" y="95" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="109.25" fill="#0c0c0c">│</text>
+<text x="27 36 45 54" y="109.25" fill="#0c0c0c">User</text>
+<text x="72 81 90 99 108" y="109.25" fill="#0c0c0c">name:</text>
+<text x="135 144 153" y="109.25" fill="#0c0c0c">app</text>
+<text x="522" y="109.25" fill="#0c0c0c">│</text>
+<rect x="0" y="114" width="540.5" height="19.5" fill="#cccccc"/>
+<rect x="540" y="114" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="128.25" fill="#0c0c0c">│</text>
+<text x="522" y="128.25" fill="#0c0c0c">│</text>
+<rect x="0" y="133" width="126.5" height="19.5" fill="#cccccc"/>
+<rect x="126" y="133" width="72.5" height="19.5" fill="#3a96dd"/>
+<rect x="198" y="133" width="9.5" height="19.5" fill="#0c0c0c"/>
+<rect x="207" y="133" width="306.5" height="19.5" fill="#3a96dd"/>
+<rect x="513" y="133" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="540" y="133" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="147.25" fill="#0c0c0c">│</text>
+<text x="27" y="147.25" fill="#0037da" text-decoration="underline">P</text>
+<text x="36 45 54 63 72 81 90 99" y="147.25" fill="#0c0c0c">assword:</text>
+<text x="126 135 144 153 162 171 180 189" y="147.25" fill="#0c0c0c" font-weight="700">********</text>
+<text x="522" y="147.25" fill="#0c0c0c">│</text>
+<rect x="0" y="152" width="540.5" height="19.5" fill="#cccccc"/>
+<rect x="540" y="152" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="166.25" fill="#0c0c0c">│</text>
+<text x="27" y="166.25" fill="#0c0c0c">[</text>
+<text x="45" y="166.25" fill="#0c0c0c">]</text>
+<text x="63" y="166.25" fill="#0037da" text-decoration="underline">S</text>
+<text x="72 81 90" y="166.25" fill="#0c0c0c">ave</text>
+<text x="108 117 126 135 144 153 162 171" y="166.25" fill="#0c0c0c">password</text>
+<text x="522" y="166.25" fill="#0c0c0c">│</text>
+<text x="549" y="166.25" fill="#767676">(</text>
+<rect x="0" y="171" width="540.5" height="19.5" fill="#cccccc"/>
+<rect x="540" y="171" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="185.25" fill="#0c0c0c">│</text>
+<text x="522" y="185.25" fill="#0c0c0c">│</text>
+<text x="549" y="185.25" fill="#767676">(</text>
+<rect x="0" y="190" width="540.5" height="19.5" fill="#cccccc"/>
+<rect x="540" y="190" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="204.25" fill="#0c0c0c">│</text>
+<text x="180 189" y="204.25" fill="#0c0c0c">[&lt;</text>
+<text x="207" y="204.25" fill="#0037da" text-decoration="underline">O</text>
+<text x="216" y="204.25" fill="#0c0c0c">K</text>
+<text x="234 243" y="204.25" fill="#0c0c0c">&gt;]</text>
+<text x="261" y="204.25" fill="#0c0c0c">[</text>
+<text x="279" y="204.25" fill="#0037da" text-decoration="underline">C</text>
+<text x="288 297 306 315 324" y="204.25" fill="#0c0c0c">ancel</text>
+<text x="342" y="204.25" fill="#0c0c0c">]</text>
+<text x="522" y="204.25" fill="#0c0c0c">│</text>
+<text x="549" y="204.25" fill="#767676">(</text>
+<rect x="0" y="209" width="540.5" height="19.5" fill="#cccccc"/>
+<rect x="540" y="209" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522" y="223.25" fill="#0c0c0c">└────────────────────────────────────────────────────────┘</text>
+<text x="549" y="223.25" fill="#767676">(</text>
+<rect x="0" y="228" width="540.5" height="19.5" fill="#cccccc"/>
+<rect x="540" y="228" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="549" y="242.25" fill="#767676">(</text>
+<rect x="18" y="247" width="540.5" height="19.5" fill="#0c0c0c"/>
+<text x="81 90" y="261.25" fill="#767676">║║</text>
+<text x="108 117" y="261.25" fill="#767676">17</text>
+<text x="135 144" y="261.25" fill="#767676">--</text>
+<text x="180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333" y="261.25" fill="#767676">autovacuum_naptime</text>
+<text x="441" y="261.25" fill="#767676">=</text>
+<text x="459 468 477 486" y="261.25" fill="#767676">1min</text>
+<text x="549" y="261.25" fill="#767676">(</text>
+</svg>

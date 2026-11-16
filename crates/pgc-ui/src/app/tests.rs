@@ -1,3 +1,4 @@
+mod help_screenshots;
 mod real_server;
 mod screenshots;
 
