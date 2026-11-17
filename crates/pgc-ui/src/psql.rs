@@ -169,6 +169,42 @@ pub const GENERATE: &[Row] = &[
         "generate PL/pgSQL procedure: upsert a row (inserted at the cursor)",
         TABLES,
     ),
+    (
+        "gf",
+        "[schema]",
+        "generate an empty PL/pgSQL function, default schema public (inserted at the cursor)",
+        &["schema"],
+    ),
+    (
+        "gfr",
+        "table",
+        "generate PL/pgSQL function: one row by key (inserted at the cursor)",
+        SELECTABLE,
+    ),
+    (
+        "gfs",
+        "table",
+        "generate PL/pgSQL function: RETURNS SETOF the table (inserted at the cursor)",
+        SELECTABLE,
+    ),
+    (
+        "gft",
+        "table",
+        "generate PL/pgSQL function: RETURNS TABLE with every column (inserted at the cursor)",
+        SELECTABLE,
+    ),
+    (
+        "gfe",
+        "table",
+        "generate PL/pgSQL function: does a row with this key exist (inserted at the cursor)",
+        SELECTABLE,
+    ),
+    (
+        "gfj",
+        "table",
+        "generate PL/pgSQL function: one row by key as jsonb (inserted at the cursor)",
+        SELECTABLE,
+    ),
 ];
 
 /// Modifiers: `+` (more columns), `S` (system objects).
@@ -194,6 +230,12 @@ pub enum Gen {
     ProcUpdate,
     ProcDelete,
     ProcUpsert,
+    /// `gfr` / `gfs` / `gft` / `gfe` / `gfj`: a read-only PL/pgSQL function.
+    FuncRow,
+    FuncSet,
+    FuncTable,
+    FuncExists,
+    FuncJson,
 }
 
 impl Gen {
@@ -228,6 +270,11 @@ impl Gen {
             Gen::ProcUpdate => "gpu",
             Gen::ProcDelete => "gpd",
             Gen::ProcUpsert => "gpo",
+            Gen::FuncRow => "gfr",
+            Gen::FuncSet => "gfs",
+            Gen::FuncTable => "gft",
+            Gen::FuncExists => "gfe",
+            Gen::FuncJson => "gfj",
         }
     }
 
@@ -242,6 +289,11 @@ impl Gen {
                 | Gen::Cursor
                 | Gen::Upsert
                 | Gen::Vars
+                | Gen::FuncRow
+                | Gen::FuncSet
+                | Gen::FuncTable
+                | Gen::FuncExists
+                | Gen::FuncJson
         )
     }
 }
@@ -279,6 +331,10 @@ pub enum Cmd {
     Procedure {
         schema: String,
     },
+    /// `gf`: an empty function in a schema (`public` when none is typed).
+    Function {
+        schema: String,
+    },
 }
 
 /// Rows of the F4 list: every command, pgtc's own after a separator (`None`).
@@ -311,6 +367,11 @@ pub fn needs_table(input: &str) -> bool {
             | "gpu"
             | "gpd"
             | "gpo"
+            | "gfr"
+            | "gfs"
+            | "gft"
+            | "gfe"
+            | "gfj"
     )
 }
 
@@ -396,18 +457,23 @@ pub fn parse(input: &str) -> Result<Cmd, String> {
                 .collect::<Result<_, _>>()?;
             return Ok(Cmd::View { tables });
         }
-        "gp" => {
+        "gp" | "gf" => {
             let schema = match arg.as_deref() {
                 None => "public".to_owned(),
                 Some(a) => match parse_name(a)? {
                     (None, s) => s,
-                    _ => return Err("gp takes a schema name, e.g. gp sales".to_owned()),
+                    _ => return Err(format!("{word} takes a schema name, e.g. {word} sales")),
                 },
             };
-            return Ok(Cmd::Procedure { schema });
+            return Ok(if word == "gp" {
+                Cmd::Procedure { schema }
+            } else {
+                Cmd::Function { schema }
+            });
         }
         "gts" | "gti" | "gtu" | "gtd" | "gtc" | "gto" | "gtsi" | "gtm" | "gtrb" | "gtra"
-        | "gtsb" | "gtsa" | "gpi" | "gpu" | "gpd" | "gpo" => {
+        | "gtsb" | "gtsa" | "gpi" | "gpu" | "gpd" | "gpo" | "gfr" | "gfs" | "gft" | "gfe"
+        | "gfj" => {
             let what = match word {
                 "gts" => Gen::Select,
                 "gti" => Gen::Insert,
@@ -424,6 +490,11 @@ pub fn parse(input: &str) -> Result<Cmd, String> {
                 "gpu" => Gen::ProcUpdate,
                 "gpd" => Gen::ProcDelete,
                 "gpo" => Gen::ProcUpsert,
+                "gfr" => Gen::FuncRow,
+                "gfs" => Gen::FuncSet,
+                "gft" => Gen::FuncTable,
+                "gfe" => Gen::FuncExists,
+                "gfj" => Gen::FuncJson,
                 _ => Gen::Delete,
             };
             let Some(arg) = arg else {
@@ -1108,7 +1179,15 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
             ));
         }
         Gen::Trigger { row, before } => return trigger(&table, t, row, before),
-        Gen::ProcInsert | Gen::ProcUpdate | Gen::ProcDelete | Gen::ProcUpsert => {
+        Gen::ProcInsert
+        | Gen::ProcUpdate
+        | Gen::ProcDelete
+        | Gen::ProcUpsert
+        | Gen::FuncRow
+        | Gen::FuncSet
+        | Gen::FuncTable
+        | Gen::FuncExists
+        | Gen::FuncJson => {
             let p = ProcTable {
                 table: &table,
                 t,
@@ -1117,7 +1196,14 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
                 upsert_cols: &upsert_cols,
                 overriding,
             };
-            return procedure(what, &p);
+            return if matches!(
+                what,
+                Gen::ProcInsert | Gen::ProcUpdate | Gen::ProcDelete | Gen::ProcUpsert
+            ) {
+                procedure(what, &p)
+            } else {
+                function(what, &p)
+            };
         }
         Gen::Vars => {
             let vars = var_names(&t.columns);
@@ -1414,41 +1500,8 @@ fn procedure(what: Gen, p: &ProcTable) -> String {
             .map(|i| names[i].clone())
             .unwrap_or_default()
     };
+    let header = routine_header("PROCEDURE", &t.schema, &params, &names);
     let mut lines: Vec<(String, String)> = Vec::new();
-    let head = format!(
-        "CREATE OR REPLACE PROCEDURE {}.[procedure_name](",
-        quote_ident(&t.schema)
-    );
-    if params.is_empty() {
-        lines.push((format!("{head})"), String::new()));
-    } else {
-        lines.push((head, String::new()));
-        let shown: Vec<String> = params
-            .iter()
-            .zip(&names)
-            .map(|(q, n)| {
-                if q.inout {
-                    format!("INOUT {n}")
-                } else {
-                    n.clone()
-                }
-            })
-            .collect();
-        let width = shown.iter().map(|s| s.chars().count()).max().unwrap_or(0);
-        for (i, (q, s)) in params.iter().zip(&shown).enumerate() {
-            let pad = " ".repeat(width - s.chars().count());
-            let default = if q.inout { " DEFAULT NULL" } else { "" };
-            let comma = if i + 1 < params.len() { "," } else { "" };
-            lines.push((
-                format!("    {s}{pad}  {}{default}{comma}", q.col.type_name),
-                q.comment.clone(),
-            ));
-        }
-        lines.push((")".to_owned(), String::new()));
-    }
-    // the parameters' comments are aligned on their own, not with the body
-    let header = aligned(&lines);
-    lines.clear();
     for l in ["LANGUAGE plpgsql", "AS $$", "BEGIN"] {
         lines.push((l.to_owned(), String::new()));
     }
@@ -1615,6 +1668,222 @@ fn procedure(what: Gen, p: &ProcTable) -> String {
     }
     lines.push(("END;".to_owned(), String::new()));
     lines.push(("$$;".to_owned(), String::new()));
+    format!("{header}\n{}", aligned(&lines))
+}
+
+/// `CREATE OR REPLACE <kind> <schema>.[<kind>_name](` + one aligned line per
+/// parameter + `)`; `kind` is `PROCEDURE` or `FUNCTION`. The parameters' comments
+/// are aligned on their own, not with the body.
+fn routine_header(kind: &str, schema: &str, params: &[Param], names: &[String]) -> String {
+    let head = format!(
+        "CREATE OR REPLACE {kind} {}.[{}_name](",
+        quote_ident(schema),
+        kind.to_lowercase()
+    );
+    if params.is_empty() {
+        return format!("{head})");
+    }
+    let mut lines = vec![(head, String::new())];
+    let shown: Vec<String> = params
+        .iter()
+        .zip(names)
+        .map(|(q, n)| {
+            if q.inout {
+                format!("INOUT {n}")
+            } else {
+                n.clone()
+            }
+        })
+        .collect();
+    let width = shown.iter().map(|s| s.chars().count()).max().unwrap_or(0);
+    for (i, (q, s)) in params.iter().zip(&shown).enumerate() {
+        let pad = " ".repeat(width - s.chars().count());
+        let default = if q.inout { " DEFAULT NULL" } else { "" };
+        let comma = if i + 1 < params.len() { "," } else { "" };
+        lines.push((
+            format!("    {s}{pad}  {}{default}{comma}", q.col.type_name),
+            q.comment.clone(),
+        ));
+    }
+    lines.push((")".to_owned(), String::new()));
+    aligned(&lines)
+}
+
+/// `gf`: an empty PL/pgSQL function in `schema` (D-054).
+pub fn generate_function(schema: &str) -> String {
+    [
+        format!(
+            "CREATE OR REPLACE FUNCTION {}.[function_name]()",
+            quote_ident(schema)
+        ),
+        "RETURNS [return_type]".to_owned(),
+        "LANGUAGE plpgsql".to_owned(),
+        "AS $$".to_owned(),
+        "BEGIN".to_owned(),
+        "    --PROCESS HERE".to_owned(),
+        "    RETURN [value];".to_owned(),
+        "END;".to_owned(),
+        "$$;".to_owned(),
+    ]
+    .join("\n")
+}
+
+/// `gfr` / `gfs` / `gft` / `gfe` / `gfj`: a read-only (`STABLE`) PL/pgSQL function
+/// over the table (view, foreign table), D-054. `gfr` / `gfe` / `gfj` take the key
+/// as `p_` parameters; `gfs` / `gft` filter with `WHERE [condition]`.
+fn function(what: Gen, p: &ProcTable) -> String {
+    let (t, key, table) = (p.t, p.key, p.table);
+    let by_key = matches!(what, Gen::FuncRow | Gen::FuncExists | Gen::FuncJson);
+    let params: Vec<Param> = if by_key {
+        key.iter()
+            .map(|c| Param {
+                col: c,
+                inout: false,
+                comment: p.key_kind.to_owned(),
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let columns: Vec<&GenColumn> = params.iter().map(|q| q.col).collect();
+    let taken: Vec<String> = t.columns.iter().map(|c| c.name.to_lowercase()).collect();
+    let names = prefixed_names(&columns, "p_", &taken);
+    let header = routine_header("FUNCTION", &t.schema, &params, &names);
+    let mut lines: Vec<(String, String)> = Vec::new();
+    let push = |lines: &mut Vec<(String, String)>, code: String| {
+        lines.push((code, String::new()));
+    };
+    // RETURNS
+    match what {
+        Gen::FuncRow => push(&mut lines, format!("RETURNS {table}")),
+        Gen::FuncSet => push(&mut lines, format!("RETURNS SETOF {table}")),
+        Gen::FuncExists => push(&mut lines, "RETURNS boolean".to_owned()),
+        Gen::FuncJson => push(&mut lines, "RETURNS jsonb".to_owned()),
+        _ => {
+            push(&mut lines, "RETURNS TABLE (".to_owned());
+            let width = t
+                .columns
+                .iter()
+                .map(|c| quote_ident(&c.name).chars().count())
+                .max()
+                .unwrap_or(0);
+            let n = t.columns.len();
+            for (i, c) in t.columns.iter().enumerate() {
+                let name = quote_ident(&c.name);
+                let pad = " ".repeat(width - name.chars().count());
+                let comma = if i + 1 < n { "," } else { "" };
+                push(
+                    &mut lines,
+                    format!("    {name}{pad}  {}{comma}", c.type_name),
+                );
+            }
+            push(&mut lines, ")".to_owned());
+        }
+    }
+    for l in ["LANGUAGE plpgsql", "STABLE", "AS $$"] {
+        push(&mut lines, l.to_owned());
+    }
+    // gfr's row variable: not a column name (a column of that name would be ambiguous)
+    let mut row_var = "v_row".to_owned();
+    let mut n = 2;
+    while taken.contains(&row_var) {
+        row_var = format!("v_row_{n}");
+        n += 1;
+    }
+    if what == Gen::FuncRow {
+        push(&mut lines, "DECLARE".to_owned());
+        push(&mut lines, format!("    {row_var} {table};"));
+    }
+    push(&mut lines, "BEGIN".to_owned());
+    // gft / gfj name the table T1: the output columns of RETURNS TABLE are variables
+    let alias = matches!(what, Gen::FuncTable | Gen::FuncJson);
+    let col = |c: &GenColumn| {
+        if alias {
+            format!("T1.{}", quote_ident(&c.name))
+        } else {
+            quote_ident(&c.name)
+        }
+    };
+    let from = if alias {
+        format!("FROM {table} AS T1")
+    } else {
+        format!("FROM {table}")
+    };
+    let where_lines = |lines: &mut Vec<(String, String)>, indent: &str, end: &str| {
+        if !by_key {
+            let comment = if alias {
+                "write a condition; columns as T1.column (the output columns are variables)"
+            } else {
+                "write a condition"
+            };
+            lines.push((
+                format!("{indent}WHERE [condition]{end}"),
+                comment.to_owned(),
+            ));
+        } else if key.is_empty() {
+            lines.push((
+                format!("{indent}WHERE [condition]{end}"),
+                "no primary key: write a condition".to_owned(),
+            ));
+        } else {
+            for (i, (c, n)) in key.iter().zip(&names).enumerate() {
+                let lead = if i == 0 {
+                    format!("{indent}WHERE")
+                } else {
+                    format!("{indent}  AND")
+                };
+                let e = if i + 1 == key.len() { end } else { "" };
+                lines.push((format!("{lead} {} = {n}{e}", col(c)), String::new()));
+            }
+        }
+    };
+    let select_all = |lines: &mut Vec<(String, String)>, indent: &str| {
+        lines.push((format!("{indent}SELECT"), String::new()));
+        let n = t.columns.len();
+        for (i, c) in t.columns.iter().enumerate() {
+            let comma = if i + 1 < n { "," } else { "" };
+            lines.push((format!("{indent}    {}{comma}", col(c)), String::new()));
+        }
+    };
+    match what {
+        Gen::FuncRow => {
+            select_all(&mut lines, "    ");
+            push(&mut lines, format!("    INTO {row_var}"));
+            push(&mut lines, format!("    {from}"));
+            where_lines(&mut lines, "    ", ";");
+            for l in [
+                "    IF NOT FOUND THEN",
+                "        RETURN NULL;",
+                "    END IF;",
+            ] {
+                push(&mut lines, l.to_owned());
+            }
+            push(&mut lines, format!("    RETURN {row_var};"));
+        }
+        Gen::FuncSet | Gen::FuncTable => {
+            push(&mut lines, "    RETURN QUERY".to_owned());
+            select_all(&mut lines, "    ");
+            push(&mut lines, format!("    {from}"));
+            where_lines(&mut lines, "    ", ";");
+        }
+        Gen::FuncExists => {
+            push(&mut lines, "    RETURN EXISTS (".to_owned());
+            push(&mut lines, "        SELECT 1".to_owned());
+            push(&mut lines, format!("        {from}"));
+            where_lines(&mut lines, "        ", "");
+            push(&mut lines, "    );".to_owned());
+        }
+        _ => {
+            // NULL when no row was found
+            push(&mut lines, "    RETURN (".to_owned());
+            push(&mut lines, "        SELECT to_jsonb(T1)".to_owned());
+            push(&mut lines, format!("        {from}"));
+            where_lines(&mut lines, "        ", "");
+            push(&mut lines, "    );".to_owned());
+        }
+    }
+    push(&mut lines, "END;".to_owned());
+    push(&mut lines, "$$;".to_owned());
     format!("{header}\n{}", aligned(&lines))
 }
 
@@ -2025,6 +2294,8 @@ mod tests {
         assert_eq!(matching("\\gt").len(), 13);
         let m: Vec<&str> = matching("gp").iter().map(|c| c.0).collect();
         assert_eq!(m, ["gp", "gpi", "gpu", "gpd", "gpo"]);
+        let m: Vec<&str> = matching("gf").iter().map(|c| c.0).collect();
+        assert_eq!(m, ["gf", "gfr", "gfs", "gft", "gfe", "gfj"]);
         assert_eq!(matching("dt+ x").len(), 1);
     }
 
@@ -2198,6 +2469,124 @@ mod tests {
             ..t.clone()
         };
         assert!(nothing_to_update(&k));
+    }
+
+    #[test]
+    fn generate_function_skeleton() {
+        assert_eq!(
+            parse("gf"),
+            Ok(Cmd::Function {
+                schema: "public".into()
+            })
+        );
+        assert_eq!(
+            parse("gf Sales"),
+            Ok(Cmd::Function {
+                schema: "sales".into()
+            })
+        );
+        assert!(
+            parse("gf a.b")
+                .unwrap_err()
+                .contains("gf takes a schema name")
+        );
+        assert!(!needs_table("gf"));
+        assert_eq!(
+            generate_function("public"),
+            "CREATE OR REPLACE FUNCTION public.[function_name]()\nRETURNS [return_type]\nLANGUAGE plpgsql\nAS $$\nBEGIN\n    --PROCESS HERE\n    RETURN [value];\nEND;\n$$;"
+        );
+        assert_eq!(completion_target("gf x").unwrap().1, ["schema"]);
+    }
+
+    #[test]
+    fn generate_table_functions() {
+        for (cmd, what) in [
+            ("gfr", Gen::FuncRow),
+            ("gfs", Gen::FuncSet),
+            ("gft", Gen::FuncTable),
+            ("gfe", Gen::FuncExists),
+            ("gfj", Gen::FuncJson),
+        ] {
+            assert!(needs_table(cmd));
+            assert!(!what.tables_only(), "views and foreign tables too");
+            assert_eq!(what.command(), cmd);
+            assert_eq!(
+                parse(&format!("{cmd} orders")),
+                Ok(Cmd::Generate {
+                    what,
+                    table: (None, "orders".into())
+                })
+            );
+            assert_eq!(
+                completion_target(&format!("{cmd} o")).unwrap().1,
+                ["foreign table", "table", "view"]
+            );
+            let text = generate(what, &orders());
+            assert!(
+                text.contains("\nLANGUAGE plpgsql\nSTABLE\nAS $$\n"),
+                "{text}"
+            );
+            assert!(text.ends_with("END;\n$$;"), "{text}");
+        }
+        let t = orders();
+        let row = [
+            "CREATE OR REPLACE FUNCTION public.[function_name](",
+            "    p_id  integer  -- primary key",
+            ")",
+            "RETURNS public.orders",
+            "LANGUAGE plpgsql",
+            "STABLE",
+            "AS $$",
+            "DECLARE",
+            "    v_row public.orders;",
+            "BEGIN",
+            "    SELECT",
+            "        id,",
+            "        customer_id,",
+            "        note,",
+            "        total",
+            "    INTO v_row",
+            "    FROM public.orders",
+            "    WHERE id = p_id;",
+            "    IF NOT FOUND THEN",
+            "        RETURN NULL;",
+            "    END IF;",
+            "    RETURN v_row;",
+            "END;",
+            "$$;",
+        ];
+        assert_eq!(generate(Gen::FuncRow, &t), row.join("\n"));
+        let set = generate(Gen::FuncSet, &t);
+        assert!(set.starts_with(
+            "CREATE OR REPLACE FUNCTION public.[function_name]()\nRETURNS SETOF public.orders\n"
+        ));
+        assert!(set.contains("    RETURN QUERY\n    SELECT\n        id,\n"));
+        assert!(
+            set.contains("    FROM public.orders\n    WHERE [condition];  -- write a condition\n")
+        );
+        let table = generate(Gen::FuncTable, &t);
+        assert!(table.contains(
+            "RETURNS TABLE (\n    id           integer,\n    customer_id  integer,\n    note         text,\n    total        numeric\n)\n"
+        ), "{table}");
+        assert!(table.contains("        T1.id,\n"), "{table}");
+        assert!(table.contains("    FROM public.orders AS T1\n    WHERE [condition];"));
+        assert!(generate(Gen::FuncExists, &t).contains(
+            "    RETURN EXISTS (\n        SELECT 1\n        FROM public.orders\n        WHERE id = p_id\n    );\n"
+        ));
+        assert!(generate(Gen::FuncJson, &t).contains("RETURNS jsonb\n"));
+        assert!(generate(Gen::FuncJson, &t).contains(
+            "    RETURN (\n        SELECT to_jsonb(T1)\n        FROM public.orders AS T1\n        WHERE T1.id = p_id\n    );\n"
+        ));
+        // a view (no key): no parameters, a written condition; a column v_row
+        let v = GenTable {
+            kind: "v".into(),
+            columns: vec![col("v_row", "text", false)],
+            ..orders()
+        };
+        let r = generate(Gen::FuncRow, &v);
+        assert!(r.starts_with("CREATE OR REPLACE FUNCTION public.[function_name]()\n"));
+        assert!(r.contains("    v_row_2 public.orders;"), "{r}");
+        assert!(r.contains("    WHERE [condition];  -- no primary key: write a condition"));
     }
 
     #[test]

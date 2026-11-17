@@ -2169,6 +2169,11 @@ async fn help_screenshots() {
         ("gpu", crate::psql::Gen::ProcUpdate),
         ("gpd", crate::psql::Gen::ProcDelete),
         ("gpo", crate::psql::Gen::ProcUpsert),
+        ("gfr", crate::psql::Gen::FuncRow),
+        ("gfs", crate::psql::Gen::FuncSet),
+        ("gft", crate::psql::Gen::FuncTable),
+        ("gfe", crate::psql::Gen::FuncExists),
+        ("gfj", crate::psql::Gen::FuncJson),
         (
             "gtrb",
             crate::psql::Gen::Trigger {

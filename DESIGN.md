@@ -1688,10 +1688,10 @@ pgtc (binary)
   - `d` / `d+`, `dp` — tables, views, materialized views, foreign tables, sequences;
   - `dt` / `dv` / `dm` / `ds` — tables / views / materialized views / sequences;
     combined letters add up (`dtv` → tables and views; `E` foreign tables, `i` nothing);
-  - `gts`, `gti`, `gtu`, `gtd`, `gtc`, `gto`, `gtsi`, `gtv` — tables, views, foreign
-    tables (`gtv` completes the last name typed);
+  - `gts`, `gti`, `gtu`, `gtd`, `gtc`, `gto`, `gtsi`, `gtv`, `gfr`, `gfs`, `gft`,
+    `gfe`, `gfj` — tables, views, foreign tables (`gtv` completes the last name typed);
   - `gtm`, `gtrb`, `gtra`, `gtsb`, `gtsa`, `gpi`, `gpu`, `gpd`, `gpo` — tables;
-  - `gp` — schemas;
+  - `gp`, `gf` — schemas;
   - all others — nothing (*No suggestions*).
   Names come from the query tab's name cache (*loading…* until it is read; nothing is
   read while a result runs or is paused). Names on the search path are offered as
@@ -1838,6 +1838,27 @@ pgtc (binary)
       row with id = %', p_id; END IF;`. No key → no key parameters, `WHERE [condition]
       -- no primary key: write a condition` and the message *no row found*.
     - `gpo`: the columns and `ON CONFLICT` of `gto` with `p_` values.
+  - `gf` [*schema*] — an empty PL/pgSQL function, as `gp`: `CREATE OR REPLACE
+    FUNCTION <schema>.[function_name]() RETURNS [return_type] LANGUAGE plpgsql AS $$
+    BEGIN --PROCESS HERE RETURN [value]; END; $$;`.
+  - `gfr` / `gfs` / `gft` / `gfe` / `gfj` *table* — a read-only PL/pgSQL function
+    over a table, view or foreign table: `CREATE OR REPLACE FUNCTION
+    <schema>.[function_name](…) RETURNS … LANGUAGE plpgsql STABLE AS $$ … $$;` in its
+    schema, the name a placeholder (as `gp…`). Every column, in table order.
+    - `gfr` (**r**ow): key parameters (as `gpd`), `RETURNS <table>`, `DECLARE v_row
+      <table>;` (`v_row_2`, … when a column has that name), `SELECT … INTO v_row …
+      WHERE key = p_key; IF NOT FOUND THEN RETURN NULL; END IF; RETURN v_row;`.
+    - `gfs` (**s**etof): no parameters, `RETURNS SETOF <table>`, `RETURN QUERY SELECT …
+      WHERE [condition]`.
+    - `gft` (**t**able): as `gfs`, but `RETURNS TABLE (column type, …)`. Its output
+      columns are PL/pgSQL variables, so the query names the table `T1` and every
+      column `T1.column`; the `[condition]` comment says to do the same.
+    - `gfe` (**e**xists): key parameters, `RETURNS boolean`, `RETURN EXISTS (SELECT 1 …
+      WHERE key = p_key);`.
+    - `gfj` (**j**son): key parameters, `RETURNS jsonb`, `RETURN (SELECT to_jsonb(T1)
+      FROM <table> AS T1 WHERE T1.key = p_key);` — `NULL` when no row.
+    - Without a key (views, foreign tables, tables without one): no parameters and
+      `WHERE [condition]  -- no primary key: write a condition`.
 
 ### D-055 — Find object in the tree (`Ctrl+F`)
 - **Status:** Accepted (refines D-009, D-036)
@@ -2571,3 +2592,4 @@ pgtc (binary)
 | 2026-11-15 | D-055 updated: a search of all databases has at most 8 connections of its own open at a time (it had one per database until the dialog closed); with more databases a connection is closed when it has answered. D-052 refined: names are not asked for in a failed transaction, and a failed lookup is not remembered as an empty list. |
 | 2026-11-15 | D-054 updated: `gtt` split into `gtrb` / `gtra` / `gtsb` / `gtsa` (row / statement, before / after); trigger names `<table>_rb_trg`, `_ra_trg`, `_sb_trg`, `_sa_trg`; after row triggers end every branch with the final `RETURN NULL` (ignored); statement triggers have no field comments, add `TRUNCATE`, no transition tables. |
 | 2026-11-17 | D-054 updated: generate commands `gp` [*schema*] (empty PL/pgSQL procedure, default schema `public`, nothing read, schemas autocompleted) and `gpi` / `gpu` / `gpd` / `gpo` *table* (PL/pgSQL procedures that insert / update / delete / upsert one row; `p_` parameters with plain column types, `INOUT` for keys the database fills, `RAISE EXCEPTION` when `gpu` / `gpd` find no row; name `[procedure_name]` in the table's schema; tables only). |
+| 2026-11-17 | D-054 updated: generate commands `gf` [*schema*] (empty PL/pgSQL function, `[return_type]` / `[value]` placeholders, default schema `public`) and `gfr` / `gfs` / `gft` / `gfe` / `gfj` *table* (read-only `STABLE` PL/pgSQL functions: one row by key or `NULL`, `SETOF` the table, `RETURNS TABLE` with `T1.`-qualified columns, `EXISTS` by key, one row as `jsonb` by key; `WHERE [condition]` for the set functions and without a key; tables, views and foreign tables). |

@@ -282,6 +282,78 @@ async fn psql_commands_against_a_real_server() {
         a.query().unwrap().results[0].rows[0][0].as_deref(),
         Some("2:d:e")
     );
+    // gf / gfr / gfs / gft / gfe / gfj: created with the placeholders filled in, then
+    // called; the table now holds the one row 2:d:e
+    for (command, fill, call, expected) in [
+        (
+            "gf pg_temp",
+            &[("[return_type]", "integer"), ("[value]", "7")][..],
+            "SELECT pg_temp.pgtc_psql_gf()",
+            "7",
+        ),
+        (
+            "gfr pgtc_psql",
+            &[],
+            "SELECT (pg_temp.pgtc_psql_gfr(2)).name",
+            "d",
+        ),
+        (
+            "gfs pgtc_psql",
+            &[("[condition]", "id = 2")],
+            "SELECT count(*) FROM pg_temp.pgtc_psql_gfs()",
+            "1",
+        ),
+        (
+            "gft pgtc_psql",
+            &[("[condition]", "T1.id = 2")],
+            "SELECT note FROM pg_temp.pgtc_psql_gft()",
+            "e",
+        ),
+        (
+            "gfe pgtc_psql",
+            &[],
+            "SELECT pg_temp.pgtc_psql_gfe(2)::text",
+            "true",
+        ),
+        (
+            "gfj pgtc_psql",
+            &[],
+            "SELECT pg_temp.pgtc_psql_gfj(2) ->> 'name'",
+            "d",
+        ),
+    ] {
+        a.editor().set_text("");
+        a.status.clear();
+        run(&mut a, command);
+        pump(&mut a, &mut rx, &hits, |a| {
+            a.status.starts_with("Generated")
+        })
+        .await;
+        let name = format!("pgtc_psql_{}", &command[..command.find(' ').unwrap()]);
+        let mut text = a.editor().text().replace("[function_name]", &name);
+        for (from, to) in fill {
+            text = text.replace(from, to);
+        }
+        a.editor().set_text(&format!("{text}\n{call}"));
+        key(&mut a, "F5");
+        pump(&mut a, &mut rx, &hits, idle).await;
+        assert!(errors(&a).is_empty(), "{command}: {:?}\n{text}", errors(&a));
+        assert_eq!(
+            a.query().unwrap().results[0].rows[0][0].as_deref(),
+            Some(expected),
+            "{command}"
+        );
+    }
+    // gfr / gfj: NULL for a key that is not there
+    a.editor().set_text(
+        "SELECT (pg_temp.pgtc_psql_gfr(99) IS NULL AND pg_temp.pgtc_psql_gfj(99) IS NULL)::text",
+    );
+    key(&mut a, "F5");
+    pump(&mut a, &mut rx, &hits, idle).await;
+    assert_eq!(
+        a.query().unwrap().results[0].rows[0][0].as_deref(),
+        Some("true")
+    );
     a.editor().set_text("");
     // unknown command: an error, the command line stays open
     run(&mut a, "xyz");

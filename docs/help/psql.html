@@ -160,7 +160,7 @@ SQL script is not a command; the server will report a syntax error.</p>
 <h2 id="generate">Generate commands: SQL for a table</h2>
 <p>The commands below the separator are pgtc's own. Each one reads the definition of a table from the database and
 <b>writes a statement for it into the editor, at the cursor</b>. Nothing is run. You get every column name and type
-right without typing them. (Only <code>gp</code> needs no table: it writes an empty procedure.)</p>
+right without typing them.</p>
 <div class="tablewrap"><table>
 <tr><th>Command</th><th>Writes</th><th>Works on</th></tr>
 <tr><td class="k"><code>gts</code> <i>table</i></td><td><code>SELECT</code> with every column</td><td>tables, views, foreign tables</td></tr>
@@ -179,11 +179,19 @@ right without typing them. (Only <code>gp</code> needs no table: it writes an em
 <tr><td class="k"><code>gpu</code> <i>table</i></td><td>PL/pgSQL procedure that updates a row by its key</td><td>tables</td></tr>
 <tr><td class="k"><code>gpd</code> <i>table</i></td><td>PL/pgSQL procedure that deletes a row by its key</td><td>tables</td></tr>
 <tr><td class="k"><code>gpo</code> <i>table</i></td><td>PL/pgSQL procedure that upserts a row (<code>ON CONFLICT</code>)</td><td>tables</td></tr>
+<tr><td class="k"><code>gf</code> [<i>schema</i>]</td><td>An empty PL/pgSQL function (schema <code>public</code> when none is given)</td><td>—</td></tr>
+<tr><td class="k"><code>gfr</code> <i>table</i></td><td>PL/pgSQL function: one <b>r</b>ow by its key</td><td>tables, views, foreign tables</td></tr>
+<tr><td class="k"><code>gfs</code> <i>table</i></td><td>PL/pgSQL function: <code>RETURNS <b>S</b>ETOF</code> the table</td><td>tables, views, foreign tables</td></tr>
+<tr><td class="k"><code>gft</code> <i>table</i></td><td>PL/pgSQL function: <code>RETURNS <b>T</b>ABLE (…)</code> with every column</td><td>tables, views, foreign tables</td></tr>
+<tr><td class="k"><code>gfe</code> <i>table</i></td><td>PL/pgSQL function: does a row with this key <b>e</b>xist</td><td>tables, views, foreign tables</td></tr>
+<tr><td class="k"><code>gfj</code> <i>table</i></td><td>PL/pgSQL function: one row by its key as <b>j</b>son (<code>jsonb</code>)</td><td>tables, views, foreign tables</td></tr>
 </table></div>
 <p>The names are easy to remember: <b>g</b>enerate <b>t</b>able + <b>s</b>elect, <b>i</b>nsert, <b>u</b>pdate,
 <b>d</b>elete, <b>o</b>n conflict, <b>m</b>erge, <b>c</b>ursor, <b>s</b>elect <b>i</b>nto, <b>v</b>iew; and for triggers
-<b>r</b>ow / <b>s</b>tatement, <b>b</b>efore / <b>a</b>fter. <b>g</b>enerate <b>p</b>rocedure works the same way:
-<code>gpi</code>, <code>gpu</code>, <code>gpd</code>, <code>gpo</code>.</p>
+<b>r</b>ow / <b>s</b>tatement, <b>b</b>efore / <b>a</b>fter. <b>g</b>enerate <b>p</b>rocedure and
+<b>g</b>enerate <b>f</b>unction work the same way: <code>gpi</code>, <code>gpu</code>, <code>gpd</code>,
+<code>gpo</code>; <code>gfr</code>, <code>gfs</code>, <code>gft</code>, <code>gfe</code>, <code>gfj</code>.</p>
+<p>(<code>gp</code> and <code>gf</code> need no table: they write an empty procedure or function.)</p>
 
 <h3>How to use one</h3>
 <ol class="steps">
@@ -572,6 +580,100 @@ $$;</code></pre>
       parameters, <code>gpo</code> gets <code>ON CONFLICT DO NOTHING</code>. A table whose columns are all part of the
       key has nothing to update; <code>gpu</code> says so and writes nothing.</li>
   <li>Tables only, not views or foreign tables.</li>
+</ul>
+
+<h3 id="gf">gf — an empty function</h3>
+<pre><code>CREATE OR REPLACE FUNCTION public.[function_name]()
+RETURNS [return_type]
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    --PROCESS HERE
+    RETURN [value];
+END;
+$$;</code></pre>
+<p>Like <a href="#gp"><code>gp</code></a>, but a function: <code>gf</code> alone uses <code>public</code>, <code>gf sales</code>
+uses <code>sales</code>. Besides the name, fill in the type the function returns and the value it returns. For a
+dialog, use the developer template <a href="templates.html">Create function</a>.</p>
+
+<h3 id="functions">gfr, gfs, gft, gfe, gfj — functions that read a table</h3>
+<p>Five functions that only <b>read</b>. They are marked <code>STABLE</code>, so PostgreSQL may use them in queries and
+plans them better. They work on tables, views and foreign tables. Each one is created in the schema of the table,
+with the name placeholder <code>[function_name]</code>.</p>
+<pre><code>CREATE OR REPLACE FUNCTION sales.[function_name](
+    p_customerid  integer  -- primary key
+)
+RETURNS sales.customer
+LANGUAGE plpgsql
+STABLE
+AS $$
+DECLARE
+    v_row sales.customer;
+BEGIN
+    SELECT
+        customerid,
+        personid,
+        storeid,
+        territoryid,
+        rowguid,
+        modifieddate
+    INTO v_row
+    FROM sales.customer
+    WHERE customerid = p_customerid;
+    IF NOT FOUND THEN
+        RETURN NULL;
+    END IF;
+    RETURN v_row;
+END;
+$$;</code></pre>
+<p>This is <code>gfr sales.customer</code>: one row by its key, or <code>NULL</code> when there is none. Use it like
+this: <code>SELECT (sales.get_customer(11000)).storeid</code>, or <code>SELECT * FROM sales.get_customer(11000)</code>.</p>
+<pre><code>CREATE OR REPLACE FUNCTION sales.[function_name]()
+RETURNS TABLE (
+    customerid    integer,
+    personid      integer,
+    storeid       integer,
+    territoryid   integer,
+    rowguid       uuid,
+    modifieddate  timestamp without time zone
+)
+LANGUAGE plpgsql
+STABLE
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        T1.customerid,
+        T1.personid,
+        T1.storeid,
+        T1.territoryid,
+        T1.rowguid,
+        T1.modifieddate
+    FROM sales.customer AS T1
+    WHERE [condition];  -- write a condition; columns as T1.column (the output columns are variables)
+END;
+$$;</code></pre>
+<p>This is <code>gft sales.customer</code>. Every column of <code>RETURNS TABLE</code> is also a variable inside the
+function. So a bare <code>customerid</code> in the query would be ambiguous (<i>column reference "customerid" is
+ambiguous</i>). That is why the table is called <code>T1</code> and every column is written <code>T1.column</code>; do
+the same in your condition. Delete columns you do not want from <b>both</b> lists, or add computed ones to both.</p>
+<div class="tablewrap"><table>
+<tr><th>Command</th><th>Parameters</th><th>Returns</th><th>Body</th></tr>
+<tr><td class="k"><code>gfr</code></td><td>The key</td><td>The row type of the table</td><td><code>SELECT … INTO</code> a row variable; <code>NULL</code> when not found</td></tr>
+<tr><td class="k"><code>gfs</code></td><td>—</td><td><code>SETOF</code> the table</td><td><code>RETURN QUERY SELECT … WHERE [condition]</code></td></tr>
+<tr><td class="k"><code>gft</code></td><td>—</td><td><code>TABLE (…)</code>, every column</td><td>As <code>gfs</code>, with <code>T1.</code> before every column</td></tr>
+<tr><td class="k"><code>gfe</code></td><td>The key</td><td><code>boolean</code></td><td><code>RETURN EXISTS (SELECT 1 … WHERE</code> key<code>)</code></td></tr>
+<tr><td class="k"><code>gfj</code></td><td>The key</td><td><code>jsonb</code></td><td><code>RETURN (SELECT to_jsonb(T1) … WHERE</code> key<code>)</code>; <code>NULL</code> when not found</td></tr>
+</table></div>
+<ul>
+  <li>The key and the parameter names follow the same rules as for the <a href="#procedures">procedures</a>:
+      primary key, else a unique constraint, parameters <code>p_</code> + column name.</li>
+  <li>Views and foreign tables have no key (nor do some tables): <code>gfr</code>, <code>gfe</code> and
+      <code>gfj</code> then have no parameters and get <code>WHERE [condition]  -- no primary key: write a
+      condition</code>.</li>
+  <li><code>gfs</code> and <code>gft</code> have no parameters: add the ones your condition needs.</li>
+  <li><code>gfj</code> returns every column as a JSON key. To leave one out, subtract it:
+      <code>to_jsonb(T1) - 'rowguid'</code>.</li>
 </ul>
 </main>
 <script src="help.js"></script>

@@ -315,6 +315,16 @@ impl App {
                     .apply(Action::Insert(text));
                 self.status = "Generated the procedure — name it at [procedure_name]".to_owned();
             }
+            Cmd::Function { schema } => {
+                let text = crate::psql::generate_function(schema) + "\n";
+                self.tabs[self.active_tab]
+                    .view
+                    .editor
+                    .apply(Action::Insert(text));
+                self.status =
+                    "Generated the function — name it at [function_name], fill in [return_type]"
+                        .to_owned();
+            }
         }
     }
 
@@ -473,6 +483,9 @@ impl App {
             Gen::Trigger { .. } => "name the function at [function_name]",
             Gen::ProcInsert | Gen::ProcUpdate | Gen::ProcDelete | Gen::ProcUpsert => {
                 "name the procedure at [procedure_name]"
+            }
+            Gen::FuncRow | Gen::FuncSet | Gen::FuncTable | Gen::FuncExists | Gen::FuncJson => {
+                "name the function at [function_name]"
             }
             _ => "fill in the [values]",
         };
