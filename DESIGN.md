@@ -497,8 +497,10 @@ desktop dependency.
   - psql command… (D-054)
   - Server dashboard (D-057)
   - SQL profiler (D-058)
+  - Ask AI… (`F8` in a query tab, D-073)
 - **Settings**
   - Settings… — dialog with colour scheme, ASCII frames, ... (contents: D-051)
+  - AI… — AI provider, model and API key source (D-073)
   - Install templates — same as `--install-templates` (D-013)
   - Run setup — same as `--setup`: every installation step (D-047)
   - Show templates folder — displays the path of the templates folder (a terminal
@@ -646,7 +648,7 @@ desktop dependency.
   | `F5` | Copy | **Execute** (in a query tab; as in pgAdmin / SSMS) |
   | `Alt+Shift+C` | — | **Cancel running query** (as in pgAdmin, D-019) |
   | `F7` | Make dir | Query tab: insert SQL from a developer template (D-013, D-046) |
-  | `F8` | Delete | Object tree: delete the selected saved connection (with confirmation, D-035). Database objects are dropped with the DROP developer templates (D-050) |
+  | `F8` | Delete | Object tree: delete the selected saved connection (with confirmation, D-035). Database objects are dropped with the DROP developer templates (D-050) · Query tab: ask AI for SQL, inserted into the editor, not run (D-073) |
   | `F9` | Menu | Menu (D-014) |
   | `F10` | Quit | Quit; closes a dialog when one is open |
   | `Ctrl+Tab` / `F6` | Switch panel | Object tree ↔ right frame (D-032, D-060) |
@@ -2481,6 +2483,66 @@ pgtc (binary)
   then it shows the folder, the error, or goes on with the file. An answer for a
   dialog that was closed meanwhile is ignored.
 
+### D-073 — AI assistant (`F8`): SQL from a prompt into the editor
+- **Status:** Accepted (refines D-006, D-014, D-016, D-035, D-046)
+- **Purpose:** the user describes what is needed (a SELECT, a procedure, …); an AI
+  model writes the SQL from the database structure and the editor text. The answer
+  **always goes into the SQL editor and is never run** — the user reviews and
+  executes it (as generate commands and templates, D-046, D-054).
+- **Providers — two protocols, presets only fill in defaults:**
+  - *OpenAI-compatible* (`POST {base_url}/chat/completions`,
+    `Authorization: Bearer`): OpenAI, xAI Grok, Mistral, DeepSeek, Groq, OpenRouter,
+    Google Gemini (its OpenAI-compatible endpoint), and local servers (Ollama,
+    LM Studio, vLLM, llama.cpp).
+  - *Anthropic* (`POST {base_url}/v1/messages`, `x-api-key`, `anthropic-version`).
+  - Presets: Claude, OpenAI, Grok, Gemini, Ollama (local) — they set the protocol,
+    base URL and a suggested model; every field stays editable, so a new provider
+    that speaks one of the protocols needs no code change. Azure OpenAI is *later*.
+  - HTTP through `reqwest` with rustls + `serde` (no provider SDKs, D-017). The
+    request runs in a tokio task; the UI never waits for it (D-006).
+- **Setup:** *Settings → AI…* — its own dialog (the Settings dialog must fit 24
+  rows, D-051): Enabled, preset, protocol, base URL, model, API key source.
+  Stored in `settings.toml` under `[ai]` — **never the key itself**.
+  - **API key:** either the name of an environment variable (e.g.
+    `ANTHROPIC_API_KEY`, `XAI_API_KEY`) or a key file in pgtc's config folder
+    (path from `pgc-core`, written with `atomic_write`, owner-only permissions where
+    the OS supports them, like `.pgpass`). The key is never written to the log.
+    Local servers may need no key.
+  - AI counts as *set up* when it is enabled and base URL and model are filled (and
+    the key is found when a source is given).
+- **Opening:** `F8` (`ask_ai` in the keymap, `Esc 8`) in a query tab's editor and
+  results (contexts `[editor]`, `[results]`), and *Tools → Ask AI…*. In the tree
+  `F8` stays Delete connection, on the dashboard Terminate session (D-035, D-057).
+  It works only when AI is set up **and** the query tab is connected to a database;
+  otherwise the status line says why (*AI is not set up (Settings → AI…)*,
+  *Connect the query tab first*, *AI is not allowed for this connection*). Its
+  "works now" rule goes into `app/key_help.rs` (D-063).
+- **Per-connection opt-out:** the connection dialog gets **AI not allowed**
+  (default off), e.g. for production servers (D-035). Such a tab cannot use `F8`.
+- **What is sent** — structure and the editor text, **never table data**:
+  - the server version (so the SQL fits the server);
+  - the database structure in compact text, not full DDL: tables, views and foreign
+    tables with columns, types, NOT NULL, defaults, primary / unique / foreign keys;
+    function and procedure signatures; enum types; system schemas left out. Read
+    through the query tab's connection with catalog SQL (`sql/ai/`);
+  - the current editor text, if not empty; a selection is marked, so the model knows
+    which part is meant. Text above 50,000 characters: only the part around the
+    cursor is sent, and the dialog says so;
+  - the user's prompt, with a fixed system prompt (PostgreSQL SQL only, answer with
+    SQL only, explanations as `--` comments).
+- **Dialog:** a multi-line prompt box; scope *Whole database* (default) / *Schema …*
+  (combo); a line *sends about N tokens to <host>* (estimated from the text size,
+  updated when the scope changes); Send / Cancel. The prompts of the session are
+  remembered (`↑` / `↓` in an empty box, like the `F4` history, D-054).
+- **While waiting:** the status line shows *Asking AI …*; `Esc` cancels the request.
+  An error (HTTP status, provider message, no answer) is shown in an error dialog;
+  the editor is not changed.
+- **The answer:** code fences (```` ``` ````) are removed; the SQL replaces the
+  selection, or is inserted at the cursor when there is none, with the prompt above
+  it as `--` comment lines. One undo step brings back the old text. Nothing is run.
+- **Later:** streaming the answer, follow-up questions in one conversation, the model
+  reading catalog details itself through tool use (read-only), Azure OpenAI.
+
 ---
 
 ## 3. Change log
@@ -2636,3 +2698,4 @@ pgtc (binary)
 | 2026-11-17 | D-054 updated: generate commands `gp` [*schema*] (empty PL/pgSQL procedure, default schema `public`, nothing read, schemas autocompleted) and `gpi` / `gpu` / `gpd` / `gpo` *table* (PL/pgSQL procedures that insert / update / delete / upsert one row; `p_` parameters with plain column types, `INOUT` for keys the database fills, `RAISE EXCEPTION` when `gpu` / `gpd` find no row; name `[procedure_name]` in the table's schema; tables only). |
 | 2026-11-17 | D-054 updated: generate commands `gf` [*schema*] (empty PL/pgSQL function, `[return_type]` / `[value]` placeholders, default schema `public`) and `gfr` / `gfs` / `gft` / `gfe` / `gfj` *table* (read-only `STABLE` PL/pgSQL functions: one row by key or `NULL`, `SETOF` the table, `RETURNS TABLE` with `T1.`-qualified columns, `EXISTS` by key, one row as `jsonb` by key; `WHERE [condition]` for the set functions and without a key; tables, views and foreign tables). |
 | 2026-11-17 | D-054 updated: generate commands `gtg` *table* [*rows*] (test data via `generate_series`, 100 rows by default, a random parent row per foreign key through `LEFT JOIN LATERAL … ORDER BY random() LIMIT 1`, key columns past the current maximum), `gtj` *table* (SELECT joined to every table its foreign keys point to, one join per key), `gtr` *table* (one SELECT per foreign key that references the table, `[key]` placeholders) and `gtau` *table* (`<table>_audit` with `jsonb` old / new rows, trigger function `[function_name]`, trigger `<table>_audit_trg`); new catalog query `foreign_keys.sql` read after the columns; tables only. |
+| 2026-11-17 | D-073 accepted: AI assistant — `F8` (query tab editor / results) and Tools → Ask AI… open a prompt dialog, only when AI is set up and the tab is connected; OpenAI-compatible and Anthropic protocols with presets (Claude, OpenAI, Grok, Gemini, Ollama); Settings → AI…, API key from an environment variable or a key file, never in `settings.toml` or the log; sends the server version, compact structure (whole database or one schema, no data) and the editor text (selection marked, 50,000-character limit); answer replaces the selection or goes in at the cursor with the prompt as a comment, never run; per-connection *AI not allowed*. D-014, D-016 updated. |
