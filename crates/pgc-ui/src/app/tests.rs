@@ -4676,3 +4676,74 @@ async fn ask_ai_prompt_autocomplete() {
         "{screen}"
     );
 }
+
+/// Clicks with the mouse at the cell showing `text` (the first such row) on a
+/// `w` × `h` screen.
+fn click_text(a: &mut App, text: &str, w: u16, h: u16) {
+    let mut terminal = ratatui::Terminal::new(ratatui::backend::TestBackend::new(w, h)).unwrap();
+    let mut hits = Hits::default();
+    terminal
+        .draw(|f| crate::view::render(f, a, &mut hits))
+        .unwrap();
+    let screen = screen_text_sized(a, w, h);
+    let (y, line) = screen
+        .lines()
+        .enumerate()
+        .find(|(_, l)| l.contains(text))
+        .unwrap_or_else(|| panic!("{text}: {screen}"));
+    let col = line.find(text).map(|b| line[..b].chars().count()).unwrap() as u16;
+    a.on_mouse(
+        MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: col + 1,
+            row: y as u16,
+            modifiers: KeyModifiers::NONE,
+        },
+        &hits,
+    );
+    a.mouse.last_click = None;
+}
+
+/// OK clicked with the mouse in the file dialogs: it takes the row clicked in the
+/// list (the click on OK moves the focus to OK first), or the typed name; at any
+/// screen size.
+#[test]
+fn ok_button_of_the_file_dialog_takes_a_mouse_click() {
+    for (w, h) in [(80, 24), (100, 30), (160, 50)] {
+        let setup = || {
+            let (mut a, dir) = app();
+            let files = dir.path().join("sql");
+            std::fs::create_dir_all(&files).unwrap();
+            std::fs::write(files.join("pick.sql"), "select 2;").unwrap();
+            a.files.dir = files.clone();
+            a.new_query_tab(None);
+            typing(&mut a, "select 1;");
+            (a, dir, files)
+        };
+        // Open: a row clicked, then OK
+        let (mut a, _d, _) = setup();
+        a.open_file_dialog(false);
+        let tabs = a.tabs.len();
+        click_text(&mut a, "pick.sql", w, h);
+        click_text(&mut a, "< OK >", w, h);
+        assert_eq!(a.tabs.len(), tabs + 1, "{w}x{h}: the file opened");
+        assert_eq!(a.editor().text(), "select 2;");
+        // Save as: a row clicked, then OK: that file (asks before overwriting)
+        let (mut a, _d, files) = setup();
+        a.run(Command::SaveFileAs);
+        click_text(&mut a, "pick.sql", w, h);
+        click_text(&mut a, "< OK >", w, h);
+        assert_eq!(
+            a.dialogs.last().unwrap().kind,
+            DialogKind::ConfirmOverwrite {
+                path: files.join("pick.sql")
+            },
+            "{w}x{h}"
+        );
+        // Save as: the typed name, then OK
+        let (mut a, _d, files) = setup();
+        a.run(Command::SaveFileAs);
+        click_text(&mut a, "< OK >", w, h);
+        assert!(files.join("query.sql").exists(), "{w}x{h}");
+    }
+}

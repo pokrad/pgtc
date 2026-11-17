@@ -495,6 +495,9 @@ pub struct Dialog {
     pub title: String,
     pub widgets: Vec<Widget>,
     pub focus: usize,
+    /// The widget that is not a button and had the focus last: what a button acts
+    /// on (OK in a file dialog takes the list's row or the typed name).
+    field: usize,
     pub width: u16,
     /// Use the error colours (red box).
     pub error: bool,
@@ -511,6 +514,7 @@ impl Dialog {
             title: title.to_owned(),
             widgets,
             focus,
+            field: focus,
             width,
             error: false,
         }
@@ -574,6 +578,25 @@ impl Dialog {
     /// Id of the focused widget.
     pub fn focused_id(&self) -> Option<&'static str> {
         self.widgets.get(self.focus).map(|w| w.id)
+    }
+
+    /// The focused widget, or — while a button has the focus — the one that had it
+    /// before (clicking OK moves the focus to OK first).
+    pub fn field_id(&self) -> Option<&'static str> {
+        let i = if self.widgets.get(self.focus).is_some_and(Widget::is_button) {
+            self.field
+        } else {
+            self.focus
+        };
+        self.widgets.get(i).map(|w| w.id)
+    }
+
+    /// Remembers the focused widget when it is not a button (before a key or click
+    /// may move the focus to one).
+    fn note_field(&mut self) {
+        if self.widgets.get(self.focus).is_some_and(|w| !w.is_button()) {
+            self.field = self.focus;
+        }
     }
 
     /// The focus is in a masked input (a password): what is typed there must not be
@@ -848,6 +871,7 @@ impl Dialog {
         editor: Option<Action>,
         ev: &KeyEvent,
     ) -> DialogEvent {
+        self.note_field();
         if cmd != Some(Command::DialogOk) && self.memo_focused() {
             return self.memo_key(cmd, editor, ev);
         }
@@ -1371,6 +1395,7 @@ impl Dialog {
     /// Left click at (`x`, `y`) inside widget `i` whose area is `area`; `double`: the
     /// second click of a double click, which on a list row acts as `Enter` (D-067).
     pub fn click(&mut self, i: usize, area: Rect, x: u16, y: u16, double: bool) -> DialogEvent {
+        self.note_field();
         if !self.widgets[i].focusable() {
             return DialogEvent::None;
         }

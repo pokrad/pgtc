@@ -169,7 +169,9 @@ impl App {
             return Picked::Folder;
         }
         let dir = self.files.dir.clone();
-        if dialog.focused_id() == Some("files") {
+        // the list or the name field, whichever was used last (OK takes the focus
+        // when it is clicked)
+        if dialog.field_id() == Some("files") {
             // still being read: there is nothing to choose yet
             if self.files.listing.is_some() {
                 return Picked::Nothing;
