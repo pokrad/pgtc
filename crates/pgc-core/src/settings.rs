@@ -19,6 +19,8 @@ pub struct Settings {
     pub clipboard: ClipboardSettings,
     pub connection: ConnectionSettings,
     pub editor: EditorSettings,
+    /// AI assistant (D-073).
+    pub ai: AiSettings,
     /// Saved server connections (D-011, D-035); written as `[[servers]]`.
     pub servers: Vec<SavedConnection>,
 }
@@ -108,6 +110,9 @@ pub struct SavedConnection {
     /// Root certificate file (`sslrootcert`, D-033).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ssl_root_cert: Option<String>,
+    /// The AI assistant may not be used on this connection (D-073).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub ai_not_allowed: bool,
 }
 
 impl Default for SavedConnection {
@@ -120,6 +125,7 @@ impl Default for SavedConnection {
             username: "postgres".to_owned(),
             ssl_mode: SslMode::Prefer,
             ssl_root_cert: None,
+            ai_not_allowed: false,
         }
     }
 }
@@ -250,6 +256,53 @@ impl CsvSeparator {
             CsvSeparator::Comma => b',',
             CsvSeparator::Semicolon => b';',
             CsvSeparator::Tab => b'\t',
+        }
+    }
+}
+
+/// Request format of an AI provider (D-073).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AiProtocol {
+    /// `POST {base_url}/chat/completions` with `Authorization: Bearer`.
+    #[default]
+    OpenaiCompatible,
+    /// `POST {base_url}/v1/messages` with `x-api-key`.
+    Anthropic,
+}
+
+impl AiProtocol {
+    pub const ALL: [AiProtocol; 2] = [AiProtocol::OpenaiCompatible, AiProtocol::Anthropic];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            AiProtocol::OpenaiCompatible => "OpenAI-compatible",
+            AiProtocol::Anthropic => "Anthropic",
+        }
+    }
+}
+
+/// AI assistant settings (D-073). The API key is not here: it is in its own file
+/// (`Paths::ai_key_file`), so this file can be copied and shown without it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct AiSettings {
+    pub enabled: bool,
+    /// Name of the preset the fields were filled from (only shown in the dialog).
+    pub preset: String,
+    pub protocol: AiProtocol,
+    pub base_url: String,
+    pub model: String,
+}
+
+impl Default for AiSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            preset: String::new(),
+            protocol: AiProtocol::OpenaiCompatible,
+            base_url: String::new(),
+            model: String::new(),
         }
     }
 }

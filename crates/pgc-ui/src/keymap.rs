@@ -187,6 +187,7 @@ commands! {
     Find = "find", "Find / replace", Find;
     Complete = "complete", "Autocomplete: names and keywords", Actions;
     Psql = "psql_command", "psql-style command line (dt, d, gti, ...)", Actions;
+    AskAi = "ask_ai", "Ask AI for SQL (into the editor, not run)", Actions;
     FindNext = "find_next", "Find next", Find;
     FindPrev = "find_prev", "Find previous", Find;
     // query tab (D-019, D-020, D-041)
@@ -253,6 +254,7 @@ commands! {
     ExportDefinition = "export_definition", "Export database definition", File;
     LoadDefinition = "load_definition", "Load database definition", File;
     Settings = "settings", "Settings", General;
+    AiSettings = "ai_settings", "AI assistant settings", General;
     RunSetup = "run_setup", "Run setup", General;
     InstallTemplates = "install_templates", "Install templates", General;
     ShowTemplatesFolder = "show_templates_folder", "Show templates folder", General;
@@ -393,6 +395,8 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::Editor, Command::TogglePlpgsql, &["Ctrl+P"]),
     (Context::Results, Command::TogglePlpgsql, &["Ctrl+P"]),
     (Context::Results, Command::Psql, &["F4"]),
+    (Context::Editor, Command::AskAi, &["F8"]),
+    (Context::Results, Command::AskAi, &["F8"]),
     (Context::Editor, Command::FindNext, &["F3"]),
     // Shift+F3 can be lost on some Linux terminals (D-053)
     (Context::Editor, Command::FindPrev, &["Shift+F3", "Alt+F3"]),

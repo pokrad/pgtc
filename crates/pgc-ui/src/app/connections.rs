@@ -477,6 +477,7 @@ impl App {
                     conn.ssl_root_cert.as_deref().unwrap_or(""),
                     lw,
                 ),
+                Widget::checkbox("noai", "AI not &allowed", conn.ai_not_allowed),
                 Widget::button(Button::Ok, "&OK", true),
                 Widget::button(Button::Cancel, "&Cancel", false),
             ],
@@ -524,6 +525,7 @@ impl App {
                 .selected("ssl")
                 .map_or(SslMode::Prefer, |i| SslMode::ALL[i]),
             ssl_root_cert: (!rootcert.is_empty()).then_some(rootcert),
+            ai_not_allowed: dialog.checked("noai"),
         };
         // The password is not trimmed: spaces may be part of it.
         let password = dialog

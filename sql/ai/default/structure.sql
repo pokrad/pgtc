@@ -1,0 +1,69 @@
+-- AI assistant (F8, D-073): the structure of the database sent with a prompt — no
+-- data. System schemas, partitions and the objects of extensions are left out.
+-- No parameters. All rows text, eight columns; the first says what the row is:
+--   'r', schema, name, relkind ('r' table, 'p' partitioned table, 'v' view,
+--        'm' materialized view, 'f' foreign table)
+--   'c', schema, relation, attnum, column, type, NOT NULL ('true' / 'false'), default
+--   'k', schema, table, constraint, contype ('p', 'u', 'f', 'c'), definition
+--   'f', schema, name, prokind ('f' function, 'p' procedure), arguments, result
+--   'e', schema, enum type, labels (quoted, comma separated)
+WITH n AS (
+    SELECT oid, nspname
+    FROM pg_catalog.pg_namespace
+    WHERE nspname NOT IN ('pg_catalog', 'information_schema')
+        AND nspname NOT LIKE 'pg\_toast%'
+        AND nspname NOT LIKE 'pg\_temp\_%'
+), ext AS (
+    SELECT classid, objid
+    FROM pg_catalog.pg_depend
+    WHERE deptype = 'e'
+), rel AS (
+    SELECT c.oid, n.nspname, c.relname, c.relkind
+    FROM pg_catalog.pg_class c
+    JOIN n ON n.oid = c.relnamespace
+    WHERE c.relkind IN ('r', 'p', 'v', 'm', 'f')
+        AND NOT c.relispartition
+        AND NOT EXISTS (
+            SELECT 1 FROM ext
+            WHERE ext.classid = 'pg_catalog.pg_class'::regclass AND ext.objid = c.oid
+        )
+)
+SELECT 'r'::text, rel.nspname::text, rel.relname::text, rel.relkind::text,
+    ''::text, ''::text, ''::text, ''::text
+FROM rel
+UNION ALL
+SELECT 'c', rel.nspname::text, rel.relname::text, a.attnum::text, a.attname::text,
+    pg_catalog.format_type(a.atttypid, a.atttypmod), a.attnotnull::text,
+    coalesce(pg_catalog.pg_get_expr(d.adbin, d.adrelid), '')
+FROM rel
+JOIN pg_catalog.pg_attribute a
+    ON a.attrelid = rel.oid AND a.attnum > 0 AND NOT a.attisdropped
+LEFT JOIN pg_catalog.pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+UNION ALL
+SELECT 'k', rel.nspname::text, rel.relname::text, con.conname::text, con.contype::text,
+    pg_catalog.pg_get_constraintdef(con.oid, true), '', ''
+FROM rel
+JOIN pg_catalog.pg_constraint con
+    ON con.conrelid = rel.oid AND con.contype IN ('p', 'u', 'f', 'c')
+UNION ALL
+SELECT 'f', n.nspname::text, p.proname::text, p.prokind::text,
+    pg_catalog.pg_get_function_identity_arguments(p.oid),
+    coalesce(pg_catalog.pg_get_function_result(p.oid), ''), '', ''
+FROM pg_catalog.pg_proc p
+JOIN n ON n.oid = p.pronamespace
+WHERE p.prokind IN ('f', 'p')
+    AND NOT EXISTS (
+        SELECT 1 FROM ext
+        WHERE ext.classid = 'pg_catalog.pg_proc'::regclass AND ext.objid = p.oid
+    )
+UNION ALL
+SELECT 'e', n.nspname::text, t.typname::text,
+    string_agg(quote_literal(e.enumlabel), ', ' ORDER BY e.enumsortorder), '', '', '', ''
+FROM pg_catalog.pg_type t
+JOIN n ON n.oid = t.typnamespace
+JOIN pg_catalog.pg_enum e ON e.enumtypid = t.oid
+WHERE NOT EXISTS (
+    SELECT 1 FROM ext
+    WHERE ext.classid = 'pg_catalog.pg_type'::regclass AND ext.objid = t.oid
+)
+GROUP BY n.nspname, t.typname

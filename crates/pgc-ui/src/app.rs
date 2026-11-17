@@ -5,6 +5,7 @@
 //! `impl App` is spread over the submodules by area (tree pane, query tabs, closing,
 //! ...); this file has the state, the message loop and the command dispatch.
 
+mod ai;
 mod autocomplete;
 mod closing;
 mod command_line;
@@ -47,13 +48,16 @@ use pgc_db::{ConnId, DbEvent, EventSink};
 use pgc_editor::{Action, Editor, SearchOptions};
 use pgc_sql::SqlCatalog;
 
+pub use self::ai::AiEvent;
 use self::closing::{AfterSave, Bulk};
 use self::definition::{JobKind, StructureJob};
 use self::editing::editor_action;
 pub use self::file_jobs::{FileEvent, FileSink};
 use self::lookups::LookupTarget;
 use self::profiler_restore::Recovery;
-use self::state::{Closing, EscState, FileDialogState, LastFrame, MouseState, TemplateState};
+use self::state::{
+    AiState, Closing, EscState, FileDialogState, LastFrame, MouseState, TemplateState,
+};
 use crate::clipboard::Clipboard;
 use crate::dialog::{Button, Dialog, DialogEvent, DialogKind};
 use crate::export::{ExportEvent, ExportSink};
@@ -87,6 +91,8 @@ pub enum Msg {
     Export(ExportEvent),
     /// From a background file task (D-072).
     File(FileEvent),
+    /// The answer of an AI request (D-073).
+    Ai(AiEvent),
 }
 
 /// Side effects requested by `update`, carried out by the event loop.
@@ -412,6 +418,8 @@ pub struct App {
     export_sink: Option<ExportSink>,
     /// Where the background file tasks report to (D-072); `None`: done in place.
     file_sink: Option<FileSink>,
+    /// The AI assistant (D-073).
+    ai: AiState,
     next_export: u64,
     /// Definition exports / loads reading a database's structure (D-048).
     jobs: HashMap<ConnId, StructureJob>,
@@ -542,6 +550,7 @@ impl App {
             template_lookups: HashMap::new(),
             export_sink: None,
             file_sink: None,
+            ai: AiState::default(),
             next_export: 0,
             jobs: HashMap::new(),
             last_search: None,
@@ -697,6 +706,8 @@ impl App {
             Command::Psql => self
                 .query()
                 .is_some_and(|q| q.connected() && !q.busy() && q.export.is_none()),
+            Command::AskAi => self.ai_ready().is_ok(),
+            Command::AiSettings => true,
             Command::Dashboard => self.dashboard_target().is_some(),
             Command::DashboardRefresh
             | Command::DashboardPause
@@ -864,6 +875,10 @@ impl App {
                 self.on_file_event(event);
                 Vec::new()
             }
+            Msg::Ai(event) => {
+                self.on_ai_event(event);
+                Vec::new()
+            }
             Msg::TabTimer(tab, seq) => {
                 self.tab_timer(tab, seq);
                 Vec::new()
@@ -872,6 +887,8 @@ impl App {
         self.sync_export_dialog();
         self.sync_picker();
         self.sync_psql_dialog();
+        self.sync_ai_dialog();
+        self.sync_ai_settings();
         self.refresh_psql_completion();
         self.sync_find_dialog();
         if let Some(form) = self.templates.form.as_mut() {
@@ -976,11 +993,28 @@ impl App {
             );
         }
 
-        if let Some(dialog) = self.dialogs.last_mut() {
+        // Esc while an AI request runs cancels it (D-073)
+        if self.dialogs.is_empty()
+            && ev.code == KeyCode::Esc
+            && ev.modifiers.is_empty()
+            && self.cancel_ai()
+        {
+            return;
+        }
+        if !self.dialogs.is_empty() {
             if cmd == Some(Command::Help) {
                 self.run(Command::Help);
                 return;
             }
+            // the prompts of the session in the F8 prompt box (D-073)
+            if matches!(cmd, Some(Command::Up | Command::Down))
+                && self.ai_history_key(cmd == Some(Command::Up))
+            {
+                return;
+            }
+            let Some(dialog) = self.dialogs.last_mut() else {
+                return;
+            };
             // F4 list (D-054) and Find object (D-055): arrows and pages move in the
             // list while typing in the input
             // F4 input: autocomplete of the argument on request (D-054)
@@ -1016,7 +1050,15 @@ impl App {
                     return;
                 }
             }
-            let event = dialog.handle_key(cmd, &ev);
+            // a memo gets the editor's keys (D-073)
+            let editor = if dialog.memo_focused() {
+                self.keymap
+                    .lookup_only(Context::Editor, combo)
+                    .and_then(editor_action)
+            } else {
+                None
+            };
+            let event = dialog.handle_key_editor(cmd, editor, &ev);
             self.dialog_event(event);
             return;
         }
@@ -1242,6 +1284,8 @@ impl App {
             }
             Command::NewQuery => self.new_query_tab(None),
             Command::Settings => self.open_settings(),
+            Command::AiSettings => self.open_ai_settings(),
+            Command::AskAi => self.open_ai_dialog(),
             Command::NewConnection => self.open_connection_dialog(None),
             Command::EditConnection => {
                 if let Some(uid) = self.tree.selected_server().map(|s| s.uid) {
@@ -1456,6 +1500,8 @@ impl App {
                         self.forget_profiler_changes(server);
                     }
                     (DialogKind::Settings, Button::Ok) => self.apply_settings(dialog),
+                    (DialogKind::AiSettings, Button::Ok) => self.apply_ai_settings(dialog),
+                    (DialogKind::AskAi { tab }, Button::Ok) => self.ask_ai(dialog, tab),
                     (DialogKind::FindObject, Button::Ok) => self.find_chosen(dialog),
                     (DialogKind::PsqlCommand, Button::Ok) => {
                         let text = dialog.text("cmd").unwrap_or("").to_owned();

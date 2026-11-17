@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI assistant — pgtc Help</title>
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+<main>
+<h1>AI assistant</h1>
+<p class="lead">Describe in your own words what you need — a report query, a procedure, a change to the statement
+you are writing — and an AI model writes the SQL. It knows the structure of your database and sees the text in your
+editor. The answer always goes into the SQL editor and is <b>never run</b>: you read it, change it if needed, and run it
+yourself with <kbd>F5</kbd>.</p>
+
+<figure>
+  <img src="img/ai-dialog.svg" alt="The Ask AI dialog over a query tab" loading="lazy">
+  <figcaption><kbd>F8</kbd> in a query tab: the prompt, the scope, and how much will be sent where.</figcaption>
+</figure>
+
+<h2 id="setup">Setting it up</h2>
+<p>The assistant is off until you set it up. Open <span class="menu">Settings → AI…</span>:</p>
+<figure class="small">
+  <img src="img/ai-settings.svg" alt="The AI assistant settings dialog" loading="lazy">
+  <figcaption>The <i>Claude</i> preset chosen; a key is saved, so the field shows stars.</figcaption>
+</figure>
+<div class="tablewrap"><table>
+<tr><th>Field</th><th>Meaning</th></tr>
+<tr><td class="k"><span class="ui">Enabled</span></td><td>The assistant works only when this is on. Off: <kbd>F8</kbd> says <i>AI is not set up</i>.</td></tr>
+<tr><td class="k"><span class="ui">Preset</span></td><td>Fills in protocol, base URL and model for a known provider (table below). Every field stays editable; <i>(custom)</i> leaves them as they are.</td></tr>
+<tr><td class="k"><span class="ui">Protocol</span></td><td>The request format: <b>OpenAI-compatible</b> (<code>POST {base URL}/chat/completions</code>) or <b>Anthropic</b> (<code>POST {base URL}/v1/messages</code>).</td></tr>
+<tr><td class="k"><span class="ui">Base URL</span></td><td>Where the requests go. Required when the assistant is enabled.</td></tr>
+<tr><td class="k"><span class="ui">Model</span></td><td>The model name the provider expects. Required. Providers bring out new models often — use any name your account offers.</td></tr>
+<tr><td class="k"><span class="ui">API key</span></td><td>The key from your provider's console. Type it, or paste it with your terminal's paste (e.g. a right click, or <kbd>Ctrl+Shift+V</kbd>), and press OK. A saved key shows as <code>********</code>:
+  <ul>
+    <li>leave the stars as they are — the key stays;</li>
+    <li>type over them — the new key replaces the old one;</li>
+    <li>delete them (<kbd>Backspace</kbd>) and press OK — the key is removed.</li>
+  </ul>
+  Empty: no key is sent (local servers such as Ollama need none).</td></tr>
+</table></div>
+<p>The key is saved in its own file, <code>ai_key</code>, in pgtc's config folder next to <code>settings.toml</code>
+(<a href="reference.html#files">Reference → Files and folders</a>) — on Linux and macOS readable only by you, like
+<code>.pgpass</code>. It is <b>not</b> in <code>settings.toml</code>, so you can copy or show that file without giving
+your key away, and it is never written to the log. The other fields are in the <code>[ai]</code> section of
+<a href="settings.html#file"><code>settings.toml</code></a>.</p>
+
+<h3 id="presets">Providers</h3>
+<p>Almost every AI service speaks one of the two protocols, so pgtc does not need to know each one by name. The
+presets only save typing:</p>
+<div class="tablewrap"><table>
+<tr><th>Preset</th><th>Protocol</th><th>Base URL</th><th>Key</th></tr>
+<tr><td>Claude</td><td>Anthropic</td><td><code>https://api.anthropic.com</code></td><td>needed</td></tr>
+<tr><td>OpenAI</td><td>OpenAI-compatible</td><td><code>https://api.openai.com/v1</code></td><td>needed</td></tr>
+<tr><td>Grok</td><td>OpenAI-compatible</td><td><code>https://api.x.ai/v1</code></td><td>needed</td></tr>
+<tr><td>Gemini</td><td>OpenAI-compatible</td><td><code>https://generativelanguage.googleapis.com/v1beta/openai</code></td><td>needed</td></tr>
+<tr><td>Ollama (local)</td><td>OpenAI-compatible</td><td><code>http://localhost:11434/v1</code></td><td>no key</td></tr>
+</table></div>
+<p>Other services with an OpenAI-compatible endpoint — Mistral, DeepSeek, Groq, OpenRouter, LM Studio, vLLM,
+llama.cpp's server — work too: choose <i>(custom)</i>, the OpenAI-compatible protocol, and their base URL and model.</p>
+<div class="note"><p>A <b>local model</b> (Ollama, LM Studio, …) keeps your database structure on your own machine — a
+good choice when the structure may not leave the company.</p></div>
+
+<h2 id="ask">Asking</h2>
+<p>Press <kbd>F8</kbd> in the editor or the results of a query tab, or choose <span class="menu">Tools → Ask AI…</span>.
+It works only when</p>
+<ul>
+  <li>the assistant is set up (otherwise: <i>AI is not set up (Settings → AI…)</i>),</li>
+  <li>the query tab is <b>connected</b> to a database (<i>Connect the query tab first</i>),</li>
+  <li>the connection does not have <a href="#privacy">AI not allowed</a>,</li>
+  <li>the tab is not running a query, and no other AI request is waiting.</li>
+</ul>
+<p>The dialog opens at once; meanwhile pgtc reads the database structure through the tab's connection.</p>
+<div class="tablewrap"><table>
+<tr><th>Part</th><th>Keys</th><th>What it does</th></tr>
+<tr><td class="k"><span class="ui">Prompt</span></td><td class="k"><kbd>Alt+P</kbd></td><td>What you need, in your words. The text wraps; <kbd>Enter</kbd> starts a new line, <kbd>Tab</kbd> leaves the box. In an empty box <kbd>↑</kbd> / <kbd>↓</kbd> bring back the prompts of this session.</td></tr>
+<tr><td class="k"><span class="ui">Scope</span></td><td class="k"><kbd>Alt+O</kbd></td><td><i>Whole database</i>, or <i>Schema …</i> to send the structure of one schema only — smaller and cheaper for large databases.</td></tr>
+<tr><td class="k">The info line</td><td></td><td><i>Sends about N tokens to host</i>: an estimate of the size, and where it goes. It follows the scope.</td></tr>
+<tr><td class="k"><span class="ui">Send</span></td><td class="k"><kbd>Alt+S</kbd>, <kbd>Ctrl+Enter</kbd></td><td>Sends the request. An empty prompt is refused; while the structure is still being read, the dialog stays.</td></tr>
+<tr><td class="k"><span class="ui">Cancel</span></td><td class="k"><kbd>Esc</kbd></td><td>Closes the dialog; nothing is sent.</td></tr>
+</table></div>
+<p>Good prompts name what you want to see and any limits: <i>“Orders of the last 30 days per territory, with the
+total and the average”</i>, <i>“A procedure that moves a customer to another territory and writes the change to
+sales.customer_history”</i>, <i>“Rewrite the selected query without the subquery”</i>.</p>
+
+<h2 id="sent">What is sent</h2>
+<ul>
+  <li><b>The server version</b>, so the SQL fits your server.</li>
+  <li><b>The structure</b> of the database (or the chosen schema) as compact text: tables, views, materialized views
+      and foreign tables with their columns, types, <code>NOT NULL</code>, defaults, primary, unique and foreign keys
+      and checks; the signatures of functions and procedures; enum types. System schemas, partitions and the
+      objects of extensions are left out.</li>
+  <li><b>The text of the editor</b>, when it is not empty. A <b>selection</b> is marked, so the model knows which part
+      you mean — and its answer replaces that part. A text longer than 50,000 characters is cut to the whole lines
+      around the cursor, and the dialog says so.</li>
+  <li><b>Your prompt</b>, with fixed instructions: PostgreSQL SQL only, explanations as <code>--</code> comments.</li>
+</ul>
+<p><b>Never table data</b>: no rows, no statistics, no results. The request goes straight from pgtc to the base URL
+you set — there is no pgtc server in between.</p>
+
+<h2 id="wait">Waiting, cancelling, errors</h2>
+<figure>
+  <img src="img/ai-waiting.svg" alt="The status line while the AI answers" loading="lazy">
+  <figcaption>While the model writes, the status line shows <i>Asking AI (host) … Esc cancels</i>. You can go on working.</figcaption>
+</figure>
+<ul>
+  <li><kbd>Esc</kbd> cancels the request; an answer that comes later is ignored.</li>
+  <li>An error — a wrong key, an unknown model, no connection to the host, a timeout after five minutes — is shown in
+      an error message with the provider's own text. The editor is not changed.</li>
+</ul>
+
+<h2 id="answer">The answer</h2>
+<figure>
+  <img src="img/ai-answer.svg" alt="The AI's answer in the editor" loading="lazy">
+  <figcaption>The answer below the existing text: the prompt as comments, then the SQL. Nothing has run.</figcaption>
+</figure>
+<ul>
+  <li>It <b>replaces the selection</b>, or goes in <b>at the cursor</b> when nothing is selected — on a line of its own.</li>
+  <li>Your prompt comes first, as <code>--</code> comment lines, so you see later what was asked.</li>
+  <li>Markdown code fences are removed; text the model wrote around them becomes comments.</li>
+  <li><kbd>Ctrl+Z</kbd> takes the whole answer out again in one step.</li>
+  <li><b>It is never run.</b> Read it before you press <kbd>F5</kbd>: a model can misunderstand the request, use a
+      wrong column, or write a statement that changes data. With <a href="query.html#tx">auto commit</a> off
+      you can run it and still roll it back.</li>
+</ul>
+
+<h2 id="privacy">Privacy: AI not allowed</h2>
+<p>For servers whose structure must not leave the company — production, customer systems — open the connection
+(<span class="menu">Edit connection…</span>) and tick <span class="ui">AI not allowed</span>. <kbd>F8</kbd> then refuses
+with <i>AI is not allowed for this connection</i>, in every query tab of that server.</p>
+<p>Without that mark, the structure of the database is sent to the provider each time you press Send. Check your
+provider's terms for what it keeps.</p>
+
+<h2 id="trouble">If it does not work</h2>
+<div class="tablewrap"><table>
+<tr><th>Message</th><th>Cause</th><th>What to do</th></tr>
+<tr><td><i>HTTP 401</i> / <i>HTTP 403</i></td><td>No key is saved, or the key is wrong, expired, or not allowed to use the model.</td><td>Check the key in your provider's console and enter it again in <span class="menu">Settings → AI…</span>.</td></tr>
+<tr><td><i>HTTP 404</i> / <i>model not found</i></td><td>The base URL or the model name is wrong.</td><td>Compare them with your provider's documentation; mind the protocol.</td></tr>
+<tr><td><i>HTTP 429</i></td><td>Too many requests, or the account has no credit left.</td><td>Wait, or check your plan.</td></tr>
+<tr><td><i>Could not connect to …</i></td><td>No network, a proxy, or a local server that is not running.</td><td>Start the local server; check the base URL.</td></tr>
+<tr><td>The answer is cut off</td><td>Very long answers stop at the model's limit.</td><td>Ask for less at once, or choose one schema.</td></tr>
+</table></div>
+</main>
+<script src="help.js"></script>
+</body>
+</html>

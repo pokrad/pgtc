@@ -111,6 +111,7 @@ pub fn resolve_with(
             username,
             ssl_mode,
             ssl_root_cert,
+            ai_not_allowed: false,
         },
         password,
         password_prompt: args.password_prompt,

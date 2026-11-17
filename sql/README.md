@@ -28,6 +28,13 @@ leaves missing values out). `depends.sql` returns the dependencies between model
 objects. They run in one read-only transaction with `search_path = ''`, so every name
 in the output is schema-qualified. Shared parts are in `macros/model.sql`.
 
+## AI assistant (`ai/`, D-073)
+
+`structure.sql` is read through a query tab's own connection when `F8` opens: the
+structure sent with a prompt (relations with their columns and constraints, functions
+and procedures, enum types; no data), as text rows whose first column says what the
+row is. System schemas, partitions and the objects of extensions are left out.
+
 ## Autocomplete queries (`completion/`, D-052)
 
 Read through a query tab's own connection. `objects.sql` returns `schema` (NULL for

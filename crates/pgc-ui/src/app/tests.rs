@@ -4368,3 +4368,248 @@ async fn failed_name_lookups_are_not_remembered() {
     a.request_names(i, &[Need::Objects]);
     assert_eq!(a.next_key, before + 1);
 }
+
+/// A query tab of server `uid` with an open (detached) connection to `shop`.
+fn ai_tab(a: &mut App, uid: u64) {
+    a.new_query_tab(None);
+    let q = a.query_mut().unwrap();
+    q.binding = Some((uid, "shop".into()));
+    q.conn = Some(QueryConn {
+        id: 99,
+        database: "shop".into(),
+        handle: pgc_db::ConnectionHandle::detached(99),
+        cancel: None,
+        state: QueryConnState::Connected,
+        ssl_mode: SslMode::default(),
+        ssl_root_cert: None,
+    });
+    a.focus = Focus::Tabs;
+}
+
+fn ai_on(a: &mut App) {
+    a.settings.ai = pgc_core::settings::AiSettings {
+        enabled: true,
+        protocol: pgc_core::settings::AiProtocol::Anthropic,
+        base_url: "https://api.anthropic.com".into(),
+        model: "claude-sonnet-5-5".into(),
+        ..Default::default()
+    };
+}
+
+fn ai_structure_rows() -> Vec<Vec<String>> {
+    let row = |c: &[&str]| c.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+    vec![
+        row(&["r", "sales", "customer", "r", "", "", "", ""]),
+        row(&[
+            "c",
+            "sales",
+            "customer",
+            "1",
+            "customer_id",
+            "integer",
+            "true",
+            "",
+        ]),
+        row(&["r", "public", "note", "r", "", "", "", ""]),
+        row(&["c", "public", "note", "1", "body", "text", "false", ""]),
+    ]
+}
+
+/// The key of the AI structure lookup on its way.
+fn ai_lookup(a: &App) -> u64 {
+    *a.template_lookups
+        .iter()
+        .find(|(_, t)| matches!(t, LookupTarget::AiStructure { .. }))
+        .expect("the structure is being read")
+        .0
+}
+
+/// F8 (D-073): only when AI is set up and the tab connected; the dialog opens at
+/// once and reads the structure; Send carries the structure, the editor text and the
+/// prompt; the answer goes into the editor (never run); Esc cancels; a connection
+/// with *AI not allowed* refuses it.
+#[tokio::test]
+async fn ask_ai_puts_the_answer_into_the_editor() {
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    a.new_query_tab(None);
+    a.focus = Focus::Tabs;
+    key(&mut a, "F8");
+    assert!(a.dialogs.is_empty());
+    assert_eq!(a.status, "AI is not set up (Settings → AI…)");
+    assert!(!a.is_enabled(Command::AskAi));
+    ai_on(&mut a);
+    key(&mut a, "F8");
+    assert_eq!(a.status, "Connect the query tab first");
+
+    ai_tab(&mut a, uid);
+    typing(&mut a, "select 1;");
+    assert!(a.is_enabled(Command::AskAi));
+    key(&mut a, "F8");
+    let tab = a.tabs[a.active_tab].id;
+    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::AskAi { tab });
+    // Send before the structure is there: the dialog stays
+    typing(&mut a, "count");
+    key(&mut a, "Alt+S");
+    assert_eq!(a.dialogs.len(), 1);
+    assert_eq!(a.status, "Still reading the structure…");
+    a.lookup_loaded(ai_lookup(&a), Ok(ai_structure_rows()));
+    a.update(Msg::Tick, &Hits::default());
+    let screen = screen_text(&a);
+    assert!(screen.contains("Sends about"), "{screen}");
+    assert!(screen.contains("api.anthropic.com"), "{screen}");
+    let d = a.dialogs.last().unwrap();
+    assert_eq!(d.selected_combo_item("scope"), Some("Whole database"));
+    // Enter is a new line in the prompt box
+    typing(&mut a, " customers");
+    key(&mut a, "Enter");
+    typing(&mut a, "by id");
+    assert_eq!(
+        a.dialogs.last().unwrap().memo_text("prompt").as_deref(),
+        Some("count customers\nby id")
+    );
+    key(&mut a, "Alt+S");
+    assert!(a.dialogs.is_empty());
+    assert!(a.status.starts_with("Asking AI"), "{}", a.status);
+    let req = a.ai.unsent.take().expect("the request");
+    assert_eq!(req.url, "https://api.anthropic.com/v1/messages");
+    let system = req.body["system"].as_str().unwrap();
+    assert!(system.contains("PostgreSQL 17.2"), "{system}");
+    assert!(system.contains("TABLE sales.customer ("), "{system}");
+    assert!(system.contains("TABLE public.note ("), "{system}");
+    let user = req.body["messages"][0]["content"].as_str().unwrap();
+    assert!(user.contains("select 1;"), "{user}");
+    assert!(user.ends_with("Request:\ncount customers\nby id"), "{user}");
+    // a second F8 waits for the first answer
+    key(&mut a, "F8");
+    assert!(a.dialogs.is_empty());
+    // the answer: at the cursor on a line of its own, not run
+    let id = a.ai.run.as_ref().unwrap().id;
+    a.update(
+        Msg::Ai(AiEvent {
+            id,
+            result: Ok("```sql\nSELECT count(*) FROM sales.customer;\n```".into()),
+        }),
+        &Hits::default(),
+    );
+    assert_eq!(
+        a.tabs[a.active_tab].view.editor.text(),
+        "select 1;\n-- count customers\n-- by id\nSELECT count(*) FROM sales.customer;\n"
+    );
+    assert!(a.query().unwrap().running.is_none(), "nothing is run");
+    assert!(a.ai.run.is_none());
+
+    // one schema; the prompt of the session comes back with Up
+    key(&mut a, "F8");
+    a.lookup_loaded(ai_lookup(&a), Ok(ai_structure_rows()));
+    key(&mut a, "Up");
+    assert_eq!(
+        a.dialogs.last().unwrap().memo_text("prompt").as_deref(),
+        Some("count customers\nby id")
+    );
+    let d = a.dialogs.last_mut().unwrap();
+    d.set_combo_selected("scope", 2);
+    assert_eq!(d.selected_combo_item("scope"), Some("Schema sales"));
+    key(&mut a, "Alt+S");
+    let req = a.ai.unsent.take().unwrap();
+    let system = req.body["system"].as_str().unwrap();
+    assert!(system.contains("TABLE sales.customer ("));
+    assert!(!system.contains("public.note"), "{system}");
+    // Esc cancels; a late answer is ignored
+    let id = a.ai.run.as_ref().unwrap().id;
+    esc(&mut a);
+    assert!(a.ai.run.is_none());
+    assert_eq!(a.status, "AI request cancelled");
+    let before = a.tabs[a.active_tab].view.editor.text();
+    a.on_ai_event(AiEvent {
+        id,
+        result: Ok("SELECT 2;".into()),
+    });
+    assert_eq!(a.tabs[a.active_tab].view.editor.text(), before);
+
+    // an error: a message, the editor unchanged
+    key(&mut a, "F8");
+    a.lookup_loaded(ai_lookup(&a), Ok(ai_structure_rows()));
+    typing(&mut a, "x");
+    key(&mut a, "Alt+S");
+    let id = a.ai.run.as_ref().unwrap().id;
+    a.on_ai_event(AiEvent {
+        id,
+        result: Err("The AI service answered HTTP 401: invalid x-api-key".into()),
+    });
+    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::Message);
+    assert_eq!(a.tabs[a.active_tab].view.editor.text(), before);
+    key(&mut a, "Enter");
+
+    // AI not allowed on this connection
+    a.tree.by_uid(uid).unwrap().conn.ai_not_allowed = true;
+    key(&mut a, "F8");
+    assert!(a.dialogs.is_empty());
+    assert_eq!(a.status, "AI is not allowed for this connection");
+}
+
+/// Settings → AI… (D-073): a preset fills in the fields; the key goes into the key
+/// file, never into settings.toml, and shows as stars afterwards (kept, replaced by
+/// typing, removed when emptied); enabled needs a URL and a model.
+#[test]
+fn ai_settings_dialog() {
+    let (mut a, _dir) = app();
+    a.run(Command::AiSettings);
+    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::AiSettings);
+    let d = a.dialogs.last_mut().unwrap();
+    assert_eq!(d.text("key"), Some(""), "no key saved yet");
+    d.set_combo_selected("preset", 1);
+    a.update(Msg::Tick, &Hits::default());
+    let d = a.dialogs.last_mut().unwrap();
+    assert_eq!(d.text("url"), Some("https://api.anthropic.com"));
+    assert_eq!(d.selected_combo_item("protocol"), Some("Anthropic"));
+    // enabled without a model: refused
+    d.set_text("model", "");
+    key(&mut a, "Alt+E");
+    key(&mut a, "Alt+O");
+    assert_eq!(a.dialogs.len(), 2, "error over the dialog");
+    key(&mut a, "Enter");
+    let d = a.dialogs.last_mut().unwrap();
+    d.set_text("model", "claude-opus-5-5");
+    d.set_text("key", "sk-secret-1");
+    key(&mut a, "Alt+O");
+    assert!(
+        a.dialogs.is_empty(),
+        "{:?}",
+        a.dialogs.last().map(|d| &d.title)
+    );
+    let ai = &a.settings.ai;
+    assert!(ai.enabled);
+    assert_eq!(ai.preset, "Claude");
+    assert_eq!(ai.model, "claude-opus-5-5");
+    let key_file = a.paths.ai_key_file();
+    assert_eq!(std::fs::read_to_string(&key_file).unwrap(), "sk-secret-1");
+    let saved = std::fs::read_to_string(a.paths.settings_file()).unwrap();
+    assert!(saved.contains("[ai]"), "{saved}");
+    assert!(!saved.contains("sk-secret"), "{saved}");
+    assert_eq!(crate::ai::api_key(&key_file), Some("sk-secret-1".into()));
+
+    // again: the saved key is stars; OK keeps it
+    a.run(Command::AiSettings);
+    assert_eq!(a.dialogs.last().unwrap().text("key"), Some("********"));
+    key(&mut a, "Alt+O");
+    assert_eq!(crate::ai::api_key(&key_file), Some("sk-secret-1".into()));
+    // typing over the stars starts a new key
+    a.run(Command::AiSettings);
+    key(&mut a, "Alt+K");
+    typing(&mut a, "n");
+    assert_eq!(a.dialogs.last().unwrap().text("key"), Some("n"));
+    typing(&mut a, "ew");
+    key(&mut a, "Alt+O");
+    assert_eq!(crate::ai::api_key(&key_file), Some("new".into()));
+    // Backspace on the stars empties the field; OK removes the key file
+    a.run(Command::AiSettings);
+    key(&mut a, "Alt+K");
+    key(&mut a, "Backspace");
+    assert_eq!(a.dialogs.last().unwrap().text("key"), Some(""));
+    key(&mut a, "Alt+O");
+    assert!(!key_file.exists());
+    assert_eq!(a.status, "AI settings saved");
+}

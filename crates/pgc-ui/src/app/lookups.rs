@@ -30,6 +30,10 @@ pub(super) enum LookupTarget {
         tab: u64,
         shown: Vec<String>,
     },
+    /// The structure for the AI dialog of query tab `tab` (D-073).
+    AiStructure {
+        tab: u64,
+    },
     /// Autocomplete names of query tab `tab` (D-052).
     Names {
         tab: u64,
@@ -45,6 +49,7 @@ impl LookupTarget {
             LookupTarget::Generate { tab, .. }
             | LookupTarget::Related { tab, .. }
             | LookupTarget::View { tab, .. }
+            | LookupTarget::AiStructure { tab }
             | LookupTarget::Names { tab, .. } => Some(*tab),
             LookupTarget::Field(..) | LookupTarget::Row(..) => None,
         }
@@ -86,6 +91,7 @@ impl App {
                 self.related_loaded(tab, what, &table, result)
             }
             LookupTarget::View { tab, shown } => self.view_loaded(tab, &shown, result),
+            LookupTarget::AiStructure { tab } => self.ai_structure_loaded(tab, result),
         }
     }
 

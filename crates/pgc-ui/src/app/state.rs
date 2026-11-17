@@ -95,3 +95,31 @@ pub struct TemplateState {
     /// The row being edited: (list field, row; `None` = a new row).
     pub(super) row_edit: Option<(usize, Option<usize>)>,
 }
+
+/// A request on its way.
+pub(super) struct AiRun {
+    pub(super) id: u64,
+    /// Query tab the answer goes into.
+    pub(super) tab: u64,
+    pub(super) prompt: String,
+    pub(super) abort: Option<tokio::task::AbortHandle>,
+}
+
+/// The AI assistant (D-073).
+#[derive(Default)]
+pub(super) struct AiState {
+    pub(super) sink: Option<super::ai::AiSink>,
+    pub(super) next_id: u64,
+    pub(super) run: Option<AiRun>,
+    /// The structure read for the open `F8` dialog of query tab `.0`.
+    pub(super) structure: Option<(u64, crate::ai::Structure)>,
+    /// The scope the dialog's info line was computed for.
+    pub(super) scope_seen: Option<usize>,
+    /// Prompts of this session, oldest first, and the one shown (`↑` / `↓`).
+    pub(super) history: Vec<String>,
+    pub(super) history_pos: Option<usize>,
+    /// The preset the AI settings dialog last filled in.
+    pub(super) preset_seen: usize,
+    /// Without a sink (tests): the request that would have been sent.
+    pub(super) unsent: Option<crate::ai::Request>,
+}

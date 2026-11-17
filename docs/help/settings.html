@@ -260,6 +260,10 @@ safest choice.</p></div>
 <tr><td class="k"><code>[ui]</code> <code>tree_width</code></td><td>a third of the window</td><td>The width of the object tree in columns. Written when you drag the tree's border.</td></tr>
 <tr><td class="k"><code>[export]</code> <code>format</code>, <code>csv_separator</code>, <code>csv_bom</code></td><td><code>csv</code>, <code>comma</code>, <code>false</code></td><td>The last choices of the export dialog.</td></tr>
 </table></div>
+<p>The <code>[ai]</code> section holds what <span class="menu">Settings → AI…</span> saves (<a href="ai.html#setup">AI
+assistant</a>): <code>enabled</code>, <code>preset</code>, <code>protocol</code> (<code>openai-compatible</code> or
+<code>anthropic</code>), <code>base_url</code> and <code>model</code>. The API key itself is never in this file; it
+is in <code>ai_key</code> next to it.</p>
 <pre><code>[ui]
 color_scheme = "Dracula"
 show_system_objects = false
@@ -283,6 +287,13 @@ connect_timeout_secs = 10
 tab_width = 2
 line_numbers = true
 
+[ai]
+enabled = true
+preset = "Claude"
+protocol = "anthropic"
+base_url = "https://api.anthropic.com"
+model = "claude-sonnet-5-5"
+
 [[servers]]
 name = "local"
 host = "localhost"
@@ -298,7 +309,8 @@ port = 5432
 database = "adventureworks"
 username = "app"
 ssl_mode = "verify-full"
-ssl_root_cert = "/etc/ssl/our-ca.pem"</code></pre>
+ssl_root_cert = "/etc/ssl/our-ca.pem"
+ai_not_allowed = true</code></pre>
 <ul>
   <li>Edit the file only while pgtc is <b>not running</b> — pgtc writes it when you change a setting or a connection.</li>
   <li>A key that is missing has its default. A key pgtc does not know is ignored.</li>
@@ -312,6 +324,7 @@ ssl_root_cert = "/etc/ssl/our-ca.pem"</code></pre>
 <h2 id="menu">The other items of the Settings menu</h2>
 <div class="tablewrap"><table>
 <tr><th>Item</th><th>What it does</th></tr>
+<tr><td class="k"><span class="menu">AI…</span></td><td>Provider, model and API key of the <a href="ai.html">AI assistant</a> (<kbd>F8</kbd>).</td></tr>
 <tr><td class="k"><span class="menu">Run setup</span></td><td>Runs every installation step, like <code>pgtc --setup</code>, and shows the result of each step in a message.</td></tr>
 <tr><td class="k"><span class="menu">Install templates</span></td><td>Copies the <a href="templates.html">developer templates</a> that come with pgtc into your templates folder, like <code>pgtc --install-templates</code>. Asks before overwriting when the folder exists.</td></tr>
 <tr><td class="k"><span class="menu">Show templates folder</span></td><td>Shows the path of the templates folder. (pgtc cannot open a file manager for you — least of all over SSH.)</td></tr>

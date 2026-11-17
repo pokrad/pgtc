@@ -3008,6 +3008,59 @@ async fn help_screenshots() {
     a.status.clear();
     out.shot("dbstats", &a, Crop::Full);
 
+    // ---- AI assistant (D-073) -----------------------------------------------------
+    let (mut a, _d, _) = query_scene();
+    // a saved key: shown as stars
+    let file = a.paths.ai_key_file();
+    std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+    std::fs::write(&file, "sk-ant-example").unwrap();
+    a.run(Command::AiSettings);
+    a.dialogs
+        .last_mut()
+        .unwrap()
+        .set_combo_selected("preset", 1);
+    a.update(Msg::Tick, &Hits::default());
+    let d = a.dialogs.last_mut().unwrap();
+    if let Some(i) = d.widgets.iter().position(|w| w.id == "enabled") {
+        d.focus = i;
+    }
+    key(&mut a, "Space");
+    out.shot("ai-settings", &a, Crop::Dialog);
+
+    let (mut a, _d, ids) = scene();
+    short_tree(&mut a, ids);
+    query_tab(&mut a, ids, AI_EDITOR);
+    let end = AI_EDITOR.chars().count();
+    a.editor().set_cursor(end, false);
+    a.settings.ai = pgc_core::settings::AiSettings {
+        enabled: true,
+        preset: "Claude".into(),
+        protocol: pgc_core::settings::AiProtocol::Anthropic,
+        base_url: "https://api.anthropic.com".into(),
+        model: "claude-sonnet-5-5".into(),
+    };
+    key(&mut a, "F8");
+    let lookup = *a
+        .template_lookups
+        .iter()
+        .find(|(_, t)| matches!(t, LookupTarget::AiStructure { .. }))
+        .unwrap()
+        .0;
+    a.lookup_loaded(lookup, Ok(ai_structure()));
+    typing(&mut a, AI_PROMPT);
+    a.update(Msg::Tick, &Hits::default());
+    out.shot("ai-dialog", &a, Crop::Full);
+    key(&mut a, "Alt+O");
+    a.dialogs.last_mut().unwrap().set_combo_selected("scope", 0);
+    key(&mut a, "Alt+S");
+    let id = a.ai.run.as_ref().unwrap().id;
+    out.shot("ai-waiting", &a, Crop::Full);
+    a.on_ai_event(crate::app::AiEvent {
+        id,
+        result: Ok(AI_ANSWER.into()),
+    });
+    out.shot("ai-answer", &a, Crop::Full);
+
     // ---- settings and colour schemes --------------------------------------------
     let (mut a, _d, _) = query_scene();
     a.settings.clipboard.system = true;
@@ -3044,4 +3097,161 @@ async fn help_screenshots() {
     if let Some(t) = &out.txt {
         std::fs::write(t.join("_names.txt"), out.names.borrow().join("\n")).unwrap();
     }
+}
+
+/// The editor text of the AI pictures (D-073).
+const AI_EDITOR: &str = "-- reports for the sales team\nSELECT count(*) FROM sales.customer;\n\n";
+
+const AI_PROMPT: &str = "Total due per customer for 2014, the ten largest, with the person's name";
+
+const AI_ANSWER: &str = "-- the ten customers with the largest total due in 2014
+SELECT c.customerid,
+       p.firstname || ' ' || p.lastname AS customer_name,
+       sum(h.totaldue) AS total_due
+FROM sales.customer c
+JOIN person.person p ON p.businessentityid = c.personid
+JOIN sales.salesorderheader h ON h.customerid = c.customerid
+WHERE h.orderdate >= '2014-01-01' AND h.orderdate < '2015-01-01'
+GROUP BY c.customerid, customer_name
+ORDER BY total_due DESC
+LIMIT 10;
+";
+
+/// A part of AdventureWorks as `sql/ai/default/structure.sql` reads it.
+fn ai_structure() -> Vec<Vec<String>> {
+    let mut rows: Vec<Vec<&str>> = vec![
+        vec!["r", "sales", "customer", "r"],
+        vec!["r", "sales", "salesorderheader", "r"],
+        vec!["r", "person", "person", "r"],
+        vec![
+            "c",
+            "sales",
+            "customer",
+            "1",
+            "customerid",
+            "integer",
+            "true",
+            "",
+        ],
+        vec![
+            "c", "sales", "customer", "2", "personid", "integer", "false", "",
+        ],
+        vec![
+            "c",
+            "sales",
+            "customer",
+            "3",
+            "territoryid",
+            "integer",
+            "false",
+            "",
+        ],
+        vec![
+            "c",
+            "sales",
+            "salesorderheader",
+            "1",
+            "salesorderid",
+            "integer",
+            "true",
+            "",
+        ],
+        vec![
+            "c",
+            "sales",
+            "salesorderheader",
+            "2",
+            "orderdate",
+            "timestamp without time zone",
+            "true",
+            "now()",
+        ],
+        vec![
+            "c",
+            "sales",
+            "salesorderheader",
+            "3",
+            "customerid",
+            "integer",
+            "true",
+            "",
+        ],
+        vec![
+            "c",
+            "sales",
+            "salesorderheader",
+            "4",
+            "totaldue",
+            "numeric",
+            "true",
+            "",
+        ],
+        vec![
+            "c",
+            "person",
+            "person",
+            "1",
+            "businessentityid",
+            "integer",
+            "true",
+            "",
+        ],
+        vec![
+            "c",
+            "person",
+            "person",
+            "2",
+            "firstname",
+            "text",
+            "true",
+            "",
+        ],
+        vec!["c", "person", "person", "3", "lastname", "text", "true", ""],
+        vec![
+            "k",
+            "sales",
+            "customer",
+            "pk_customer",
+            "p",
+            "PRIMARY KEY (customerid)",
+        ],
+        vec![
+            "k",
+            "sales",
+            "customer",
+            "fk_person",
+            "f",
+            "FOREIGN KEY (personid) REFERENCES person.person(businessentityid)",
+        ],
+        vec![
+            "k",
+            "sales",
+            "salesorderheader",
+            "pk_soh",
+            "p",
+            "PRIMARY KEY (salesorderid)",
+        ],
+        vec![
+            "k",
+            "sales",
+            "salesorderheader",
+            "fk_customer",
+            "f",
+            "FOREIGN KEY (customerid) REFERENCES sales.customer(customerid)",
+        ],
+        vec![
+            "k",
+            "person",
+            "person",
+            "pk_person",
+            "p",
+            "PRIMARY KEY (businessentityid)",
+        ],
+    ];
+    for r in &mut rows {
+        r.resize(8, "");
+    }
+    rows.into_iter()
+        .map(|r| r.into_iter().map(str::to_owned).collect())
+        .collect()
 }

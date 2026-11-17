@@ -4,7 +4,8 @@
 //! Widgets are stacked vertically; all buttons go into one centred row at the bottom.
 //! Keys arrive as keymap [`Command`]s from the `[dialog]` context; typed characters go
 //! into the focused input; hotkey letters (`Alt+letter`, or the plain letter when the
-//! focus is not in an input) activate the widget with that letter.
+//! focus is not in an input) activate the widget with that letter. A memo (multi-line
+//! text, D-073) gets the editor's keys; `Tab` leaves it.
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::Frame;
@@ -20,6 +21,7 @@ use crate::export::ExportOptions;
 use crate::hotkey::HotText;
 use crate::keymap::Command;
 use crate::theme::{Role, Theme};
+use pgc_editor::{Action, Editor};
 
 /// What a dialog is for, with the caller's data it is about (a server, a tab, a file);
 /// the app handles the result by it. The data goes with the dialog, so a cancelled
@@ -95,6 +97,12 @@ pub enum DialogKind {
     Viewer,
     /// psql-style command line (D-054).
     PsqlCommand,
+    /// Settings → AI… (D-073).
+    AiSettings,
+    /// The `F8` prompt of query tab `tab` (D-073).
+    AskAi {
+        tab: u64,
+    },
     /// Find object in the tree (D-055).
     FindObject,
     /// Dashboard tab `tab`: cancel query / terminate session of a session (D-057).
@@ -171,6 +179,11 @@ pub enum WidgetKind {
         default: bool,
         button: Button,
     },
+    /// Multi-line text in its own frame, the label as the frame's title (D-073).
+    Memo {
+        editor: MemoEditor,
+        rows: u16,
+    },
     /// Read-only text that scrolls (Help windows). `headers` lines are drawn in the
     /// hotkey colour.
     Text {
@@ -179,6 +192,19 @@ pub enum WidgetKind {
         offset: usize,
         rows: u16,
     },
+}
+
+/// The editor of a memo. A copy (a cloned dialog) has the text and the cursor, not the
+/// undo history.
+#[derive(Debug)]
+pub struct MemoEditor(pub Box<Editor>);
+
+impl Clone for MemoEditor {
+    fn clone(&self) -> Self {
+        let mut e = Editor::new(&self.0.text(), false, self.0.tab_width());
+        e.set_cursor(self.0.cursor(), false);
+        Self(Box::new(e))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -307,6 +333,20 @@ impl Widget {
         }
     }
 
+    /// Multi-line text `rows` lines high (D-073).
+    pub fn memo(id: &'static str, label: &str, text: &str, rows: u16) -> Self {
+        let mut editor = Editor::new(text, false, 4);
+        editor.set_cursor(text.chars().count(), false);
+        Self {
+            id,
+            label: HotText::new(label),
+            kind: WidgetKind::Memo {
+                editor: MemoEditor(Box::new(editor)),
+                rows: rows.max(1),
+            },
+        }
+    }
+
     pub fn button(button: Button, label: &str, default: bool) -> Self {
         Self {
             id: button.id(),
@@ -346,6 +386,7 @@ impl Widget {
             WidgetKind::Label => self.label.text.lines().count().max(1) as u16,
             WidgetKind::Input { .. } => label_rows + 1,
             WidgetKind::List { rows, .. } | WidgetKind::Text { rows, .. } => label_rows + rows,
+            WidgetKind::Memo { rows, .. } => rows + 2,
             WidgetKind::Checkbox { .. } | WidgetKind::Combo { .. } | WidgetKind::Button { .. } => 1,
         }
     }
@@ -564,6 +605,35 @@ impl Dialog {
         )
     }
 
+    /// Text of memo `id`.
+    pub fn memo_text(&self, id: &str) -> Option<String> {
+        match self.find(id).map(|w| &w.kind) {
+            Some(WidgetKind::Memo { editor, .. }) => Some(editor.0.text()),
+            _ => None,
+        }
+    }
+
+    /// Replaces the text of memo `id` (cursor at the end).
+    pub fn set_memo_text(&mut self, id: &str, text: &str) {
+        if let Some(WidgetKind::Memo { editor, .. }) = self
+            .widgets
+            .iter_mut()
+            .find(|w| w.id == id)
+            .map(|w| &mut w.kind)
+        {
+            editor.0.set_text(text);
+            editor.0.set_cursor(text.chars().count(), false);
+        }
+    }
+
+    /// True while a memo has the focus: keys go to its editor.
+    pub fn memo_focused(&self) -> bool {
+        matches!(
+            self.widgets.get(self.focus).map(|w| &w.kind),
+            Some(WidgetKind::Memo { .. })
+        )
+    }
+
     pub fn text(&self, id: &str) -> Option<&str> {
         match self.find(id).map(|w| &w.kind) {
             Some(WidgetKind::Input { value, .. }) => Some(value),
@@ -646,6 +716,50 @@ impl Dialog {
         }
     }
 
+    /// Replaces the items of combo `id` and selects `index`.
+    pub fn set_combo(&mut self, id: &str, new_items: Vec<String>, index: usize) {
+        if let Some(WidgetKind::Combo {
+            items,
+            selected,
+            open,
+            ..
+        }) = self
+            .widgets
+            .iter_mut()
+            .find(|w| w.id == id)
+            .map(|w| &mut w.kind)
+        {
+            *selected = index.min(new_items.len().saturating_sub(1));
+            *items = new_items;
+            *open = None;
+        }
+    }
+
+    /// Selects item `index` of combo `id`.
+    pub fn set_combo_selected(&mut self, id: &str, index: usize) {
+        if let Some(WidgetKind::Combo {
+            items, selected, ..
+        }) = self
+            .widgets
+            .iter_mut()
+            .find(|w| w.id == id)
+            .map(|w| &mut w.kind)
+            && index < items.len()
+        {
+            *selected = index;
+        }
+    }
+
+    /// Text of the selected item of combo `id`.
+    pub fn selected_combo_item(&self, id: &str) -> Option<&str> {
+        match self.find(id).map(|w| &w.kind) {
+            Some(WidgetKind::Combo {
+                selected, items, ..
+            }) => items.get(*selected).map(String::as_str),
+            _ => None,
+        }
+    }
+
     /// Selected index of a list or choice.
     /// Text of the selected row of list `id`, as it is shown.
     pub fn selected_item(&self, id: &str) -> Option<&str> {
@@ -684,7 +798,22 @@ impl Dialog {
         }
     }
 
+    #[cfg(test)]
     pub fn handle_key(&mut self, cmd: Option<Command>, ev: &KeyEvent) -> DialogEvent {
+        self.handle_key_editor(cmd, None, ev)
+    }
+
+    /// As [`Self::handle_key`]; `editor` is the editor action of the key, used when a
+    /// memo has the focus (D-073).
+    pub fn handle_key_editor(
+        &mut self,
+        cmd: Option<Command>,
+        editor: Option<Action>,
+        ev: &KeyEvent,
+    ) -> DialogEvent {
+        if cmd != Some(Command::DialogOk) && self.memo_focused() {
+            return self.memo_key(cmd, editor, ev);
+        }
         // Ctrl+Enter: the default button from any field; an open combo list first
         // takes its highlighted item (D-016)
         if cmd == Some(Command::DialogOk) {
@@ -790,8 +919,67 @@ impl Dialog {
         DialogEvent::None
     }
 
-    /// Bracketed paste: into the focused input, newlines replaced by spaces.
+    /// A key in the focused memo: `Tab` / `Shift+Tab` leave it, `Esc` cancels,
+    /// `Alt+letter` goes to the hotkeys, `Enter` is a new line, the rest edits.
+    fn memo_key(
+        &mut self,
+        cmd: Option<Command>,
+        editor: Option<Action>,
+        ev: &KeyEvent,
+    ) -> DialogEvent {
+        let alt = ev.modifiers.contains(KeyModifiers::ALT);
+        let ctrl = ev.modifiers.contains(KeyModifiers::CONTROL);
+        match cmd {
+            Some(Command::NextField) => {
+                self.move_focus(1);
+                return DialogEvent::None;
+            }
+            Some(Command::PrevField) => {
+                self.move_focus(-1);
+                return DialogEvent::None;
+            }
+            Some(Command::Cancel) => return DialogEvent::Cancelled,
+            _ => {}
+        }
+        if let KeyCode::Char(c) = ev.code {
+            if alt && !ctrl && c.is_alphanumeric() {
+                let c = c.to_lowercase().next().unwrap_or(c);
+                if let Some(i) = self.widgets.iter().position(|w| w.label.key() == Some(c)) {
+                    return self.activate(i);
+                }
+                return DialogEvent::None;
+            }
+            if !alt && !ctrl {
+                self.memo_apply(Action::Insert(c.to_string()));
+                return DialogEvent::None;
+            }
+        }
+        if cmd == Some(Command::Accept) {
+            self.memo_apply(Action::Insert("\n".to_owned()));
+        } else if let Some(action) = editor {
+            self.memo_apply(action);
+        }
+        DialogEvent::None
+    }
+
+    fn memo_apply(&mut self, action: Action) {
+        let width = self.width.saturating_sub(CHROME_X + 2) as usize;
+        if let Some(WidgetKind::Memo { editor, rows }) =
+            self.widgets.get_mut(self.focus).map(|w| &mut w.kind)
+        {
+            // the view (for scrolling to the cursor) is the frame's inside
+            editor.0.set_view(*rows as usize, width);
+            editor.0.apply(action);
+        }
+    }
+
+    /// Bracketed paste: into the focused input, newlines replaced by spaces (a memo
+    /// keeps them).
     pub fn paste(&mut self, text: &str) {
+        if self.memo_focused() {
+            self.memo_apply(Action::Insert(text.replace("\r\n", "\n")));
+            return;
+        }
         let clean: String = text
             .chars()
             .map(|c| {
@@ -1409,6 +1597,65 @@ impl Dialog {
                         .collect();
                     frame.render_widget(Paragraph::new(lines).style(input), value);
                 }
+                WidgetKind::Memo { editor, .. } => {
+                    let mut title = vec![Span::styled(" ", normal)];
+                    title.extend(w.label.spans(
+                        if focused { focus } else { normal },
+                        if focused { focus_hot } else { hot },
+                    ));
+                    title.push(Span::styled(" ", normal));
+                    frame.render_widget(
+                        Block::bordered()
+                            .border_set(theme.plain_border())
+                            .border_style(normal)
+                            .title_top(Line::from(title))
+                            .style(normal),
+                        *area,
+                    );
+                    let inner = Rect::new(
+                        area.x + 1,
+                        area.y + 1,
+                        area.width.saturating_sub(2),
+                        area.height.saturating_sub(2),
+                    );
+                    // plain text, wrapped at word ends: a prompt is prose, not SQL
+                    let text_style = theme.get(Role::EditorText);
+                    let selected = theme.get(Role::EditorSelection);
+                    frame.render_widget(Block::new().style(text_style), inner);
+                    let e = &editor.0;
+                    let chars: Vec<char> = e.text().chars().collect();
+                    let rows = wrap_rows(&chars, inner.width as usize);
+                    let (row, col) = memo_cursor(&rows, e.cursor());
+                    let offset = row.saturating_sub(inner.height.saturating_sub(1) as usize);
+                    let selection = e.selection();
+                    let lines: Vec<Line> = rows
+                        .iter()
+                        .skip(offset)
+                        .take(inner.height as usize)
+                        .map(|&(from, to)| {
+                            let spans: Vec<Span> = (from..to)
+                                .map(|i| {
+                                    let st = if selection.is_some_and(|(a, b)| a <= i && i < b) {
+                                        selected
+                                    } else {
+                                        text_style
+                                    };
+                                    Span::styled(chars[i].to_string(), st)
+                                })
+                                .collect();
+                            Line::from(spans)
+                        })
+                        .collect();
+                    frame.render_widget(Paragraph::new(lines).style(text_style), inner);
+                    if focused && inner.width > 0 && inner.height > 0 {
+                        let pos = Position::new(
+                            inner.x + (col as u16).min(inner.width - 1),
+                            inner.y + (row - offset) as u16,
+                        );
+                        frame.set_cursor_position(pos);
+                        show_cursor_cell(frame, pos);
+                    }
+                }
                 WidgetKind::Text {
                     lines,
                     headers,
@@ -1481,7 +1728,10 @@ impl Dialog {
             Position::new(r.x + dx.min(r.width.saturating_sub(1)), r.y + dy)
         };
         Some(match &w.kind {
-            WidgetKind::Input { .. } | WidgetKind::Label | WidgetKind::Text { .. } => return None,
+            WidgetKind::Input { .. }
+            | WidgetKind::Label
+            | WidgetKind::Text { .. }
+            | WidgetKind::Memo { .. } => return None,
             WidgetKind::Checkbox { .. } => at(area, 1, 0),
             WidgetKind::Combo { .. } => at(value, 1, 0),
             WidgetKind::Button { .. } => at(area, w.button_text().0.len() as u16, 0),
@@ -1493,6 +1743,45 @@ impl Dialog {
             }
         })
     }
+}
+
+/// The rows of a memo `width` columns wide: (first char, end char) of each, the
+/// lines broken after a space where they can be (one column stays free for the
+/// cursor at the end of a row).
+fn wrap_rows(chars: &[char], width: usize) -> Vec<(usize, usize)> {
+    let width = width.saturating_sub(1).max(1);
+    let mut rows = Vec::new();
+    let mut start = 0;
+    loop {
+        let end = chars[start..]
+            .iter()
+            .position(|&c| c == '\n')
+            .map_or(chars.len(), |n| start + n);
+        let mut pos = start;
+        while end - pos > width {
+            let cut = chars[pos..pos + width]
+                .iter()
+                .rposition(|&c| c == ' ')
+                .filter(|&n| n > 0)
+                .map_or(pos + width, |n| pos + n + 1);
+            rows.push((pos, cut));
+            pos = cut;
+        }
+        rows.push((pos, end));
+        if end >= chars.len() {
+            return rows;
+        }
+        start = end + 1;
+    }
+}
+
+/// Row and column of char index `cursor` in the rows of [`wrap_rows`].
+fn memo_cursor(rows: &[(usize, usize)], cursor: usize) -> (usize, usize) {
+    let row = rows
+        .iter()
+        .rposition(|&(from, _)| from <= cursor)
+        .unwrap_or(0);
+    (row, cursor - rows.get(row).map_or(0, |r| r.0))
 }
 
 /// Scrolls a text widget by `delta` lines, keeping the last page full.
@@ -1712,5 +2001,28 @@ mod tests {
         }
         assert_eq!(areas[0].height, 1, "inline label");
         assert_eq!(areas[4].y, areas[5].y, "buttons share a row");
+    }
+
+    #[test]
+    fn memo_rows_wrap_at_spaces() {
+        let chars: Vec<char> = "total due per customer
+by id"
+            .chars()
+            .collect();
+        // 11 columns: 10 for text, one for the cursor
+        let rows = wrap_rows(&chars, 11);
+        let text = |r: &(usize, usize)| chars[r.0..r.1].iter().collect::<String>();
+        let shown: Vec<String> = rows.iter().map(text).collect();
+        assert_eq!(shown, ["total due ", "per ", "customer", "by id"]);
+        assert_eq!(memo_cursor(&rows, 0), (0, 0));
+        // the end of a wrapped row is the start of the next one
+        assert_eq!(memo_cursor(&rows, 10), (1, 0));
+        // the end of a line stays on it
+        assert_eq!(memo_cursor(&rows, 22), (2, 8));
+        assert_eq!(memo_cursor(&rows, chars.len()), (3, 5));
+        // a word longer than the row is cut
+        let long: Vec<char> = "abcdefghijkl".chars().collect();
+        assert_eq!(wrap_rows(&long, 6), [(0, 5), (5, 10), (10, 12)]);
+        assert_eq!(wrap_rows(&[], 6), [(0, 0)]);
     }
 }

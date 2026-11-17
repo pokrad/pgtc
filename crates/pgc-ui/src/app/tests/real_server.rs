@@ -423,6 +423,53 @@ async fn psql_commands_against_a_real_server() {
     key(&mut a, "Enter");
     pump(&mut a, &mut rx, &hits, idle).await;
     assert!(titles(&a)[0].starts_with("1: l · "), "{:?}", titles(&a));
+
+    // F8 (D-073): what the AI would get, read inside a transaction that is rolled
+    // back (nothing stays on the server; no request is sent in tests)
+    a.editor().set_text(
+        "BEGIN; CREATE SCHEMA pgtc_ai; \
+         CREATE TYPE pgtc_ai.k AS ENUM ('a', 'b'); \
+         CREATE TABLE pgtc_ai.t (id int PRIMARY KEY, kind pgtc_ai.k NOT NULL DEFAULT 'a'); \
+         CREATE VIEW pgtc_ai.v AS SELECT id FROM pgtc_ai.t; \
+         CREATE FUNCTION pgtc_ai.f(p int) RETURNS int LANGUAGE sql AS 'SELECT p'; \
+         CREATE PROCEDURE pgtc_ai.pr(x int) LANGUAGE sql AS 'SELECT 1';",
+    );
+    key(&mut a, "F5");
+    pump(&mut a, &mut rx, &hits, idle).await;
+    assert!(errors(&a).is_empty(), "{:?}", errors(&a));
+    a.settings.ai = pgc_core::settings::AiSettings {
+        enabled: true,
+        base_url: "http://localhost:1/v1".into(),
+        model: "m".into(),
+        ..Default::default()
+    };
+    key(&mut a, "F8");
+    assert!(
+        matches!(
+            a.dialogs.last().map(|d| &d.kind),
+            Some(DialogKind::AskAi { .. })
+        ),
+        "{}",
+        a.status
+    );
+    pump(&mut a, &mut rx, &hits, |a| a.ai.structure.is_some()).await;
+    let text = a.ai.structure.as_ref().unwrap().1.text(Some("pgtc_ai"));
+    assert!(
+        text.starts_with(
+            "TYPE pgtc_ai.k AS ENUM ('a', 'b');\n\
+             TABLE pgtc_ai.t (\n  id integer NOT NULL,\n  kind pgtc_ai.k NOT NULL DEFAULT 'a'::pgtc_ai.k,\n  PRIMARY KEY (id)\n);\n\
+             VIEW pgtc_ai.v (id integer);\n\
+             FUNCTION pgtc_ai.f(p integer) RETURNS integer;\n\
+             PROCEDURE pgtc_ai.pr("
+        ),
+        "{text}"
+    );
+    // (the argument modes of a procedure differ between versions)
+    assert!(text.ends_with("x integer);\n"), "{text}");
+    a.dialogs.clear();
+    a.editor().set_text("ROLLBACK");
+    key(&mut a, "F5");
+    pump(&mut a, &mut rx, &hits, idle).await;
 }
 
 /// Autocomplete against a real server (D-052): relations after FROM, columns after

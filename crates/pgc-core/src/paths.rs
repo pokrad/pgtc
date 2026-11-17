@@ -18,6 +18,7 @@ use crate::{APP_NAME, Error, Result};
 
 const SETTINGS_FILE: &str = "settings.toml";
 const KEYMAP_FILE: &str = "keymap.toml";
+const AI_KEY_FILE: &str = "ai_key";
 const TEMPLATES_DIR: &str = "developer_templates";
 const THEMES_DIR: &str = "themes";
 const LOGS_DIR: &str = "logs";
@@ -148,6 +149,12 @@ impl Paths {
     /// `<data>/themes` (D-014)
     pub fn user_themes_dir(&self) -> PathBuf {
         self.data_dir.join(THEMES_DIR)
+    }
+
+    /// `<config>/ai_key` — the AI provider's API key when it is kept in a file
+    /// (D-073); written owner-only, like `.pgpass`
+    pub fn ai_key_file(&self) -> PathBuf {
+        self.config_dir.join(AI_KEY_FILE)
     }
 
     /// `<data>/logs` (D-029)

@@ -117,6 +117,7 @@ one with the same host, port, database, user and SSL mode is already saved) and 
 <tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td>Cancel the running query</td><td><code>cancel_query</code></td></tr>
 <tr><td class="k"><kbd>F7</kbd></td><td>Generate SQL from developer template</td><td><code>new_from_template</code></td></tr>
 <tr><td class="k"><kbd>F4</kbd></td><td>psql-style command line</td><td><code>psql_command</code></td></tr>
+<tr><td class="k"><kbd>F8</kbd></td><td>Ask AI for SQL — into the editor, never run (<a href="ai.html">AI assistant</a>)</td><td><code>ask_ai</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+Space</kbd>, <kbd>Alt+/</kbd></td><td>Autocomplete: names and keywords</td><td><code>complete</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+P</kbd></td><td>PL/pgSQL mode on / off</td><td><code>toggle_plpgsql</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+E</kbd></td><td>Edit the shown definition (or statement) in a new query tab</td><td><code>edit_in_query_tab</code></td></tr>
@@ -174,6 +175,7 @@ one with the same host, port, database, user and SSL mode is already saved) and 
 <tr><td class="k"><kbd>F5</kbd></td><td>Execute</td><td><code>execute</code></td></tr>
 <tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td>Cancel the running query</td><td><code>cancel_query</code></td></tr>
 <tr><td class="k"><kbd>F4</kbd></td><td>psql-style command line</td><td><code>psql_command</code></td></tr>
+<tr><td class="k"><kbd>F8</kbd></td><td>Ask AI for SQL — into the editor, never run (<a href="ai.html">AI assistant</a>)</td><td><code>ask_ai</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+P</kbd></td><td>PL/pgSQL mode on / off</td><td><code>toggle_plpgsql</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+S</kbd></td><td>Save SQL file</td><td><code>save_file</code></td></tr>
 <tr><td class="k">—</td><td>Export the result</td><td><code>export_result</code></td></tr>
@@ -292,11 +294,13 @@ of the window where that key works.</p>
 <tr><td>Results / Messages</td><td class="k"><kbd>Alt+M</kbd></td></tr>
 <tr><td>Next result set</td><td class="k"><kbd>Ctrl+PgDn</kbd></td></tr>
 <tr><td>Previous result set</td><td class="k"><kbd>Ctrl+PgUp</kbd></td></tr>
-<tr><td rowspan="4">Tools</td><td>Generate SQL from developer template…</td><td class="k"><kbd>F7</kbd></td><td rowspan="2">In a connected query tab</td></tr>
+<tr><td rowspan="5">Tools</td><td>Generate SQL from developer template…</td><td class="k"><kbd>F7</kbd></td><td rowspan="2">In a connected query tab</td></tr>
 <tr><td>psql command…</td><td class="k"><kbd>F4</kbd></td></tr>
+<tr><td>Ask AI…</td><td class="k"><kbd>F8</kbd> (query tab)</td><td>A connected query tab, AI set up (<a href="ai.html">AI assistant</a>)</td></tr>
 <tr><td>Server dashboard</td><td class="k"><kbd>Alt+D</kbd> (tree)</td><td rowspan="2">Needs a connected server</td></tr>
 <tr><td>SQL profiler</td><td class="k"><kbd>Alt+P</kbd> (tree)</td></tr>
-<tr><td rowspan="4">Settings</td><td>Settings…</td><td></td><td></td></tr>
+<tr><td rowspan="5">Settings</td><td>Settings…</td><td></td><td></td></tr>
+<tr><td>AI…</td><td></td><td>Provider, model and API key of the <a href="ai.html#setup">AI assistant</a></td></tr>
 <tr><td>Run setup</td><td></td><td>As <code>pgtc --setup</code></td></tr>
 <tr><td>Install templates</td><td></td><td>As <code>pgtc --install-templates</code></td></tr>
 <tr><td>Show templates folder</td><td></td><td></td></tr>
@@ -316,6 +320,7 @@ of the window where that key works.</p>
 <tr><th>File or folder</th><th>In</th><th>What</th></tr>
 <tr><td class="k"><code>settings.toml</code></td><td>config</td><td>Settings and saved connections (no passwords)</td></tr>
 <tr><td class="k"><code>keymap.toml</code></td><td>config</td><td>Your key changes (you create it)</td></tr>
+<tr><td class="k"><code>ai_key</code></td><td>config</td><td>The AI provider's API key, when it is kept in a file (<a href="ai.html#setup">AI assistant</a>); readable only by you</td></tr>
 <tr><td class="k"><code>developer_templates/</code></td><td>data</td><td>Developer templates</td></tr>
 <tr><td class="k"><code>themes/</code></td><td>data</td><td>Your own colour schemes</td></tr>
 <tr><td class="k"><code>logs/</code></td><td>data</td><td>Log files <code>pgtc.YYYY-MM-DD.log</code>, one per day; the last 7 are kept</td></tr>

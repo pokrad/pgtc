@@ -500,7 +500,7 @@ desktop dependency.
   - Ask AI… (`F8` in a query tab, D-073)
 - **Settings**
   - Settings… — dialog with colour scheme, ASCII frames, ... (contents: D-051)
-  - AI… — AI provider, model and API key source (D-073)
+  - AI… — AI provider, model and API key (D-073)
   - Install templates — same as `--install-templates` (D-013)
   - Run setup — same as `--setup`: every installation step (D-047)
   - Show templates folder — displays the path of the templates folder (a terminal
@@ -2501,15 +2501,17 @@ pgtc (binary)
   - HTTP through `reqwest` with rustls + `serde` (no provider SDKs, D-017). The
     request runs in a tokio task; the UI never waits for it (D-006).
 - **Setup:** *Settings → AI…* — its own dialog (the Settings dialog must fit 24
-  rows, D-051): Enabled, preset, protocol, base URL, model, API key source.
+  rows, D-051): Enabled, preset, protocol, base URL, model, API key.
   Stored in `settings.toml` under `[ai]` — **never the key itself**.
-  - **API key:** either the name of an environment variable (e.g.
-    `ANTHROPIC_API_KEY`, `XAI_API_KEY`) or a key file in pgtc's config folder
-    (path from `pgc-core`, written with `atomic_write`, owner-only permissions where
-    the OS supports them, like `.pgpass`). The key is never written to the log.
-    Local servers may need no key.
-  - AI counts as *set up* when it is enabled and base URL and model are filled (and
-    the key is found when a source is given).
+  - **API key:** typed into the dialog (masked) and kept in its own key file
+    `ai_key` in pgtc's config folder (path from `pgc-core`, written with
+    `atomic_write`, owner-only permissions where the OS supports them, like
+    `.pgpass`) — not in `settings.toml`, which users copy and show. No environment
+    variables. A saved key shows as `********`: left as it is, it stays; typed over,
+    it is replaced; emptied, the file is removed. No key (empty): nothing is sent
+    (local servers); a service that needs one answers with its own error. The key
+    is never written to the log.
+  - AI counts as *set up* when it is enabled and base URL and model are filled.
 - **Opening:** `F8` (`ask_ai` in the keymap, `Esc 8`) in a query tab's editor and
   results (contexts `[editor]`, `[results]`), and *Tools → Ask AI…*. In the tree
   `F8` stays Delete connection, on the dashboard Terminate session (D-035, D-057).
@@ -2530,7 +2532,8 @@ pgtc (binary)
     cursor is sent, and the dialog says so;
   - the user's prompt, with a fixed system prompt (PostgreSQL SQL only, answer with
     SQL only, explanations as `--` comments).
-- **Dialog:** a multi-line prompt box; scope *Whole database* (default) / *Schema …*
+- **Dialog:** a multi-line prompt box (wraps at word ends; `Enter` is a new line,
+  `Tab` leaves it, `Ctrl+Enter` / `Alt+S` send); scope *Whole database* (default) / *Schema …*
   (combo); a line *sends about N tokens to <host>* (estimated from the text size,
   updated when the scope changes); Send / Cancel. The prompts of the session are
   remembered (`↑` / `↓` in an empty box, like the `F4` history, D-054).
@@ -2538,8 +2541,9 @@ pgtc (binary)
   An error (HTTP status, provider message, no answer) is shown in an error dialog;
   the editor is not changed.
 - **The answer:** code fences (```` ``` ````) are removed; the SQL replaces the
-  selection, or is inserted at the cursor when there is none, with the prompt above
-  it as `--` comment lines. One undo step brings back the old text. Nothing is run.
+  selection, or is inserted at the cursor when there is none (on a line of its own),
+  with the prompt above it as `--` comment lines; text outside code fences becomes
+  `--` comments. One undo step brings back the old text. Nothing is run.
 - **Later:** streaming the answer, follow-up questions in one conversation, the model
   reading catalog details itself through tool use (read-only), Azure OpenAI.
 
@@ -2699,3 +2703,5 @@ pgtc (binary)
 | 2026-11-17 | D-054 updated: generate commands `gf` [*schema*] (empty PL/pgSQL function, `[return_type]` / `[value]` placeholders, default schema `public`) and `gfr` / `gfs` / `gft` / `gfe` / `gfj` *table* (read-only `STABLE` PL/pgSQL functions: one row by key or `NULL`, `SETOF` the table, `RETURNS TABLE` with `T1.`-qualified columns, `EXISTS` by key, one row as `jsonb` by key; `WHERE [condition]` for the set functions and without a key; tables, views and foreign tables). |
 | 2026-11-17 | D-054 updated: generate commands `gtg` *table* [*rows*] (test data via `generate_series`, 100 rows by default, a random parent row per foreign key through `LEFT JOIN LATERAL … ORDER BY random() LIMIT 1`, key columns past the current maximum), `gtj` *table* (SELECT joined to every table its foreign keys point to, one join per key), `gtr` *table* (one SELECT per foreign key that references the table, `[key]` placeholders) and `gtau` *table* (`<table>_audit` with `jsonb` old / new rows, trigger function `[function_name]`, trigger `<table>_audit_trg`); new catalog query `foreign_keys.sql` read after the columns; tables only. |
 | 2026-11-17 | D-073 accepted: AI assistant — `F8` (query tab editor / results) and Tools → Ask AI… open a prompt dialog, only when AI is set up and the tab is connected; OpenAI-compatible and Anthropic protocols with presets (Claude, OpenAI, Grok, Gemini, Ollama); Settings → AI…, API key from an environment variable or a key file, never in `settings.toml` or the log; sends the server version, compact structure (whole database or one schema, no data) and the editor text (selection marked, 50,000-character limit); answer replaces the selection or goes in at the cursor with the prompt as a comment, never run; per-connection *AI not allowed*. D-014, D-016 updated. |
+| 2026-11-18 | D-073 implemented; details: the prompt box wraps at word ends (`Enter` new line, `Tab` leaves, `Ctrl+Enter` / `Alt+S` send); the answer starts a line of its own when the cursor is inside a line; text outside code fences becomes `--` comments. HTTP via `reqwest` (rustls, ring). |
+| 2026-11-18 | D-073 updated: no environment variables for the API key — it is typed into Settings → AI… and kept in the key file `ai_key` (stars for a saved key: kept, replaced by typing, removed when emptied); presets fill in protocol, base URL and model only. |

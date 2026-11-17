@@ -1,6 +1,7 @@
 //! Terminal UI (ratatui): layout, object tree, tabs, menus, dialogs, colour
 //! schemes, keymap (D-009, D-014, D-016).
 
+mod ai;
 mod app;
 mod clipboard;
 mod combo;
@@ -60,6 +61,10 @@ pub async fn run(paths: Paths, settings: Settings, startup: Option<Resolved>) ->
     let file_tx = tx.clone();
     app.set_file_sink(std::sync::Arc::new(move |event| {
         let _ = file_tx.send(Msg::File(event));
+    }));
+    let ai_tx = tx.clone();
+    app.set_ai_sink(std::sync::Arc::new(move |event| {
+        let _ = ai_tx.send(Msg::Ai(event));
     }));
     let mut tui = terminal::enter()?;
     let result = event_loop(&mut tui, &mut app, tx, rx).await;
