@@ -69,14 +69,15 @@ It works only when</p>
   <li>the assistant is set up (otherwise: <i>AI is not set up (Settings → AI…)</i>),</li>
   <li>the query tab is <b>connected</b> to a database (<i>Connect the query tab first</i>),</li>
   <li>the connection does not have <a href="#privacy">AI not allowed</a>,</li>
-  <li>the tab is not running a query, and no other AI request is waiting.</li>
+  <li>the tab is not running a query and has no result waiting for more rows (reading the structure would end
+      it — fetch all rows or run something else first), and no other AI request is waiting.</li>
 </ul>
 <p>The dialog opens at once; meanwhile pgtc reads the database structure through the tab's connection.</p>
 <div class="tablewrap"><table>
 <tr><th>Part</th><th>Keys</th><th>What it does</th></tr>
 <tr><td class="k"><span class="ui">Prompt</span></td><td class="k"><kbd>Alt+P</kbd></td><td>What you need, in your words. The text wraps; <kbd>Enter</kbd> starts a new line, <kbd>Tab</kbd> leaves the box. In an empty box <kbd>↑</kbd> / <kbd>↓</kbd> bring back the prompts of this session.</td></tr>
 <tr><td class="k"><span class="ui">Scope</span></td><td class="k"><kbd>Alt+O</kbd></td><td><i>Whole database</i>, or <i>Schema …</i> to send the structure of one schema only — smaller and cheaper for large databases.</td></tr>
-<tr><td class="k">The info line</td><td></td><td><i>Sends about N tokens to host</i>: an estimate of the size, and where it goes. It follows the scope.</td></tr>
+<tr><td class="k">The info line</td><td></td><td><i>Sends about N tokens to host</i>: an estimate of the size of everything that is sent, and where it goes. It follows the scope and the prompt.</td></tr>
 <tr><td class="k"><span class="ui">Send</span></td><td class="k"><kbd>Alt+S</kbd>, <kbd>Ctrl+Enter</kbd></td><td>Sends the request. An empty prompt is refused; while the structure is still being read, the dialog stays.</td></tr>
 <tr><td class="k"><span class="ui">Cancel</span></td><td class="k"><kbd>Esc</kbd></td><td>Closes the dialog; nothing is sent.</td></tr>
 </table></div>
@@ -110,7 +111,8 @@ sales.customer_history”</i>, <i>“Rewrite the selected query without the subq
 <ul>
   <li><b>The server version</b>, so the SQL fits your server.</li>
   <li><b>The structure</b> of the database (or the chosen schema) as compact text: tables, views, materialized views
-      and foreign tables with their columns, types, <code>NOT NULL</code>, defaults, primary, unique and foreign keys
+      and foreign tables with their columns, types, <code>NOT NULL</code>, defaults, identity and generated columns (so the model knows which values the database
+      fills in itself), primary, unique and foreign keys
       and checks; the signatures of functions and procedures; enum types. System schemas, partitions and the
       objects of extensions are left out.</li>
   <li><b>The text of the editor</b>, when it is not empty. A <b>selection</b> is marked, so the model knows which part
@@ -127,7 +129,8 @@ you set — there is no pgtc server in between.</p>
   <figcaption>While the model writes, the status line shows <i>Asking AI (host) … Esc cancels</i>. You can go on working.</figcaption>
 </figure>
 <ul>
-  <li><kbd>Esc</kbd> cancels the request; an answer that comes later is ignored.</li>
+  <li><kbd>Esc</kbd> cancels the request; an answer that comes later is ignored. (While a menu, a dialog or the
+      quick search is open, <kbd>Esc</kbd> closes that first.)</li>
   <li>An error — a wrong key, an unknown model, no connection to the host, a timeout after five minutes — is shown in
       an error message with the provider's own text. The editor is not changed.</li>
 </ul>
@@ -177,7 +180,8 @@ provider's terms for what it keeps.</p>
 <tr><td><i>HTTP 404</i> / <i>model not found</i></td><td>The base URL or the model name is wrong.</td><td>Compare them with your provider's documentation; mind the protocol.</td></tr>
 <tr><td><i>HTTP 429</i></td><td>Too many requests, or the account has no credit left.</td><td>Wait, or check your plan.</td></tr>
 <tr><td><i>Could not connect to …</i></td><td>No network, a proxy, or a local server that is not running.</td><td>Start the local server; check the base URL.</td></tr>
-<tr><td>The answer is cut off</td><td>Very long answers stop at the model's limit.</td><td>Ask for less at once, or choose one schema.</td></tr>
+<tr><td>The answer ends with <i>-- (the answer was cut off here: it reached the model's length limit)</i></td><td>Very long answers stop at the model's limit; pgtc marks it, because a half statement must not be run as it is.</td><td>Ask for less at once — one function per request.</td></tr>
+<tr><td><i>The structure of the database could not be read</i></td><td>The catalog query failed on the tab's connection — most often the tab is in a failed transaction.</td><td>Roll the transaction back, then press <kbd>F8</kbd> again.</td></tr>
 </table></div>
 </main>
 <script src="help.js"></script>

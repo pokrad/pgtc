@@ -4393,7 +4393,6 @@ fn ai_on(a: &mut App) {
         protocol: pgc_core::settings::AiProtocol::Anthropic,
         base_url: "https://api.anthropic.com".into(),
         model: "claude-sonnet-5-5".into(),
-        ..Default::default()
     };
 }
 
@@ -4518,6 +4517,12 @@ async fn ask_ai_puts_the_answer_into_the_editor() {
     let system = req.body["system"].as_str().unwrap();
     assert!(system.contains("TABLE sales.customer ("));
     assert!(!system.contains("public.note"), "{system}");
+    // Esc for something else (a menu) does not cancel the request
+    key(&mut a, "F9");
+    assert!(a.menu.is_some());
+    esc(&mut a);
+    assert!(a.menu.is_none());
+    assert!(a.ai.run.is_some(), "the request goes on");
     // Esc cancels; a late answer is ignored
     let id = a.ai.run.as_ref().unwrap().id;
     esc(&mut a);
@@ -4543,6 +4548,31 @@ async fn ask_ai_puts_the_answer_into_the_editor() {
     assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::Message);
     assert_eq!(a.tabs[a.active_tab].view.editor.text(), before);
     key(&mut a, "Enter");
+
+    // the structure cannot be read: Send says why, the dialog stays
+    key(&mut a, "F8");
+    a.lookup_loaded(
+        ai_lookup(&a),
+        Err(DbError::Other("current transaction is aborted".into())),
+    );
+    typing(&mut a, "x");
+    key(&mut a, "Alt+S");
+    let d = a.dialogs.last().unwrap();
+    assert_eq!(d.kind, DialogKind::Message);
+    assert!(screen_text(&a).contains("current transaction is aborted"));
+    assert!(a.ai.run.is_none());
+    key(&mut a, "Enter");
+    esc(&mut a);
+    assert!(a.dialogs.is_empty());
+
+    // a paused result (more rows to fetch) would be ended by reading the structure
+    let q = a.query_mut().unwrap();
+    q.start_run(7, Sent::new(0, "select"));
+    q.running.as_mut().unwrap().paused = true;
+    key(&mut a, "F8");
+    assert!(a.dialogs.is_empty(), "{}", a.status);
+    assert!(!a.is_enabled(Command::AskAi));
+    a.query_mut().unwrap().running = None;
 
     // AI not allowed on this connection
     a.tree.by_uid(uid).unwrap().conn.ai_not_allowed = true;
@@ -4583,7 +4613,6 @@ fn ai_settings_dialog() {
     );
     let ai = &a.settings.ai;
     assert!(ai.enabled);
-    assert_eq!(ai.preset, "Claude");
     assert_eq!(ai.model, "claude-opus-5-5");
     let key_file = a.paths.ai_key_file();
     assert_eq!(std::fs::read_to_string(&key_file).unwrap(), "sk-secret-1");
@@ -4597,6 +4626,19 @@ fn ai_settings_dialog() {
     assert_eq!(a.dialogs.last().unwrap().text("key"), Some("********"));
     key(&mut a, "Alt+O");
     assert_eq!(crate::ai::api_key(&key_file), Some("sk-secret-1".into()));
+    // the preset is found again from the saved values
+    a.run(Command::AiSettings);
+    assert_eq!(
+        a.dialogs.last().unwrap().selected_combo_item("preset"),
+        Some("Claude")
+    );
+    // typing at the start of the stars: only the typed text is the new key
+    key(&mut a, "Alt+K");
+    key(&mut a, "Home");
+    typing(&mut a, "k2");
+    assert_eq!(a.dialogs.last().unwrap().text("key"), Some("k2"));
+    key(&mut a, "Alt+O");
+    assert_eq!(crate::ai::api_key(&key_file), Some("k2".into()));
     // typing over the stars starts a new key
     a.run(Command::AiSettings);
     key(&mut a, "Alt+K");

@@ -998,8 +998,10 @@ impl App {
             );
         }
 
-        // Esc while an AI request runs cancels it (D-073)
-        if self.dialogs.is_empty()
+        // Esc while an AI request runs cancels it (D-073) — when nothing else is open
+        // that Esc closes (a dialog, a menu, the template form, the quick search)
+        if !self.modal()
+            && self.search.is_none()
             && ev.code == KeyCode::Esc
             && ev.modifiers.is_empty()
             && self.cancel_ai()

@@ -261,7 +261,7 @@ safest choice.</p></div>
 <tr><td class="k"><code>[export]</code> <code>format</code>, <code>csv_separator</code>, <code>csv_bom</code></td><td><code>csv</code>, <code>comma</code>, <code>false</code></td><td>The last choices of the export dialog.</td></tr>
 </table></div>
 <p>The <code>[ai]</code> section holds what <span class="menu">Settings → AI…</span> saves (<a href="ai.html#setup">AI
-assistant</a>): <code>enabled</code>, <code>preset</code>, <code>protocol</code> (<code>openai-compatible</code> or
+assistant</a>): <code>enabled</code>, <code>protocol</code> (<code>openai-compatible</code> or
 <code>anthropic</code>), <code>base_url</code> and <code>model</code>. The API key itself is never in this file; it
 is in <code>ai_key</code> next to it.</p>
 <pre><code>[ui]
@@ -289,7 +289,6 @@ line_numbers = true
 
 [ai]
 enabled = true
-preset = "Claude"
 protocol = "anthropic"
 base_url = "https://api.anthropic.com"
 model = "claude-sonnet-5-5"

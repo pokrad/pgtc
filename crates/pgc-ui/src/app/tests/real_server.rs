@@ -429,7 +429,7 @@ async fn psql_commands_against_a_real_server() {
     a.editor().set_text(
         "BEGIN; CREATE SCHEMA pgtc_ai; \
          CREATE TYPE pgtc_ai.k AS ENUM ('a', 'b'); \
-         CREATE TABLE pgtc_ai.t (id int PRIMARY KEY, kind pgtc_ai.k NOT NULL DEFAULT 'a'); \
+         CREATE TABLE pgtc_ai.t (id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, kind pgtc_ai.k NOT NULL DEFAULT 'a'); \
          CREATE VIEW pgtc_ai.v AS SELECT id FROM pgtc_ai.t; \
          CREATE FUNCTION pgtc_ai.f(p int) RETURNS int LANGUAGE sql AS 'SELECT p'; \
          CREATE PROCEDURE pgtc_ai.pr(x int) LANGUAGE sql AS 'SELECT 1';",
@@ -453,11 +453,14 @@ async fn psql_commands_against_a_real_server() {
         a.status
     );
     pump(&mut a, &mut rx, &hits, |a| a.ai.structure.is_some()).await;
-    let text = a.ai.structure.as_ref().unwrap().1.text(Some("pgtc_ai"));
+    let text = match &a.ai.structure.as_ref().unwrap().1 {
+        Ok(s) => s.text(Some("pgtc_ai")),
+        Err(e) => panic!("{e}"),
+    };
     assert!(
         text.starts_with(
             "TYPE pgtc_ai.k AS ENUM ('a', 'b');\n\
-             TABLE pgtc_ai.t (\n  id integer NOT NULL,\n  kind pgtc_ai.k NOT NULL DEFAULT 'a'::pgtc_ai.k,\n  PRIMARY KEY (id)\n);\n\
+             TABLE pgtc_ai.t (\n  id integer NOT NULL GENERATED ALWAYS AS IDENTITY,\n  kind pgtc_ai.k NOT NULL DEFAULT 'a'::pgtc_ai.k,\n  PRIMARY KEY (id)\n);\n\
              VIEW pgtc_ai.v (id integer);\n\
              FUNCTION pgtc_ai.f(p integer) RETURNS integer;\n\
              PROCEDURE pgtc_ai.pr("

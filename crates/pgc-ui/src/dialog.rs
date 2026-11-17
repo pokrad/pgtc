@@ -811,6 +811,7 @@ impl Dialog {
     }
 
     /// Text of the selected item of combo `id`.
+    #[cfg(test)]
     pub fn selected_combo_item(&self, id: &str) -> Option<&str> {
         match self.find(id).map(|w| &w.kind) {
             Some(WidgetKind::Combo {
@@ -1038,7 +1039,10 @@ impl Dialog {
     /// keeps them).
     pub fn paste(&mut self, text: &str) {
         if self.memo_focused() {
-            self.memo_apply(Action::Insert(text.replace("\r\n", "\n")));
+            // (a tab would leave the box: pasted ones become spaces)
+            self.memo_apply(Action::Insert(
+                text.replace("\r\n", "\n").replace('\t', "    "),
+            ));
             return;
         }
         let clean: String = text

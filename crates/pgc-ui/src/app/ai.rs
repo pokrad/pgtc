@@ -28,8 +28,6 @@ pub struct AiEvent {
 const NOT_SET_UP: &str = "AI is not set up (Settings → AI…)";
 const SCOPE_ALL: &str = "Whole database";
 const PROMPT_ROWS: u16 = 6;
-/// Characters of the fixed instructions (for the token estimate).
-const INSTRUCTION_CHARS: usize = 700;
 /// What the key field shows for a saved key (masked: eight stars).
 const SAVED_KEY: &str = "********";
 /// Label column of the AI settings dialog.
@@ -56,7 +54,9 @@ impl App {
         if self.ai_not_allowed() {
             return Err("AI is not allowed for this connection".to_owned());
         }
-        if q.busy() || q.export.is_some() {
+        // reading the structure would end a paused result (or the stream an export
+        // reads from): refused, as for the generate commands (D-019, D-054)
+        if q.running.is_some() || q.export.is_some() {
             return Err(CONNECTION_BUSY.to_owned());
         }
         if self.ai.run.is_some() {
@@ -106,7 +106,7 @@ impl App {
             .insert(self.next_key, LookupTarget::AiStructure { tab });
         handle.lookup_with(self.next_key, sql, Vec::new());
         self.ai.structure = None;
-        self.ai.scope_seen = None;
+        self.ai.size = None;
         self.ai.history_pos = None;
         let dialog = Dialog::new(
             DialogKind::AskAi { tab },
@@ -145,27 +145,54 @@ impl App {
                 let mut scopes = vec![SCOPE_ALL.to_owned()];
                 scopes.extend(s.schemas().into_iter().map(|n| format!("Schema {n}")));
                 d.set_combo("scope", scopes, 0);
-                self.ai.structure = Some((tab, s));
-                self.ai.scope_seen = None;
+                self.ai.structure = Some((tab, Ok(s)));
             }
-            Err(e) => d.set_label("info", &format!("Reading the structure failed: {e}")),
+            Err(e) => {
+                d.set_label("info", "The structure could not be read (Send shows why).");
+                self.ai.structure = Some((tab, Err(e)));
+            }
         }
+        self.ai.size = None;
     }
 
-    /// The schema the dialog's scope names (`None`: the whole database).
-    fn ai_scope(d: &Dialog) -> Option<String> {
-        d.selected_combo_item("scope")
-            .and_then(|s| s.strip_prefix("Schema "))
-            .map(str::to_owned)
+    /// The structure read for the `F8` dialog of tab `tab`: `None` while it is being
+    /// read, the error when reading failed.
+    fn ai_structure(&self, tab: u64) -> Option<&Result<Structure, String>> {
+        self.ai
+            .structure
+            .as_ref()
+            .filter(|(t, _)| *t == tab)
+            .map(|(_, s)| s)
     }
 
-    /// The editor text of tab `i` as it is sent.
-    fn ai_editor_text(&self, i: usize) -> Option<ai::EditorText> {
+    /// Everything a request from dialog `d` of tab `tab` sends, with `prompt`.
+    fn ai_ask(&self, d: &Dialog, tab: u64, s: &Structure, prompt: &str) -> Option<ai::Ask> {
+        let i = self.tab_index(tab)?;
+        // the scope: entry 0 is the whole database, then the schemas in order
+        let schemas = s.schemas();
+        let schema = d
+            .selected("scope")
+            .and_then(|n| n.checked_sub(1))
+            .and_then(|n| schemas.get(n));
+        let (uid, database) = self.tabs[i].query()?.binding.clone()?;
+        let server = self
+            .tree
+            .servers
+            .iter()
+            .find(|sv| sv.uid == uid)
+            .and_then(|sv| sv.version)
+            .map_or_else(|| "PostgreSQL".to_owned(), |v| format!("PostgreSQL {v}"));
         let e = &self.tabs[i].view.editor;
-        ai::editor_text(&e.text(), e.cursor(), e.selection(), ai::EDITOR_LIMIT)
+        Some(ai::Ask {
+            server,
+            database,
+            structure: s.text(schema.map(String::as_str)),
+            editor: ai::editor_text(&e.text(), e.cursor(), e.selection(), ai::EDITOR_LIMIT),
+            prompt: prompt.to_owned(),
+        })
     }
 
-    /// After each update: the info line follows the chosen scope.
+    /// After each update: the info line follows the chosen scope and the prompt.
     pub(super) fn sync_ai_dialog(&mut self) {
         let Some(d) = self.dialogs.last() else {
             return;
@@ -173,35 +200,40 @@ impl App {
         let DialogKind::AskAi { tab } = d.kind else {
             return;
         };
+        let Some(Ok(s)) = self.ai_structure(tab) else {
+            return;
+        };
         let scope = d.selected("scope").unwrap_or(0);
-        if self.ai.scope_seen == Some(scope) {
-            return;
+        // the size without the prompt: once for a scope (the structure may be large)
+        if self.ai.size.is_none_or(|(sc, _)| sc != scope) {
+            let Some(ask) = self.ai_ask(d, tab, s, "") else {
+                return;
+            };
+            let note = match &ask.editor {
+                None => "The editor is empty: only the structure and the prompt are sent.",
+                Some(e) if e.cut => {
+                    "The editor text is long: only the part around the cursor is sent."
+                }
+                Some(_) => "",
+            };
+            self.ai.size = Some((scope, ai::request_chars(&ask)));
+            if let Some(d) = self.dialogs.last_mut() {
+                d.set_label("note", note);
+            }
         }
-        let Some((_, s)) = self.ai.structure.as_ref().filter(|(t, _)| *t == tab) else {
+        let Some((_, chars)) = self.ai.size else {
             return;
         };
-        let schema = Self::ai_scope(d);
-        let structure = s.text(schema.as_deref()).chars().count();
-        let Some(i) = self.tab_index(tab) else {
+        let Some(d) = self.dialogs.last_mut() else {
             return;
         };
-        let editor = self.ai_editor_text(i);
-        let chars = INSTRUCTION_CHARS + structure + editor.as_ref().map_or(0, |e| e.text.len());
+        let prompt = d.memo_text("prompt").map_or(0, |p| p.chars().count());
         let info = format!(
             "Sends about {} tokens to {} (no table data).",
-            group(ai::tokens(chars)),
+            group(ai::tokens(chars + prompt)),
             ai::host(&self.settings.ai.base_url)
         );
-        let note = match &editor {
-            None => "The editor is empty: only the structure and the prompt are sent.",
-            Some(e) if e.cut => "The editor text is long: only the part around the cursor is sent.",
-            Some(_) => "",
-        };
-        self.ai.scope_seen = Some(scope);
-        if let Some(d) = self.dialogs.last_mut() {
-            d.set_label("info", &info);
-            d.set_label("note", note);
-        }
+        d.set_label("info", &info);
     }
 
     /// `↑` / `↓` in the prompt box when it is empty or shows an earlier prompt: the
@@ -243,40 +275,28 @@ impl App {
             self.status = "Write what you need first".to_owned();
             return;
         }
-        let Some((_, structure)) = self.ai.structure.as_ref().filter(|(t, _)| *t == tab) else {
-            let mut dialog = dialog;
-            dialog.focus_on("prompt");
-            self.dialogs.push(dialog);
-            self.status = "Still reading the structure…".to_owned();
+        let ask = match self.ai_structure(tab) {
+            None => {
+                let mut dialog = dialog;
+                dialog.focus_on("prompt");
+                self.dialogs.push(dialog);
+                self.status = "Still reading the structure…".to_owned();
+                return;
+            }
+            Some(Err(e)) => {
+                let e = format!("The structure of the database could not be read:\n{e}");
+                let mut dialog = dialog;
+                dialog.focus_on("prompt");
+                self.dialogs.push(dialog);
+                self.error(&e);
+                return;
+            }
+            Some(Ok(s)) => self.ai_ask(&dialog, tab, s, &prompt),
+        };
+        let Some(ask) = ask else {
             return;
         };
         let key = ai::api_key(&self.paths.ai_key_file());
-        let Some(i) = self.tab_index(tab) else {
-            return;
-        };
-        let schema = Self::ai_scope(&dialog);
-        let structure = structure.text(schema.as_deref());
-        let database = self.tabs[i]
-            .query()
-            .and_then(|q| q.binding.as_ref())
-            .map(|b| b.1.clone())
-            .unwrap_or_default();
-        let server = self.tabs[i]
-            .query()
-            .and_then(|q| q.binding.as_ref())
-            .and_then(|(uid, _)| self.tree.servers.iter().find(|s| s.uid == *uid))
-            .and_then(|s| s.version)
-            .map_or_else(
-                || "PostgreSQL".to_owned(),
-                |v| format!("PostgreSQL {}.{}", v.0 / 10000, v.0 % 10000),
-            );
-        let ask = ai::Ask {
-            server,
-            database,
-            structure,
-            editor: self.ai_editor_text(i),
-            prompt: prompt.clone(),
-        };
         let request = ai::request(&self.settings.ai, key.as_deref(), &ask);
         if self.ai.history.last() != Some(&prompt) {
             self.ai.history.push(prompt.clone());
@@ -378,12 +398,11 @@ impl App {
         let e = d.memo_editor("prompt")?;
         let chars: Vec<char> = e.text().chars().collect();
         let (start, qualifier, prefix) = ai::prompt_word(&chars, e.cursor());
-        let items = self
-            .ai
-            .structure
-            .as_ref()
-            .filter(|(t, _)| *t == tab)
-            .map(|(_, s)| ai::prompt_items(s, &qualifier, &prefix));
+        // (a structure that could not be read offers nothing)
+        let items = self.ai_structure(tab).map(|s| match s {
+            Ok(s) => ai::prompt_items(s, &qualifier, &prefix),
+            Err(_) => Vec::new(),
+        });
         Some((start, prefix, items))
     }
 
@@ -519,10 +538,8 @@ impl App {
         let lw = AI_LABEL_WIDTH;
         let mut presets = vec!["(custom)".to_owned()];
         presets.extend(ai::PRESETS.iter().map(|p| p.name.to_owned()));
-        let preset = ai::PRESETS
-            .iter()
-            .position(|p| p.name == a.preset)
-            .map_or(0, |i| i + 1);
+        // the preset is not stored: it is the one the saved values belong to
+        let preset = ai::preset_of(a).map_or(0, |i| i + 1);
         let protocols = AiProtocol::ALL
             .iter()
             .map(|p| p.label().to_owned())
@@ -552,6 +569,7 @@ impl App {
             ],
         );
         self.ai.preset_seen = preset;
+        self.ai.key_stars = saved;
         self.dialogs.push(dialog);
     }
 
@@ -564,14 +582,12 @@ impl App {
         if d.kind != DialogKind::AiSettings {
             return;
         }
-        let key = d.text("key").unwrap_or("").to_owned();
-        if key != SAVED_KEY {
-            if let Some(typed) = key.strip_prefix(SAVED_KEY) {
-                d.set_text("key", typed);
-            } else if !key.is_empty() && SAVED_KEY.starts_with(&key) {
-                // Backspace on the stars: the whole saved key goes
-                d.set_text("key", "");
-            }
+        // the first change of the saved key's stars — typing or pasting anywhere in
+        // them, Backspace, Delete — takes all the stars away: what is left is new
+        if self.ai.key_stars && d.text("key") != Some(SAVED_KEY) {
+            let typed = d.text("key").unwrap_or("").replace('*', "");
+            d.set_text("key", &typed);
+            self.ai.key_stars = false;
         }
         let chosen = d.selected("preset").unwrap_or(0);
         if chosen == self.ai.preset_seen {
@@ -604,7 +620,7 @@ impl App {
             return;
         }
         let file = self.paths.ai_key_file();
-        let written = if key == SAVED_KEY {
+        let written = if self.ai.key_stars && key == SAVED_KEY {
             Ok(())
         } else if key.is_empty() {
             match std::fs::remove_file(&file) {
@@ -621,14 +637,8 @@ impl App {
             self.error(&format!("Could not write {}: {e}", file.display()));
             return;
         }
-        let preset = dialog
-            .selected("preset")
-            .and_then(|i| i.checked_sub(1))
-            .and_then(|i| ai::PRESETS.get(i))
-            .map_or(String::new(), |p| p.name.to_owned());
         let a = &mut self.settings.ai;
         a.enabled = enabled;
-        a.preset = preset;
         a.protocol = dialog
             .selected("protocol")
             .and_then(|i| AiProtocol::ALL.get(i).copied())

@@ -3034,7 +3034,6 @@ async fn help_screenshots() {
     a.editor().set_cursor(end, false);
     a.settings.ai = pgc_core::settings::AiSettings {
         enabled: true,
-        preset: "Claude".into(),
         protocol: pgc_core::settings::AiProtocol::Anthropic,
         base_url: "https://api.anthropic.com".into(),
         model: "claude-sonnet-5-5".into(),
@@ -3080,7 +3079,6 @@ async fn help_screenshots() {
     a.query_mut().unwrap().results_visible = false;
     a.settings.ai = pgc_core::settings::AiSettings {
         enabled: true,
-        preset: "Claude".into(),
         protocol: pgc_core::settings::AiProtocol::Anthropic,
         base_url: "https://api.anthropic.com".into(),
         model: "claude-sonnet-5-5".into(),
@@ -3263,7 +3261,7 @@ fn ai_structure() -> Vec<Vec<String>> {
             "orderdate",
             "timestamp without time zone",
             "true",
-            "now()",
+            "DEFAULT now()",
         ],
         vec![
             "c",
@@ -3358,24 +3356,30 @@ fn ai_structure() -> Vec<Vec<String>> {
         ["6", "maritalstatus", "character(1)", "true", ""],
         ["7", "gender", "character(1)", "true", ""],
         ["8", "hiredate", "date", "true", ""],
-        ["9", "salariedflag", "boolean", "true", "true"],
-        ["10", "vacationhours", "smallint", "true", "0"],
-        ["11", "sickleavehours", "smallint", "true", "0"],
-        ["12", "currentflag", "boolean", "true", "true"],
-        ["13", "rowguid", "uuid", "true", "uuid_generate_v1()"],
+        ["9", "salariedflag", "boolean", "true", "DEFAULT true"],
+        ["10", "vacationhours", "smallint", "true", "DEFAULT 0"],
+        ["11", "sickleavehours", "smallint", "true", "DEFAULT 0"],
+        ["12", "currentflag", "boolean", "true", "DEFAULT true"],
+        [
+            "13",
+            "rowguid",
+            "uuid",
+            "true",
+            "DEFAULT uuid_generate_v1()",
+        ],
         [
             "14",
             "modifieddate",
             "timestamp without time zone",
             "true",
-            "now()",
+            "DEFAULT now()",
         ],
         [
             "15",
             "organizationnode",
             "character varying",
             "false",
-            "'/'::character varying",
+            "DEFAULT '/'::character varying",
         ],
     ] {
         rows.push(vec![

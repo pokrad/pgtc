@@ -67,6 +67,15 @@ pub const PRESETS: [Preset; 5] = [
     },
 ];
 
+/// The preset whose protocol and base URL `ai` has (the model may differ), as an
+/// index into [`PRESETS`].
+pub fn preset_of(ai: &AiSettings) -> Option<usize> {
+    let url = ai.base_url.trim().trim_end_matches('/');
+    PRESETS
+        .iter()
+        .position(|p| p.protocol == ai.protocol && p.base_url == url)
+}
+
 /// Enabled, with a base URL and a model (the key is checked when it is needed).
 pub fn configured(ai: &AiSettings) -> bool {
     ai.enabled && !ai.base_url.trim().is_empty() && !ai.model.trim().is_empty()
@@ -132,7 +141,9 @@ pub struct Column {
     pub name: String,
     pub ty: String,
     pub not_null: bool,
-    pub default: String,
+    /// `DEFAULT …`, `GENERATED … AS IDENTITY` or `GENERATED ALWAYS AS (…) STORED`, as
+    /// the query wrote it; empty without one.
+    pub extra: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -208,7 +219,7 @@ impl Structure {
                         name: r(4),
                         ty: r(5),
                         not_null: r(6) == "true",
-                        default: r(7),
+                        extra: r(7),
                     },
                 );
             }
@@ -281,9 +292,9 @@ impl Structure {
                     if c.not_null {
                         l.push_str(" NOT NULL");
                     }
-                    if !c.default.is_empty() {
-                        l.push_str(" DEFAULT ");
-                        l.push_str(&c.default);
+                    if !c.extra.is_empty() {
+                        l.push(' ');
+                        l.push_str(&c.extra);
                     }
                     l
                 })
@@ -560,10 +571,18 @@ pub fn user_prompt(ask: &Ask) -> String {
     out
 }
 
-/// About how many tokens `text` is (four characters a token).
+/// About how many tokens `chars` characters are (four characters a token).
 pub fn tokens(chars: usize) -> usize {
     chars.div_ceil(4)
 }
+
+/// Characters of everything a request for `ask` sends.
+pub fn request_chars(ask: &Ask) -> usize {
+    system_prompt(ask).chars().count() + user_prompt(ask).chars().count()
+}
+
+/// Added to an answer that stopped at the model's length limit.
+pub const CUT_OFF: &str = "-- (the answer was cut off here: it reached the model's length limit)";
 
 /// An HTTP request, ready for [`send`].
 #[derive(Debug, Clone, PartialEq)]
@@ -650,7 +669,19 @@ pub fn answer(protocol: AiProtocol, status: u16, body: &str) -> Result<String, S
                 .join("")
         }),
     };
+    // stopped at the length limit: said in the text, so it is not run as it is
+    let cut = match protocol {
+        AiProtocol::OpenaiCompatible => {
+            json.pointer("/choices/0/finish_reason")
+                .and_then(Value::as_str)
+                == Some("length")
+        }
+        AiProtocol::Anthropic => {
+            json.get("stop_reason").and_then(Value::as_str) == Some("max_tokens")
+        }
+    };
     match text {
+        Some(t) if !t.trim().is_empty() && cut => Ok(format!("{}\n{CUT_OFF}\n", t.trim_end())),
         Some(t) if !t.trim().is_empty() => Ok(t),
         _ => Err(error(&json).unwrap_or_else(|| "The AI service sent no answer.".to_owned())),
     }
@@ -773,7 +804,7 @@ mod tests {
                 "customer_id",
                 "integer",
                 "true",
-                "nextval('sales.customer_customer_id_seq'::regclass)",
+                "DEFAULT nextval('sales.customer_customer_id_seq'::regclass)",
             ]),
             row(&[
                 "c",
@@ -806,7 +837,16 @@ mod tests {
                 "",
             ]),
             row(&["c", "sales", "v_customer", "1", "name", "text", "false", ""]),
-            row(&["c", "hr", "Employee", "1", "id", "bigint", "true", ""]),
+            row(&[
+                "c",
+                "hr",
+                "Employee",
+                "1",
+                "id",
+                "bigint",
+                "true",
+                "GENERATED ALWAYS AS IDENTITY",
+            ]),
             row(&["f", "sales", "add", "p", "IN p_name text", "", "", ""]),
             row(&[
                 "f",
@@ -829,7 +869,7 @@ mod tests {
         let want = [
             "TYPE hr.mood AS ENUM ('happy', 'sad');",
             "TABLE hr.\"Employee\" ( -- partitioned",
-            "  id bigint NOT NULL",
+            "  id bigint NOT NULL GENERATED ALWAYS AS IDENTITY",
             ");",
             "TABLE sales.customer (",
             "  customer_id integer NOT NULL DEFAULT nextval('sales.customer_customer_id_seq'::regclass),",
@@ -891,7 +931,6 @@ mod tests {
             protocol: AiProtocol::Anthropic,
             base_url: "https://api.anthropic.com/".into(),
             model: "claude-sonnet-5-5".into(),
-            ..AiSettings::default()
         };
         let r = request(&ai, Some("k1"), &ask());
         assert_eq!(r.url, "https://api.anthropic.com/v1/messages");
@@ -945,6 +984,24 @@ mod tests {
             Err("The AI service answered HTTP 502: Bad gateway".into())
         );
         assert!(answer(AiProtocol::Anthropic, 200, r#"{"content":[]}"#).is_err());
+        // stopped at the length limit: a comment says so
+        let cut =
+            r#"{"content":[{"type":"text","text":"SELECT 1,\n"}],"stop_reason":"max_tokens"}"#;
+        assert_eq!(
+            answer(AiProtocol::Anthropic, 200, cut),
+            Ok(format!("SELECT 1,\n{CUT_OFF}\n"))
+        );
+        let cut = r#"{"choices":[{"message":{"content":"SELECT"},"finish_reason":"length"}]}"#;
+        assert!(
+            answer(AiProtocol::OpenaiCompatible, 200, cut)
+                .unwrap()
+                .ends_with(&format!("{CUT_OFF}\n"))
+        );
+        let whole = r#"{"choices":[{"message":{"content":"SELECT 1;"},"finish_reason":"stop"}]}"#;
+        assert_eq!(
+            answer(AiProtocol::OpenaiCompatible, 200, whole),
+            Ok("SELECT 1;".into())
+        );
         assert!(answer(AiProtocol::Anthropic, 200, "nope").is_err());
     }
 
@@ -1033,6 +1090,14 @@ mod tests {
         assert_eq!(tokens(10), 3);
         let mut ai = AiSettings::default();
         assert!(!configured(&ai));
+        assert_eq!(preset_of(&ai), None);
+        ai.protocol = AiProtocol::Anthropic;
+        ai.base_url = "https://api.anthropic.com/".into();
+        assert_eq!(PRESETS[preset_of(&ai).unwrap()].name, "Claude");
+        assert_eq!(
+            request_chars(&ask()),
+            system_prompt(&ask()).len() + user_prompt(&ask()).len()
+        );
         ai.enabled = true;
         ai.base_url = "x".into();
         ai.model = "m".into();

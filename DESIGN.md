@@ -2514,13 +2514,15 @@ pgtc (binary)
     request runs in a tokio task; the UI never waits for it (D-006).
 - **Setup:** *Settings → AI…* — its own dialog (the Settings dialog must fit 24
   rows, D-051): Enabled, preset, protocol, base URL, model, API key.
-  Stored in `settings.toml` under `[ai]` — **never the key itself**.
+  Stored in `settings.toml` under `[ai]` — **never the key itself**; the preset is
+  not stored (the dialog shows the one the saved protocol and base URL belong to).
   - **API key:** typed into the dialog (masked) and kept in its own key file
     `ai_key` in pgtc's config folder (path from `pgc-core`, written with
     `atomic_write`, owner-only permissions where the OS supports them, like
     `.pgpass`) — not in `settings.toml`, which users copy and show. No environment
-    variables. A saved key shows as `********`: left as it is, it stays; typed over,
-    it is replaced; emptied, the file is removed. No key (empty): nothing is sent
+    variables. A saved key shows as `********`: left as it is, it stays; the first
+    change (typing or pasting anywhere in it, Backspace, Delete) takes the stars
+    away, what is typed is the new key; emptied, the file is removed. No key (empty): nothing is sent
     (local servers); a service that needs one answers with its own error. The key
     is never written to the log.
   - AI counts as *set up* when it is enabled and base URL and model are filled.
@@ -2529,14 +2531,17 @@ pgtc (binary)
   `F8` stays Delete connection, on the dashboard Terminate session (D-035, D-057).
   It works only when AI is set up **and** the query tab is connected to a database;
   otherwise the status line says why (*AI is not set up (Settings → AI…)*,
-  *Connect the query tab first*, *AI is not allowed for this connection*). Its
+  *Connect the query tab first*, *AI is not allowed for this connection*); also
+  refused while the tab runs a query, has a paused result or an export (reading the
+  structure would end them, as for the generate commands, D-054). Its
   "works now" rule goes into `app/key_help.rs` (D-063).
 - **Per-connection opt-out:** the connection dialog gets **AI not allowed**
   (default off), e.g. for production servers (D-035). Such a tab cannot use `F8`.
 - **What is sent** — structure and the editor text, **never table data**:
   - the server version (so the SQL fits the server);
   - the database structure in compact text, not full DDL: tables, views and foreign
-    tables with columns, types, NOT NULL, defaults, primary / unique / foreign keys;
+    tables with columns, types, NOT NULL, defaults, identity and generated columns
+    (as `GENERATED …`), primary / unique / foreign keys and checks;
     function and procedure signatures; enum types; system schemas left out. Read
     through the query tab's connection with catalog SQL (`sql/ai/`);
   - the current editor text, if not empty; a selection is marked, so the model knows
@@ -2546,8 +2551,10 @@ pgtc (binary)
     SQL only, explanations as `--` comments).
 - **Dialog:** a multi-line prompt box (wraps at word ends; `Enter` is a new line,
   `Tab` leaves it, `Ctrl+Enter` / `Alt+S` send); scope *Whole database* (default) / *Schema …*
-  (combo); a line *sends about N tokens to <host>* (estimated from the text size,
-  updated when the scope changes); Send / Cancel. The prompts of the session are
+  (combo); a line *sends about N tokens to <host>* (the size of the whole request
+  — instructions, structure, editor text, prompt — four characters a token; follows
+  the scope and the prompt); Send / Cancel. A structure that could not be read:
+  Send shows the error. The prompts of the session are
   remembered (`↑` / `↓` in an empty box, like the `F4` history, D-054).
 - **Autocomplete in the prompt box** (D-052's list, from the structure read for the
   dialog — no extra queries): opened by `Ctrl+Space` / `Alt+/` and after a typed
@@ -2558,13 +2565,16 @@ pgtc (binary)
   has): the columns. Quoted only when needed. The list does not follow the scope.
   `↑` / `↓` choose, typing filters, `Enter` / `Tab` take the entry, `Esc` closes only
   the list; *loading…* until the structure is there.
-- **While waiting:** the status line shows *Asking AI …*; `Esc` cancels the request.
+- **While waiting:** the status line shows *Asking AI …*; `Esc` cancels the request
+  (when no dialog, menu, template form or quick search is open — those take it).
   An error (HTTP status, provider message, no answer) is shown in an error dialog;
   the editor is not changed.
 - **The answer:** code fences (```` ``` ````) are removed; the SQL replaces the
   selection, or is inserted at the cursor when there is none (on a line of its own),
   with the prompt above it as `--` comment lines; text outside code fences becomes
-  `--` comments. One undo step brings back the old text. Nothing is run.
+  `--` comments. An answer that stopped at the model's length limit
+  (`stop_reason: max_tokens` / `finish_reason: length`) ends with a comment line
+  saying so. One undo step brings back the old text. Nothing is run.
 - **Later:** streaming the answer, follow-up questions in one conversation, the model
   reading catalog details itself through tool use (read-only), Azure OpenAI.
 
@@ -2728,3 +2738,4 @@ pgtc (binary)
 | 2026-11-18 | D-073 updated: no environment variables for the API key — it is typed into Settings → AI… and kept in the key file `ai_key` (stars for a saved key: kept, replaced by typing, removed when emptied); presets fill in protocol, base URL and model only. |
 | 2026-11-18 | D-073 updated: autocomplete in the prompt box — `Ctrl+Space` / `Alt+/` and after `.`, names from the dialog's structure, objects schema-qualified, columns after `table.`; not limited by the scope. |
 | 2026-11-18 | D-035, D-014 updated: File → Edit connection… / Delete connection…; OK in Edit connection on a connected server applies a name / *AI not allowed* change at once, any other change disconnects (the usual questions; the server's tabs close) and connects again, the tree opening down to the selected object. |
+| 2026-11-18 | D-073 reviewed and corrected: `Esc` cancels a request only when nothing else takes it; `F8` refused with a paused result; a cut-off answer is marked with a comment; the saved key's stars go with the first change; identity and generated columns in the structure; a failed structure read is reported on Send; exact size estimate (with the prompt); the preset is not stored. |

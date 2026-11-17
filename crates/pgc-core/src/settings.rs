@@ -288,8 +288,6 @@ impl AiProtocol {
 #[serde(default)]
 pub struct AiSettings {
     pub enabled: bool,
-    /// Name of the preset the fields were filled from (only shown in the dialog).
-    pub preset: String,
     pub protocol: AiProtocol,
     pub base_url: String,
     pub model: String,
@@ -299,7 +297,6 @@ impl Default for AiSettings {
     fn default() -> Self {
         Self {
             enabled: false,
-            preset: String::new(),
             protocol: AiProtocol::OpenaiCompatible,
             base_url: String::new(),
             model: String::new(),

@@ -193,7 +193,7 @@
 <text x="207" y="337.25" fill="#0c0c0c">│</text>
 <text x="225 234 243 252 261" y="337.25" fill="#0c0c0c">Sends</text>
 <text x="279 288 297 306 315" y="337.25" fill="#0c0c0c">about</text>
-<text x="333 342 351" y="337.25" fill="#0c0c0c">664</text>
+<text x="333 342 351" y="337.25" fill="#0c0c0c">656</text>
 <text x="369 378 387 396 405 414" y="337.25" fill="#0c0c0c">tokens</text>
 <text x="432 441" y="337.25" fill="#0c0c0c">to</text>
 <text x="459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603" y="337.25" fill="#0c0c0c">api.anthropic.com</text>

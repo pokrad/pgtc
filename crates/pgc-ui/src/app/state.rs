@@ -114,15 +114,19 @@ pub(super) struct AiState {
     pub(super) sink: Option<super::ai::AiSink>,
     pub(super) next_id: u64,
     pub(super) run: Option<AiRun>,
-    /// The structure read for the open `F8` dialog of query tab `.0`.
-    pub(super) structure: Option<(u64, crate::ai::Structure)>,
-    /// The scope the dialog's info line was computed for.
-    pub(super) scope_seen: Option<usize>,
+    /// The structure read for the open `F8` dialog of query tab `.0`, or why it
+    /// could not be read.
+    pub(super) structure: Option<(u64, Result<crate::ai::Structure, String>)>,
+    /// The scope the dialog's size was computed for, and the characters a request
+    /// sends with it and an empty prompt.
+    pub(super) size: Option<(usize, usize)>,
     /// Prompts of this session, oldest first, and the one shown (`↑` / `↓`).
     pub(super) history: Vec<String>,
     pub(super) history_pos: Option<usize>,
     /// The preset the AI settings dialog last filled in.
     pub(super) preset_seen: usize,
+    /// The AI settings dialog still shows the saved key as stars, untouched.
+    pub(super) key_stars: bool,
     /// The autocomplete list of the prompt box.
     pub(super) completion: Option<crate::completion::Popup>,
     /// Without a sink (tests): the request that would have been sent.

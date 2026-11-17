@@ -17,6 +17,7 @@ impl App {
         if !matches!(m.kind, MouseEventKind::Moved) {
             self.completion = None;
             self.psql_completion = None;
+            self.ai.completion = None;
         }
         let p = Position::new(m.column, m.row);
         if self.templates.form.is_some() && self.dialogs.is_empty() {
