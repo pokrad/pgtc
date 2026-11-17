@@ -2165,6 +2165,10 @@ async fn help_screenshots() {
         ("gtc", crate::psql::Gen::Cursor),
         ("gtsi", crate::psql::Gen::Vars),
         ("gtm", crate::psql::Gen::Merge),
+        ("gpi", crate::psql::Gen::ProcInsert),
+        ("gpu", crate::psql::Gen::ProcUpdate),
+        ("gpd", crate::psql::Gen::ProcDelete),
+        ("gpo", crate::psql::Gen::ProcUpsert),
         (
             "gtrb",
             crate::psql::Gen::Trigger {

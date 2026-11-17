@@ -230,6 +230,59 @@ async fn psql_commands_against_a_real_server() {
         );
         assert!(text.contains(&format!("FOR EACH {each} ")), "{text}");
     }
+    // gp / gpi / gpu / gpo / gpd: the procedures are created (in the temp schema of
+    // the table) and called; a second delete of the same key raises "no row"
+    let errors = |a: &App| -> Vec<String> {
+        a.query()
+            .unwrap()
+            .messages
+            .iter()
+            .filter(|m| m.kind == crate::query_tab::MessageKind::Error)
+            .map(|m| m.text.clone())
+            .collect()
+    };
+    for (command, call) in [
+        ("gp pg_temp", "CALL pg_temp.pgtc_psql_gp();"),
+        (
+            "gpi pgtc_psql",
+            "CALL pg_temp.pgtc_psql_gpi('a', 'b', NULL);",
+        ),
+        ("gpu pgtc_psql", "CALL pg_temp.pgtc_psql_gpu(1, 'c', NULL);"),
+        ("gpo pgtc_psql", "CALL pg_temp.pgtc_psql_gpo(2, 'd', 'e');"),
+        ("gpd pgtc_psql", "CALL pg_temp.pgtc_psql_gpd(1);"),
+    ] {
+        a.editor().set_text("");
+        a.status.clear();
+        run(&mut a, command);
+        pump(&mut a, &mut rx, &hits, |a| {
+            a.status.starts_with("Generated")
+        })
+        .await;
+        let name = format!("pgtc_psql_{}", &command[..command.find(' ').unwrap()]);
+        let text = a.editor().text().replace("[procedure_name]", &name);
+        assert!(text.contains("LANGUAGE plpgsql"), "{text}");
+        a.editor().set_text(&format!("{text}\n{call}"));
+        key(&mut a, "F5");
+        pump(&mut a, &mut rx, &hits, idle).await;
+        assert!(errors(&a).is_empty(), "{command}: {:?}\n{text}", errors(&a));
+    }
+    a.editor().set_text("CALL pg_temp.pgtc_psql_gpd(1);");
+    key(&mut a, "F5");
+    pump(&mut a, &mut rx, &hits, idle).await;
+    assert!(
+        errors(&a).iter().any(|e| e.contains("no row with id = 1")),
+        "{:?}",
+        errors(&a)
+    );
+    a.editor()
+        .set_text("SELECT string_agg(id || ':' || name || ':' || coalesce(note, '-'), ',' ORDER BY id) FROM pgtc_psql");
+    key(&mut a, "F5");
+    pump(&mut a, &mut rx, &hits, idle).await;
+    assert_eq!(
+        a.query().unwrap().results[0].rows[0][0].as_deref(),
+        Some("2:d:e")
+    );
+    a.editor().set_text("");
     // unknown command: an error, the command line stays open
     run(&mut a, "xyz");
     assert_eq!(a.dialogs.len(), 2);

@@ -1690,7 +1690,8 @@ pgtc (binary)
     combined letters add up (`dtv` → tables and views; `E` foreign tables, `i` nothing);
   - `gts`, `gti`, `gtu`, `gtd`, `gtc`, `gto`, `gtsi`, `gtv` — tables, views, foreign
     tables (`gtv` completes the last name typed);
-  - `gtm`, `gtrb`, `gtra`, `gtsb`, `gtsa` — tables;
+  - `gtm`, `gtrb`, `gtra`, `gtsb`, `gtsa`, `gpi`, `gpu`, `gpd`, `gpo` — tables;
+  - `gp` — schemas;
   - all others — nothing (*No suggestions*).
   Names come from the query tab's name cache (*loading…* until it is read; nothing is
   read while a result runs or is paused). Names on the search path are offered as
@@ -1811,6 +1812,32 @@ pgtc (binary)
       ON 1=1  -- no foreign key: write the join condition`. Views and foreign tables
       have none.
     - A name not found → *Did not find a table named "…"*, nothing inserted.
+  - `gp` [*schema*] — an empty PL/pgSQL procedure: `CREATE OR REPLACE PROCEDURE
+    <schema>.[procedure_name]() LANGUAGE plpgsql AS $$ BEGIN --PROCESS HERE END; $$;`.
+    Without a schema `public`; a qualified name is refused. Nothing is read from the
+    database (inserted at once); autocomplete offers schemas.
+  - `gpi` / `gpu` / `gpd` / `gpo` *table* — a PL/pgSQL procedure for one row of the
+    table: **i**nsert / **u**pdate / **d**elete / upsert (**o**n conflict).
+    `CREATE OR REPLACE PROCEDURE <schema>.[procedure_name](<parameters>) LANGUAGE
+    plpgsql AS $$ BEGIN … END; $$;` in the table's schema; the name is a placeholder
+    (as the trigger commands). Tables only (as `gtm`). CREATE PROCEDURE is in every
+    supported server (PostgreSQL 11, D-011), so no feature check.
+    - *Parameters:* one per column the statement uses, `p_` + the column name cleaned
+      as `gtsi`'s `v_` names; a name that is also a column of the table gets `_2`, …
+      (no clash inside the statement). Typed with the plain column type (not
+      `%TYPE`: PostgreSQL converts it with a NOTICE). The comment shows `NOT NULL` and,
+      for `gpi` / `gpo`, the default; a key parameter's comment says which key. The
+      parameter comments are aligned on their own, not with the body.
+    - `gpi`: the columns of *INSERT*; key columns the database fills (sequence,
+      identity) come back as `INOUT p_key type DEFAULT NULL` (last) through `RETURNING
+      … INTO`. No columns → `DEFAULT VALUES`.
+    - `gpu`: key parameters, then every other column *UPDATE* sets; `UPDATE … SET col
+      = p_col WHERE key = p_key`. Only key columns → refused (*nothing to update*).
+    - `gpd`: key parameters; `DELETE … WHERE key = p_key`.
+    - `gpu` / `gpd` end with `IF NOT FOUND THEN RAISE EXCEPTION '<schema>.<table>: no
+      row with id = %', p_id; END IF;`. No key → no key parameters, `WHERE [condition]
+      -- no primary key: write a condition` and the message *no row found*.
+    - `gpo`: the columns and `ON CONFLICT` of `gto` with `p_` values.
 
 ### D-055 — Find object in the tree (`Ctrl+F`)
 - **Status:** Accepted (refines D-009, D-036)
@@ -2543,3 +2570,4 @@ pgtc (binary)
 | 2026-11-15 | D-046 refined: a template's own `query` must be one `SELECT` / `WITH` / `VALUES` / `TABLE` statement and runs so that nothing it does stays (a read-only transaction, or a savepoint of the tab's open transaction that is rolled back). D-057 refined: cancel / terminate go only to the session that was shown (PID and backend start), not to one that got its PID since. D-058 refined: profiler entries are recognised by SQLSTATE, so errors also show on servers whose messages are not English. |
 | 2026-11-15 | D-055 updated: a search of all databases has at most 8 connections of its own open at a time (it had one per database until the dialog closed); with more databases a connection is closed when it has answered. D-052 refined: names are not asked for in a failed transaction, and a failed lookup is not remembered as an empty list. |
 | 2026-11-15 | D-054 updated: `gtt` split into `gtrb` / `gtra` / `gtsb` / `gtsa` (row / statement, before / after); trigger names `<table>_rb_trg`, `_ra_trg`, `_sb_trg`, `_sa_trg`; after row triggers end every branch with the final `RETURN NULL` (ignored); statement triggers have no field comments, add `TRUNCATE`, no transition tables. |
+| 2026-11-17 | D-054 updated: generate commands `gp` [*schema*] (empty PL/pgSQL procedure, default schema `public`, nothing read, schemas autocompleted) and `gpi` / `gpu` / `gpd` / `gpo` *table* (PL/pgSQL procedures that insert / update / delete / upsert one row; `p_` parameters with plain column types, `INOUT` for keys the database fills, `RAISE EXCEPTION` when `gpu` / `gpd` find no row; name `[procedure_name]` in the table's schema; tables only). |

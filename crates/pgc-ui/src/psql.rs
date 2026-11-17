@@ -139,6 +139,36 @@ pub const GENERATE: &[Row] = &[
         "generate trigger function + AFTER statement trigger (inserted at the cursor)",
         TABLES,
     ),
+    (
+        "gp",
+        "[schema]",
+        "generate an empty PL/pgSQL procedure, default schema public (inserted at the cursor)",
+        &["schema"],
+    ),
+    (
+        "gpi",
+        "table",
+        "generate PL/pgSQL procedure: INSERT a row (inserted at the cursor)",
+        TABLES,
+    ),
+    (
+        "gpu",
+        "table",
+        "generate PL/pgSQL procedure: UPDATE a row by key (inserted at the cursor)",
+        TABLES,
+    ),
+    (
+        "gpd",
+        "table",
+        "generate PL/pgSQL procedure: DELETE a row by key (inserted at the cursor)",
+        TABLES,
+    ),
+    (
+        "gpo",
+        "table",
+        "generate PL/pgSQL procedure: upsert a row (inserted at the cursor)",
+        TABLES,
+    ),
 ];
 
 /// Modifiers: `+` (more columns), `S` (system objects).
@@ -159,6 +189,61 @@ pub enum Gen {
         row: bool,
         before: bool,
     },
+    /// `gpi` / `gpu` / `gpd` / `gpo`: a PL/pgSQL procedure with one parameter per column.
+    ProcInsert,
+    ProcUpdate,
+    ProcDelete,
+    ProcUpsert,
+}
+
+impl Gen {
+    /// The F4 command of a generate kind (for messages).
+    pub fn command(self) -> &'static str {
+        match self {
+            Gen::Select => "gts",
+            Gen::Insert => "gti",
+            Gen::Update => "gtu",
+            Gen::Delete => "gtd",
+            Gen::Cursor => "gtc",
+            Gen::Upsert => "gto",
+            Gen::Vars => "gtsi",
+            Gen::Merge => "gtm",
+            Gen::Trigger {
+                row: true,
+                before: true,
+            } => "gtrb",
+            Gen::Trigger {
+                row: true,
+                before: false,
+            } => "gtra",
+            Gen::Trigger {
+                row: false,
+                before: true,
+            } => "gtsb",
+            Gen::Trigger {
+                row: false,
+                before: false,
+            } => "gtsa",
+            Gen::ProcInsert => "gpi",
+            Gen::ProcUpdate => "gpu",
+            Gen::ProcDelete => "gpd",
+            Gen::ProcUpsert => "gpo",
+        }
+    }
+
+    /// Works on tables only (not views or foreign tables).
+    pub fn tables_only(self) -> bool {
+        !matches!(
+            self,
+            Gen::Select
+                | Gen::Insert
+                | Gen::Update
+                | Gen::Delete
+                | Gen::Cursor
+                | Gen::Upsert
+                | Gen::Vars
+        )
+    }
 }
 
 /// A schema-qualified or plain name, folded like PostgreSQL.
@@ -190,6 +275,10 @@ pub enum Cmd {
     View {
         tables: Vec<Name>,
     },
+    /// `gp`: an empty procedure in a schema (`public` when none is typed).
+    Procedure {
+        schema: String,
+    },
 }
 
 /// Rows of the F4 list: every command, pgtc's own after a separator (`None`).
@@ -218,6 +307,10 @@ pub fn needs_table(input: &str) -> bool {
             | "gtra"
             | "gtsb"
             | "gtsa"
+            | "gpi"
+            | "gpu"
+            | "gpd"
+            | "gpo"
     )
 }
 
@@ -303,8 +396,18 @@ pub fn parse(input: &str) -> Result<Cmd, String> {
                 .collect::<Result<_, _>>()?;
             return Ok(Cmd::View { tables });
         }
+        "gp" => {
+            let schema = match arg.as_deref() {
+                None => "public".to_owned(),
+                Some(a) => match parse_name(a)? {
+                    (None, s) => s,
+                    _ => return Err("gp takes a schema name, e.g. gp sales".to_owned()),
+                },
+            };
+            return Ok(Cmd::Procedure { schema });
+        }
         "gts" | "gti" | "gtu" | "gtd" | "gtc" | "gto" | "gtsi" | "gtm" | "gtrb" | "gtra"
-        | "gtsb" | "gtsa" => {
+        | "gtsb" | "gtsa" | "gpi" | "gpu" | "gpd" | "gpo" => {
             let what = match word {
                 "gts" => Gen::Select,
                 "gti" => Gen::Insert,
@@ -317,6 +420,10 @@ pub fn parse(input: &str) -> Result<Cmd, String> {
                     row: word.as_bytes()[2] == b'r',
                     before: word.ends_with('b'),
                 },
+                "gpi" => Gen::ProcInsert,
+                "gpu" => Gen::ProcUpdate,
+                "gpd" => Gen::ProcDelete,
+                "gpo" => Gen::ProcUpsert,
                 _ => Gen::Delete,
             };
             let Some(arg) = arg else {
@@ -763,11 +870,9 @@ fn aligned(lines: &[(String, String)]) -> String {
         .join("\n")
 }
 
-/// The statement of a generate command; values are `[column]` placeholders (D-054).
-pub fn generate(what: Gen, t: &GenTable) -> String {
-    let table = format!("{}.{}", quote_ident(&t.schema), quote_ident(&t.name));
-    let ph = |c: &GenColumn| format!("[{}]", c.name);
-    // the key used in WHERE: primary key, else the unique constraint
+/// The key used in WHERE: the primary key, else the unique constraint (both may be
+/// empty), and how comments name it.
+fn key_of(t: &GenTable) -> (Vec<&GenColumn>, String) {
     let mut key: Vec<&GenColumn> = t.columns.iter().filter(|c| c.pk_pos.is_some()).collect();
     key.sort_by_key(|c| c.pk_pos);
     let mut key_kind = "primary key".to_owned();
@@ -778,6 +883,24 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
             key_kind = format!("unique key {u} (no primary key)");
         }
     }
+    (key, key_kind)
+}
+
+/// `gpu`: every writable column is part of the key — nothing to update.
+pub fn nothing_to_update(t: &GenTable) -> bool {
+    let (key, _) = key_of(t);
+    !key.is_empty()
+        && t.columns
+            .iter()
+            .filter(|c| !c.generated && c.identity != "a")
+            .all(|c| key.iter().any(|k| k.name == c.name))
+}
+
+/// The statement of a generate command; values are `[column]` placeholders (D-054).
+pub fn generate(what: Gen, t: &GenTable) -> String {
+    let table = format!("{}.{}", quote_ident(&t.schema), quote_ident(&t.name));
+    let ph = |c: &GenColumn| format!("[{}]", c.name);
+    let (key, key_kind) = key_of(t);
     let is_key = |c: &GenColumn| key.iter().any(|k| k.name == c.name);
     let where_lines = |out: &mut Vec<(String, String)>, indent: &str, end: &str| {
         if key.is_empty() {
@@ -985,6 +1108,17 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
             ));
         }
         Gen::Trigger { row, before } => return trigger(&table, t, row, before),
+        Gen::ProcInsert | Gen::ProcUpdate | Gen::ProcDelete | Gen::ProcUpsert => {
+            let p = ProcTable {
+                table: &table,
+                t,
+                key: &key,
+                key_kind: &key_kind,
+                upsert_cols: &upsert_cols,
+                overriding,
+            };
+            return procedure(what, &p);
+        }
         Gen::Vars => {
             let vars = var_names(&t.columns);
             let width = vars.iter().map(|v| v.chars().count()).max().unwrap_or(0);
@@ -1124,6 +1258,13 @@ fn trigger(table: &str, t: &GenTable, row: bool, before: bool) -> String {
 /// `gtsi` variable names: `v_` + the column name in lower case, every character other
 /// than a letter, digit or `_` turned into `_`; a repeated name gets `_2`, `_3`, ….
 fn var_names(columns: &[GenColumn]) -> Vec<String> {
+    let columns: Vec<&GenColumn> = columns.iter().collect();
+    prefixed_names(&columns, "v_", &[])
+}
+
+/// Names `prefix` + the cleaned column name; a name already used or in `taken` gets
+/// `_2`, `_3`, ….
+fn prefixed_names(columns: &[&GenColumn], prefix: &str, taken: &[String]) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     for c in columns {
         let base: String = c
@@ -1138,16 +1279,343 @@ fn var_names(columns: &[GenColumn]) -> Vec<String> {
                 }
             })
             .collect();
-        let base = format!("v_{base}");
+        let base = format!("{prefix}{base}");
         let mut name = base.clone();
         let mut n = 2;
-        while out.contains(&name) {
+        while out.contains(&name) || taken.contains(&name) {
             name = format!("{base}_{n}");
             n += 1;
         }
         out.push(name);
     }
     out
+}
+
+/// What `procedure` needs from `generate`: the table and its key.
+struct ProcTable<'a> {
+    table: &'a str,
+    t: &'a GenTable,
+    key: &'a [&'a GenColumn],
+    key_kind: &'a str,
+    upsert_cols: &'a [&'a GenColumn],
+    overriding: bool,
+}
+
+/// A parameter of a generated procedure.
+struct Param<'a> {
+    col: &'a GenColumn,
+    inout: bool,
+    comment: String,
+}
+
+/// Comment of a procedure parameter: NOT NULL and (for inserts) the default — the
+/// type is on the line already.
+fn param_comment(c: &GenColumn, with_default: bool) -> String {
+    let mut parts = Vec::new();
+    if c.not_null {
+        parts.push("NOT NULL".to_owned());
+    }
+    if with_default && let Some(d) = &c.default {
+        parts.push(format!("default {}", d.replace(['\r', '\n'], " ")));
+    }
+    parts.join(", ")
+}
+
+/// `gp`: an empty PL/pgSQL procedure in `schema` (D-054).
+pub fn generate_procedure(schema: &str) -> String {
+    [
+        format!(
+            "CREATE OR REPLACE PROCEDURE {}.[procedure_name]()",
+            quote_ident(schema)
+        ),
+        "LANGUAGE plpgsql".to_owned(),
+        "AS $$".to_owned(),
+        "BEGIN".to_owned(),
+        "    --PROCESS HERE".to_owned(),
+        "END;".to_owned(),
+        "$$;".to_owned(),
+    ]
+    .join("\n")
+}
+
+/// `gpi` / `gpu` / `gpd` / `gpo`: `CREATE OR REPLACE PROCEDURE <schema>.[procedure_name]`
+/// with one `p_` parameter per column the statement uses (D-054).
+fn procedure(what: Gen, p: &ProcTable) -> String {
+    let (t, key) = (p.t, p.key);
+    let is_key = |c: &GenColumn| key.iter().any(|k| k.name == c.name);
+    let writable = |c: &&GenColumn| !c.generated && c.identity != "a";
+    let key_params = || {
+        key.iter().map(|c| Param {
+            col: c,
+            inout: false,
+            comment: p.key_kind.to_owned(),
+        })
+    };
+    let mut params: Vec<Param> = Vec::new();
+    // gpi: the key columns the database fills come back through INOUT parameters
+    let mut returned: Vec<&GenColumn> = Vec::new();
+    match what {
+        Gen::ProcInsert => {
+            let cols = t
+                .columns
+                .iter()
+                .filter(writable)
+                .filter(|c| c.identity.is_empty() && !c.filled_by_sequence());
+            params.extend(cols.map(|c| Param {
+                col: c,
+                inout: false,
+                comment: param_comment(c, true),
+            }));
+            returned = key
+                .iter()
+                .copied()
+                .filter(|k| !params.iter().any(|q| q.col.name == k.name))
+                .collect();
+            params.extend(returned.iter().map(|c| Param {
+                col: c,
+                inout: true,
+                comment: format!("{}, filled by the database", p.key_kind),
+            }));
+        }
+        Gen::ProcUpdate => {
+            params.extend(key_params());
+            params.extend(
+                t.columns
+                    .iter()
+                    .filter(writable)
+                    .filter(|c| !is_key(c))
+                    .map(|c| Param {
+                        col: c,
+                        inout: false,
+                        comment: param_comment(c, false),
+                    }),
+            );
+        }
+        Gen::ProcDelete => params.extend(key_params()),
+        _ => {
+            params.extend(p.upsert_cols.iter().map(|c| Param {
+                col: c,
+                inout: false,
+                comment: if is_key(c) {
+                    p.key_kind.to_owned()
+                } else {
+                    param_comment(c, true)
+                },
+            }));
+        }
+    }
+    let columns: Vec<&GenColumn> = params.iter().map(|q| q.col).collect();
+    let taken: Vec<String> = t.columns.iter().map(|c| c.name.to_lowercase()).collect();
+    let names = prefixed_names(&columns, "p_", &taken);
+    let name_of = |c: &GenColumn| {
+        params
+            .iter()
+            .position(|q| q.col.name == c.name)
+            .map(|i| names[i].clone())
+            .unwrap_or_default()
+    };
+    let mut lines: Vec<(String, String)> = Vec::new();
+    let head = format!(
+        "CREATE OR REPLACE PROCEDURE {}.[procedure_name](",
+        quote_ident(&t.schema)
+    );
+    if params.is_empty() {
+        lines.push((format!("{head})"), String::new()));
+    } else {
+        lines.push((head, String::new()));
+        let shown: Vec<String> = params
+            .iter()
+            .zip(&names)
+            .map(|(q, n)| {
+                if q.inout {
+                    format!("INOUT {n}")
+                } else {
+                    n.clone()
+                }
+            })
+            .collect();
+        let width = shown.iter().map(|s| s.chars().count()).max().unwrap_or(0);
+        for (i, (q, s)) in params.iter().zip(&shown).enumerate() {
+            let pad = " ".repeat(width - s.chars().count());
+            let default = if q.inout { " DEFAULT NULL" } else { "" };
+            let comma = if i + 1 < params.len() { "," } else { "" };
+            lines.push((
+                format!("    {s}{pad}  {}{default}{comma}", q.col.type_name),
+                q.comment.clone(),
+            ));
+        }
+        lines.push((")".to_owned(), String::new()));
+    }
+    // the parameters' comments are aligned on their own, not with the body
+    let header = aligned(&lines);
+    lines.clear();
+    for l in ["LANGUAGE plpgsql", "AS $$", "BEGIN"] {
+        lines.push((l.to_owned(), String::new()));
+    }
+    let list = |lines: &mut Vec<(String, String)>, items: Vec<String>, indent: &str| {
+        let n = items.len();
+        for (i, item) in items.into_iter().enumerate() {
+            let comma = if i + 1 < n { "," } else { "" };
+            lines.push((format!("{indent}{item}{comma}"), String::new()));
+        }
+    };
+    let where_key = |lines: &mut Vec<(String, String)>| {
+        if key.is_empty() {
+            lines.push((
+                "    WHERE [condition];".to_owned(),
+                "no primary key: write a condition".to_owned(),
+            ));
+            return;
+        }
+        for (i, c) in key.iter().enumerate() {
+            let lead = if i == 0 { "    WHERE" } else { "      AND" };
+            let end = if i + 1 == key.len() { ";" } else { "" };
+            lines.push((
+                format!("{lead} {} = {}{end}", quote_ident(&c.name), name_of(c)),
+                String::new(),
+            ));
+        }
+    };
+    let not_found = |lines: &mut Vec<(String, String)>| {
+        let shown = format!("{}.{}", t.schema, t.name).replace('%', "%%");
+        let (text, args) = if key.is_empty() {
+            (format!("{shown}: no row found"), String::new())
+        } else {
+            let cond = key
+                .iter()
+                .map(|c| format!("{} = %", c.name.replace('%', "%%")))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let args = key
+                .iter()
+                .map(|c| format!(", {}", name_of(c)))
+                .collect::<String>();
+            (format!("{shown}: no row with {cond}"), args)
+        };
+        lines.push(("    IF NOT FOUND THEN".to_owned(), String::new()));
+        lines.push((
+            format!(
+                "        RAISE EXCEPTION {}{args};",
+                pgc_core::quote::quote_literal(&text)
+            ),
+            String::new(),
+        ));
+        lines.push(("    END IF;".to_owned(), String::new()));
+    };
+    let table = p.table;
+    match what {
+        Gen::ProcInsert => {
+            let cols: Vec<&Param> = params.iter().filter(|q| !q.inout).collect();
+            let returning = (!returned.is_empty()).then(|| {
+                format!(
+                    "    RETURNING {} INTO {};",
+                    returned
+                        .iter()
+                        .map(|c| quote_ident(&c.name))
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    returned
+                        .iter()
+                        .map(|c| name_of(c))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            });
+            if cols.is_empty() {
+                let end = if returning.is_some() { "" } else { ";" };
+                lines.push((
+                    format!("    INSERT INTO {table} DEFAULT VALUES{end}"),
+                    String::new(),
+                ));
+            } else {
+                lines.push((format!("    INSERT INTO {table} ("), String::new()));
+                list(
+                    &mut lines,
+                    cols.iter().map(|q| quote_ident(&q.col.name)).collect(),
+                    "        ",
+                );
+                lines.push(("    ) VALUES (".to_owned(), String::new()));
+                list(
+                    &mut lines,
+                    cols.iter().map(|q| name_of(q.col)).collect(),
+                    "        ",
+                );
+                let end = if returning.is_some() { "" } else { ";" };
+                lines.push((format!("    ){end}"), String::new()));
+            }
+            if let Some(r) = returning {
+                lines.push((r, String::new()));
+            }
+        }
+        Gen::ProcUpdate => {
+            lines.push((format!("    UPDATE {table} SET"), String::new()));
+            let set: Vec<String> = params
+                .iter()
+                .filter(|q| !is_key(q.col))
+                .map(|q| format!("{} = {}", quote_ident(&q.col.name), name_of(q.col)))
+                .collect();
+            list(&mut lines, set, "        ");
+            where_key(&mut lines);
+            not_found(&mut lines);
+        }
+        Gen::ProcDelete => {
+            lines.push((format!("    DELETE FROM {table}"), String::new()));
+            where_key(&mut lines);
+            not_found(&mut lines);
+        }
+        _ => {
+            lines.push((format!("    INSERT INTO {table} ("), String::new()));
+            list(
+                &mut lines,
+                params.iter().map(|q| quote_ident(&q.col.name)).collect(),
+                "        ",
+            );
+            let values = if p.overriding {
+                "    ) OVERRIDING SYSTEM VALUE VALUES ("
+            } else {
+                "    ) VALUES ("
+            };
+            lines.push((values.to_owned(), String::new()));
+            list(
+                &mut lines,
+                params.iter().map(|q| name_of(q.col)).collect(),
+                "        ",
+            );
+            lines.push(("    )".to_owned(), String::new()));
+            let set: Vec<&Param> = params.iter().filter(|q| !is_key(q.col)).collect();
+            if key.is_empty() {
+                lines.push((
+                    "    ON CONFLICT DO NOTHING;".to_owned(),
+                    "no primary key: write a conflict target to update".to_owned(),
+                ));
+            } else {
+                let target = key
+                    .iter()
+                    .map(|c| quote_ident(&c.name))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                if set.is_empty() {
+                    lines.push((
+                        format!("    ON CONFLICT ({target}) DO NOTHING;"),
+                        p.key_kind.to_owned(),
+                    ));
+                } else {
+                    lines.push((
+                        format!("    ON CONFLICT ({target}) DO UPDATE SET"),
+                        p.key_kind.to_owned(),
+                    ));
+                    for (i, q) in set.iter().enumerate() {
+                        let end = if i + 1 < set.len() { "," } else { ";" };
+                        let n = quote_ident(&q.col.name);
+                        lines.push((format!("        {n} = EXCLUDED.{n}{end}"), String::new()));
+                    }
+                }
+            }
+        }
+    }
+    lines.push(("END;".to_owned(), String::new()));
+    lines.push(("$$;".to_owned(), String::new()));
+    format!("{header}\n{}", aligned(&lines))
 }
 
 /// `gtc`: a bound cursor over every column and an OPEN / FETCH loop (D-054). No `DO`
@@ -1555,6 +2023,8 @@ mod tests {
             ]
         );
         assert_eq!(matching("\\gt").len(), 13);
+        let m: Vec<&str> = matching("gp").iter().map(|c| c.0).collect();
+        assert_eq!(m, ["gp", "gpi", "gpu", "gpd", "gpo"]);
         assert_eq!(matching("dt+ x").len(), 1);
     }
 
@@ -1577,6 +2047,157 @@ mod tests {
             generate(Gen::Delete, &t),
             "DELETE FROM public.orders\nWHERE id = [id];  -- primary key: integer"
         );
+    }
+
+    #[test]
+    fn generate_procedure_skeleton() {
+        assert_eq!(
+            parse("gp"),
+            Ok(Cmd::Procedure {
+                schema: "public".into()
+            })
+        );
+        assert_eq!(
+            parse("gp \"My Schema\""),
+            Ok(Cmd::Procedure {
+                schema: "My Schema".into()
+            })
+        );
+        assert!(parse("gp a.b").is_err());
+        assert!(!needs_table("gp"));
+        assert_eq!(
+            generate_procedure("My Schema"),
+            "CREATE OR REPLACE PROCEDURE \"My Schema\".[procedure_name]()\nLANGUAGE plpgsql\nAS $$\nBEGIN\n    --PROCESS HERE\nEND;\n$$;"
+        );
+        assert_eq!(
+            completion_target("gp sa").map(|(a, k)| (a.to_owned(), k)),
+            Some(("sa".into(), vec!["schema"]))
+        );
+    }
+
+    #[test]
+    fn generate_table_procedures() {
+        for (cmd, what) in [
+            ("gpi", Gen::ProcInsert),
+            ("gpu", Gen::ProcUpdate),
+            ("gpd", Gen::ProcDelete),
+            ("gpo", Gen::ProcUpsert),
+        ] {
+            assert!(needs_table(cmd));
+            assert!(what.tables_only());
+            assert_eq!(what.command(), cmd);
+            assert_eq!(
+                parse(&format!("{cmd} orders")),
+                Ok(Cmd::Generate {
+                    what,
+                    table: (None, "orders".into())
+                })
+            );
+            assert_eq!(completion_target(&format!("{cmd} o")).unwrap().1, ["table"]);
+        }
+        let t = orders();
+        let insert = [
+            "CREATE OR REPLACE PROCEDURE public.[procedure_name](",
+            "    p_customer_id  integer,              -- NOT NULL",
+            "    p_note         text,",
+            "    INOUT p_id     integer DEFAULT NULL  -- primary key, filled by the database",
+            ")",
+            "LANGUAGE plpgsql",
+            "AS $$",
+            "BEGIN",
+            "    INSERT INTO public.orders (",
+            "        customer_id,",
+            "        note",
+            "    ) VALUES (",
+            "        p_customer_id,",
+            "        p_note",
+            "    )",
+            "    RETURNING id INTO p_id;",
+            "END;",
+            "$$;",
+        ];
+        // NOT NULL goes in the comment; the type is on the line
+        assert_eq!(generate(Gen::ProcInsert, &t), insert.join("\n"));
+        let update = [
+            "CREATE OR REPLACE PROCEDURE public.[procedure_name](",
+            "    p_id           integer,  -- primary key",
+            "    p_customer_id  integer,  -- NOT NULL",
+            "    p_note         text",
+            ")",
+            "LANGUAGE plpgsql",
+            "AS $$",
+            "BEGIN",
+            "    UPDATE public.orders SET",
+            "        customer_id = p_customer_id,",
+            "        note = p_note",
+            "    WHERE id = p_id;",
+            "    IF NOT FOUND THEN",
+            "        RAISE EXCEPTION 'public.orders: no row with id = %', p_id;",
+            "    END IF;",
+            "END;",
+            "$$;",
+        ];
+        assert_eq!(generate(Gen::ProcUpdate, &t), update.join("\n"));
+        let delete = [
+            "CREATE OR REPLACE PROCEDURE public.[procedure_name](",
+            "    p_id  integer  -- primary key",
+            ")",
+            "LANGUAGE plpgsql",
+            "AS $$",
+            "BEGIN",
+            "    DELETE FROM public.orders",
+            "    WHERE id = p_id;",
+            "    IF NOT FOUND THEN",
+            "        RAISE EXCEPTION 'public.orders: no row with id = %', p_id;",
+            "    END IF;",
+            "END;",
+            "$$;",
+        ];
+        assert_eq!(generate(Gen::ProcDelete, &t), delete.join("\n"));
+        let upsert = generate(Gen::ProcUpsert, &t);
+        assert!(upsert.contains("    p_id           integer,  -- primary key\n"));
+        assert!(upsert.contains(
+            "    ) VALUES (\n        p_id,\n        p_customer_id,\n        p_note\n    )\n"
+        ));
+        assert!(upsert.contains("    ON CONFLICT (id) DO UPDATE SET"));
+        assert!(upsert.contains("        note = EXCLUDED.note;\nEND;"));
+        assert!(!nothing_to_update(&t));
+    }
+
+    #[test]
+    fn table_procedures_without_key_and_odd_names() {
+        // no key: a written condition, a plain message; names clash with a column
+        let t = GenTable {
+            schema: "public".into(),
+            name: "50%".into(),
+            columns: vec![col("p_a", "text", false), col("A", "integer", false)],
+            unique: None,
+            kind: "r".into(),
+        };
+        let d = generate(Gen::ProcDelete, &t);
+        assert!(d.starts_with("CREATE OR REPLACE PROCEDURE public.[procedure_name]()\n"));
+        assert!(d.contains("    WHERE [condition];  -- no primary key: write a condition"));
+        assert!(d.contains("RAISE EXCEPTION 'public.50%%: no row found';"));
+        let u = generate(Gen::ProcUpdate, &t);
+        // "A" → p_a, which is a column name: p_a_2; "p_a" → p_p_a
+        assert!(
+            u.contains("        p_a = p_p_a,\n        \"A\" = p_a_2\n"),
+            "{u}"
+        );
+        let i = generate(Gen::ProcInsert, &t);
+        assert!(
+            i.contains("    );\nEND;"),
+            "no RETURNING without a key: {i}"
+        );
+        // only key columns: nothing to update
+        let k = GenTable {
+            columns: vec![GenColumn {
+                pk_pos: Some(1),
+                ..col("id", "integer", true)
+            }],
+            ..t.clone()
+        };
+        assert!(nothing_to_update(&k));
     }
 
     #[test]

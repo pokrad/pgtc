@@ -257,7 +257,16 @@ pub fn build_command(names: &Names, kinds: &[&str], typed: &str) -> Built {
         .iter()
         .filter(|o| kinds.contains(&o.kind.as_str()))
         .filter_map(|o| {
-            let schema = o.schema.as_deref()?;
+            let Some(schema) = o.schema.as_deref() else {
+                // a schema itself (`gp`)
+                return (o.kind == "schema" && o.name.to_lowercase().starts_with(&typed)).then(
+                    || Item {
+                        label: o.name.clone(),
+                        kind: kind_label(&o.kind),
+                        insert: quote_ident(&o.name),
+                    },
+                );
+            };
             let (label, insert) = if o.visible && !qualified {
                 (o.name.clone(), quote_ident(&o.name))
             } else {

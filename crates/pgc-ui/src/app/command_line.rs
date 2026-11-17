@@ -306,6 +306,15 @@ impl App {
                 let target = LookupTarget::View { tab, shown };
                 self.generate_lookup("view.sql", ctx, params, target, "Reading the tables…");
             }
+            Cmd::Procedure { schema } => {
+                // nothing to read: the skeleton goes in at once
+                let text = crate::psql::generate_procedure(schema) + "\n";
+                self.tabs[self.active_tab]
+                    .view
+                    .editor
+                    .apply(Action::Insert(text));
+                self.status = "Generated the procedure — name it at [procedure_name]".to_owned();
+            }
         }
     }
 
@@ -438,28 +447,18 @@ impl App {
             return;
         };
         use crate::psql::Gen;
-        if matches!(what, Gen::Merge | Gen::Trigger { .. }) && !table.is_table() {
-            let command = match what {
-                Gen::Trigger {
-                    row: true,
-                    before: true,
-                } => "gtrb",
-                Gen::Trigger {
-                    row: true,
-                    before: false,
-                } => "gtra",
-                Gen::Trigger {
-                    row: false,
-                    before: true,
-                } => "gtsb",
-                Gen::Trigger {
-                    row: false,
-                    before: false,
-                } => "gtsa",
-                _ => "gtm",
-            };
+        if what.tables_only() && !table.is_table() {
             self.error(&format!(
-                "{command} works on tables only; {}.{} is not a table.",
+                "{} works on tables only; {}.{} is not a table.",
+                what.command(),
+                table.schema,
+                table.name
+            ));
+            return;
+        }
+        if what == Gen::ProcUpdate && crate::psql::nothing_to_update(&table) {
+            self.error(&format!(
+                "gpu: every column of {}.{} is part of the key; there is nothing to update.",
                 table.schema, table.name
             ));
             return;
@@ -472,6 +471,9 @@ impl App {
         let todo = match what {
             Gen::Cursor => "write the loop body at PROCESS THE ROW HERE",
             Gen::Trigger { .. } => "name the function at [function_name]",
+            Gen::ProcInsert | Gen::ProcUpdate | Gen::ProcDelete | Gen::ProcUpsert => {
+                "name the procedure at [procedure_name]"
+            }
             _ => "fill in the [values]",
         };
         self.status = format!("Generated for {}.{} — {todo}", table.schema, table.name);
