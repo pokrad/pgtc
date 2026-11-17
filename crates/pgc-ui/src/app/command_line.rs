@@ -473,11 +473,64 @@ impl App {
             ));
             return;
         }
+        if what.needs_keys() {
+            // then its foreign keys, through the same connection
+            let Some(version) = self.tab_server_version() else {
+                return;
+            };
+            let ctx = RenderContext {
+                version,
+                show_system: true,
+            };
+            let params = vec![Some(table.schema.clone()), Some(table.name.clone())];
+            let target = LookupTarget::Related { tab, what, table };
+            self.generate_lookup(
+                "foreign_keys.sql",
+                ctx,
+                params,
+                target,
+                "Reading the foreign keys…",
+            );
+            return;
+        }
+        self.insert_generated(tab, what, &table, crate::psql::generate(what, &table));
+    }
+
+    /// Answer for the foreign keys of `gtg` / `gtj` / `gtr`.
+    pub(super) fn related_loaded(
+        &mut self,
+        tab: u64,
+        what: crate::psql::Gen,
+        table: &crate::psql::GenTable,
+        result: Result<Vec<Vec<String>>, String>,
+    ) {
+        let rows = match result {
+            Ok(r) => r,
+            Err(e) => {
+                self.error(&e);
+                return;
+            }
+        };
+        let rel = crate::psql::related(rows);
+        match crate::psql::generate_related(what, table, &rel) {
+            Ok(text) => self.insert_generated(tab, what, table, text),
+            Err(e) => self.error(&e),
+        }
+    }
+
+    /// The generated text at the cursor of tab `tab`'s editor, and what to do next.
+    fn insert_generated(
+        &mut self,
+        tab: u64,
+        what: crate::psql::Gen,
+        table: &crate::psql::GenTable,
+        text: String,
+    ) {
+        use crate::psql::Gen;
         let Some(i) = self.tab_index(tab) else {
             return;
         };
-        let text = crate::psql::generate(what, &table) + "\n";
-        self.tabs[i].view.editor.apply(Action::Insert(text));
+        self.tabs[i].view.editor.apply(Action::Insert(text + "\n"));
         let todo = match what {
             Gen::Cursor => "write the loop body at PROCESS THE ROW HERE",
             Gen::Trigger { .. } => "name the function at [function_name]",
@@ -487,6 +540,9 @@ impl App {
             Gen::FuncRow | Gen::FuncSet | Gen::FuncTable | Gen::FuncExists | Gen::FuncJson => {
                 "name the function at [function_name]"
             }
+            Gen::TestData { .. } => "check the values, then run it",
+            Gen::JoinParents => "add the WHERE you need",
+            Gen::Audit => "name the function at [function_name]",
             _ => "fill in the [values]",
         };
         self.status = format!("Generated for {}.{} — {todo}", table.schema, table.name);

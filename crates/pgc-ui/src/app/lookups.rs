@@ -19,6 +19,12 @@ pub(super) enum LookupTarget {
         what: crate::psql::Gen,
         shown: String,
     },
+    /// Foreign keys of `table` for `gtg` / `gtj` / `gtr` of query tab `tab` (D-054).
+    Related {
+        tab: u64,
+        what: crate::psql::Gen,
+        table: crate::psql::GenTable,
+    },
     /// Tables of a `gtv` view for query tab `tab` (D-054), names as typed.
     View {
         tab: u64,
@@ -37,6 +43,7 @@ impl LookupTarget {
     pub(super) fn tab(&self) -> Option<u64> {
         match self {
             LookupTarget::Generate { tab, .. }
+            | LookupTarget::Related { tab, .. }
             | LookupTarget::View { tab, .. }
             | LookupTarget::Names { tab, .. } => Some(*tab),
             LookupTarget::Field(..) | LookupTarget::Row(..) => None,
@@ -74,6 +81,9 @@ impl App {
             } => self.names_loaded(tab, generation, need, result),
             LookupTarget::Generate { tab, what, shown } => {
                 self.generate_loaded(tab, what, &shown, result)
+            }
+            LookupTarget::Related { tab, what, table } => {
+                self.related_loaded(tab, what, &table, result)
             }
             LookupTarget::View { tab, shown } => self.view_loaded(tab, &shown, result),
         }

@@ -140,6 +140,30 @@ pub const GENERATE: &[Row] = &[
         TABLES,
     ),
     (
+        "gtg",
+        "table [rows]",
+        "generate test data, 100 rows by default (inserted at the cursor)",
+        TABLES,
+    ),
+    (
+        "gtj",
+        "table",
+        "generate SELECT joined to the tables its foreign keys point to (inserted at the cursor)",
+        TABLES,
+    ),
+    (
+        "gtr",
+        "table",
+        "generate SELECTs of the rows that reference a row (inserted at the cursor)",
+        TABLES,
+    ),
+    (
+        "gtau",
+        "table",
+        "generate audit table + trigger function + trigger (inserted at the cursor)",
+        TABLES,
+    ),
+    (
         "gp",
         "[schema]",
         "generate an empty PL/pgSQL procedure, default schema public (inserted at the cursor)",
@@ -236,7 +260,20 @@ pub enum Gen {
     FuncTable,
     FuncExists,
     FuncJson,
+    /// `gtg table [rows]`: test data, a random parent for each foreign key.
+    TestData {
+        rows: u32,
+    },
+    /// `gtj`: SELECT joined to every table the table's foreign keys point to.
+    JoinParents,
+    /// `gtr`: one SELECT per foreign key that points to the table.
+    Referencing,
+    /// `gtau`: an audit table, its trigger function and trigger.
+    Audit,
 }
+
+/// Rows `gtg` writes without a number.
+pub const TEST_ROWS: u32 = 100;
 
 impl Gen {
     /// The F4 command of a generate kind (for messages).
@@ -275,7 +312,19 @@ impl Gen {
             Gen::FuncTable => "gft",
             Gen::FuncExists => "gfe",
             Gen::FuncJson => "gfj",
+            Gen::TestData { .. } => "gtg",
+            Gen::JoinParents => "gtj",
+            Gen::Referencing => "gtr",
+            Gen::Audit => "gtau",
         }
+    }
+
+    /// Also needs the table's foreign keys (`foreign_keys.sql`) after its columns.
+    pub fn needs_keys(self) -> bool {
+        matches!(
+            self,
+            Gen::TestData { .. } | Gen::JoinParents | Gen::Referencing
+        )
     }
 
     /// Works on tables only (not views or foreign tables).
@@ -372,6 +421,10 @@ pub fn needs_table(input: &str) -> bool {
             | "gft"
             | "gfe"
             | "gfj"
+            | "gtg"
+            | "gtj"
+            | "gtr"
+            | "gtau"
     )
 }
 
@@ -471,9 +524,25 @@ pub fn parse(input: &str) -> Result<Cmd, String> {
                 Cmd::Function { schema }
             });
         }
+        "gtg" => {
+            let args = split_args(arg.as_deref().unwrap_or(""));
+            let usage = || "gtg needs a table name and a number of rows, e.g. gtg orders 1000";
+            let rows = match args.as_slice() {
+                [_] => TEST_ROWS,
+                [_, n] => match n.parse::<u32>() {
+                    Ok(n) if n > 0 => n,
+                    _ => return Err(usage().to_owned()),
+                },
+                _ => return Err(usage().to_owned()),
+            };
+            return Ok(Cmd::Generate {
+                what: Gen::TestData { rows },
+                table: parse_name(&args[0])?,
+            });
+        }
         "gts" | "gti" | "gtu" | "gtd" | "gtc" | "gto" | "gtsi" | "gtm" | "gtrb" | "gtra"
         | "gtsb" | "gtsa" | "gpi" | "gpu" | "gpd" | "gpo" | "gfr" | "gfs" | "gft" | "gfe"
-        | "gfj" => {
+        | "gfj" | "gtj" | "gtr" | "gtau" => {
             let what = match word {
                 "gts" => Gen::Select,
                 "gti" => Gen::Insert,
@@ -495,6 +564,9 @@ pub fn parse(input: &str) -> Result<Cmd, String> {
                 "gft" => Gen::FuncTable,
                 "gfe" => Gen::FuncExists,
                 "gfj" => Gen::FuncJson,
+                "gtj" => Gen::JoinParents,
+                "gtr" => Gen::Referencing,
+                "gtau" => Gen::Audit,
                 _ => Gen::Delete,
             };
             let Some(arg) = arg else {
@@ -1179,6 +1251,11 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
             ));
         }
         Gen::Trigger { row, before } => return trigger(&table, t, row, before),
+        Gen::Audit => return audit(&table, t),
+        // read with the foreign keys: generate_related
+        Gen::TestData { .. } | Gen::JoinParents | Gen::Referencing => {
+            return generate_related(what, t, &Related::default()).unwrap_or_default();
+        }
         Gen::ProcInsert
         | Gen::ProcUpdate
         | Gen::ProcDelete
@@ -2053,6 +2130,14 @@ pub fn view_tables(
 /// `gtv`: `CREATE VIEW <schema>.[view_name]` over the tables, joined in the typed
 /// order on a foreign key to an earlier table (D-054).
 pub fn generate_view(tables: &[ViewTable], fks: &[ViewFk]) -> String {
+    let schema = tables.first().map_or("public", |t| t.schema.as_str());
+    let head = format!("CREATE VIEW {}.[view_name] AS", quote_ident(schema));
+    joined_select(tables, fks, Some(head))
+}
+
+/// `SELECT` every column of `tables` (aliases `T1`, …) `FROM` the first one, each later
+/// table joined on a foreign key to an earlier one (`gtv`, `gtj`); `head` goes first.
+fn joined_select(tables: &[ViewTable], fks: &[ViewFk], head: Option<String>) -> String {
     // column name prefixes: the table name; the same table again gets _2, _3, ...
     let mut prefixes: Vec<String> = Vec::new();
     for t in tables {
@@ -2077,11 +2162,9 @@ pub fn generate_view(tables: &[ViewTable], fks: &[ViewFk]) -> String {
         )
     };
     let mut lines: Vec<(String, String)> = Vec::new();
-    let schema = tables.first().map_or("public", |t| t.schema.as_str());
-    lines.push((
-        format!("CREATE VIEW {}.[view_name] AS", quote_ident(schema)),
-        String::new(),
-    ));
+    if let Some(head) = head {
+        lines.push((head, String::new()));
+    }
     lines.push(("SELECT".to_owned(), String::new()));
     let all: Vec<(usize, &String)> = tables
         .iter()
@@ -2142,6 +2225,432 @@ pub fn generate_view(tables: &[ViewTable], fks: &[ViewFk]) -> String {
         last.0.push(';');
     }
     aligned(&lines)
+}
+
+// ---- gtg / gtj / gtr: foreign keys of one table --------------------------------------
+
+/// A foreign key of the table, from `foreign_keys.sql`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RelFk {
+    /// The table references the other one (`gtj`, `gtg`); else the other one references
+    /// the table (`gtr`).
+    pub outgoing: bool,
+    pub name: String,
+    pub schema: String,
+    pub table: String,
+    /// (this table's column, the other table's column) in key order.
+    pub pairs: Vec<(String, String)>,
+    /// A referencing column allows NULL.
+    pub nullable: bool,
+}
+
+/// The table's foreign keys (by direction, then constraint name) and the columns of
+/// the tables on their other side.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Related {
+    pub fks: Vec<RelFk>,
+    pub columns: Vec<((String, String), Vec<String>)>,
+}
+
+impl Related {
+    fn columns_of(&self, schema: &str, table: &str) -> Vec<String> {
+        self.columns
+            .iter()
+            .find(|((s, t), _)| s == schema && t == table)
+            .map(|(_, c)| c.clone())
+            .unwrap_or_default()
+    }
+}
+
+/// `foreign_keys.sql` rows → the foreign keys and the other tables' columns.
+pub fn related(rows: Vec<Vec<String>>) -> Related {
+    struct Pair {
+        outgoing: bool,
+        name: String,
+        ord: i64,
+        schema: String,
+        table: String,
+        this: String,
+        other: String,
+        nullable: bool,
+    }
+    let mut pairs: Vec<Pair> = Vec::new();
+    // (schema, table) → (attnum, column)
+    type Columns = Vec<((String, String), Vec<(i64, String)>)>;
+    let mut columns: Columns = Vec::new();
+    for r in rows {
+        match r.first().map(String::as_str) {
+            Some("k") if r.len() >= 9 => pairs.push(Pair {
+                outgoing: r[1] == "o",
+                name: r[2].clone(),
+                ord: r[3].parse().unwrap_or(0),
+                schema: r[4].clone(),
+                table: r[5].clone(),
+                this: r[6].clone(),
+                other: r[7].clone(),
+                nullable: r[8] != "true",
+            }),
+            Some("c") if r.len() >= 5 => {
+                let key = (r[1].clone(), r[2].clone());
+                let entry = (r[3].parse().unwrap_or(0), r[4].clone());
+                match columns.iter_mut().find(|(k, _)| *k == key) {
+                    Some((_, cols)) => cols.push(entry),
+                    None => columns.push((key, vec![entry])),
+                }
+            }
+            _ => {}
+        }
+    }
+    // outgoing first; then by constraint name, other table, pair number
+    pairs.sort_by(|a, b| {
+        (!a.outgoing, &a.name, &a.schema, &a.table, a.ord).cmp(&(
+            !b.outgoing,
+            &b.name,
+            &b.schema,
+            &b.table,
+            b.ord,
+        ))
+    });
+    let mut fks: Vec<RelFk> = Vec::new();
+    for p in pairs {
+        match fks.last_mut() {
+            Some(f)
+                if f.outgoing == p.outgoing
+                    && f.name == p.name
+                    && f.schema == p.schema
+                    && f.table == p.table =>
+            {
+                f.pairs.push((p.this, p.other));
+                f.nullable |= p.nullable;
+            }
+            _ => fks.push(RelFk {
+                outgoing: p.outgoing,
+                name: p.name,
+                schema: p.schema,
+                table: p.table,
+                pairs: vec![(p.this, p.other)],
+                nullable: p.nullable,
+            }),
+        }
+    }
+    let columns = columns
+        .into_iter()
+        .map(|(k, mut cols)| {
+            cols.sort();
+            (k, cols.into_iter().map(|(_, c)| c).collect())
+        })
+        .collect();
+    Related { fks, columns }
+}
+
+/// `gtg` / `gtj` / `gtr` from the table and its foreign keys (D-054). `Err`: nothing
+/// to write (`gtr` for a table nothing references).
+pub fn generate_related(what: Gen, t: &GenTable, rel: &Related) -> Result<String, String> {
+    let table = format!("{}.{}", quote_ident(&t.schema), quote_ident(&t.name));
+    match what {
+        Gen::JoinParents => Ok(join_parents(t, rel)),
+        Gen::Referencing => referencing(&table, t, rel),
+        Gen::TestData { rows } => Ok(test_data(&table, t, rel, rows)),
+        _ => Ok(generate(what, t)),
+    }
+}
+
+/// `gtj`: every column of the table and of each table a foreign key points to, one
+/// join per foreign key (the same table twice for two keys), by constraint name.
+fn join_parents(t: &GenTable, rel: &Related) -> String {
+    let mut tables = vec![ViewTable {
+        schema: t.schema.clone(),
+        name: t.name.clone(),
+        columns: t.columns.iter().map(|c| c.name.clone()).collect(),
+    }];
+    let mut fks = Vec::new();
+    for f in rel.fks.iter().filter(|f| f.outgoing) {
+        fks.push(ViewFk {
+            from: 0,
+            to: tables.len(),
+            name: f.name.clone(),
+            pairs: f.pairs.clone(),
+            nullable: f.nullable,
+        });
+        tables.push(ViewTable {
+            schema: f.schema.clone(),
+            name: f.table.clone(),
+            columns: rel.columns_of(&f.schema, &f.table),
+        });
+    }
+    joined_select(&tables, &fks, None)
+}
+
+/// `gtr`: for each foreign key that points to the table, the rows that reference one
+/// row of it — `WHERE` on the referencing columns, a `[column]` placeholder for each
+/// value of the table's key.
+fn referencing(table: &str, t: &GenTable, rel: &Related) -> Result<String, String> {
+    let incoming: Vec<&RelFk> = rel.fks.iter().filter(|f| !f.outgoing).collect();
+    if incoming.is_empty() {
+        return Err(format!(
+            "No foreign key references {}.{}.",
+            t.schema, t.name
+        ));
+    }
+    let mut out = Vec::new();
+    for f in incoming {
+        let mut lines: Vec<(String, String)> = vec![(format!("-- {}", f.name), String::new())];
+        lines.push(("SELECT".to_owned(), String::new()));
+        let cols = rel.columns_of(&f.schema, &f.table);
+        for (i, c) in cols.iter().enumerate() {
+            let comma = if i + 1 < cols.len() { "," } else { "" };
+            lines.push((format!("    {}{comma}", quote_ident(c)), String::new()));
+        }
+        lines.push((
+            format!("FROM {}.{}", quote_ident(&f.schema), quote_ident(&f.table)),
+            String::new(),
+        ));
+        for (i, (this, other)) in f.pairs.iter().enumerate() {
+            let lead = if i == 0 { "WHERE" } else { "    AND" };
+            let end = if i + 1 == f.pairs.len() { ";" } else { "" };
+            let ty = t
+                .columns
+                .iter()
+                .find(|c| c.name == *this)
+                .map(|c| format!("{table}.{}: {}", quote_ident(this), c.type_name))
+                .unwrap_or_default();
+            lines.push((format!("{lead} {} = [{this}]{end}", quote_ident(other)), ty));
+        }
+        out.push(aligned(&lines));
+    }
+    Ok(out.join("\n\n"))
+}
+
+/// A value of `gtg` for column `c`: an expression of `g` (1, 2, … the row number) that
+/// fits its type, and the line's comment. Key columns get values not yet in the table.
+fn test_value(table: &str, c: &GenColumn) -> (String, String) {
+    let ty = c.type_name.to_lowercase();
+    let unique = c.pk_pos.is_some() || c.uk_pos.is_some();
+    let name = quote_ident(&c.name);
+    let (base, args) = match ty.find('(') {
+        Some(i) => (
+            ty[..i].trim().to_owned() + ty[ty.find(')').map_or(ty.len(), |j| j + 1)..].trim_end(),
+            ty[i + 1..ty.find(')').unwrap_or(ty.len())].to_owned(),
+        ),
+        None => (ty.clone(), String::new()),
+    };
+    let nums: Vec<u32> = args
+        .split(',')
+        .filter_map(|a| a.trim().parse().ok())
+        .collect();
+    let next = format!("(SELECT coalesce(max({name}), 0) FROM {table}) + g");
+    let type_name = &c.type_name;
+    let comment = |extra: &str| {
+        let mut s = type_comment(c);
+        if !extra.is_empty() {
+            s.push_str(&format!(", {extra}"));
+        }
+        s
+    };
+    if ty.ends_with("[]") {
+        return (format!("'{{}}'::{type_name}"), comment("empty array"));
+    }
+    let expr = match base.as_str() {
+        "smallint" | "integer" | "bigint" => {
+            if unique {
+                next
+            } else {
+                format!("(random() * 1000)::{type_name}")
+            }
+        }
+        "numeric" | "decimal" => {
+            if unique {
+                next
+            } else if let [p, s] = nums[..] {
+                // below the precision: trunc, as round could reach the limit
+                let max = 10u64
+                    .saturating_pow(p.saturating_sub(s))
+                    .saturating_sub(1)
+                    .clamp(1, 1000);
+                format!("trunc((random() * {max})::numeric, {s})")
+            } else if let [p] = nums[..] {
+                let max = 10u64.saturating_pow(p).saturating_sub(1).clamp(1, 1000);
+                format!("trunc((random() * {max})::numeric)")
+            } else {
+                "round((random() * 1000)::numeric, 2)".to_owned()
+            }
+        }
+        "real" | "double precision" => format!("round((random() * 1000)::numeric, 2)::{type_name}"),
+        "money" => "(random() * 1000)::numeric(10, 2)::money".to_owned(),
+        "text" | "character varying" | "varchar" | "character" | "char" | "bpchar" | "citext"
+        | "name" => {
+            let mut e = format!(
+                "{} || g",
+                pgc_core::quote::quote_literal(&format!("{} ", c.name))
+            );
+            if unique {
+                e.push_str(" || '-' || substr(md5(random()::text), 1, 8)");
+            }
+            match nums.first() {
+                Some(n) => format!("left({e}, {n})"),
+                None => e,
+            }
+        }
+        "boolean" => "random() < 0.5".to_owned(),
+        "date" => "current_date - (random() * 365)::integer".to_owned(),
+        "timestamp without time zone" => {
+            format!("(localtimestamp - random() * interval '365 days')::{type_name}")
+        }
+        "timestamp with time zone" => {
+            format!("(now() - random() * interval '365 days')::{type_name}")
+        }
+        "time without time zone" | "time with time zone" => {
+            format!("(time '00:00' + random() * interval '24 hours')::{type_name}")
+        }
+        "interval" => "random() * interval '30 days'".to_owned(),
+        "uuid" => "md5(random()::text || g)::uuid".to_owned(),
+        "json" => "json_build_object('n', g)".to_owned(),
+        "jsonb" => "jsonb_build_object('n', g)".to_owned(),
+        "bytea" => "decode(md5(g::text), 'hex')".to_owned(),
+        "inet" | "cidr" => format!(
+            "('10.' || (g / 65536) % 256 || '.' || (g / 256) % 256 || '.' || g % 256)::{type_name}"
+        ),
+        _ => {
+            return if c.not_null {
+                (format!("[{}]", c.name), comment("write a value"))
+            } else {
+                ("NULL".to_owned(), comment("write a value or keep NULL"))
+            };
+        }
+    };
+    let extra = if unique { "not yet in the table" } else { "" };
+    (expr, comment(extra))
+}
+
+/// `gtg`: `INSERT … SELECT … FROM generate_series(1, rows) AS g` with a value for each
+/// column the database does not fill; a foreign key's columns come from a random row
+/// of its table (a `LEFT JOIN LATERAL` per key, evaluated for each row).
+fn test_data(table: &str, t: &GenTable, rel: &Related, rows: u32) -> String {
+    let outgoing: Vec<&RelFk> = rel.fks.iter().filter(|f| f.outgoing).collect();
+    // the first foreign key (by name) that holds a column fills it
+    let fk_of = |c: &GenColumn| {
+        outgoing
+            .iter()
+            .enumerate()
+            .find(|(_, f)| f.pairs.iter().any(|(this, _)| *this == c.name))
+    };
+    let cols: Vec<&GenColumn> = t
+        .columns
+        .iter()
+        .filter(|c| !c.generated && c.identity.is_empty())
+        .filter(|c| c.default.is_none() || fk_of(c).is_some())
+        .collect();
+    // the foreign keys used, numbered p1, p2, … in the order of their first column
+    let mut used: Vec<usize> = Vec::new();
+    for c in &cols {
+        if let Some((k, _)) = fk_of(c)
+            && !used.contains(&k)
+        {
+            used.push(k);
+        }
+    }
+    let alias = |k: usize| format!("p{}", used.iter().position(|u| *u == k).unwrap_or(0) + 1);
+    let mut lines: Vec<(String, String)> = Vec::new();
+    if cols.is_empty() {
+        lines.push((format!("INSERT INTO {table}"), String::new()));
+        lines.push(("SELECT".to_owned(), String::new()));
+    } else {
+        lines.push((format!("INSERT INTO {table} ("), String::new()));
+        for (i, c) in cols.iter().enumerate() {
+            let comma = if i + 1 < cols.len() { "," } else { "" };
+            lines.push((
+                format!("    {}{comma}", quote_ident(&c.name)),
+                String::new(),
+            ));
+        }
+        lines.push((")".to_owned(), String::new()));
+        lines.push(("SELECT".to_owned(), String::new()));
+        for (i, c) in cols.iter().enumerate() {
+            let comma = if i + 1 < cols.len() { "," } else { "" };
+            let (expr, comment) = match fk_of(c) {
+                Some((k, f)) => {
+                    let other = &f
+                        .pairs
+                        .iter()
+                        .find(|(this, _)| *this == c.name)
+                        .expect("pair")
+                        .1;
+                    (
+                        format!("{}.{}", alias(k), quote_ident(other)),
+                        format!("{}, a random row of {}.{}", f.name, f.schema, f.table),
+                    )
+                }
+                None => test_value(table, c),
+            };
+            lines.push((format!("    {expr}{comma}"), comment));
+        }
+    }
+    // the values' comments are aligned on their own, not with the long joins
+    let mut out = vec![aligned(&lines)];
+    out.push(format!("FROM generate_series(1, {rows}) AS g"));
+    if !used.is_empty() {
+        out.push(
+            "-- \"WHERE g IS NOT NULL\": a new random row for each row, not one for all".to_owned(),
+        );
+    }
+    for k in &used {
+        let f = outgoing[*k];
+        let other_cols = f
+            .pairs
+            .iter()
+            .map(|(_, o)| quote_ident(o))
+            .collect::<Vec<_>>()
+            .join(", ");
+        out.push(format!(
+            "LEFT JOIN LATERAL (SELECT {other_cols} FROM {}.{} WHERE g IS NOT NULL ORDER BY random() LIMIT 1) AS {} ON true",
+            quote_ident(&f.schema),
+            quote_ident(&f.table),
+            alias(*k)
+        ));
+    }
+    if let Some(last) = out.last_mut() {
+        last.push(';');
+    }
+    out.join("\n")
+}
+
+/// `gtau`: `<table>_audit` (when, who, operation, the old and new row as `jsonb`), a
+/// trigger function that writes into it and an `AFTER … FOR EACH ROW` trigger (D-054).
+fn audit(table: &str, t: &GenTable) -> String {
+    let schema = quote_ident(&t.schema);
+    let audit = format!("{schema}.{}", quote_ident(&format!("{}_audit", t.name)));
+    let function = format!("{schema}.[function_name]");
+    let trigger = quote_ident(&format!("{}_audit_trg", t.name));
+    [
+        format!("CREATE TABLE {audit} ("),
+        "    audit_id    bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,".to_owned(),
+        "    changed_at  timestamp with time zone NOT NULL DEFAULT now(),".to_owned(),
+        "    changed_by  text NOT NULL DEFAULT current_user,".to_owned(),
+        "    operation   text NOT NULL,  -- INSERT, UPDATE or DELETE".to_owned(),
+        "    old_row     jsonb,          -- UPDATE, DELETE".to_owned(),
+        "    new_row     jsonb           -- INSERT, UPDATE".to_owned(),
+        ");".to_owned(),
+        String::new(),
+        format!("CREATE OR REPLACE FUNCTION {function}()"),
+        "RETURNS trigger".to_owned(),
+        "LANGUAGE plpgsql".to_owned(),
+        "AS $$".to_owned(),
+        "BEGIN".to_owned(),
+        format!("    INSERT INTO {audit} (operation, old_row, new_row)"),
+        "    VALUES (".to_owned(),
+        "        TG_OP,".to_owned(),
+        "        CASE WHEN TG_OP IN ('UPDATE', 'DELETE') THEN to_jsonb(OLD) END,".to_owned(),
+        "        CASE WHEN TG_OP IN ('INSERT', 'UPDATE') THEN to_jsonb(NEW) END".to_owned(),
+        "    );".to_owned(),
+        "    RETURN NULL;  -- ignored for AFTER triggers".to_owned(),
+        "END;".to_owned(),
+        "$$;".to_owned(),
+        String::new(),
+        format!("CREATE TRIGGER {trigger}"),
+        format!("    AFTER INSERT OR UPDATE OR DELETE ON {table}"),
+        format!("    FOR EACH ROW EXECUTE FUNCTION {function}();"),
+    ]
+    .join("\n")
 }
 
 #[cfg(test)]
@@ -2288,10 +2797,10 @@ mod tests {
             m,
             [
                 "gts", "gti", "gtu", "gtd", "gtc", "gto", "gtsi", "gtv", "gtm", "gtrb", "gtra",
-                "gtsb", "gtsa"
+                "gtsb", "gtsa", "gtg", "gtj", "gtr", "gtau"
             ]
         );
-        assert_eq!(matching("\\gt").len(), 13);
+        assert_eq!(matching("\\gt").len(), 17);
         let m: Vec<&str> = matching("gp").iter().map(|c| c.0).collect();
         assert_eq!(m, ["gp", "gpi", "gpu", "gpd", "gpo"]);
         let m: Vec<&str> = matching("gf").iter().map(|c| c.0).collect();
@@ -2587,6 +3096,281 @@ mod tests {
         assert!(r.starts_with("CREATE OR REPLACE FUNCTION public.[function_name]()\n"));
         assert!(r.contains("    v_row_2 public.orders;"), "{r}");
         assert!(r.contains("    WHERE [condition];  -- no primary key: write a condition"));
+    }
+
+    fn k(
+        dir: &str,
+        name: &str,
+        ord: u32,
+        table: &str,
+        this: &str,
+        other: &str,
+        nn: bool,
+    ) -> Vec<String> {
+        [
+            "k",
+            dir,
+            name,
+            &ord.to_string(),
+            "public",
+            table,
+            this,
+            other,
+            if nn { "true" } else { "false" },
+        ]
+        .map(str::to_owned)
+        .to_vec()
+    }
+
+    fn c(table: &str, n: u32, name: &str) -> Vec<String> {
+        ["c", "public", table, &n.to_string(), name, "", "", "", ""]
+            .map(str::to_owned)
+            .to_vec()
+    }
+
+    /// orders → customers (NOT NULL), orders → orders (parent_id, nullable);
+    /// order_lines → orders (two columns), invoices → orders.
+    fn orders_related() -> Related {
+        related(vec![
+            c("customers", 2, "name"),
+            c("customers", 1, "id"),
+            k(
+                "o",
+                "orders_parent_fkey",
+                1,
+                "orders",
+                "parent_id",
+                "id",
+                false,
+            ),
+            k(
+                "o",
+                "orders_customer_fkey",
+                1,
+                "customers",
+                "customer_id",
+                "id",
+                true,
+            ),
+            k(
+                "i",
+                "lines_order_fkey",
+                2,
+                "order_lines",
+                "id",
+                "order_id",
+                true,
+            ),
+            k(
+                "i",
+                "lines_order_fkey",
+                1,
+                "order_lines",
+                "id",
+                "order_id",
+                true,
+            ),
+            k(
+                "i",
+                "invoices_order_fkey",
+                1,
+                "invoices",
+                "id",
+                "order_id",
+                false,
+            ),
+            c("orders", 1, "id"),
+            c("orders", 2, "customer_id"),
+            c("order_lines", 1, "order_id"),
+            c("order_lines", 2, "line_no"),
+            c("invoices", 1, "invoice_id"),
+            c("invoices", 2, "order_id"),
+        ])
+    }
+
+    fn orders_with_parent() -> GenTable {
+        let mut t = orders();
+        t.columns.insert(2, col("parent_id", "integer", false));
+        t
+    }
+
+    #[test]
+    fn foreign_keys_of_a_table() {
+        let r = orders_related();
+        let names: Vec<(bool, &str)> = r
+            .fks
+            .iter()
+            .map(|f| (f.outgoing, f.name.as_str()))
+            .collect();
+        assert_eq!(
+            names,
+            [
+                (true, "orders_customer_fkey"),
+                (true, "orders_parent_fkey"),
+                (false, "invoices_order_fkey"),
+                (false, "lines_order_fkey"),
+            ]
+        );
+        assert!(!r.fks[0].nullable && r.fks[1].nullable);
+        // two pairs of one constraint, in key order
+        assert_eq!(r.fks[3].pairs.len(), 2);
+        assert_eq!(r.columns_of("public", "customers"), ["id", "name"]);
+        assert!(r.columns_of("public", "nothing").is_empty());
+    }
+
+    #[test]
+    fn generate_test_data_joins_and_referencing_rows() {
+        assert_eq!(
+            parse("gtg orders"),
+            Ok(Cmd::Generate {
+                what: Gen::TestData { rows: TEST_ROWS },
+                table: (None, "orders".into())
+            })
+        );
+        assert_eq!(
+            parse("gtg sales.\"Order Items\" 1000"),
+            Ok(Cmd::Generate {
+                what: Gen::TestData { rows: 1000 },
+                table: (Some("sales".into()), "Order Items".into())
+            })
+        );
+        for bad in ["gtg", "gtg orders 0", "gtg orders x", "gtg a b c"] {
+            assert!(parse(bad).is_err(), "{bad}");
+        }
+        for (cmd, what) in [
+            ("gtj", Gen::JoinParents),
+            ("gtr", Gen::Referencing),
+            ("gtau", Gen::Audit),
+        ] {
+            assert!(needs_table(cmd));
+            assert!(what.tables_only());
+            assert_eq!(what.command(), cmd);
+            assert_eq!(what.needs_keys(), what != Gen::Audit);
+        }
+        assert!(Gen::TestData { rows: 1 }.tables_only());
+        let t = orders_with_parent();
+        let rel = orders_related();
+        // gtj: one join per outgoing key; the same table again is numbered
+        let j = generate_related(Gen::JoinParents, &t, &rel).unwrap();
+        let expected = [
+            "SELECT",
+            "    T1.id,",
+            "    T1.customer_id,",
+            "    T1.parent_id,",
+            "    T1.note,",
+            "    T1.total,",
+            "    T2.id AS customers_id,",
+            "    T2.name,",
+            "    T3.id AS orders_2_id,",
+            "    T3.customer_id AS orders_2_customer_id",
+            "FROM public.orders AS T1",
+            "JOIN public.customers AS T2 ON T2.id = T1.customer_id   -- orders_customer_fkey",
+            "LEFT JOIN public.orders AS T3 ON T3.id = T1.parent_id;  -- orders_parent_fkey",
+        ];
+        assert_eq!(j, expected.join("\n"));
+        // gtr: one SELECT per incoming key, placeholders for this table's key
+        let r = generate_related(Gen::Referencing, &t, &rel).unwrap();
+        let expected = [
+            "-- invoices_order_fkey",
+            "SELECT",
+            "    invoice_id,",
+            "    order_id",
+            "FROM public.invoices",
+            "WHERE order_id = [id];  -- public.orders.id: integer",
+            "",
+            "-- lines_order_fkey",
+            "SELECT",
+            "    order_id,",
+            "    line_no",
+            "FROM public.order_lines",
+            "WHERE order_id = [id]     -- public.orders.id: integer",
+            "    AND order_id = [id];  -- public.orders.id: integer",
+        ];
+        assert_eq!(r, expected.join("\n"));
+        let none = generate_related(Gen::Referencing, &t, &Related::default());
+        assert_eq!(none, Err("No foreign key references public.orders.".into()));
+        // gtg: serial id and the generated total left out; keys from random rows
+        let g = generate_related(Gen::TestData { rows: 50 }, &t, &rel).unwrap();
+        let expected = [
+            "INSERT INTO public.orders (",
+            "    customer_id,",
+            "    parent_id,",
+            "    note",
+            ")",
+            "SELECT",
+            "    p1.id,",
+            "    p2.id,",
+            "    'note ' || g",
+            "FROM generate_series(1, 50) AS g",
+            "-- \"WHERE g IS NOT NULL\": a new random row for each row, not one for all",
+            "LEFT JOIN LATERAL (SELECT id FROM public.customers WHERE g IS NOT NULL ORDER BY random() LIMIT 1) AS p1 ON true",
+            "LEFT JOIN LATERAL (SELECT id FROM public.orders WHERE g IS NOT NULL ORDER BY random() LIMIT 1) AS p2 ON true;",
+        ];
+        let code: Vec<&str> = g
+            .lines()
+            .map(|l| l.split("  --").next().unwrap().trim_end())
+            .collect();
+        assert_eq!(code, expected, "{g}");
+        assert!(g.contains("-- orders_customer_fkey, a random row of public.customers"));
+        assert!(g.contains("\n-- \"WHERE g IS NOT NULL\": a new random row for each row"));
+        assert!(g.contains("    'note ' || g  -- text\n"), "{g}");
+    }
+
+    #[test]
+    fn test_values_by_type() {
+        let v = |ty: &str, not_null: bool| test_value("public.t", &col("c", ty, not_null)).0;
+        assert_eq!(v("integer", true), "(random() * 1000)::integer");
+        assert_eq!(
+            v("numeric(5,2)", true),
+            "trunc((random() * 999)::numeric, 2)"
+        );
+        assert_eq!(v("numeric(2,2)", true), "trunc((random() * 1)::numeric, 2)");
+        assert_eq!(v("numeric", true), "round((random() * 1000)::numeric, 2)");
+        assert_eq!(v("character varying(5)", true), "left('c ' || g, 5)");
+        assert_eq!(v("text", true), "'c ' || g");
+        assert_eq!(v("boolean", true), "random() < 0.5");
+        assert_eq!(
+            v("timestamp(0) without time zone", true),
+            "(localtimestamp - random() * interval '365 days')::timestamp(0) without time zone"
+        );
+        assert_eq!(v("integer[]", true), "'{}'::integer[]");
+        assert_eq!(v("mood", true), "[c]");
+        assert_eq!(v("mood", false), "NULL");
+        // keys: values not yet in the table
+        let key = GenColumn {
+            pk_pos: Some(1),
+            ..col("Code", "text", true)
+        };
+        let (e, comment) = test_value("public.t", &key);
+        assert_eq!(
+            e,
+            "'Code ' || g || '-' || substr(md5(random()::text), 1, 8)"
+        );
+        assert!(comment.ends_with("not yet in the table"));
+        let id = GenColumn {
+            pk_pos: Some(1),
+            ..col("id", "bigint", true)
+        };
+        assert_eq!(
+            test_value("public.t", &id).0,
+            "(SELECT coalesce(max(id), 0) FROM public.t) + g"
+        );
+    }
+
+    #[test]
+    fn generate_audit() {
+        let a = generate(Gen::Audit, &orders());
+        assert!(a.starts_with("CREATE TABLE public.orders_audit (\n"), "{a}");
+        assert!(a.contains("INSERT INTO public.orders_audit (operation, old_row, new_row)"));
+        assert!(a.contains("CREATE OR REPLACE FUNCTION public.[function_name]()\nRETURNS trigger"));
+        assert!(a.ends_with(
+            "CREATE TRIGGER orders_audit_trg\n    AFTER INSERT OR UPDATE OR DELETE ON public.orders\n    FOR EACH ROW EXECUTE FUNCTION public.[function_name]();"
+        ));
+        let mut t = orders();
+        t.name = "Order Items".into();
+        let a = generate(Gen::Audit, &t);
+        assert!(a.starts_with("CREATE TABLE public.\"Order Items_audit\" (\n"));
+        assert!(a.contains("CREATE TRIGGER \"Order Items_audit_trg\"\n"));
     }
 
     #[test]

@@ -2197,6 +2197,93 @@ async fn help_screenshots() {
             .unwrap();
         }
     }
+    // gtg / gtj / gtr / gtau: sales.customer with its foreign keys
+    {
+        use crate::psql::{Gen, RelFk, Related};
+        let fk =
+            |outgoing: bool, name: &str, schema: &str, table: &str, this: &str, other: &str| {
+                RelFk {
+                    outgoing,
+                    name: name.into(),
+                    schema: schema.into(),
+                    table: table.into(),
+                    pairs: vec![(this.into(), other.into())],
+                    nullable: true,
+                }
+            };
+        let cols = |c: &[&str]| c.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+        let rel = Related {
+            fks: vec![
+                fk(
+                    true,
+                    "FK_Customer_Person_PersonID",
+                    "person",
+                    "person",
+                    "personid",
+                    "businessentityid",
+                ),
+                fk(
+                    true,
+                    "FK_Customer_SalesTerritory_TerritoryID",
+                    "sales",
+                    "salesterritory",
+                    "territoryid",
+                    "territoryid",
+                ),
+                fk(
+                    true,
+                    "FK_Customer_Store_StoreID",
+                    "sales",
+                    "store",
+                    "storeid",
+                    "businessentityid",
+                ),
+                RelFk {
+                    nullable: false,
+                    ..fk(
+                        false,
+                        "FK_SalesOrderHeader_Customer_CustomerID",
+                        "sales",
+                        "salesorderheader",
+                        "customerid",
+                        "customerid",
+                    )
+                },
+            ],
+            columns: vec![
+                (
+                    ("person".into(), "person".into()),
+                    cols(&["businessentityid", "firstname", "lastname"]),
+                ),
+                (
+                    ("sales".into(), "salesterritory".into()),
+                    cols(&["territoryid", "name", "countryregioncode"]),
+                ),
+                (
+                    ("sales".into(), "store".into()),
+                    cols(&["businessentityid", "name"]),
+                ),
+                (
+                    ("sales".into(), "salesorderheader".into()),
+                    cols(&["salesorderid", "orderdate", "customerid", "totaldue"]),
+                ),
+            ],
+        };
+        for (name, what) in [
+            ("gtg", Gen::TestData { rows: 100 }),
+            ("gtj", Gen::JoinParents),
+            ("gtr", Gen::Referencing),
+            ("gtau", Gen::Audit),
+        ] {
+            if let Some(t) = &out.txt {
+                std::fs::write(
+                    t.join(format!("gen-{name}.sql")),
+                    crate::psql::generate_related(what, &gen_customer, &rel).unwrap(),
+                )
+                .unwrap();
+            }
+        }
+    }
     // gtv: a view over three tables
     {
         use crate::psql::{ViewFk, ViewTable};

@@ -1690,7 +1690,8 @@ pgtc (binary)
     combined letters add up (`dtv` → tables and views; `E` foreign tables, `i` nothing);
   - `gts`, `gti`, `gtu`, `gtd`, `gtc`, `gto`, `gtsi`, `gtv`, `gfr`, `gfs`, `gft`,
     `gfe`, `gfj` — tables, views, foreign tables (`gtv` completes the last name typed);
-  - `gtm`, `gtrb`, `gtra`, `gtsb`, `gtsa`, `gpi`, `gpu`, `gpd`, `gpo` — tables;
+  - `gtm`, `gtrb`, `gtra`, `gtsb`, `gtsa`, `gpi`, `gpu`, `gpd`, `gpo`, `gtg`, `gtj`,
+    `gtr`, `gtau` — tables;
   - `gp`, `gf` — schemas;
   - all others — nothing (*No suggestions*).
   Names come from the query tab's name cache (*loading…* until it is read; nothing is
@@ -1812,6 +1813,47 @@ pgtc (binary)
       ON 1=1  -- no foreign key: write the join condition`. Views and foreign tables
       have none.
     - A name not found → *Did not find a table named "…"*, nothing inserted.
+  - **Foreign keys** (`gtg`, `gtj`, `gtr`): after the columns (`generate.sql`) a second
+    read through the tab's connection, `foreign_keys.sql`: the table's foreign keys in
+    both directions (constraints a partition inherits left out) and the columns of the
+    tables on their other side. Tables only (as `gtm`).
+  - `gtg` *table* [*rows*] — test data: `INSERT INTO <table> (…) SELECT … FROM
+    generate_series(1, rows) AS g`; *rows* 100 when not given, a whole number above 0.
+    - *Columns:* every column except generated and identity ones and those with a
+      default (the database fills them: `serial`, `now()`, …) — a foreign key column
+      is listed even with a default.
+    - *Foreign key columns:* a random row of the referenced table, one `LEFT JOIN
+      LATERAL (SELECT <columns> FROM <parent> WHERE g IS NOT NULL ORDER BY random()
+      LIMIT 1) AS p1 ON true` per foreign key (`p1`, `p2`, … in the order of their first
+      column; a column in several keys: the first by constraint name). `WHERE g IS NOT
+      NULL` makes it a new row for each row (a comment line says so); an empty parent
+      gives `NULL` (a `NOT NULL` column then fails, not silently no rows).
+    - *Other columns:* a value of `g` that fits the type: numbers `(random() *
+      1000)::type` (`numeric(p,s)` below its limit with `trunc`), text `'column ' ||
+      g` (`left(…, n)` for a length), `random() < 0.5`, dates / timestamps / times up
+      to a year back, `interval`, `uuid` (`md5(…)::uuid`, every version), `json` /
+      `jsonb`, `bytea`, `inet` / `cidr`, arrays `'{}'`. Primary / unique key columns get
+      values not yet in the table: numbers `(SELECT coalesce(max(col), 0) FROM t) + g`,
+      text with a random suffix. Other types (enums, domains, …): `[column]` for `NOT
+      NULL` (does not run until filled in), else `NULL`, comment *write a value*.
+  - `gtj` *table* — `SELECT` every column of the table and of each table its foreign
+    keys point to, one join per foreign key by constraint name (a table referenced
+    twice is joined twice), as `gtv` builds it (aliases `T1`, …, `AS table_column`,
+    `LEFT JOIN` for a nullable key, the constraint in the comment). Without foreign
+    keys only the table. No `WHERE`.
+  - `gtr` *table* — the rows that reference one row: per foreign key that points to
+    the table (by constraint name) `-- <constraint>`, `SELECT <every column> FROM
+    <child> WHERE <child column> = [key column]` (`AND` for several pairs; the comment
+    gives the table's column and type), separated by an empty line. None → *No
+    foreign key references …*, nothing inserted.
+  - `gtau` *table* — audit: `CREATE TABLE <table>_audit (audit_id bigint GENERATED
+    ALWAYS AS IDENTITY PRIMARY KEY, changed_at timestamptz DEFAULT now(), changed_by
+    text DEFAULT current_user, operation text, old_row jsonb, new_row jsonb)`, a
+    trigger function `<schema>.[function_name]()` that inserts `TG_OP` and `to_jsonb(OLD
+    / NEW)` (`OLD` for UPDATE / DELETE, `NEW` for INSERT / UPDATE) and `CREATE TRIGGER
+    <table>_audit_trg AFTER INSERT OR UPDATE OR DELETE … FOR EACH ROW`. All in the
+    table's schema; the function name a placeholder (as the trigger commands). Reads
+    only the columns.
   - `gp` [*schema*] — an empty PL/pgSQL procedure: `CREATE OR REPLACE PROCEDURE
     <schema>.[procedure_name]() LANGUAGE plpgsql AS $$ BEGIN --PROCESS HERE END; $$;`.
     Without a schema `public`; a qualified name is refused. Nothing is read from the
@@ -2593,3 +2635,4 @@ pgtc (binary)
 | 2026-11-15 | D-054 updated: `gtt` split into `gtrb` / `gtra` / `gtsb` / `gtsa` (row / statement, before / after); trigger names `<table>_rb_trg`, `_ra_trg`, `_sb_trg`, `_sa_trg`; after row triggers end every branch with the final `RETURN NULL` (ignored); statement triggers have no field comments, add `TRUNCATE`, no transition tables. |
 | 2026-11-17 | D-054 updated: generate commands `gp` [*schema*] (empty PL/pgSQL procedure, default schema `public`, nothing read, schemas autocompleted) and `gpi` / `gpu` / `gpd` / `gpo` *table* (PL/pgSQL procedures that insert / update / delete / upsert one row; `p_` parameters with plain column types, `INOUT` for keys the database fills, `RAISE EXCEPTION` when `gpu` / `gpd` find no row; name `[procedure_name]` in the table's schema; tables only). |
 | 2026-11-17 | D-054 updated: generate commands `gf` [*schema*] (empty PL/pgSQL function, `[return_type]` / `[value]` placeholders, default schema `public`) and `gfr` / `gfs` / `gft` / `gfe` / `gfj` *table* (read-only `STABLE` PL/pgSQL functions: one row by key or `NULL`, `SETOF` the table, `RETURNS TABLE` with `T1.`-qualified columns, `EXISTS` by key, one row as `jsonb` by key; `WHERE [condition]` for the set functions and without a key; tables, views and foreign tables). |
+| 2026-11-17 | D-054 updated: generate commands `gtg` *table* [*rows*] (test data via `generate_series`, 100 rows by default, a random parent row per foreign key through `LEFT JOIN LATERAL … ORDER BY random() LIMIT 1`, key columns past the current maximum), `gtj` *table* (SELECT joined to every table its foreign keys point to, one join per key), `gtr` *table* (one SELECT per foreign key that references the table, `[key]` placeholders) and `gtau` *table* (`<table>_audit` with `jsonb` old / new rows, trigger function `[function_name]`, trigger `<table>_audit_trg`); new catalog query `foreign_keys.sql` read after the columns; tables only. |

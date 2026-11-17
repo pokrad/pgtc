@@ -174,6 +174,10 @@ right without typing them.</p>
 <tr><td class="k"><code>gtrb</code>, <code>gtra</code> <i>table</i></td><td>A trigger function and a <b>r</b>ow trigger, <b>b</b>efore / <b>a</b>fter</td><td>tables</td></tr>
 <tr><td class="k"><code>gtsb</code>, <code>gtsa</code> <i>table</i></td><td>A trigger function and a <b>s</b>tatement trigger, <b>b</b>efore / <b>a</b>fter</td><td>tables</td></tr>
 <tr><td class="k"><code>gtv</code> <i>table</i> <i>table</i> …</td><td><code>CREATE VIEW</code> joining the tables on their foreign keys</td><td>tables, views, foreign tables</td></tr>
+<tr><td class="k"><code>gtg</code> <i>table</i> [<i>rows</i>]</td><td>Test data: <code>INSERT … SELECT … FROM generate_series</code>, 100 rows unless you give a number</td><td>tables</td></tr>
+<tr><td class="k"><code>gtj</code> <i>table</i></td><td><code>SELECT</code> joined to every table its foreign keys point to</td><td>tables</td></tr>
+<tr><td class="k"><code>gtr</code> <i>table</i></td><td>The rows of other tables that reference a row of this one</td><td>tables</td></tr>
+<tr><td class="k"><code>gtau</code> <i>table</i></td><td>An audit table, a trigger function and a trigger that log every change</td><td>tables</td></tr>
 <tr><td class="k"><code>gp</code> [<i>schema</i>]</td><td>An empty PL/pgSQL procedure (schema <code>public</code> when none is given)</td><td>—</td></tr>
 <tr><td class="k"><code>gpi</code> <i>table</i></td><td>PL/pgSQL procedure that inserts a row</td><td>tables</td></tr>
 <tr><td class="k"><code>gpu</code> <i>table</i></td><td>PL/pgSQL procedure that updates a row by its key</td><td>tables</td></tr>
@@ -187,7 +191,8 @@ right without typing them.</p>
 <tr><td class="k"><code>gfj</code> <i>table</i></td><td>PL/pgSQL function: one row by its key as <b>j</b>son (<code>jsonb</code>)</td><td>tables, views, foreign tables</td></tr>
 </table></div>
 <p>The names are easy to remember: <b>g</b>enerate <b>t</b>able + <b>s</b>elect, <b>i</b>nsert, <b>u</b>pdate,
-<b>d</b>elete, <b>o</b>n conflict, <b>m</b>erge, <b>c</b>ursor, <b>s</b>elect <b>i</b>nto, <b>v</b>iew; and for triggers
+<b>d</b>elete, <b>o</b>n conflict, <b>m</b>erge, <b>c</b>ursor, <b>s</b>elect <b>i</b>nto, <b>v</b>iew,
+<b>g</b>enerate data, <b>j</b>oin, <b>r</b>eferencing rows, <b>au</b>dit; and for triggers
 <b>r</b>ow / <b>s</b>tatement, <b>b</b>efore / <b>a</b>fter. <b>g</b>enerate <b>p</b>rocedure and
 <b>g</b>enerate <b>f</b>unction work the same way: <code>gpi</code>, <code>gpu</code>, <code>gpd</code>,
 <code>gpo</code>; <code>gfr</code>, <code>gfs</code>, <code>gft</code>, <code>gfe</code>, <code>gfj</code>.</p>
@@ -489,6 +494,117 @@ LEFT JOIN sales.salesterritory AS T3 ON T3.territoryid = T1.territoryid;  -- FK_
 <p>The order of the tables matters: start with the table that holds the foreign keys (the “many” side), then the
 tables it points to. To try the query before creating the view, select the text from <code>SELECT</code> to the end
 and press <kbd>F5</kbd>.</p>
+
+<h3 id="gtg">gtg — test data</h3>
+<pre><code>gtg sales.customer 500</code></pre>
+<pre><code>INSERT INTO sales.customer (
+    personid,
+    storeid,
+    territoryid
+)
+SELECT
+    p1.businessentityid,  -- FK_Customer_Person_PersonID, a random row of person.person
+    p2.businessentityid,  -- FK_Customer_Store_StoreID, a random row of sales.store
+    p3.territoryid        -- FK_Customer_SalesTerritory_TerritoryID, a random row of sales.salesterritory
+FROM generate_series(1, 500) AS g
+-- "WHERE g IS NOT NULL": a new random row for each row, not one for all
+LEFT JOIN LATERAL (SELECT businessentityid FROM person.person WHERE g IS NOT NULL ORDER BY random() LIMIT 1) AS p1 ON true
+LEFT JOIN LATERAL (SELECT businessentityid FROM sales.store WHERE g IS NOT NULL ORDER BY random() LIMIT 1) AS p2 ON true
+LEFT JOIN LATERAL (SELECT territoryid FROM sales.salesterritory WHERE g IS NOT NULL ORDER BY random() LIMIT 1) AS p3 ON true;</code></pre>
+<p>Fills a table with rows to try things out. The number after the table is how many rows; without it, 100. Unlike
+most other commands, the statement usually <b>runs as it is</b>: check it and press <kbd>F5</kbd>.</p>
+<ul>
+  <li><b>Which columns:</b> all except those the database fills itself — generated and identity columns, and
+      columns with a default (here <code>customerid</code> from its sequence, <code>rowguid</code>,
+      <code>modifieddate</code>). A foreign key column is always filled.</li>
+  <li><b>Foreign keys:</b> each one takes a <b>random existing row</b> of the table it points to, a new one for every
+      row. So fill the parent tables first. If a parent table is empty the value is <code>NULL</code>, and a
+      <code>NOT NULL</code> column then reports an error instead of silently inserting nothing.</li>
+  <li><b>Other columns</b> get a value that fits their type, built from <code>g</code>, the row number:
+      <code>'name ' || g</code> for text (cut to the length of a <code>varchar(n)</code>), a random number, a random
+      date, time or timestamp up to a year back, <code>random() &lt; 0.5</code> for <code>boolean</code>, a random
+      <code>uuid</code>, small <code>json</code> / <code>jsonb</code> objects, and so on.</li>
+  <li><b>Key columns</b> (primary key, unique key) get values not yet in the table: numbers continue after the
+      current maximum, text gets a random suffix.</li>
+  <li><b>Types pgtc does not know</b> (enums, domains, …): <code>[column]</code> for a <code>NOT NULL</code> column
+      — write a value, e.g. <code>'happy'::mood</code> — and <code>NULL</code> otherwise.</li>
+  <li>A random row is found with <code>ORDER BY random()</code>, which reads the whole parent table for every row:
+      fine for test databases, slow for a large parent and many rows.</li>
+</ul>
+
+<h3 id="gtj">gtj — join the parent tables</h3>
+<pre><code>SELECT
+    T1.customerid,
+    T1.personid,
+    T1.storeid,
+    T1.territoryid,
+    T1.rowguid,
+    T1.modifieddate,
+    T2.businessentityid,
+    T2.firstname,
+    T2.lastname,
+    T3.territoryid AS salesterritory_territoryid,
+    T3.name,
+    T3.countryregioncode,
+    T4.businessentityid AS store_businessentityid,
+    T4.name AS store_name
+FROM sales.customer AS T1
+LEFT JOIN person.person AS T2 ON T2.businessentityid = T1.personid       -- FK_Customer_Person_PersonID
+LEFT JOIN sales.salesterritory AS T3 ON T3.territoryid = T1.territoryid  -- FK_Customer_SalesTerritory_TerritoryID
+LEFT JOIN sales.store AS T4 ON T4.businessentityid = T1.storeid;         -- FK_Customer_Store_StoreID</code></pre>
+<p>The table and every table its foreign keys point to, found for you — the same joins as <a href="#gtv"><code>gtv</code></a>
+writes, without typing the parent tables. One join per foreign key: a table referenced twice (a billing and a
+shipping address) is joined twice. <code>LEFT JOIN</code> where the key column may be NULL. Add a
+<code>WHERE</code> and delete the columns you do not need.</p>
+
+<h3 id="gtr">gtr — rows that reference a row</h3>
+<pre><code>-- FK_SalesOrderHeader_Customer_CustomerID
+SELECT
+    salesorderid,
+    orderdate,
+    customerid,
+    totaldue
+FROM sales.salesorderheader
+WHERE customerid = [customerid];  -- sales.customer.customerid: integer</code></pre>
+<p>“What hangs on this row?” — for each foreign key of another table that points to this one, a <code>SELECT</code> of
+the rows that reference one row (here: the orders of one customer). Replace <code>[customerid]</code> with the key of
+the row you want to look at. Useful before a <code>DELETE</code> that fails on a foreign key. A table that nothing
+references answers <i>No foreign key references …</i>.</p>
+
+<h3 id="gtau">gtau — audit every change</h3>
+<pre><code>CREATE TABLE sales.customer_audit (
+    audit_id    bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    changed_at  timestamp with time zone NOT NULL DEFAULT now(),
+    changed_by  text NOT NULL DEFAULT current_user,
+    operation   text NOT NULL,  -- INSERT, UPDATE or DELETE
+    old_row     jsonb,          -- UPDATE, DELETE
+    new_row     jsonb           -- INSERT, UPDATE
+);
+
+CREATE OR REPLACE FUNCTION sales.[function_name]()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    INSERT INTO sales.customer_audit (operation, old_row, new_row)
+    VALUES (
+        TG_OP,
+        CASE WHEN TG_OP IN ('UPDATE', 'DELETE') THEN to_jsonb(OLD) END,
+        CASE WHEN TG_OP IN ('INSERT', 'UPDATE') THEN to_jsonb(NEW) END
+    );
+    RETURN NULL;  -- ignored for AFTER triggers
+END;
+$$;
+
+CREATE TRIGGER customer_audit_trg
+    AFTER INSERT OR UPDATE OR DELETE ON sales.customer
+    FOR EACH ROW EXECUTE FUNCTION sales.[function_name]();</code></pre>
+<p>Every insert, update and delete of the table is written to <code>&lt;table&gt;_audit</code>: when, by whom, which
+operation, and the row before and after as <code>jsonb</code>. Name the function (in both places) and run the script in
+SQL mode. To see what changed in an update:</p>
+<pre><code>SELECT changed_at, changed_by, key, old_row -> key AS old, new_row -> key AS new
+FROM sales.customer_audit, jsonb_object_keys(new_row) AS key
+WHERE operation = 'UPDATE' AND old_row -> key IS DISTINCT FROM new_row -> key;</code></pre>
 
 <h3 id="gp">gp — an empty procedure</h3>
 <pre><code>CREATE OR REPLACE PROCEDURE public.[procedure_name]()

@@ -354,6 +354,60 @@ async fn psql_commands_against_a_real_server() {
         a.query().unwrap().results[0].rows[0][0].as_deref(),
         Some("true")
     );
+    // gtg / gtj / gtr / gtau on pgtc_psql_items (item_id key, psql_id → pgtc_psql,
+    // which holds the one row 2); each script runs with its placeholders filled in
+    for (command, fill, then, expected) in [
+        (
+            "gtg pgtc_psql_items 5",
+            &[][..],
+            "SELECT count(*) || ':' || min(psql_id) || ':' || max(item_id) FROM pgtc_psql_items",
+            "5:2:5",
+        ),
+        (
+            "gtj pgtc_psql_items",
+            &[],
+            "SELECT count(*) FROM pgtc_psql_items",
+            "5",
+        ),
+        ("gtr pgtc_psql", &[("[id]", "2")], "SELECT 'ok'", "ok"),
+        (
+            "gtau pgtc_psql_items",
+            &[("[function_name]", "pgtc_psql_audit_fn")],
+            "UPDATE pgtc_psql_items SET note = 'x' WHERE item_id = 1; \
+             SELECT operation || ':' || (new_row ->> 'note') FROM pgtc_psql_items_audit",
+            "UPDATE:x",
+        ),
+    ] {
+        a.editor().set_text("");
+        a.status.clear();
+        run(&mut a, command);
+        pump(&mut a, &mut rx, &hits, |a| {
+            a.status.starts_with("Generated")
+        })
+        .await;
+        let mut text = a.editor().text();
+        for (from, to) in fill {
+            text = text.replace(from, to);
+        }
+        a.editor().set_text(&format!("{text}\n{then}"));
+        key(&mut a, "F5");
+        pump(&mut a, &mut rx, &hits, idle).await;
+        assert!(errors(&a).is_empty(), "{command}: {:?}\n{text}", errors(&a));
+        let q = a.query().unwrap();
+        let last = q.results.last().expect("a result");
+        assert_eq!(
+            last.rows[0][0].as_deref(),
+            Some(expected),
+            "{command}\n{text}"
+        );
+        if command.starts_with("gtj") {
+            // the join: every row with its parent
+            assert_eq!(q.results[0].rows.len(), 5, "{text}");
+        }
+        if command.starts_with("gtr") {
+            assert_eq!(q.results[0].rows.len(), 5, "{text}");
+        }
+    }
     a.editor().set_text("");
     // unknown command: an error, the command line stays open
     run(&mut a, "xyz");
