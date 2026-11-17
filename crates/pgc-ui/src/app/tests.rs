@@ -2766,6 +2766,7 @@ async fn find_object_searches_and_opens_the_tree_to_the_object() {
             (ObjType::Table, 999),
         ],
         tried: Default::default(),
+        quiet: false,
     });
     a.continue_reveal();
     assert!(a.reveal.is_none());
@@ -4746,4 +4747,145 @@ fn ok_button_of_the_file_dialog_takes_a_mouse_click() {
         click_text(&mut a, "< OK >", w, h);
         assert!(files.join("query.sql").exists(), "{w}x{h}");
     }
+}
+
+/// Edit connection on a connected server (D-035): a new name or *AI not allowed*
+/// applies at once; a changed host disconnects (the usual questions; Cancel keeps
+/// the old connection, the settings stay saved), closes the server's tabs and
+/// connects again; File → Edit connection works below the server row too.
+#[tokio::test]
+async fn edit_connection_reconnects_when_the_connection_changes() {
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    let tab = bound_tab(&mut a, uid, "shop", "select 1;");
+    a.tree.select_server(uid);
+    // in the File menu
+    let file = menu::menu_bar().remove(0);
+    assert!(
+        file.entries
+            .iter()
+            .any(|e| matches!(e, MenuEntry::Item { cmd, .. } if *cmd == Command::EditConnection))
+    );
+    assert!(a.is_enabled(Command::EditConnection));
+
+    // the name and AI not allowed: at once, nothing closes
+    a.run(Command::EditConnection);
+    let d = a.dialogs.last_mut().unwrap();
+    assert_eq!(d.kind, DialogKind::Connection { server: Some(uid) });
+    d.set_text("name", "renamed");
+    key(&mut a, "Alt+A");
+    key(&mut a, "Alt+O");
+    assert!(a.dialogs.is_empty());
+    let s = &a.tree.servers[0];
+    assert_eq!(s.conn.name, "renamed");
+    assert!(s.conn.ai_not_allowed);
+    assert_eq!(s.state, ConnState::Connected);
+    assert!(a.tab_index(tab).is_some());
+    assert!(a.closing.reopen.is_none());
+    assert_eq!(a.status, "Connection saved");
+
+    // a new host with unsaved text: the question; Cancel keeps the connection
+    a.tree.select_server(uid);
+    a.run(Command::EditConnection);
+    a.dialogs.last_mut().unwrap().set_text("host", "db2");
+    key(&mut a, "Alt+O");
+    let d = a.dialogs.last().unwrap();
+    assert!(matches!(d.kind, DialogKind::QuitSaveChanges { .. }));
+    assert_eq!(d.title, "Edit connection");
+    esc(&mut a);
+    assert_eq!(a.tree.servers[0].state, ConnState::Connected);
+    assert!(a.tab_index(tab).is_some());
+    assert_eq!(
+        a.tree.servers[0].conn.host, "db2",
+        "the settings stay saved"
+    );
+    assert_eq!(a.settings.servers[0].host, "db2");
+
+    // again, No to saving: the tab closes, the server connects again
+    a.tree.select_server(uid);
+    a.run(Command::EditConnection);
+    a.dialogs.last_mut().unwrap().set_text("port", "5433");
+    key(&mut a, "Alt+O");
+    key(&mut a, "n");
+    assert!(a.dialogs.is_empty());
+    assert!(a.tab_index(tab).is_none());
+    assert_eq!(a.tree.servers[0].state, ConnState::Connecting);
+    assert_eq!(a.tree.servers[0].conn.port, 5433);
+    assert_eq!(a.closing.reopen, Some((uid, Vec::new())));
+    // connected: the tree is on the server again
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    assert!(a.closing.reopen.is_none());
+    assert_eq!(a.tree.selected().map(|r| r.kind), Some(RowKind::Server));
+}
+
+/// After an edited connection is made again (D-035), the tree opens towards the
+/// object that was selected.
+#[tokio::test]
+async fn edit_connection_reopens_the_tree() {
+    use crate::objects::ObjType;
+    use crate::tree::{DbConn, NodeKind, RowKind};
+    use pgc_db::NodeRow;
+    let (mut a, _d) = app();
+    a.settings.query.ask_save = false;
+    let uid = add_server(&mut a, "srv");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    let row = |oid: u32, name: &str| NodeRow {
+        oid,
+        name: name.into(),
+        label: None,
+        partitioned: false,
+    };
+    let child = |a: &App, parent: Option<u64>, kind: NodeKind, oid: u32| -> u64 {
+        let kids = match parent {
+            None => &a.tree.servers[0].children,
+            Some(p) => a.tree.node(p).unwrap().children.as_ref().unwrap(),
+        };
+        kids.iter()
+            .find(|n| n.kind == kind && (oid == 0 || n.oid == oid))
+            .unwrap()
+            .nid
+    };
+    let dbs = child(&a, None, NodeKind::Group(ObjType::Database), 0);
+    a.tree
+        .set_children(dbs, vec![row(4, "postgres"), row(5, "shop")]);
+    a.tree.node_mut(dbs).unwrap().expanded = true;
+    let db = child(&a, Some(dbs), NodeKind::Object(ObjType::Database), 5);
+    let groups = a.tree.groups(&ObjType::Database.children(false));
+    {
+        let n = a.tree.node_mut(db).unwrap();
+        n.conn = Some(DbConn {
+            state: ConnState::Connected,
+            handle: Some(pgc_db::ConnectionHandle::detached(51)),
+        });
+        n.children = Some(groups);
+        n.expanded = true;
+    }
+    let schemas = child(&a, Some(db), NodeKind::Group(ObjType::Schema), 0);
+    a.tree.set_children(schemas, vec![row(2200, "public")]);
+    a.tree.node_mut(schemas).unwrap().expanded = true;
+    let public = child(&a, Some(schemas), NodeKind::Object(ObjType::Schema), 2200);
+    a.tree.select_kind(RowKind::Node(public));
+
+    // File → Edit connection on the schema row: its server
+    a.run(Command::EditConnection);
+    a.dialogs.last_mut().unwrap().set_text("user", "app");
+    key(&mut a, "Alt+O");
+    assert_eq!(
+        a.closing.reopen,
+        Some((uid, vec![(ObjType::Database, 5), (ObjType::Schema, 2200)]))
+    );
+    assert_eq!(a.tree.servers[0].state, ConnState::Connecting);
+    // connected again: the tree opens level by level
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    assert!(a.reveal.as_ref().is_some_and(|r| r.quiet));
+    let dbs = child(&a, None, NodeKind::Group(ObjType::Database), 0);
+    a.tree
+        .set_children(dbs, vec![row(4, "postgres"), row(5, "shop")]);
+    a.after_tree_event();
+    let db = child(&a, Some(dbs), NodeKind::Object(ObjType::Database), 5);
+    assert_eq!(a.tree.selected().unwrap().kind, RowKind::Node(db));
+    assert!(a.reveal.is_some(), "waits for the database's connection");
 }

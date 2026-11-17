@@ -479,7 +479,7 @@ desktop dependency.
 - **Status:** Accepted (initial version, may be refined)
 - **Menu bar:** `File` · `View` · `Query` (D-041) · `Tools` · `Settings` · `Help`
 - **File**
-  - New connection…
+  - New connection… / Edit connection… / Delete connection… (D-035)
   - Connect / Disconnect
   - New query
   - Open SQL file… / Save SQL file (`Ctrl+S`) / Save SQL file as… (D-064)
@@ -1099,8 +1099,20 @@ pgtc (binary)
   In the New / Edit connection dialog the SSL mode is a combo box (drop-down).
 - **Context menu (`F2` / right click) on a server:** Connect, Disconnect, Refresh,
   Edit connection…, Delete connection (with confirmation) (D-049). `F8` (Drop) on a server
-  also deletes it (with confirmation). File → Connect / Disconnect act on the server
-  selected in the tree.
+  also deletes it (with confirmation). File → Edit connection… / Delete connection… /
+  Connect / Disconnect act on the server of the selected tree row (also a database
+  or an object below it).
+- **OK in Edit connection on a connected server:** a change of only the name or
+  *AI not allowed* (D-073) applies at once (tree, tab labels; `F8` checks the flag
+  each time). A change of anything that makes the connection (host, port,
+  maintenance database, user, a typed password, SSL mode, root certificate file):
+  the settings are saved, then the server is **disconnected and connected again**
+  with them — the Disconnect path with its questions about unsaved text and open
+  transactions; every tab of the server closes (query, dashboard, profiler,
+  statistics tabs). *Cancel* in a question keeps the old connection open (the
+  edited settings stay saved). After the new connection the tree opens down to the
+  object that was selected, when it is still there. No extra "Reconnect now?"
+  question.
 - **Passwords (D-008):** the New / Edit connection dialog has **Password** and
   **Save password**; if connecting needs a password that is not known (dialog, URI,
   `PGPASSWORD`, `.pgpass`), a **login dialog** asks for it, also with **Save password**.
@@ -2715,3 +2727,4 @@ pgtc (binary)
 | 2026-11-18 | D-073 implemented; details: the prompt box wraps at word ends (`Enter` new line, `Tab` leaves, `Ctrl+Enter` / `Alt+S` send); the answer starts a line of its own when the cursor is inside a line; text outside code fences becomes `--` comments. HTTP via `reqwest` (rustls, ring). |
 | 2026-11-18 | D-073 updated: no environment variables for the API key — it is typed into Settings → AI… and kept in the key file `ai_key` (stars for a saved key: kept, replaced by typing, removed when emptied); presets fill in protocol, base URL and model only. |
 | 2026-11-18 | D-073 updated: autocomplete in the prompt box — `Ctrl+Space` / `Alt+/` and after `.`, names from the dialog's structure, objects schema-qualified, columns after `table.`; not limited by the scope. |
+| 2026-11-18 | D-035, D-014 updated: File → Edit connection… / Delete connection…; OK in Edit connection on a connected server applies a name / *AI not allowed* change at once, any other change disconnects (the usual questions; the server's tabs close) and connects again, the tree opening down to the selected object. |

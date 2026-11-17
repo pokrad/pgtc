@@ -55,15 +55,32 @@ are the top rows of the object tree. They are stored in pgtc's settings file —
   <figcaption><kbd>F2</kbd> on a server row.</figcaption>
 </figure>
 <ul>
-  <li><b>Edit:</b> put the cursor on the server, press <kbd>F2</kbd> and choose <span class="menu">Edit connection…</span>.
-      The same dialog opens with the saved values.</li>
-  <li><b>Delete:</b> <kbd>F8</kbd> on the server, or <span class="menu">Delete connection</span> in its context menu.
+  <li><b>Edit:</b> put the cursor on the server, press <kbd>F2</kbd> and choose <span class="menu">Edit connection…</span>
+      — or choose <span class="menu">File → Edit connection…</span>, which also works with the cursor on a database
+      or an object below the server. The same dialog opens with the saved values.</li>
+  <li><b>Delete:</b> <kbd>F8</kbd> on the server, <span class="menu">Delete connection</span> in its context menu, or
+      <span class="menu">File → Delete connection…</span>.
       pgtc asks first:
       <figure class="small"><img src="img/conn-delete.svg" alt="Delete connection question" loading="lazy"></figure>
       Deleting a connected server also disconnects it — with the questions described under
       <a href="#disconnect">Disconnecting</a>. Only pgtc's entry is deleted; nothing happens on the server, and a
       password saved in <code>.pgpass</code> stays there.</li>
 </ul>
+
+<h3 id="edit-connected">Editing a connected server</h3>
+<p>What happens on <span class="ui">OK</span> depends on what you changed:</p>
+<div class="tablewrap"><table>
+<tr><th>You changed</th><th>On OK</th></tr>
+<tr><td>Only the <span class="ui">Name</span> or <span class="ui">AI not allowed</span></td><td>Applied at once. The
+connection stays open, every tab stays.</td></tr>
+<tr><td>Anything that makes the connection: host, port, maintenance database, user name, a typed password, SSL mode,
+root certificate file</td><td>The settings are saved, then the server is <b>disconnected and connected again</b> with
+them. First come the usual questions of <a href="#disconnect">Disconnecting</a> — unsaved text, open transactions;
+then <b>every tab of that server closes</b> (query tabs, dashboard, profiler, statistics). After the new connection the
+tree opens down to the object that was selected, if it is still there.</td></tr>
+</table></div>
+<p><span class="ui">Cancel</span> in one of the questions keeps the old connection and its tabs open; the edited
+settings stay saved and are used at the next connect.</p>
 
 <h2 id="connect">Connecting</h2>
 <figure>

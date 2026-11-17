@@ -81,6 +81,8 @@ pub(super) struct Reveal {
     pub steps: Vec<(ObjType, u32)>,
     /// Groups loaded and databases connected for it (a second failure ends it).
     pub tried: HashSet<u64>,
+    /// Reopening the tree after a reconnect (D-035): a failure ends it silently.
+    pub quiet: bool,
 }
 
 /// How the name is compared with the typed text (D-055).
@@ -757,6 +759,7 @@ impl App {
             uid,
             steps: hit.steps,
             tried: HashSet::new(),
+            quiet: false,
         });
         self.continue_reveal();
     }
@@ -790,12 +793,15 @@ impl App {
         let mut parent: Option<u64> = None;
         let mut reached: Option<u64> = None;
         let last = r.steps.len().saturating_sub(1);
+        let quiet = r.quiet;
         let fail = |app: &mut App, reached: Option<u64>, why: String| {
             if let Some(n) = reached {
                 app.tree.select_kind(RowKind::Node(n));
             }
-            app.focus = Focus::Tree;
-            app.status = why;
+            if !quiet {
+                app.focus = Focus::Tree;
+                app.status = why;
+            }
         };
         for (k, &(t, oid)) in r.steps.clone().iter().enumerate() {
             let kids: Vec<(NodeKind, u32, u64)> = match parent {

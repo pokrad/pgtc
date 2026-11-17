@@ -36,6 +36,8 @@ pub fn menu_bar() -> Vec<MenuDef> {
             title: HotText::new("&File"),
             entries: vec![
                 item("&New connection…", C::NewConnection),
+                item("Ed&it connection…", C::EditConnection),
+                item("Dele&te connection…", C::DeleteConnection),
                 item("&Connect", C::Connect),
                 item("&Disconnect", C::Disconnect),
                 Separator,

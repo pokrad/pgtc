@@ -69,6 +69,9 @@ pub(super) struct Closing {
     pub(super) bulk: Option<(Bulk, Vec<u64>)>,
     /// Quitting / disconnecting waits for COMMITs to finish.
     pub(super) bulk_pending: Option<Bulk>,
+    /// An edited connection being connected again (D-035): its uid and the objects
+    /// down to the tree row that was selected, to open the tree to it again.
+    pub(super) reopen: Option<(u64, Vec<(crate::objects::ObjType, u32)>)>,
     /// Quitting waits for profilers to put the logging settings back (D-058).
     pub(super) quit_after_restore: bool,
     /// The event loop ends.

@@ -347,6 +347,27 @@ impl App {
         }
     }
 
+    /// The objects from the top of server `uid` down to the selected tree row (the row
+    /// itself when it is an object); empty when the row is not on that server.
+    fn selected_steps(&self, uid: u64) -> Vec<(crate::objects::ObjType, u32)> {
+        let Some(crate::tree::RowKind::Node(nid)) = self.tree.selected().map(|r| r.kind) else {
+            return Vec::new();
+        };
+        let Some((si, chain)) = self.tree.chain(nid) else {
+            return Vec::new();
+        };
+        if self.tree.servers.get(si).map(|s| s.uid) != Some(uid) {
+            return Vec::new();
+        }
+        chain
+            .into_iter()
+            .filter_map(|(kind, oid, _)| match kind {
+                crate::tree::NodeKind::Object(t) => Some((t, oid)),
+                crate::tree::NodeKind::Group(_) => None,
+            })
+            .collect()
+    }
+
     pub(super) fn server_connected(&mut self, uid: u64, version: pgc_core::ServerVersion) {
         let Some(node) = self.tree.by_uid(uid) else {
             return;
@@ -387,6 +408,18 @@ impl App {
         }
         // logging settings the profiler left changed on this server (D-058)
         self.check_profiler_restore(uid);
+        // an edited connection: the tree opens to where it was (D-035)
+        if let Some((_, steps)) = self.closing.reopen.take_if(|(u, _)| *u == uid) {
+            self.tree.select_server(uid);
+            if !steps.is_empty() {
+                self.reveal = Some(super::find_object::Reveal {
+                    uid,
+                    steps,
+                    tried: Default::default(),
+                    quiet: true,
+                });
+            }
+        }
     }
 
     fn save_pgpass(conn: &SavedConnection, password: &str) -> Result<(), DbError> {
@@ -546,19 +579,25 @@ impl App {
             self.connect_server(uid);
             return;
         };
+        // where the tree was, to open it there again after a reconnect
+        let steps = self.selected_steps(server);
         if let Some(node) = self.tree.by_uid(server) {
             let connected = node.state != ConnState::Disconnected;
+            let reconnect =
+                connected && (password.is_some() || connection_changed(&node.conn, &conn));
             node.conn = conn;
             if password.is_some() {
                 node.password = password;
             }
             node.save_password = save;
             self.persist_servers();
-            self.status = if connected {
-                "Connection saved; changes apply on the next connect".to_owned()
-            } else {
-                "Connection saved".to_owned()
-            };
+            self.status = "Connection saved".to_owned();
+            // D-035: a changed connection is made again at once (the usual questions
+            // first); a new name or "AI not allowed" applies as it is
+            if reconnect {
+                self.closing.reopen = Some((server, steps));
+                self.request_bulk(super::closing::Bulk::Reconnect(server));
+            }
         }
     }
 
@@ -620,4 +659,10 @@ impl App {
         }
         self.persist_servers();
     }
+}
+
+/// The settings that make the connection differ (not the name, not *AI not allowed*,
+/// D-035).
+fn connection_changed(old: &SavedConnection, new: &SavedConnection) -> bool {
+    !old.same_target(new) || old.ssl_root_cert != new.ssl_root_cert
 }

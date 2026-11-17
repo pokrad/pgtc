@@ -23,6 +23,9 @@ pub(super) enum Bulk {
     Disconnect(u64),
     /// Delete the connection with this uid: as disconnecting, then it leaves the tree.
     Delete(u64),
+    /// The connection with this uid was edited (D-035): as disconnecting, then it is
+    /// connected again with the new settings.
+    Reconnect(u64),
 }
 
 impl App {
@@ -136,7 +139,7 @@ impl App {
     fn in_bulk(b: Bulk, t: &Tab) -> bool {
         match b {
             Bulk::Quit => true,
-            Bulk::Disconnect(uid) | Bulk::Delete(uid) => {
+            Bulk::Disconnect(uid) | Bulk::Delete(uid) | Bulk::Reconnect(uid) => {
                 t.server == Some(uid)
                     || t.query()
                         .and_then(|q| q.binding.as_ref())
@@ -157,6 +160,7 @@ impl App {
             Bulk::Quit => "Quit",
             Bulk::Disconnect(_) => "Disconnect",
             Bulk::Delete(_) => "Delete connection",
+            Bulk::Reconnect(_) => "Edit connection",
         };
         if self.settings.query.ask_save
             && let Some(i) = self.tabs.iter().position(|t| {
@@ -226,7 +230,7 @@ impl App {
                     self.closing.quit = true;
                 }
             }
-            Bulk::Disconnect(uid) | Bulk::Delete(uid) => {
+            Bulk::Disconnect(uid) | Bulk::Delete(uid) | Bulk::Reconnect(uid) => {
                 let ids: Vec<u64> = self
                     .tabs
                     .iter()
@@ -241,6 +245,9 @@ impl App {
                 self.status = "Disconnected".to_owned();
                 if b == Bulk::Delete(uid) {
                     self.delete_server(uid);
+                }
+                if b == Bulk::Reconnect(uid) {
+                    self.connect_server(uid);
                 }
             }
         }
