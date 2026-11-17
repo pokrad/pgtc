@@ -120,6 +120,8 @@ pub(super) struct AiState {
     pub(super) history_pos: Option<usize>,
     /// The preset the AI settings dialog last filled in.
     pub(super) preset_seen: usize,
+    /// The autocomplete list of the prompt box.
+    pub(super) completion: Option<crate::completion::Popup>,
     /// Without a sink (tests): the request that would have been sent.
     pub(super) unsent: Option<crate::ai::Request>,
 }

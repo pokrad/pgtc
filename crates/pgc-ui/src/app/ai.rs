@@ -351,6 +351,166 @@ impl App {
         }
     }
 
+    // ---- autocomplete in the prompt ------------------------------------------------
+
+    /// The open list of the prompt box, for drawing.
+    pub(crate) fn ai_popup(&self) -> Option<&crate::completion::Popup> {
+        self.ai.completion.as_ref().filter(|p| p.shown())
+    }
+
+    /// The prompt box has the keys of the `F8` dialog on top.
+    pub(super) fn in_ai_prompt(&self) -> bool {
+        self.dialogs
+            .last()
+            .is_some_and(|d| matches!(d.kind, DialogKind::AskAi { .. }) && d.memo_focused())
+    }
+
+    /// The name before the prompt's cursor: where it starts, its typed part, and the
+    /// entries (`None`: the structure is still being read).
+    fn ai_completion_list(&self) -> Option<(usize, String, Option<Vec<crate::completion::Item>>)> {
+        if !self.in_ai_prompt() {
+            return None;
+        }
+        let d = self.dialogs.last()?;
+        let DialogKind::AskAi { tab } = d.kind else {
+            return None;
+        };
+        let e = d.memo_editor("prompt")?;
+        let chars: Vec<char> = e.text().chars().collect();
+        let (start, qualifier, prefix) = ai::prompt_word(&chars, e.cursor());
+        let items = self
+            .ai
+            .structure
+            .as_ref()
+            .filter(|(t, _)| *t == tab)
+            .map(|(_, s)| ai::prompt_items(s, &qualifier, &prefix));
+        Some((start, prefix, items))
+    }
+
+    /// `Ctrl+Space` / `Alt+/` (`auto` false) or a typed `.` (`auto`: shown only when
+    /// something fits) in the prompt box: the names of the structure.
+    pub(super) fn open_ai_completion(&mut self, auto: bool) {
+        use crate::completion::Popup;
+        use pgc_editor::complete::{Analysis, Want};
+        let Some((start, prefix, items)) = self.ai_completion_list() else {
+            return;
+        };
+        let loading = items.is_none();
+        let items = items.unwrap_or_default();
+        if items.is_empty() && !loading {
+            if !auto {
+                self.status = "No suggestions".to_owned();
+            }
+            return;
+        }
+        let mut popup = Popup {
+            tab: self.tabs[self.active_tab].id,
+            in_form: false,
+            analysis: Analysis {
+                prefix,
+                start,
+                want: Want::Any,
+                tables: Vec::new(),
+            },
+            items: Vec::new(),
+            loading: false,
+            selected: 0,
+            offset: 0,
+            auto,
+        };
+        popup.set_items(items, loading);
+        self.ai.completion = Some(popup);
+    }
+
+    /// After every message: the open list follows the typing and the structure that
+    /// arrives; it closes when the name is left or nothing fits any more.
+    pub(super) fn refresh_ai_completion(&mut self) {
+        let Some(start) = self.ai.completion.as_ref().map(|p| p.analysis.start) else {
+            return;
+        };
+        match self.ai_completion_list() {
+            Some((at, prefix, items))
+                if at == start && items.as_ref().is_none_or(|i| !i.is_empty()) =>
+            {
+                if let Some(p) = self.ai.completion.as_mut() {
+                    let loading = items.is_none();
+                    p.analysis.prefix = prefix;
+                    p.set_items(items.unwrap_or_default(), loading);
+                }
+            }
+            _ => self.ai.completion = None,
+        }
+    }
+
+    /// Keys while the prompt's list is open; true when the key was used. Typing and
+    /// `Backspace` go on into the prompt (the list follows afterwards); `Enter` and
+    /// `Tab` take the entry.
+    pub(super) fn ai_completion_key(
+        &mut self,
+        ev: &crossterm::event::KeyEvent,
+        cmd: Option<crate::keymap::Command>,
+    ) -> bool {
+        use crate::completion::LIST_ROWS;
+        use crate::keymap::Command;
+        use crossterm::event::{KeyCode, KeyModifiers};
+        let typing = matches!(ev.code, KeyCode::Char(_))
+            && !ev
+                .modifiers
+                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT);
+        if typing || cmd == Some(Command::Backspace) {
+            return false;
+        }
+        let rows = LIST_ROWS as isize;
+        let step = match cmd {
+            Some(Command::Up) => Some(-1),
+            Some(Command::Down) => Some(1),
+            Some(Command::PageUp) => Some(-rows),
+            Some(Command::PageDown) => Some(rows),
+            _ => None,
+        };
+        if let Some(step) = step {
+            if let Some(p) = self.ai.completion.as_mut() {
+                p.move_by(step);
+            }
+            return true;
+        }
+        if matches!(cmd, Some(Command::Accept | Command::NextField)) {
+            self.accept_ai_completion();
+            return true;
+        }
+        let combo = crate::keys::KeyCombo::from_event(ev);
+        if self
+            .keymap
+            .lookup_only(crate::keymap::Context::Editor, combo)
+            == Some(Command::Complete)
+        {
+            return true;
+        }
+        self.ai.completion = None;
+        false
+    }
+
+    /// Puts the selected entry in place of the typed part of the name.
+    fn accept_ai_completion(&mut self) {
+        let Some(popup) = self.ai.completion.take() else {
+            return;
+        };
+        let Some(item) = popup.items.get(popup.selected) else {
+            return;
+        };
+        let Some(e) = self
+            .dialogs
+            .last_mut()
+            .and_then(|d| d.memo_editor_mut("prompt"))
+        else {
+            return;
+        };
+        let cursor = e.cursor();
+        e.set_cursor(popup.analysis.start.min(cursor), false);
+        e.set_cursor(cursor, true);
+        e.apply(Action::Insert(item.insert.clone()));
+    }
+
     // ---- Settings → AI… -------------------------------------------------------------
 
     /// The AI settings dialog (D-073). A saved key shows as [`SAVED_KEY`].

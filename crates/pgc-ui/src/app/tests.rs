@@ -4613,3 +4613,66 @@ fn ai_settings_dialog() {
     assert!(!key_file.exists());
     assert_eq!(a.status, "AI settings saved");
 }
+
+/// Autocomplete in the F8 prompt (D-073): names of the structure read for the dialog;
+/// on Ctrl+Space and after `.` only; objects go in schema-qualified, columns after
+/// `table.`; Enter / Tab take the entry, Esc closes only the list.
+#[tokio::test]
+async fn ask_ai_prompt_autocomplete() {
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    ai_on(&mut a);
+    ai_tab(&mut a, uid);
+    key(&mut a, "F8");
+    let prompt = |a: &App| a.dialogs.last().unwrap().memo_text("prompt").unwrap();
+    // before the structure is there: loading…, filled in when it arrives
+    key(&mut a, "Ctrl+Space");
+    assert!(a.ai_popup().is_some_and(|p| p.loading));
+    a.lookup_loaded(ai_lookup(&a), Ok(ai_structure_rows()));
+    a.update(Msg::Tick, &Hits::default());
+    assert!(!a.ai_popup().unwrap().loading);
+    key(&mut a, "Esc");
+    assert!(a.ai_popup().is_none());
+    assert_eq!(a.dialogs.len(), 1, "the dialog stays");
+    // not by itself while typing words
+    typing(&mut a, "count cus");
+    assert!(a.ai_popup().is_none());
+    key(&mut a, "Ctrl+Space");
+    let labels: Vec<String> = a
+        .ai_popup()
+        .unwrap()
+        .items
+        .iter()
+        .map(|i| i.label.clone())
+        .collect();
+    assert_eq!(labels, ["sales.customer"]);
+    // Enter takes it (no new line), schema-qualified
+    key(&mut a, "Enter");
+    assert_eq!(prompt(&a), "count sales.customer");
+    assert!(a.ai_popup().is_none());
+    // a `.`: the columns; typing filters; Tab takes it
+    typing(&mut a, ".");
+    let p = a.ai_popup().expect("opened by the dot");
+    assert_eq!(p.items[0].label, "customer_id");
+    typing(&mut a, "cu");
+    assert_eq!(a.ai_popup().unwrap().items.len(), 1);
+    key(&mut a, "Tab");
+    assert_eq!(prompt(&a), "count sales.customer.customer_id");
+    assert!(
+        a.dialogs.last().unwrap().memo_focused(),
+        "Tab took the entry"
+    );
+    // nothing fits: the list closes; a dot after a word that is no name opens nothing
+    typing(&mut a, " per day.");
+    assert!(a.ai_popup().is_none());
+    // the list is drawn at the prompt's cursor
+    typing(&mut a, " public.");
+    assert!(a.ai_popup().is_some());
+    let screen = screen_text(&a);
+    assert!(
+        screen.contains("note") && screen.contains("table"),
+        "{screen}"
+    );
+}

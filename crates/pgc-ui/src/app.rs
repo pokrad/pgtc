@@ -888,6 +888,7 @@ impl App {
         self.sync_picker();
         self.sync_psql_dialog();
         self.sync_ai_dialog();
+        self.refresh_ai_completion();
         self.sync_ai_settings();
         self.refresh_psql_completion();
         self.sync_find_dialog();
@@ -956,11 +957,15 @@ impl App {
             }
         }
         if combo == KeyCombo::plain(KeyCode::Esc)
-            && (self.completion.is_some() || self.psql_completion.is_some())
+            && (self.completion.is_some()
+                || self.psql_completion.is_some()
+                || self.ai.completion.is_some())
         {
-            // closes the list at once, without the Esc + digit wait (D-052, D-054)
+            // closes the list at once, without the Esc + digit wait (D-052, D-054,
+            // D-073)
             self.completion = None;
             self.psql_completion = None;
+            self.ai.completion = None;
             return Vec::new();
         }
         if combo == KeyCombo::plain(KeyCode::Esc) {
@@ -1005,6 +1010,16 @@ impl App {
             if cmd == Some(Command::Help) {
                 self.run(Command::Help);
                 return;
+            }
+            // autocomplete in the F8 prompt box (D-073)
+            if self.in_ai_prompt() {
+                if self.ai.completion.is_some() && self.ai_completion_key(&ev, cmd) {
+                    return;
+                }
+                if self.keymap.lookup_only(Context::Editor, combo) == Some(Command::Complete) {
+                    self.open_ai_completion(false);
+                    return;
+                }
             }
             // the prompts of the session in the F8 prompt box (D-073)
             if matches!(cmd, Some(Command::Up | Command::Down))
@@ -1060,6 +1075,15 @@ impl App {
             };
             let event = dialog.handle_key_editor(cmd, editor, &ev);
             self.dialog_event(event);
+            // a `.` typed in the F8 prompt: the names in it (D-073)
+            if ev.code == KeyCode::Char('.')
+                && !ev
+                    .modifiers
+                    .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
+                && self.in_ai_prompt()
+            {
+                self.open_ai_completion(true);
+            }
             return;
         }
 

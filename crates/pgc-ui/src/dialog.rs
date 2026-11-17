@@ -626,6 +626,43 @@ impl Dialog {
         }
     }
 
+    /// The editor of memo `id` (autocomplete puts names into it, D-073).
+    pub fn memo_editor_mut(&mut self, id: &str) -> Option<&mut Editor> {
+        match self
+            .widgets
+            .iter_mut()
+            .find(|w| w.id == id)
+            .map(|w| &mut w.kind)
+        {
+            Some(WidgetKind::Memo { editor, .. }) => Some(&mut editor.0),
+            _ => None,
+        }
+    }
+
+    /// The editor of memo `id`.
+    pub fn memo_editor(&self, id: &str) -> Option<&Editor> {
+        match self.find(id).map(|w| &w.kind) {
+            Some(WidgetKind::Memo { editor, .. }) => Some(&editor.0),
+            _ => None,
+        }
+    }
+
+    /// Where [`Self::render`] puts the text cursor of memo `id` on `screen`.
+    pub fn memo_cursor_at(&self, id: &str, screen: Rect) -> Option<Position> {
+        let i = self.widgets.iter().position(|w| w.id == id)?;
+        let WidgetKind::Memo { editor, .. } = &self.widgets[i].kind else {
+            return None;
+        };
+        let area = *self.widget_areas(self.area(screen)).get(i)?;
+        let (inner, row, col, offset) = memo_layout(&editor.0, area);
+        (inner.width > 0 && inner.height > 0).then(|| {
+            Position::new(
+                inner.x + (col as u16).min(inner.width - 1),
+                inner.y + (row - offset) as u16,
+            )
+        })
+    }
+
     /// True while a memo has the focus: keys go to its editor.
     pub fn memo_focused(&self) -> bool {
         matches!(
@@ -1612,21 +1649,14 @@ impl Dialog {
                             .style(normal),
                         *area,
                     );
-                    let inner = Rect::new(
-                        area.x + 1,
-                        area.y + 1,
-                        area.width.saturating_sub(2),
-                        area.height.saturating_sub(2),
-                    );
                     // plain text, wrapped at word ends: a prompt is prose, not SQL
                     let text_style = theme.get(Role::EditorText);
                     let selected = theme.get(Role::EditorSelection);
-                    frame.render_widget(Block::new().style(text_style), inner);
                     let e = &editor.0;
+                    let (inner, row, col, offset) = memo_layout(e, *area);
+                    frame.render_widget(Block::new().style(text_style), inner);
                     let chars: Vec<char> = e.text().chars().collect();
                     let rows = wrap_rows(&chars, inner.width as usize);
-                    let (row, col) = memo_cursor(&rows, e.cursor());
-                    let offset = row.saturating_sub(inner.height.saturating_sub(1) as usize);
                     let selection = e.selection();
                     let lines: Vec<Line> = rows
                         .iter()
@@ -1773,6 +1803,22 @@ fn wrap_rows(chars: &[char], width: usize) -> Vec<(usize, usize)> {
         }
         start = end + 1;
     }
+}
+
+/// The text area inside a memo's frame `area`, the cursor's row and column there, and
+/// the first row shown (the cursor stays visible).
+fn memo_layout(e: &Editor, area: Rect) -> (Rect, usize, usize, usize) {
+    let inner = Rect::new(
+        area.x + 1,
+        area.y + 1,
+        area.width.saturating_sub(2),
+        area.height.saturating_sub(2),
+    );
+    let chars: Vec<char> = e.text().chars().collect();
+    let rows = wrap_rows(&chars, inner.width as usize);
+    let (row, col) = memo_cursor(&rows, e.cursor());
+    let offset = row.saturating_sub(inner.height.saturating_sub(1) as usize);
+    (inner, row, col, offset)
 }
 
 /// Row and column of char index `cursor` in the rows of [`wrap_rows`].

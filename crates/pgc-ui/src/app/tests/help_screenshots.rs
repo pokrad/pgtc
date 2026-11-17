@@ -3050,6 +3050,18 @@ async fn help_screenshots() {
     typing(&mut a, AI_PROMPT);
     a.update(Msg::Tick, &Hits::default());
     out.shot("ai-dialog", &a, Crop::Full);
+    // autocomplete after `sales.`
+    a.dialogs
+        .last_mut()
+        .unwrap()
+        .set_memo_text("prompt", "Total due per customer for 2014, from sales");
+    typing(&mut a, ".");
+    out.shot("ai-complete", &a, Crop::Full);
+    key(&mut a, "Esc");
+    a.dialogs
+        .last_mut()
+        .unwrap()
+        .set_memo_text("prompt", AI_PROMPT);
     key(&mut a, "Alt+O");
     a.dialogs.last_mut().unwrap().set_combo_selected("scope", 0);
     key(&mut a, "Alt+S");

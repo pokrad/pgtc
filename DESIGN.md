@@ -2537,6 +2537,15 @@ pgtc (binary)
   (combo); a line *sends about N tokens to <host>* (estimated from the text size,
   updated when the scope changes); Send / Cancel. The prompts of the session are
   remembered (`↑` / `↓` in an empty box, like the `F4` history, D-054).
+- **Autocomplete in the prompt box** (D-052's list, from the structure read for the
+  dialog — no extra queries): opened by `Ctrl+Space` / `Alt+/` and after a typed
+  `.`, never by itself while typing words. Without a qualifier: schemas and every
+  table, view, materialized / foreign table, function, procedure and enum type, found
+  by its own name and inserted **schema-qualified**; after `schema.`: the objects of
+  that schema (name only); after `schema.table.` or `table.` (a name only one schema
+  has): the columns. Quoted only when needed. The list does not follow the scope.
+  `↑` / `↓` choose, typing filters, `Enter` / `Tab` take the entry, `Esc` closes only
+  the list; *loading…* until the structure is there.
 - **While waiting:** the status line shows *Asking AI …*; `Esc` cancels the request.
   An error (HTTP status, provider message, no answer) is shown in an error dialog;
   the editor is not changed.
@@ -2705,3 +2714,4 @@ pgtc (binary)
 | 2026-11-17 | D-073 accepted: AI assistant — `F8` (query tab editor / results) and Tools → Ask AI… open a prompt dialog, only when AI is set up and the tab is connected; OpenAI-compatible and Anthropic protocols with presets (Claude, OpenAI, Grok, Gemini, Ollama); Settings → AI…, API key from an environment variable or a key file, never in `settings.toml` or the log; sends the server version, compact structure (whole database or one schema, no data) and the editor text (selection marked, 50,000-character limit); answer replaces the selection or goes in at the cursor with the prompt as a comment, never run; per-connection *AI not allowed*. D-014, D-016 updated. |
 | 2026-11-18 | D-073 implemented; details: the prompt box wraps at word ends (`Enter` new line, `Tab` leaves, `Ctrl+Enter` / `Alt+S` send); the answer starts a line of its own when the cursor is inside a line; text outside code fences becomes `--` comments. HTTP via `reqwest` (rustls, ring). |
 | 2026-11-18 | D-073 updated: no environment variables for the API key — it is typed into Settings → AI… and kept in the key file `ai_key` (stars for a saved key: kept, replaced by typing, removed when emptied); presets fill in protocol, base URL and model only. |
+| 2026-11-18 | D-073 updated: autocomplete in the prompt box — `Ctrl+Space` / `Alt+/` and after `.`, names from the dialog's structure, objects schema-qualified, columns after `table.`; not limited by the scope. |

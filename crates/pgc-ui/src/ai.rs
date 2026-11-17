@@ -324,6 +324,130 @@ impl Structure {
     }
 }
 
+// ---- autocomplete in the prompt ----------------------------------------------------------
+
+/// The name being typed before char `cursor` of a prompt: where its last part starts
+/// (the inserted text replaces from there), the parts before it (`sales.` →
+/// `["sales"]`) and the last part, without quotes.
+pub fn prompt_word(chars: &[char], cursor: usize) -> (usize, Vec<String>, String) {
+    let cursor = cursor.min(chars.len());
+    let in_name = |c: char| c.is_alphanumeric() || matches!(c, '_' | '$' | '"' | '.');
+    let mut from = cursor;
+    while from > 0 && in_name(chars[from - 1]) {
+        from -= 1;
+    }
+    let word: String = chars[from..cursor].iter().collect();
+    let mut parts: Vec<String> = word.split('.').map(|p| p.replace('"', "")).collect();
+    let last = word.rsplit('.').next().unwrap_or("");
+    let start = cursor - last.chars().count();
+    let prefix = parts.pop().unwrap_or_default();
+    (start, parts, prefix)
+}
+
+fn relation_kind(kind: RelKind) -> &'static str {
+    match kind {
+        RelKind::Table | RelKind::PartitionedTable => "table",
+        RelKind::View => "view",
+        RelKind::MaterializedView => "mat. view",
+        RelKind::ForeignTable => "foreign table",
+    }
+}
+
+/// Order of the groups in the list.
+fn prompt_rank(kind: &str) -> u8 {
+    match kind {
+        "column" => 0,
+        "table" | "view" | "mat. view" | "foreign table" => 1,
+        "function" | "procedure" => 2,
+        "schema" => 3,
+        _ => 4,
+    }
+}
+
+/// The names for the prompt's autocomplete (D-073), from the structure read for the
+/// dialog. Without a qualifier: schemas, and every object schema-qualified (found by
+/// its own name too); after `schema.`: the objects of that schema; after `table.` (a
+/// name only one schema has) or `schema.table.`: the columns.
+pub fn prompt_items(
+    s: &Structure,
+    qualifier: &[String],
+    prefix: &str,
+) -> Vec<crate::completion::Item> {
+    use crate::completion::Item;
+    let prefix = prefix.to_lowercase();
+    let fits = |name: &str| name.to_lowercase().starts_with(&prefix);
+    let mut out: Vec<Item> = Vec::new();
+    let mut add = |label: String, kind: &'static str, insert: String| {
+        out.push(Item {
+            label,
+            kind,
+            insert,
+        })
+    };
+    // every object: (schema, name, kind)
+    let mut objects: Vec<(&str, &str, &'static str)> = s
+        .relations
+        .iter()
+        .map(|((sc, n), r)| (sc.as_str(), n.as_str(), relation_kind(r.kind)))
+        .collect();
+    objects.extend(s.routines.iter().map(|r| {
+        let kind = if r.procedure { "procedure" } else { "function" };
+        (r.schema.as_str(), r.name.as_str(), kind)
+    }));
+    objects.extend(
+        s.enums
+            .keys()
+            .map(|(sc, n)| (sc.as_str(), n.as_str(), "type")),
+    );
+    let columns = |rel: &Relation, add: &mut dyn FnMut(String, &'static str, String)| {
+        for c in rel.columns.values().filter(|c| fits(&c.name)) {
+            add(c.name.clone(), "column", quote_ident(&c.name));
+        }
+    };
+    match qualifier {
+        [] => {
+            for schema in s.schemas().iter().filter(|n| fits(n)) {
+                add(schema.clone(), "schema", quote_ident(schema));
+            }
+            for (schema, name, kind) in &objects {
+                let label = format!("{schema}.{name}");
+                if fits(name) || fits(&label) {
+                    add(label, kind, quote_qualified(&[schema, name]));
+                }
+            }
+        }
+        [q] => {
+            for (schema, name, kind) in &objects {
+                if schema.eq_ignore_ascii_case(q) && fits(name) {
+                    add((*name).to_owned(), kind, quote_ident(name));
+                }
+            }
+            let mut tables = s
+                .relations
+                .iter()
+                .filter(|((_, n), _)| n.eq_ignore_ascii_case(q));
+            if let (Some((_, rel)), None) = (tables.next(), tables.next()) {
+                columns(rel, &mut add);
+            }
+        }
+        [schema, table] => {
+            if let Some((_, rel)) = s.relations.iter().find(|((sc, n), _)| {
+                sc.eq_ignore_ascii_case(schema) && n.eq_ignore_ascii_case(table)
+            }) {
+                columns(rel, &mut add);
+            }
+        }
+        _ => {}
+    }
+    out.sort_by(|a, b| {
+        (prompt_rank(a.kind), a.label.to_lowercase())
+            .cmp(&(prompt_rank(b.kind), b.label.to_lowercase()))
+    });
+    // overloaded functions once
+    out.dedup_by(|a, b| a.label == b.label && a.kind == b.kind);
+    out
+}
+
 // ---- the editor text ------------------------------------------------------------------
 
 /// The editor text as it is sent: the selection marked, cut to [`EDITOR_LIMIT`]
@@ -837,6 +961,68 @@ mod tests {
             ),
             "-- q\n-- Here it is:\n\nSELECT 1;\n-- done\n-- Hope it helps.\n"
         );
+    }
+
+    #[test]
+    fn prompt_words() {
+        let chars: Vec<char> = "rows of sales.cust".chars().collect();
+        assert_eq!(
+            prompt_word(&chars, chars.len()),
+            (14, vec!["sales".to_owned()], "cust".to_owned())
+        );
+        let chars: Vec<char> = "the \"Order Items\".".chars().collect();
+        // a space inside quotes ends the word (quotes are rare in prompts)
+        assert_eq!(prompt_word(&chars, chars.len()).2, "");
+        let chars: Vec<char> = "sum of customer.".chars().collect();
+        assert_eq!(
+            prompt_word(&chars, chars.len()),
+            (16, vec!["customer".to_owned()], String::new())
+        );
+        assert_eq!(prompt_word(&[], 0), (0, vec![], String::new()));
+        let chars: Vec<char> = "a b".chars().collect();
+        assert_eq!(prompt_word(&chars, 3), (2, vec![], "b".to_owned()));
+    }
+
+    #[test]
+    fn prompt_names() {
+        let s = sample();
+        let labels = |q: &[&str], p: &str| -> Vec<(String, &'static str, String)> {
+            let q: Vec<String> = q.iter().map(|x| (*x).to_owned()).collect();
+            prompt_items(&s, &q, p)
+                .into_iter()
+                .map(|i| (i.label, i.kind, i.insert))
+                .collect()
+        };
+        // by its own name, inserted schema-qualified
+        assert_eq!(
+            labels(&[], "cu"),
+            [(
+                "sales.customer".to_owned(),
+                "table",
+                "sales.customer".to_owned()
+            )]
+        );
+        // a schema and what starts with its name
+        let all = labels(&[], "s");
+        assert!(all.contains(&("sales".into(), "schema", "sales".into())));
+        assert!(all.contains(&("sales.v_customer".into(), "view", "sales.v_customer".into())));
+        // quoted when needed
+        assert_eq!(
+            labels(&[], "emp"),
+            [(
+                "hr.Employee".to_owned(),
+                "table",
+                "hr.\"Employee\"".to_owned()
+            )]
+        );
+        // after a schema: its objects, the name only
+        let sales: Vec<String> = labels(&["sales"], "").into_iter().map(|x| x.0).collect();
+        assert_eq!(sales, ["customer", "v_customer", "add", "total"]);
+        // after a table: its columns; also with the schema
+        let cols: Vec<String> = labels(&["customer"], "").into_iter().map(|x| x.0).collect();
+        assert_eq!(cols, ["customer_id", "name", "territory_id"]);
+        assert_eq!(labels(&["SALES", "customer"], "ter")[0].1, "column");
+        assert!(labels(&["nothing"], "").is_empty());
     }
 
     #[test]

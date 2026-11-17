@@ -80,6 +80,28 @@ It works only when</p>
 <tr><td class="k"><span class="ui">Send</span></td><td class="k"><kbd>Alt+S</kbd>, <kbd>Ctrl+Enter</kbd></td><td>Sends the request. An empty prompt is refused; while the structure is still being read, the dialog stays.</td></tr>
 <tr><td class="k"><span class="ui">Cancel</span></td><td class="k"><kbd>Esc</kbd></td><td>Closes the dialog; nothing is sent.</td></tr>
 </table></div>
+<h3 id="complete">Naming tables and columns: autocomplete</h3>
+<figure>
+  <img src="img/ai-complete.svg" alt="Autocomplete in the prompt box" loading="lazy">
+  <figcaption>After <code>sales.</code> the list shows that schema's tables, views, functions and types.</figcaption>
+</figure>
+<p>The prompt box knows the names of the database — from the structure the dialog has read, so the list needs no
+extra queries:</p>
+<ul>
+  <li><kbd>Ctrl+Space</kbd> (or <kbd>Alt+/</kbd>) opens the list for the word before the cursor: schemas, and every
+      table, view, function and type — found by its own name (<code>cust</code> finds <code>sales.customer</code>).
+      Objects go in <b>schema-qualified</b>, so the model never has to guess the schema.</li>
+  <li>Typing a <kbd>.</kbd> opens it by itself: after a schema (<code>sales.</code>) with the objects of that
+      schema, after a table (<code>sales.customer.</code>, or <code>customer.</code> when only one schema has that
+      name) with its columns.</li>
+  <li>It does <b>not</b> open by itself while you type words — in a sentence that would get in the way.</li>
+  <li><kbd>↑</kbd> / <kbd>↓</kbd> choose, typing narrows the list, <kbd>Enter</kbd> or <kbd>Tab</kbd> puts the name in
+      (no new line), <kbd>Esc</kbd> closes only the list.</li>
+  <li>Names that need quotes get them (<code>hr."Employee"</code>). The list offers every schema, whatever the
+      <span class="ui">Scope</span> says.</li>
+  <li>Before the structure has been read, the list shows <i>loading…</i> and fills in when it arrives.</li>
+</ul>
+
 <p>Good prompts name what you want to see and any limits: <i>“Orders of the last 30 days per territory, with the
 total and the average”</i>, <i>“A procedure that moves a customer to another territory and writes the change to
 sales.customer_history”</i>, <i>“Rewrite the selected query without the subquery”</i>.</p>
