@@ -3073,6 +3073,38 @@ async fn help_screenshots() {
     });
     out.shot("ai-answer", &a, Crop::Full);
 
+    // a second sample: a trigger, into an empty editor (results hidden)
+    let (mut a, _d, ids) = scene();
+    short_tree(&mut a, ids);
+    query_tab(&mut a, ids, "");
+    a.query_mut().unwrap().results_visible = false;
+    a.settings.ai = pgc_core::settings::AiSettings {
+        enabled: true,
+        preset: "Claude".into(),
+        protocol: pgc_core::settings::AiProtocol::Anthropic,
+        base_url: "https://api.anthropic.com".into(),
+        model: "claude-sonnet-5-5".into(),
+    };
+    key(&mut a, "F8");
+    let lookup = *a
+        .template_lookups
+        .iter()
+        .find(|(_, t)| matches!(t, LookupTarget::AiStructure { .. }))
+        .unwrap()
+        .0;
+    a.lookup_loaded(lookup, Ok(ai_structure()));
+    typing(&mut a, AI_TRIGGER_PROMPT);
+    key(&mut a, "Alt+S");
+    let id = a.ai.run.as_ref().unwrap().id;
+    a.on_ai_event(crate::app::AiEvent {
+        id,
+        result: Ok(AI_TRIGGER_ANSWER.into()),
+    });
+    // the top of the answer in view
+    a.editor().set_cursor(0, false);
+    a.editor().scroll_to_cursor();
+    out.shot("ai-trigger", &a, Crop::Full);
+
     // ---- settings and colour schemes --------------------------------------------
     let (mut a, _d, _) = query_scene();
     a.settings.clipboard.system = true;
@@ -3114,20 +3146,75 @@ async fn help_screenshots() {
 /// The editor text of the AI pictures (D-073).
 const AI_EDITOR: &str = "-- reports for the sales team\nSELECT count(*) FROM sales.customer;\n\n";
 
+const AI_TRIGGER_PROMPT: &str =
+    "generate before insert row level trigger for humanresources.employee";
+
 const AI_PROMPT: &str = "Total due per customer for 2014, the ten largest, with the person's name";
 
-const AI_ANSWER: &str = "-- the ten customers with the largest total due in 2014
+/// A real answer of Claude (claude-sonnet-5-5) to [`AI_PROMPT`] with this sample,
+/// taken with `ai_live_sample` on 2026-11-18.
+const AI_ANSWER: &str = "-- Ten largest customers by total due in 2014, with the person's name.
+-- LEFT JOIN keeps customers without a person (personid is nullable); their name will be NULL.
 SELECT c.customerid,
-       p.firstname || ' ' || p.lastname AS customer_name,
-       sum(h.totaldue) AS total_due
-FROM sales.customer c
-JOIN person.person p ON p.businessentityid = c.personid
-JOIN sales.salesorderheader h ON h.customerid = c.customerid
-WHERE h.orderdate >= '2014-01-01' AND h.orderdate < '2015-01-01'
-GROUP BY c.customerid, customer_name
-ORDER BY total_due DESC
+       p.firstname,
+       p.lastname,
+       sum(soh.totaldue) AS total_due_2014
+FROM sales.salesorderheader AS soh
+JOIN sales.customer AS c ON c.customerid = soh.customerid
+LEFT JOIN person.person AS p ON p.businessentityid = c.personid
+WHERE soh.orderdate >= timestamp '2014-01-01'
+  AND soh.orderdate <  timestamp '2015-01-01'
+GROUP BY c.customerid, p.firstname, p.lastname
+ORDER BY total_due_2014 DESC, c.customerid
 LIMIT 10;
 ";
+
+/// Claude's real answer (claude-sonnet-5-5) to [`AI_TRIGGER_PROMPT`] with this
+/// sample and an empty editor, taken with `PGTC_AI_LIVE=trigger` on 2026-11-18.
+const AI_TRIGGER_ANSWER: &str = r#"-- BEFORE INSERT row-level trigger for humanresources.employee.
+-- You did not say what it should do, so it normalizes incoming values and
+-- adds one sanity check. Adjust the body to your needs.
+
+CREATE OR REPLACE FUNCTION humanresources.employee_before_insert()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Trim and normalize text values
+    NEW.nationalidnumber := btrim(NEW.nationalidnumber);
+    NEW.loginid          := lower(btrim(NEW.loginid));
+    NEW.jobtitle         := btrim(NEW.jobtitle);
+
+    -- Store codes in uppercase (the CHECK constraints compare upper() values)
+    NEW.gender        := upper(NEW.gender);
+    NEW.maritalstatus := upper(NEW.maritalstatus);
+
+    -- Fill in values if the caller passed NULL explicitly
+    -- (explicit NULLs override column defaults, so they are handled here)
+    NEW.organizationnode := COALESCE(NEW.organizationnode, '/');
+    NEW.rowguid          := COALESCE(NEW.rowguid, uuid_generate_v1());
+
+    -- Always stamp the modification time on insert
+    NEW.modifieddate := now();
+
+    -- Business rule: an employee must be at least 18 years old when hired
+    IF NEW.hiredate < (NEW.birthdate + INTERVAL '18 years')::date THEN
+        RAISE EXCEPTION 'Employee % must be at least 18 years old at hire date (birthdate %, hiredate %)',
+            NEW.businessentityid, NEW.birthdate, NEW.hiredate
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_employee_before_insert ON humanresources.employee;
+
+CREATE TRIGGER trg_employee_before_insert
+BEFORE INSERT ON humanresources.employee
+FOR EACH ROW
+EXECUTE FUNCTION humanresources.employee_before_insert();
+"#;
 
 /// A part of AdventureWorks as `sql/ai/default/structure.sql` reads it.
 fn ai_structure() -> Vec<Vec<String>> {
@@ -3260,10 +3347,128 @@ fn ai_structure() -> Vec<Vec<String>> {
             "PRIMARY KEY (businessentityid)",
         ],
     ];
+    // humanresources.employee, as in AdventureWorks
+    rows.push(vec!["r", "humanresources", "employee", "r"]);
+    for c in [
+        ["1", "businessentityid", "integer", "true", ""],
+        ["2", "nationalidnumber", "character varying(15)", "true", ""],
+        ["3", "loginid", "character varying(256)", "true", ""],
+        ["4", "jobtitle", "character varying(50)", "true", ""],
+        ["5", "birthdate", "date", "true", ""],
+        ["6", "maritalstatus", "character(1)", "true", ""],
+        ["7", "gender", "character(1)", "true", ""],
+        ["8", "hiredate", "date", "true", ""],
+        ["9", "salariedflag", "boolean", "true", "true"],
+        ["10", "vacationhours", "smallint", "true", "0"],
+        ["11", "sickleavehours", "smallint", "true", "0"],
+        ["12", "currentflag", "boolean", "true", "true"],
+        ["13", "rowguid", "uuid", "true", "uuid_generate_v1()"],
+        [
+            "14",
+            "modifieddate",
+            "timestamp without time zone",
+            "true",
+            "now()",
+        ],
+        [
+            "15",
+            "organizationnode",
+            "character varying",
+            "false",
+            "'/'::character varying",
+        ],
+    ] {
+        rows.push(vec![
+            "c",
+            "humanresources",
+            "employee",
+            c[0],
+            c[1],
+            c[2],
+            c[3],
+            c[4],
+        ]);
+    }
+    for (name, kind, def) in [
+        ("pk_employee", "p", "PRIMARY KEY (businessentityid)"),
+        (
+            "fk_employee_person",
+            "f",
+            "FOREIGN KEY (businessentityid) REFERENCES person.person(businessentityid)",
+        ),
+        (
+            "ck_employee_birthdate",
+            "c",
+            "CHECK (birthdate >= '1930-01-01'::date AND birthdate <= (now() - '18 years'::interval))",
+        ),
+        (
+            "ck_employee_gender",
+            "c",
+            "CHECK (upper(gender::text) = ANY (ARRAY['M'::text, 'F'::text]))",
+        ),
+        (
+            "ck_employee_hiredate",
+            "c",
+            "CHECK (hiredate >= '1996-07-01'::date AND hiredate <= (now() + '1 day'::interval))",
+        ),
+        (
+            "ck_employee_maritalstatus",
+            "c",
+            "CHECK (upper(maritalstatus::text) = ANY (ARRAY['M'::text, 'S'::text]))",
+        ),
+        (
+            "ck_employee_sickleavehours",
+            "c",
+            "CHECK (sickleavehours >= 0 AND sickleavehours <= 120)",
+        ),
+        (
+            "ck_employee_vacationhours",
+            "c",
+            "CHECK (vacationhours >= '-40'::integer AND vacationhours <= 240)",
+        ),
+    ] {
+        rows.push(vec!["k", "humanresources", "employee", name, kind, def]);
+    }
     for r in &mut rows {
         r.resize(8, "");
     }
     rows.into_iter()
         .map(|r| r.into_iter().map(str::to_owned).collect())
         .collect()
+}
+
+/// One real AI request with the help's sample (D-073): the answer for the pictures
+/// comes from a real model. Runs only when `PGTC_AI_LIVE` is set; uses the user's AI
+/// settings and key file (the key is never printed).
+#[tokio::test]
+#[ignore]
+async fn ai_live_sample() {
+    if std::env::var("PGTC_AI_LIVE").is_err() {
+        return;
+    }
+    let paths = pgc_core::paths::Paths::from_os().unwrap();
+    let settings = pgc_core::settings::Settings::load(&paths.settings_file()).unwrap();
+    let key = crate::ai::api_key(&paths.ai_key_file());
+    // PGTC_AI_LIVE=trigger: the second sample (an empty editor)
+    let (prompt, editor) = match std::env::var("PGTC_AI_LIVE").as_deref() {
+        Ok("trigger") => (AI_TRIGGER_PROMPT, ""),
+        _ => (AI_PROMPT, AI_EDITOR),
+    };
+    let ask = crate::ai::Ask {
+        server: "PostgreSQL 17.2".into(),
+        database: DB.into(),
+        structure: crate::ai::Structure::from_rows(ai_structure()).text(None),
+        editor: crate::ai::editor_text(
+            editor,
+            editor.chars().count(),
+            None,
+            crate::ai::EDITOR_LIMIT,
+        ),
+        prompt: prompt.into(),
+    };
+    let request = crate::ai::request(&settings.ai, key.as_deref(), &ask);
+    match crate::ai::send(request).await {
+        Ok(answer) => println!("=====ANSWER=====\n{answer}\n=====END====="),
+        Err(e) => panic!("{e}"),
+    }
 }

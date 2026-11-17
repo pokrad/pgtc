@@ -169,8 +169,8 @@
 <text x="864" y="280.25" fill="#0c0c0c">│</text>
 <text x="1071" y="280.25" fill="#cccccc">║</text>
 <rect x="198" y="285" width="99.5" height="19.5" fill="#cccccc"/>
-<rect x="297" y="285" width="153.5" height="19.5" fill="#3a96dd"/>
-<rect x="450" y="285" width="432.5" height="19.5" fill="#cccccc"/>
+<rect x="297" y="285" width="216.5" height="19.5" fill="#3a96dd"/>
+<rect x="513" y="285" width="369.5" height="19.5" fill="#cccccc"/>
 <rect x="882" y="285" width="18.5" height="19.5" fill="#0c0c0c"/>
 <text x="0" y="299.25" fill="#cccccc">║</text>
 <text x="90" y="299.25" fill="#cccccc">►</text>
@@ -181,7 +181,7 @@
 <text x="252 261 270" y="299.25" fill="#0c0c0c">pe:</text>
 <text x="306 315 324 333 342" y="299.25" fill="#0c0c0c">Whole</text>
 <text x="360 369 378 387 396 405 414 423" y="299.25" fill="#0c0c0c">database</text>
-<text x="441" y="299.25" fill="#0c0c0c">▼</text>
+<text x="504" y="299.25" fill="#0c0c0c">▼</text>
 <text x="864" y="299.25" fill="#0c0c0c">│</text>
 <text x="1071" y="299.25" fill="#cccccc">║</text>
 <rect x="198" y="304" width="684.5" height="19.5" fill="#cccccc"/>
@@ -200,7 +200,7 @@
 <text x="207" y="337.25" fill="#0c0c0c">│</text>
 <text x="225 234 243 252 261" y="337.25" fill="#0c0c0c">Sends</text>
 <text x="279 288 297 306 315" y="337.25" fill="#0c0c0c">about</text>
-<text x="333 342 351" y="337.25" fill="#0c0c0c">350</text>
+<text x="333 342 351" y="337.25" fill="#0c0c0c">664</text>
 <text x="369 378 387 396 405 414" y="337.25" fill="#0c0c0c">tokens</text>
 <text x="432 441" y="337.25" fill="#0c0c0c">to</text>
 <text x="459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603" y="337.25" fill="#0c0c0c">api.anthropic.com</text>

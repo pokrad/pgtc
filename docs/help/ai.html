@@ -135,7 +135,8 @@ you set — there is no pgtc server in between.</p>
 <h2 id="answer">The answer</h2>
 <figure>
   <img src="img/ai-answer.svg" alt="The AI's answer in the editor" loading="lazy">
-  <figcaption>The answer below the existing text: the prompt as comments, then the SQL. Nothing has run.</figcaption>
+  <figcaption>A real answer of Claude, below the existing text: the prompt as comments, then the SQL — with the
+  model's own note on why it chose a <code>LEFT JOIN</code>. Nothing has run.</figcaption>
 </figure>
 <ul>
   <li>It <b>replaces the selection</b>, or goes in <b>at the cursor</b> when nothing is selected — on a line of its own.</li>
@@ -146,6 +147,21 @@ you set — there is no pgtc server in between.</p>
       wrong column, or write a statement that changes data. With <a href="query.html#tx">auto commit</a> off
       you can run it and still roll it back.</li>
 </ul>
+
+<h2 id="examples">Another example: a trigger</h2>
+<figure>
+  <img src="img/ai-trigger.svg" alt="A trigger written by the AI" loading="lazy">
+  <figcaption>The prompt <i>“generate before insert row level trigger for humanresources.employee”</i> in an empty
+  editor — Claude's real answer (the top of it; the results are hidden with <kbd>Ctrl+R</kbd>).</figcaption>
+</figure>
+<p>The prompt does not say what the trigger should do, and the model says so in its first comment: it wrote a
+reasonable body — trimming and upper-casing values, filling in values passed as <code>NULL</code>, stamping
+<code>modifieddate</code>, and a check that the employee was 18 when hired — for you to change. It knew the column
+names, their types and the table's <code>CHECK</code> constraints from the structure. Below the function follow
+<code>DROP TRIGGER IF EXISTS …</code> and <code>CREATE TRIGGER … BEFORE INSERT … FOR EACH ROW</code>.</p>
+<div class="note"><p>Read every answer before running it — here the <code>DROP TRIGGER</code> would silently replace a
+trigger of the same name. The more precisely you ask (<i>“… that sets modifieddate and refuses employees under
+18”</i>), the less the model has to guess.</p></div>
 
 <h2 id="privacy">Privacy: AI not allowed</h2>
 <p>For servers whose structure must not leave the company — production, customer systems — open the connection
