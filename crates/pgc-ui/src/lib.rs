@@ -66,6 +66,7 @@ pub async fn run(paths: Paths, settings: Settings, startup: Option<Resolved>) ->
     app.set_ai_sink(std::sync::Arc::new(move |event| {
         let _ = ai_tx.send(match event {
             app::AiMsg::Answer(e) => Msg::Ai(e),
+            app::AiMsg::Progress(p) => Msg::AiProgress(p),
             app::AiMsg::Models(m) => Msg::AiModels(m),
         });
     }));

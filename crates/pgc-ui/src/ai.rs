@@ -713,6 +713,9 @@ pub fn request(ai: &AiSettings, key: Option<&str>, ask: &Ask) -> Request {
                     {"role": "system", "content": system},
                     {"role": "user", "content": user},
                 ],
+                // the answer comes as a stream: its progress is shown (D-073)
+                "stream": true,
+                "stream_options": {"include_usage": true},
             });
             // (low / medium / high here: the two top levels are sent as high)
             let effort = match ai.effort {
@@ -744,6 +747,10 @@ pub fn request(ai: &AiSettings, key: Option<&str>, ask: &Ask) -> Request {
                     "cache_control": {"type": "ephemeral"},
                 }],
                 "messages": [{"role": "user", "content": user}],
+                // the answer comes as a stream, with summaries of the thinking: the
+                // progress is shown (D-073)
+                "stream": true,
+                "thinking": {"type": "adaptive", "display": "summarized"},
             });
             let effort = match ai.effort {
                 AiEffort::Default => None,
@@ -862,10 +869,259 @@ pub fn editor_insert(prompt: &str, answer: &str) -> String {
     out
 }
 
+// ---- the streamed answer ----------------------------------------------------------------
+
+/// A step of a request, for the tab's Messages (D-073).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Progress {
+    /// The model started to think.
+    Thinking,
+    /// A part of the model's summary of its thinking.
+    ThinkingText(String),
+    /// The model started to write the answer.
+    Writing,
+    /// So many characters of the answer are there (said every [`WRITTEN_STEP`]).
+    Written(usize),
+    /// Tokens sent (of them from the prompt cache) and received.
+    Usage {
+        sent: u64,
+        cached: u64,
+        received: u64,
+    },
+}
+
+/// The answer's progress is reported each time it has grown by this many characters.
+const WRITTEN_STEP: usize = 1500;
+
+/// Reads the server-sent events of a streamed answer as they arrive.
+#[derive(Debug)]
+pub struct Stream {
+    protocol: AiProtocol,
+    /// Bytes of an event that is not complete yet.
+    pending: Vec<u8>,
+    /// The start of the body, for an answer that is no event stream after all.
+    raw: Vec<u8>,
+    events: usize,
+    text: String,
+    /// Thinking text not yet reported (a paragraph in the making).
+    thinking: String,
+    said_thinking: bool,
+    said_writing: bool,
+    /// Characters of the answer at the last [`Progress::Written`].
+    written: usize,
+    cut: bool,
+    error: Option<String>,
+    sent: u64,
+    cached: u64,
+    received: u64,
+}
+
+impl Stream {
+    pub fn new(protocol: AiProtocol) -> Self {
+        Self {
+            protocol,
+            pending: Vec::new(),
+            raw: Vec::new(),
+            events: 0,
+            text: String::new(),
+            thinking: String::new(),
+            said_thinking: false,
+            said_writing: false,
+            written: 0,
+            cut: false,
+            error: None,
+            sent: 0,
+            cached: 0,
+            received: 0,
+        }
+    }
+
+    /// The next bytes of the body; the steps they complete.
+    pub fn feed(&mut self, bytes: &[u8]) -> Vec<Progress> {
+        if self.events == 0 && self.raw.len() < 1 << 20 {
+            self.raw.extend_from_slice(bytes);
+        }
+        // (a carriage return is never part of the data: JSON escapes it)
+        self.pending
+            .extend(bytes.iter().copied().filter(|b| *b != b'\r'));
+        let mut out = Vec::new();
+        while let Some(end) = self.pending.windows(2).position(|w| w == b"\n\n") {
+            let event: Vec<u8> = self.pending.drain(..end + 2).collect();
+            let event = String::from_utf8_lossy(&event);
+            let data: Vec<&str> = event
+                .lines()
+                .filter_map(|l| l.strip_prefix("data:"))
+                .map(|d| d.strip_prefix(' ').unwrap_or(d))
+                .collect();
+            if data.is_empty() {
+                continue;
+            }
+            self.events += 1;
+            let data = data.join("\n");
+            if let Ok(json) = serde_json::from_str::<Value>(&data) {
+                match self.protocol {
+                    AiProtocol::Anthropic => self.anthropic(&json, &mut out),
+                    AiProtocol::OpenaiCompatible => self.openai(&json, &mut out),
+                }
+            }
+        }
+        out
+    }
+
+    fn start_thinking(&mut self, out: &mut Vec<Progress>) {
+        if !self.said_thinking {
+            self.said_thinking = true;
+            out.push(Progress::Thinking);
+        }
+    }
+
+    /// More thinking text: its complete paragraphs are reported.
+    fn think(&mut self, text: &str, out: &mut Vec<Progress>) {
+        self.start_thinking(out);
+        self.thinking.push_str(text);
+        while let Some(end) = self.thinking.find("\n\n") {
+            let paragraph: String = self.thinking.drain(..end + 2).collect();
+            if !paragraph.trim().is_empty() {
+                out.push(Progress::ThinkingText(paragraph.trim().to_owned()));
+            }
+        }
+    }
+
+    /// The thinking text left over is reported.
+    fn end_thinking(&mut self, out: &mut Vec<Progress>) {
+        let rest = std::mem::take(&mut self.thinking);
+        if !rest.trim().is_empty() {
+            out.push(Progress::ThinkingText(rest.trim().to_owned()));
+        }
+    }
+
+    fn write(&mut self, text: &str, out: &mut Vec<Progress>) {
+        if text.is_empty() {
+            return;
+        }
+        if !self.said_writing {
+            self.said_writing = true;
+            self.end_thinking(out);
+            out.push(Progress::Writing);
+        }
+        self.text.push_str(text);
+        if self.text.len() - self.written >= WRITTEN_STEP {
+            self.written = self.text.len();
+            out.push(Progress::Written(self.text.chars().count()));
+        }
+    }
+
+    fn anthropic(&mut self, j: &Value, out: &mut Vec<Progress>) {
+        let str_at = |p: &str| j.pointer(p).and_then(Value::as_str);
+        let num_at = |p: &str| j.pointer(p).and_then(Value::as_u64).unwrap_or(0);
+        match str_at("/type") {
+            Some("message_start") => {
+                self.cached = num_at("/message/usage/cache_read_input_tokens");
+                self.sent = num_at("/message/usage/input_tokens")
+                    + self.cached
+                    + num_at("/message/usage/cache_creation_input_tokens");
+            }
+            Some("content_block_start") => match str_at("/content_block/type") {
+                Some("thinking") => self.start_thinking(out),
+                Some("text") => {
+                    let first = str_at("/content_block/text").unwrap_or("").to_owned();
+                    self.write(&first, out);
+                }
+                _ => {}
+            },
+            Some("content_block_delta") => match str_at("/delta/type") {
+                Some("thinking_delta") => {
+                    let t = str_at("/delta/thinking").unwrap_or("").to_owned();
+                    self.think(&t, out);
+                }
+                Some("text_delta") => {
+                    let t = str_at("/delta/text").unwrap_or("").to_owned();
+                    self.write(&t, out);
+                }
+                _ => {}
+            },
+            Some("content_block_stop") => self.end_thinking(out),
+            Some("message_delta") => {
+                self.received = num_at("/usage/output_tokens").max(self.received);
+                match str_at("/delta/stop_reason") {
+                    Some("max_tokens") => self.cut = true,
+                    Some("refusal") if self.text.trim().is_empty() => {
+                        self.error = Some("The model declined this request.".to_owned());
+                    }
+                    _ => {}
+                }
+            }
+            Some("error") => {
+                self.error = Some(format!(
+                    "The AI service reported an error: {}",
+                    str_at("/error/message").unwrap_or("(no text)")
+                ));
+            }
+            _ => {}
+        }
+    }
+
+    fn openai(&mut self, j: &Value, out: &mut Vec<Progress>) {
+        let str_at = |p: &str| j.pointer(p).and_then(Value::as_str);
+        if let Some(e) = str_at("/error/message") {
+            self.error = Some(format!("The AI service reported an error: {e}"));
+            return;
+        }
+        // (some services send the model's reasoning beside the answer)
+        if let Some(t) = str_at("/choices/0/delta/reasoning_content")
+            .or_else(|| str_at("/choices/0/delta/reasoning"))
+            .filter(|t| !t.is_empty())
+        {
+            let t = t.to_owned();
+            self.think(&t, out);
+        }
+        if let Some(t) = str_at("/choices/0/delta/content") {
+            let t = t.to_owned();
+            self.write(&t, out);
+        }
+        if str_at("/choices/0/finish_reason") == Some("length") {
+            self.cut = true;
+        }
+        if let Some(u) = j.get("usage").filter(|u| u.is_object()) {
+            let n = |p: &str| u.pointer(p).and_then(Value::as_u64).unwrap_or(0);
+            self.sent = n("/prompt_tokens");
+            self.cached = n("/prompt_tokens_details/cached_tokens");
+            self.received = n("/completion_tokens");
+        }
+    }
+
+    /// The body has ended: the last steps, and the answer text or an error.
+    pub fn finish(mut self) -> (Vec<Progress>, Result<String, String>) {
+        // no event stream after all (a service that ignores `stream`): one JSON answer
+        if self.events == 0 {
+            let body = String::from_utf8_lossy(&self.raw).into_owned();
+            return (Vec::new(), answer(self.protocol, 200, &body));
+        }
+        let mut out = Vec::new();
+        self.end_thinking(&mut out);
+        if self.sent > 0 || self.received > 0 {
+            out.push(Progress::Usage {
+                sent: self.sent,
+                cached: self.cached,
+                received: self.received,
+            });
+        }
+        let result = match self.error {
+            Some(e) => Err(e),
+            None if self.text.trim().is_empty() => Err("The AI service sent no answer.".to_owned()),
+            None if self.cut => Ok(format!("{}\n{CUT_OFF}\n", self.text.trim_end())),
+            None => Ok(self.text),
+        };
+        (out, result)
+    }
+}
+
 // ---- HTTP -------------------------------------------------------------------------------
 
-/// Longest wait for an answer (models may need minutes).
-const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300);
+/// Longest time for a whole answer (models may need minutes), and for the wait
+/// between two parts of it.
+const TIMEOUT: std::time::Duration = std::time::Duration::from_secs(900);
+const READ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(180);
 const CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
 
 fn client() -> Result<reqwest::Client, String> {
@@ -884,14 +1140,15 @@ fn client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
         .tls_backend_preconfigured(tls)
         .timeout(TIMEOUT)
+        .read_timeout(READ_TIMEOUT)
         .connect_timeout(CONNECT_TIMEOUT)
         .build()
         .map_err(|e| e.to_string())
 }
 
-/// Sends `req` (a GET when it has no body); the status and the body of the answer,
-/// or an error text for the user.
-async fn transport(req: &Request) -> Result<(u16, String), String> {
+/// Sends `req` (a GET when it has no body); the response, its body not read yet, or
+/// an error text for the user.
+async fn open(req: &Request) -> Result<reqwest::Response, String> {
     let client = client()?;
     let mut builder = if req.body.is_null() {
         client.get(&req.url)
@@ -905,7 +1162,7 @@ async fn transport(req: &Request) -> Result<(u16, String), String> {
         value.set_sensitive(true);
         builder = builder.header(name.as_str(), value);
     }
-    let response = builder.send().await.map_err(|e| {
+    builder.send().await.map_err(|e| {
         if e.is_timeout() {
             "The AI service did not answer in time.".to_owned()
         } else if e.is_connect() {
@@ -913,25 +1170,58 @@ async fn transport(req: &Request) -> Result<(u16, String), String> {
         } else {
             format!("The AI request failed: {e}")
         }
-    })?;
-    let status = response.status().as_u16();
-    let body = response
+    })
+}
+
+async fn body(response: reqwest::Response) -> Result<String, String> {
+    response
         .text()
         .await
-        .map_err(|e| format!("Reading the AI answer failed: {e}"))?;
-    Ok((status, body))
+        .map_err(|e| format!("Reading the AI answer failed: {e}"))
 }
 
-/// Sends `req`; the answer text or an error text for the user.
-pub async fn send(req: Request) -> Result<String, String> {
-    let (status, body) = transport(&req).await?;
-    answer(req.protocol, status, &body)
+/// Sends `req` and reads the streamed answer, reporting each step to `progress`; the
+/// answer text or an error text for the user. A model that does not take the
+/// `thinking` setting is asked again without it.
+pub async fn send(mut req: Request, progress: impl Fn(Progress)) -> Result<String, String> {
+    let mut response = open(&req).await?;
+    let mut status = response.status().as_u16();
+    if status == 400 && req.body.get("thinking").is_some() {
+        let text = body(response).await?;
+        if !text.contains("thinking") {
+            return answer(req.protocol, status, &text);
+        }
+        if let Some(o) = req.body.as_object_mut() {
+            o.remove("thinking");
+        }
+        response = open(&req).await?;
+        status = response.status().as_u16();
+    }
+    if !(200..300).contains(&status) {
+        let text = body(response).await?;
+        return answer(req.protocol, status, &text);
+    }
+    let mut stream = Stream::new(req.protocol);
+    loop {
+        match response.chunk().await {
+            Ok(Some(bytes)) => stream.feed(&bytes).into_iter().for_each(&progress),
+            Ok(None) => break,
+            Err(e) if e.is_timeout() => {
+                return Err("The AI service stopped answering.".to_owned());
+            }
+            Err(e) => return Err(format!("Reading the AI answer failed: {e}")),
+        }
+    }
+    let (last, result) = stream.finish();
+    last.into_iter().for_each(&progress);
+    result
 }
 
-/// Sends a [`models_request`]; the model names or an error text for the user.
+/// Sends a [`models_request`]; the models or an error text for the user.
 pub async fn fetch_models(req: Request) -> Result<Vec<AiModel>, String> {
-    let (status, body) = transport(&req).await?;
-    models(status, &body)
+    let response = open(&req).await?;
+    let status = response.status().as_u16();
+    models(status, &body(response).await?)
 }
 
 #[cfg(test)]
@@ -1197,6 +1487,107 @@ mod tests {
             models(401, r#"{"error":{"message":"invalid x-api-key"}}"#),
             Err("The AI service answered HTTP 401: invalid x-api-key".into())
         );
+    }
+
+    #[test]
+    fn streamed_answers() {
+        // Anthropic: thinking summaries by paragraph, then the text; usage at the end
+        let events = [
+            r#"event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5-5","usage":{"input_tokens":20,"cache_read_input_tokens":1000,"cache_creation_input_tokens":0}}}"#,
+            r#"event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":""}}"#,
+            r#"event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"The user wants totals.\n\nJoin customer"}}"#,
+            r#"event: ping
+data: {"type":"ping"}"#,
+            r#"event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" to the orders."}}"#,
+            r#"event: content_block_stop
+data: {"type":"content_block_stop","index":0}"#,
+            r#"event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}}"#,
+            r#"event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"SELECT 1"}}"#,
+            r#"event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":";"}}"#,
+            r#"event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":7}}"#,
+            r#"event: message_stop
+data: {"type":"message_stop"}"#,
+        ];
+        let body = events.join("\r\n\r\n") + "\n\n";
+        // fed in small pieces: events and characters may be split anywhere
+        let mut st = Stream::new(AiProtocol::Anthropic);
+        let mut steps = Vec::new();
+        for piece in body.as_bytes().chunks(7) {
+            steps.extend(st.feed(piece));
+        }
+        let (last, result) = st.finish();
+        steps.extend(last);
+        assert_eq!(result, Ok("SELECT 1;".into()));
+        assert_eq!(
+            steps,
+            [
+                Progress::Thinking,
+                Progress::ThinkingText("The user wants totals.".into()),
+                Progress::ThinkingText("Join customer to the orders.".into()),
+                Progress::Writing,
+                Progress::Usage {
+                    sent: 1020,
+                    cached: 1000,
+                    received: 7
+                },
+            ]
+        );
+
+        // cut off at the length limit; an error in the stream
+        let mut st = Stream::new(AiProtocol::Anthropic);
+        st.feed(
+            b"data: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"SELECT\"}}\n\n\
+data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"max_tokens\"},\"usage\":{\"output_tokens\":3}}\n\n",
+        );
+        assert_eq!(st.finish().1, Ok(format!("SELECT\n{CUT_OFF}\n")));
+        let mut st = Stream::new(AiProtocol::Anthropic);
+        st.feed(b"event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}\n\n");
+        assert_eq!(
+            st.finish().1,
+            Err("The AI service reported an error: Overloaded".into())
+        );
+
+        // OpenAI-compatible: content pieces, reasoning where a service sends it, usage
+        let mut st = Stream::new(AiProtocol::OpenaiCompatible);
+        let mut steps = st.feed(
+            b"data: {\"choices\":[{\"delta\":{\"role\":\"assistant\",\"reasoning_content\":\"Count rows.\"}}]}\n\n\
+data: {\"choices\":[{\"delta\":{\"content\":\"SELECT count(*)\"}}]}\n\n\
+data: {\"choices\":[{\"delta\":{\"content\":\" FROM t;\"},\"finish_reason\":\"stop\"}]}\n\n\
+data: {\"choices\":[],\"usage\":{\"prompt_tokens\":50,\"completion_tokens\":9}}\n\n\
+data: [DONE]\n\n",
+        );
+        let (last, result) = st.finish();
+        steps.extend(last);
+        assert_eq!(result, Ok("SELECT count(*) FROM t;".into()));
+        assert_eq!(
+            steps,
+            [
+                Progress::Thinking,
+                Progress::ThinkingText("Count rows.".into()),
+                Progress::Writing,
+                Progress::Usage {
+                    sent: 50,
+                    cached: 0,
+                    received: 9
+                },
+            ]
+        );
+
+        // a service that ignores `stream`: one JSON answer
+        let mut st = Stream::new(AiProtocol::OpenaiCompatible);
+        st.feed(br#"{"choices":[{"message":{"content":"SELECT 2;"}}]}"#);
+        assert_eq!(st.finish().1, Ok("SELECT 2;".into()));
+        // nothing at all
+        let st = Stream::new(AiProtocol::Anthropic);
+        assert!(st.finish().1.is_err());
     }
 
     #[test]

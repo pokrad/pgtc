@@ -5207,3 +5207,116 @@ async fn ai_model_and_effort() {
     assert_eq!(combo(&a, "model"), "my-model");
     assert_eq!(combo(&a, "effort"), "Low");
 }
+
+/// Progress of an AI request (D-073): its steps are lines in the tab's Messages —
+/// the request, thinking with the model's summaries, writing, the tokens, the end;
+/// Messages is not switched to, the status line is as before.
+#[tokio::test]
+async fn ask_ai_progress_goes_to_messages() {
+    use crate::ai::Progress;
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    ai_on(&mut a);
+    a.settings.ai.effort = pgc_core::settings::AiEffort::High;
+    ai_tab(&mut a, uid);
+    let messages = |a: &App| -> Vec<String> {
+        a.query()
+            .unwrap()
+            .messages
+            .iter()
+            .map(|m| m.text.clone())
+            .filter(|t| t.starts_with("AI:"))
+            .collect()
+    };
+    let send = |a: &mut App| -> u64 {
+        key(a, "F8");
+        a.lookup_loaded(ai_lookup(a), Ok(ai_structure_rows()));
+        typing(a, "count customers");
+        key(a, "Alt+S");
+        a.ai.run.as_ref().unwrap().id
+    };
+    let id = send(&mut a);
+    // the request is streamed, with thinking summaries
+    let req = a.ai.unsent.take().unwrap();
+    assert_eq!(req.body["stream"], true);
+    assert_eq!(req.body["thinking"]["display"], "summarized");
+    let m = messages(&a);
+    assert_eq!(m.len(), 1, "{m:?}");
+    assert!(
+        m[0].starts_with("AI: asking claude-sonnet-5-5, effort high — about ")
+            && m[0].ends_with(" tokens to api.anthropic.com"),
+        "{m:?}"
+    );
+    assert!(
+        a.status.starts_with("Asking AI"),
+        "the status line as before"
+    );
+    let shown = a.query().unwrap().show_messages;
+    for step in [
+        Progress::Thinking,
+        Progress::ThinkingText("The user wants a count.".into()),
+        Progress::ThinkingText(
+            "A long summary of the thinking that does not fit into one line of the Messages              pane and so goes on in a second one."
+                .into(),
+        ),
+        Progress::Writing,
+        Progress::Written(1500),
+        Progress::Usage {
+            sent: 1200,
+            cached: 1000,
+            received: 40,
+        },
+    ] {
+        a.update(Msg::AiProgress(AiProgress { id, step }), &Hits::default());
+    }
+    assert_eq!(
+        messages(&a)[1..],
+        [
+            "AI: thinking…",
+            "AI: thinking: The user wants a count.",
+            "AI: thinking: A long summary of the thinking that does not fit into one line of
+    the Messages pane and so goes on in a second one.",
+            "AI: writing the answer…",
+            "AI: writing… 1,500 characters",
+            "AI: 1,200 tokens sent (1,000 from the prompt cache), 40 received",
+        ]
+    );
+    assert_eq!(a.query().unwrap().show_messages, shown, "not switched to");
+    // a step of another request is not shown
+    a.on_ai_progress(AiProgress {
+        id: id + 7,
+        step: Progress::Writing,
+    });
+    assert_eq!(messages(&a).len(), 7);
+    a.on_ai_event(AiEvent {
+        id,
+        result: Ok("SELECT count(*) FROM sales.customer;".into()),
+    });
+    let m = messages(&a);
+    assert!(
+        m[7].starts_with("AI: answer complete after ") && m[7].ends_with("not run"),
+        "{m:?}"
+    );
+
+    // cancelled; failed
+    send(&mut a);
+    esc(&mut a);
+    assert!(
+        messages(&a)
+            .last()
+            .unwrap()
+            .starts_with("AI: cancelled after ")
+    );
+    let id = send(&mut a);
+    a.on_ai_event(AiEvent {
+        id,
+        result: Err("The AI service answered HTTP 529: Overloaded".into()),
+    });
+    let last = messages(&a).last().unwrap().clone();
+    assert!(
+        last.starts_with("AI: failed after ") && last.ends_with("Overloaded"),
+        "{last}"
+    );
+}

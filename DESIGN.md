@@ -2600,13 +2600,23 @@ pgtc (binary)
   (when no dialog, menu, template form or quick search is open — those take it).
   An error (HTTP status, provider message, no answer) is shown in an error dialog;
   the editor is not changed.
+- **Progress in the tab's Messages** (the status line stays as it is; Messages is
+  not switched to): the answer is received as a stream (`"stream": true`, server-
+  sent events), and the tab's Messages get a line for each step — the request
+  (model, effort, size, host), *thinking…*, the model's **thinking summaries** as
+  they arrive (Anthropic: `thinking: {type: "adaptive", display: "summarized"}`;
+  a model that does not take it is asked again without; OpenAI-compatible:
+  `reasoning_content` where a service sends it), *writing the answer…*, the tokens
+  sent (and how many came from the prompt cache) and received, and the end with the
+  time — or the error, or that it was cancelled. The SQL still goes into the editor
+  only when it is complete.
 - **The answer:** code fences (```` ``` ````) are removed; the SQL replaces the
   selection, or is inserted at the cursor when there is none (on a line of its own),
   with the prompt above it as `--` comment lines; text outside code fences becomes
   `--` comments. An answer that stopped at the model's length limit
   (`stop_reason: max_tokens` / `finish_reason: length`) ends with a comment line
   saying so. One undo step brings back the old text. Nothing is run.
-- **Later:** streaming the answer, follow-up questions in one conversation, the model
+- **Later:** follow-up questions in one conversation, the model
   reading catalog details itself through tool use (read-only), Azure OpenAI.
 
 ---
@@ -2773,3 +2783,4 @@ pgtc (binary)
 | 2026-11-18 | D-073 improved: comments (`COMMENT ON`) in the structure; Anthropic prompt cache for instructions and structure; a warning above 100,000 tokens; an unsent prompt is kept for the next dialog; `Enter` in an unused list that opened after `.` is a new line; `↑` / `↓` by shown rows in the prompt box; system proxy settings used; the key header marked sensitive. |
 | 2026-11-18 | D-073 updated: model and effort — defaults in Settings → AI… (effort combo; Models… reads the provider's model list), both changeable per request in the `F8` dialog; `output_config.effort` / `reasoning_effort`; Anthropic answer limit 16,000 tokens. |
 | 2026-11-18 | D-073 updated: the model is chosen from a combo in Settings → AI…, filled from the provider's model list (read by the dialog, names for people, newest first, *Other…* for a typed name) and saved; the `F8` dialog offers only the saved list. The Models… button is gone. |
+| 2026-11-18 | D-073 updated: progress of an AI request in the tab's Messages — the answer is streamed; lines for the request, thinking (with the model's thinking summaries), writing, token counts and the end; the status line unchanged; the SQL goes into the editor when complete. |

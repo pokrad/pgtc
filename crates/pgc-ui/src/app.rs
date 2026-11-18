@@ -48,7 +48,7 @@ use pgc_db::{ConnId, DbEvent, EventSink};
 use pgc_editor::{Action, Editor, SearchOptions};
 use pgc_sql::SqlCatalog;
 
-pub use self::ai::{AiEvent, AiModels, AiMsg};
+pub use self::ai::{AiEvent, AiModels, AiMsg, AiProgress};
 use self::closing::{AfterSave, Bulk};
 use self::definition::{JobKind, StructureJob};
 use self::editing::editor_action;
@@ -95,6 +95,8 @@ pub enum Msg {
     Ai(AiEvent),
     /// The provider's list of models (D-073).
     AiModels(AiModels),
+    /// A step of a running AI request (D-073).
+    AiProgress(AiProgress),
 }
 
 /// Side effects requested by `update`, carried out by the event loop.
@@ -883,6 +885,10 @@ impl App {
             }
             Msg::AiModels(models) => {
                 self.on_ai_models(models);
+                Vec::new()
+            }
+            Msg::AiProgress(progress) => {
+                self.on_ai_progress(progress);
                 Vec::new()
             }
             Msg::TabTimer(tab, seq) => {

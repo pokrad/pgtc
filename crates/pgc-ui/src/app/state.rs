@@ -105,6 +105,7 @@ pub(super) struct AiRun {
     /// Query tab the answer goes into.
     pub(super) tab: u64,
     pub(super) prompt: String,
+    pub(super) started: Instant,
     pub(super) abort: Option<tokio::task::AbortHandle>,
 }
 

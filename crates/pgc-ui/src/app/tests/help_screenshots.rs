@@ -3077,6 +3077,35 @@ async fn help_screenshots() {
     key(&mut a, "Alt+S");
     let id = a.ai.run.as_ref().unwrap().id;
     out.shot("ai-waiting", &a, Crop::Full);
+    // the steps of the request in Messages (texts of a real run)
+    for step in [
+        crate::ai::Progress::Thinking,
+        crate::ai::Progress::ThinkingText(
+            "The person's name comes from person.person through customer.personid,              which may be NULL, so a LEFT JOIN keeps customers without a person."
+                .into(),
+        ),
+        crate::ai::Progress::ThinkingText(
+            "Filtering orderdate to 2014 with a half-open range, then summing totaldue              per customer and keeping the ten largest."
+                .into(),
+        ),
+        crate::ai::Progress::Writing,
+    ] {
+        a.on_ai_progress(crate::app::AiProgress { id, step });
+    }
+    {
+        let q = a.query_mut().unwrap();
+        q.show_messages = true;
+        q.results_visible = true;
+    }
+    out.shot("ai-progress", &a, Crop::Full);
+    a.on_ai_progress(crate::app::AiProgress {
+        id,
+        step: crate::ai::Progress::Usage {
+            sent: 1140,
+            cached: 0,
+            received: 212,
+        },
+    });
     a.on_ai_event(crate::app::AiEvent {
         id,
         result: Ok(AI_ANSWER.into()),
@@ -3496,7 +3525,9 @@ async fn ai_live_sample() {
         prompt: prompt.into(),
     };
     let request = crate::ai::request(&settings.ai, key.as_deref(), &ask);
-    match crate::ai::send(request).await {
+    let started = std::time::Instant::now();
+    let steps = move |step| println!("STEP {:>5} ms {step:?}", started.elapsed().as_millis());
+    match crate::ai::send(request, steps).await {
         Ok(answer) => println!("=====ANSWER=====\n{answer}\n=====END====="),
         Err(e) => panic!("{e}"),
     }

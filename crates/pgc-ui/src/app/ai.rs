@@ -18,9 +18,17 @@ use crate::dialog::{Button, Dialog, DialogKind, Widget};
 /// Where the answers of AI requests go (set by the event loop).
 pub type AiSink = Arc<dyn Fn(AiMsg) + Send + Sync>;
 
+/// A step of AI request `id`, for its tab's Messages.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AiProgress {
+    pub id: u64,
+    pub step: ai::Progress,
+}
+
 /// What comes back from the background.
 pub enum AiMsg {
     Answer(AiEvent),
+    Progress(AiProgress),
     Models(AiModels),
 }
 
@@ -348,6 +356,20 @@ impl App {
             chosen.effort = *e;
         }
         let request = ai::request(&chosen, key.as_deref(), &ask);
+        // the request, in the tab's Messages
+        let model = Self::ai_offered_models(&chosen)
+            .into_iter()
+            .find(|m| m.id == chosen.model)
+            .map_or_else(|| chosen.model.clone(), |m| m.label().to_owned());
+        let effort = match chosen.effort {
+            AiEffort::Default => String::new(),
+            e => format!(", effort {}", e.label().to_lowercase()),
+        };
+        let asked = format!(
+            "asking {model}{effort} — about {} tokens to {}",
+            group(ai::tokens(ai::request_chars(&ask))),
+            ai::host(&chosen.base_url)
+        );
         if self.ai.history.last() != Some(&prompt) {
             self.ai.history.push(prompt.clone());
         }
@@ -358,7 +380,11 @@ impl App {
         let abort = match self.ai.sink.clone() {
             Some(sink) => {
                 let task = tokio::spawn(async move {
-                    let result = ai::send(request).await;
+                    let steps = sink.clone();
+                    let result = ai::send(request, move |step| {
+                        steps(AiMsg::Progress(AiProgress { id, step }));
+                    })
+                    .await;
                     sink(AiMsg::Answer(AiEvent { id, result }));
                 });
                 Some(task.abort_handle())
@@ -372,8 +398,10 @@ impl App {
             id,
             tab,
             prompt,
+            started: std::time::Instant::now(),
             abort,
         });
+        self.ai_note(tab, &asked);
         self.status = format!(
             "Asking AI ({}) … Esc cancels",
             ai::host(&self.settings.ai.base_url)
@@ -388,8 +416,50 @@ impl App {
         if let Some(abort) = run.abort {
             abort.abort();
         }
+        let after = crate::query_tab::format_duration(run.started.elapsed());
+        self.ai_note(run.tab, &format!("cancelled after {after}"));
         self.status = "AI request cancelled".to_owned();
         true
+    }
+
+    /// A line about the AI request in the Messages of query tab `tab` (D-073).
+    fn ai_note(&mut self, tab: u64, text: &str) {
+        if let Some(q) = self.tab_mut(tab).and_then(|t| t.query_mut()) {
+            q.info(format!("AI: {text}"));
+            // Messages follow the newest line
+            q.message_cursor = q.messages.len() - 1;
+        }
+    }
+
+    /// A step of the running request: a line in its tab's Messages.
+    pub fn on_ai_progress(&mut self, p: AiProgress) {
+        let Some(tab) = self.ai.run.as_ref().filter(|r| r.id == p.id).map(|r| r.tab) else {
+            return;
+        };
+        let text = match p.step {
+            ai::Progress::Thinking => "thinking…".to_owned(),
+            // (Messages does not wrap: the summary is broken into lines here)
+            ai::Progress::ThinkingText(t) => wrap(&format!("thinking: {t}"), THINKING_WIDTH),
+            ai::Progress::Writing => "writing the answer…".to_owned(),
+            ai::Progress::Written(chars) => format!("writing… {} characters", group(chars)),
+            ai::Progress::Usage {
+                sent,
+                cached,
+                received,
+            } => {
+                let cache = if cached > 0 {
+                    format!(" ({} from the prompt cache)", group(cached as usize))
+                } else {
+                    String::new()
+                };
+                format!(
+                    "{} tokens sent{cache}, {} received",
+                    group(sent as usize),
+                    group(received as usize)
+                )
+            }
+        };
+        self.ai_note(tab, &text);
     }
 
     /// An AI answer: into the editor of its tab, replacing the selection or at the
@@ -401,12 +471,17 @@ impl App {
         let Some(run) = self.ai.run.take() else {
             return;
         };
+        let after = crate::query_tab::format_duration(run.started.elapsed());
         match event.result {
             Ok(answer) => {
                 let Some(i) = self.tab_index(run.tab) else {
                     self.status = "The AI answer was dropped: its query tab is closed".to_owned();
                     return;
                 };
+                self.ai_note(
+                    run.tab,
+                    &format!("answer complete after {after} — inserted into the editor, not run"),
+                );
                 let mut text = ai::editor_insert(&run.prompt, &answer);
                 let editor = &mut self.tabs[i].view.editor;
                 // the prompt comment starts a line of its own
@@ -417,6 +492,7 @@ impl App {
                 self.status = "AI answer inserted — review it before you run it".to_owned();
             }
             Err(e) => {
+                self.ai_note(run.tab, &format!("failed after {after}: {e}"));
                 self.status = "The AI request failed".to_owned();
                 self.error(&e);
             }
@@ -917,6 +993,36 @@ impl App {
         self.save_settings();
         self.status = "AI settings saved".to_owned();
     }
+}
+
+/// Width the thinking summaries are broken to in Messages.
+const THINKING_WIDTH: usize = 76;
+
+/// `text` in lines of at most `width` characters, broken at spaces; the lines after
+/// the first are indented.
+fn wrap(text: &str, width: usize) -> String {
+    let mut out = String::new();
+    for (n, paragraph) in text.lines().enumerate() {
+        let mut line = String::new();
+        if n > 0 {
+            out.push('\n');
+            line.push_str("    ");
+        }
+        for word in paragraph.split_whitespace() {
+            if line.trim().is_empty() {
+                line.push_str(word);
+            } else if line.chars().count() + 1 + word.chars().count() > width {
+                out.push_str(&line);
+                out.push('\n');
+                line = format!("    {word}");
+            } else {
+                line.push(' ');
+                line.push_str(word);
+            }
+        }
+        out.push_str(&line);
+    }
+    out
 }
 
 /// `12345` → `12,345`.

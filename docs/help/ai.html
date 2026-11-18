@@ -147,6 +147,23 @@ that cache do it by themselves.)</p>
   <img src="img/ai-waiting.svg" alt="The status line while the AI answers" loading="lazy">
   <figcaption>While the model writes, the status line shows <i>Asking AI (host) … Esc cancels</i>. You can go on working.</figcaption>
 </figure>
+<h3 id="progress">Progress in Messages</h3>
+<figure>
+  <img src="img/ai-progress.svg" alt="The steps of an AI request in the Messages tab" loading="lazy">
+  <figcaption>The <i>Messages</i> of the query tab while the model works.</figcaption>
+</figure>
+<p>The answer is received piece by piece, and every step of the request is written to the <b>Messages</b> of the
+query tab (<kbd>Alt+M</kbd> shows them; pgtc does not switch there by itself):</p>
+<div class="tablewrap"><table>
+<tr><th>Line</th><th>Meaning</th></tr>
+<tr><td><i>AI: asking Claude Sonnet 5.5, effort high — about 12,400 tokens to api.anthropic.com</i></td><td>The request is on its way: the model, the effort (when not the default), the size, the host.</td></tr>
+<tr><td><i>AI: thinking…</i></td><td>The model has started to reason about the request.</td></tr>
+<tr><td><i>AI: thinking: …</i></td><td>The model's own short <b>summary of its thinking</b>, as it arrives — you see what it is working out. Claude sends these; other services only where they offer it.</td></tr>
+<tr><td><i>AI: writing the answer…</i>, <i>AI: writing… 3,000 characters</i></td><td>The SQL is being written; a line for about every 1,500 characters.</td></tr>
+<tr><td><i>AI: 12,460 tokens sent (11,900 from the prompt cache), 840 received</i></td><td>What the request used — and how much of it the provider's cache covered.</td></tr>
+<tr><td><i>AI: answer complete after 9.4 s — inserted into the editor, not run</i></td><td>The end. Or <i>AI: failed after …</i> with the error, or <i>AI: cancelled after …</i>.</td></tr>
+</table></div>
+<p>The SQL itself appears in the editor only when it is complete — never half a statement.</p>
 <ul>
   <li><kbd>Esc</kbd> cancels the request; an answer that comes later is ignored. (While a menu, a dialog or the
       quick search is open, <kbd>Esc</kbd> closes that first.)</li>
