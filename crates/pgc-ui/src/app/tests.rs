@@ -4475,7 +4475,7 @@ async fn ask_ai_puts_the_answer_into_the_editor() {
     assert!(a.status.starts_with("Asking AI"), "{}", a.status);
     let req = a.ai.unsent.take().expect("the request");
     assert_eq!(req.url, "https://api.anthropic.com/v1/messages");
-    let system = req.body["system"].as_str().unwrap();
+    let system = req.body["system"][0]["text"].as_str().unwrap();
     assert!(system.contains("PostgreSQL 17.2"), "{system}");
     assert!(system.contains("TABLE sales.customer ("), "{system}");
     assert!(system.contains("TABLE public.note ("), "{system}");
@@ -4514,7 +4514,7 @@ async fn ask_ai_puts_the_answer_into_the_editor() {
     assert_eq!(d.selected_combo_item("scope"), Some("Schema sales"));
     key(&mut a, "Alt+S");
     let req = a.ai.unsent.take().unwrap();
-    let system = req.body["system"].as_str().unwrap();
+    let system = req.body["system"][0]["text"].as_str().unwrap();
     assert!(system.contains("TABLE sales.customer ("));
     assert!(!system.contains("public.note"), "{system}");
     // Esc for something else (a menu) does not cancel the request
@@ -4930,4 +4930,131 @@ async fn edit_connection_reopens_the_tree() {
     let db = child(&a, Some(dbs), NodeKind::Object(ObjType::Database), 5);
     assert_eq!(a.tree.selected().unwrap().kind, RowKind::Node(db));
     assert!(a.reveal.is_some(), "waits for the database's connection");
+}
+
+/// The F8 dialog (D-073): a prompt that was not sent is there again; Enter in a list
+/// that opened after a `.` and was not used is a new line; a very large request is
+/// warned about; an answer for a closed tab is dropped with a status line.
+#[tokio::test]
+async fn ask_ai_draft_enter_and_size_warning() {
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    ai_on(&mut a);
+    ai_tab(&mut a, uid);
+    let prompt = |a: &App| a.dialogs.last().unwrap().memo_text("prompt").unwrap();
+
+    // Esc keeps the prompt for the next dialog; so does Cancel
+    key(&mut a, "F8");
+    a.lookup_loaded(ai_lookup(&a), Ok(ai_structure_rows()));
+    typing(&mut a, "rows of customer");
+    esc(&mut a);
+    assert!(a.dialogs.is_empty());
+    key(&mut a, "F8");
+    assert_eq!(prompt(&a), "rows of customer");
+    a.lookup_loaded(ai_lookup(&a), Ok(ai_structure_rows()));
+
+    // a sentence ending with a table name: the list opens, Enter is a new line
+    typing(&mut a, ".");
+    assert!(a.ai_popup().is_some());
+    key(&mut a, "Enter");
+    assert!(a.ai_popup().is_none());
+    assert_eq!(prompt(&a), "rows of customer.\n");
+    // used (a letter typed): Enter takes the entry
+    typing(&mut a, "note.b");
+    assert!(a.ai_popup().is_some());
+    key(&mut a, "Enter");
+    assert_eq!(prompt(&a), "rows of customer.\nnote.body");
+    // chosen with the arrows: Enter takes it too
+    typing(&mut a, " sales.");
+    key(&mut a, "Down");
+    key(&mut a, "Up");
+    key(&mut a, "Enter");
+    assert_eq!(prompt(&a), "rows of customer.\nnote.body sales.customer");
+    key(&mut a, "Alt+C");
+    assert!(a.dialogs.is_empty());
+    assert_eq!(a.ai.draft, "rows of customer.\nnote.body sales.customer");
+
+    // a huge structure: the note warns
+    key(&mut a, "F8");
+    let mut rows = ai_structure_rows();
+    for i in 0..9000 {
+        let name = format!("a_rather_long_table_name_number_{i}");
+        rows.push(vec![
+            "r".into(),
+            "big".into(),
+            name.clone(),
+            "r".into(),
+            String::new(),
+            String::new(),
+            String::new(),
+            String::new(),
+        ]);
+        rows.push(vec![
+            "c".into(),
+            "big".into(),
+            name,
+            "1".into(),
+            "id".into(),
+            "integer".into(),
+            "true".into(),
+            String::new(),
+        ]);
+    }
+    a.lookup_loaded(ai_lookup(&a), Ok(rows));
+    a.update(Msg::Tick, &Hits::default());
+    let screen = screen_text(&a);
+    assert!(screen.contains("Large request"), "{screen}");
+    // one small schema as the scope: no warning
+    let d = a.dialogs.last_mut().unwrap();
+    assert_eq!(d.selected_combo_item("scope"), Some("Whole database"));
+    d.set_combo_selected("scope", 3);
+    assert_eq!(d.selected_combo_item("scope"), Some("Schema sales"));
+    a.update(Msg::Tick, &Hits::default());
+    assert!(!screen_text(&a).contains("Large request"));
+
+    // sent; the tab is closed before the answer comes
+    key(&mut a, "Alt+S");
+    assert!(a.ai.draft.is_empty(), "sent: no draft");
+    let run = a.ai.run.as_ref().unwrap();
+    let (id, tab) = (run.id, run.tab);
+    a.settings.query.ask_save = false;
+    a.close_tab(tab);
+    a.on_ai_event(AiEvent {
+        id,
+        result: Ok("SELECT 1;".into()),
+    });
+    assert!(a.status.contains("dropped"), "{}", a.status);
+}
+
+/// Up / Down in the prompt box go by the rows as shown (the text wraps).
+#[test]
+fn memo_up_and_down_follow_the_wrapped_rows() {
+    use crate::dialog::{Dialog, Widget};
+    // 30 wide: 22 columns of text (21 used, one for the cursor)
+    let mut d = Dialog::new(
+        DialogKind::Message,
+        "t",
+        30,
+        vec![Widget::memo(
+            "m",
+            "&Memo",
+            "one two three four five six seven\nend",
+            4,
+        )],
+    );
+    let e = |d: &Dialog| d.memo_editor("m").unwrap().cursor();
+    let key = |d: &mut Dialog, c: Command| {
+        d.handle_key(Some(c), &KeyEvent::new(KeyCode::Null, KeyModifiers::NONE));
+    };
+    // rows: "one two three four " / "five six seven" / "end"; the cursor is at the end
+    assert_eq!(e(&d), 37);
+    key(&mut d, Command::Up);
+    assert_eq!(e(&d), 19 + 3, "column 3 of the second row");
+    key(&mut d, Command::Up);
+    assert_eq!(e(&d), 3, "column 3 of the first row");
+    key(&mut d, Command::Down);
+    key(&mut d, Command::Down);
+    assert_eq!(e(&d), 34 + 3);
 }

@@ -430,6 +430,8 @@ async fn psql_commands_against_a_real_server() {
         "BEGIN; CREATE SCHEMA pgtc_ai; \
          CREATE TYPE pgtc_ai.k AS ENUM ('a', 'b'); \
          CREATE TABLE pgtc_ai.t (id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, kind pgtc_ai.k NOT NULL DEFAULT 'a'); \
+         COMMENT ON TABLE pgtc_ai.t IS 'The t   table'; \
+         COMMENT ON COLUMN pgtc_ai.t.kind IS 'What kind'; \
          CREATE VIEW pgtc_ai.v AS SELECT id FROM pgtc_ai.t; \
          CREATE FUNCTION pgtc_ai.f(p int) RETURNS int LANGUAGE sql AS 'SELECT p'; \
          CREATE PROCEDURE pgtc_ai.pr(x int) LANGUAGE sql AS 'SELECT 1';",
@@ -460,7 +462,8 @@ async fn psql_commands_against_a_real_server() {
     assert!(
         text.starts_with(
             "TYPE pgtc_ai.k AS ENUM ('a', 'b');\n\
-             TABLE pgtc_ai.t (\n  id integer NOT NULL GENERATED ALWAYS AS IDENTITY,\n  kind pgtc_ai.k NOT NULL DEFAULT 'a'::pgtc_ai.k,\n  PRIMARY KEY (id)\n);\n\
+             -- The t table\n\
+             TABLE pgtc_ai.t (\n  id integer NOT NULL GENERATED ALWAYS AS IDENTITY,\n  kind pgtc_ai.k NOT NULL DEFAULT 'a'::pgtc_ai.k, -- What kind\n  PRIMARY KEY (id)\n);\n\
              VIEW pgtc_ai.v (id integer);\n\
              FUNCTION pgtc_ai.f(p integer) RETURNS integer;\n\
              PROCEDURE pgtc_ai.pr("

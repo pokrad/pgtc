@@ -28,6 +28,9 @@ pub struct AiEvent {
 const NOT_SET_UP: &str = "AI is not set up (Settings → AI…)";
 const SCOPE_ALL: &str = "Whole database";
 const PROMPT_ROWS: u16 = 6;
+/// Above this many tokens the dialog warns (models and budgets have limits).
+const LARGE_TOKENS: usize = 100_000;
+const LARGE_NOTE: &str = "Large request: it may be refused or cost a lot. Try one schema as scope.";
 /// What the key field shows for a saved key (masked: eight stars).
 const SAVED_KEY: &str = "********";
 /// Label column of the AI settings dialog.
@@ -113,7 +116,7 @@ impl App {
             "Ask AI",
             76,
             vec![
-                Widget::memo("prompt", "&Prompt", "", PROMPT_ROWS),
+                Widget::memo("prompt", "&Prompt", &self.ai.draft, PROMPT_ROWS),
                 Widget::combo("scope", "Sc&ope:", vec![SCOPE_ALL.to_owned()], 0, 8),
                 Widget::label(""),
                 Widget::label_id("info", "Reading the structure…"),
@@ -205,7 +208,7 @@ impl App {
         };
         let scope = d.selected("scope").unwrap_or(0);
         // the size without the prompt: once for a scope (the structure may be large)
-        if self.ai.size.is_none_or(|(sc, _)| sc != scope) {
+        if self.ai.size.is_none_or(|(sc, _, _)| sc != scope) {
             let Some(ask) = self.ai_ask(d, tab, s, "") else {
                 return;
             };
@@ -216,24 +219,30 @@ impl App {
                 }
                 Some(_) => "",
             };
-            self.ai.size = Some((scope, ai::request_chars(&ask)));
-            if let Some(d) = self.dialogs.last_mut() {
-                d.set_label("note", note);
-            }
+            self.ai.size = Some((scope, ai::request_chars(&ask), note));
         }
-        let Some((_, chars)) = self.ai.size else {
+        let Some((_, chars, note)) = self.ai.size else {
             return;
         };
         let Some(d) = self.dialogs.last_mut() else {
             return;
         };
         let prompt = d.memo_text("prompt").map_or(0, |p| p.chars().count());
+        let tokens = ai::tokens(chars + prompt);
         let info = format!(
             "Sends about {} tokens to {} (no table data).",
-            group(ai::tokens(chars + prompt)),
+            group(tokens),
             ai::host(&self.settings.ai.base_url)
         );
         d.set_label("info", &info);
+        d.set_label(
+            "note",
+            if tokens > LARGE_TOKENS {
+                LARGE_NOTE
+            } else {
+                note
+            },
+        );
     }
 
     /// `↑` / `↓` in the prompt box when it is empty or shows an earlier prompt: the
@@ -302,6 +311,7 @@ impl App {
             self.ai.history.push(prompt.clone());
         }
         self.ai.structure = None;
+        self.ai.draft.clear();
         self.ai.next_id += 1;
         let id = self.ai.next_id;
         let abort = match self.ai.sink.clone() {
@@ -353,6 +363,7 @@ impl App {
         match event.result {
             Ok(answer) => {
                 let Some(i) = self.tab_index(run.tab) else {
+                    self.status = "The AI answer was dropped: its query tab is closed".to_owned();
                     return;
                 };
                 let mut text = ai::editor_insert(&run.prompt, &answer);
@@ -453,6 +464,10 @@ impl App {
             {
                 if let Some(p) = self.ai.completion.as_mut() {
                     let loading = items.is_none();
+                    // typed into: the list is used, Enter takes its entry
+                    if !prefix.is_empty() {
+                        p.auto = false;
+                    }
                     p.analysis.prefix = prefix;
                     p.set_items(items.unwrap_or_default(), loading);
                 }
@@ -490,10 +505,14 @@ impl App {
         if let Some(step) = step {
             if let Some(p) = self.ai.completion.as_mut() {
                 p.move_by(step);
+                p.auto = false;
             }
             return true;
         }
-        if matches!(cmd, Some(Command::Accept | Command::NextField)) {
+        // Enter in a list that opened by itself after a `.` and was not used yet is
+        // a new line (the sentence may just have ended with a name); Tab takes it
+        let unused = self.ai.completion.as_ref().is_some_and(|p| p.auto);
+        if cmd == Some(Command::NextField) || (cmd == Some(Command::Accept) && !unused) {
             self.accept_ai_completion();
             return true;
         }
@@ -507,6 +526,12 @@ impl App {
         }
         self.ai.completion = None;
         false
+    }
+
+    /// The `F8` dialog `d` is closed without sending: its prompt is kept for the next
+    /// one.
+    pub(super) fn keep_ai_draft(&mut self, d: &Dialog) {
+        self.ai.draft = d.memo_text("prompt").unwrap_or_default();
     }
 
     /// Puts the selected entry in place of the typed part of the name.

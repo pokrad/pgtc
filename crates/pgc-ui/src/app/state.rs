@@ -117,9 +117,12 @@ pub(super) struct AiState {
     /// The structure read for the open `F8` dialog of query tab `.0`, or why it
     /// could not be read.
     pub(super) structure: Option<(u64, Result<crate::ai::Structure, String>)>,
-    /// The scope the dialog's size was computed for, and the characters a request
-    /// sends with it and an empty prompt.
-    pub(super) size: Option<(usize, usize)>,
+    /// The scope the dialog's size was computed for, the characters a request sends
+    /// with it and an empty prompt, and the note about the editor text.
+    pub(super) size: Option<(usize, usize, &'static str)>,
+    /// The prompt of a dialog that was closed without sending: there again in the
+    /// next one.
+    pub(super) draft: String,
     /// Prompts of this session, oldest first, and the one shown (`↑` / `↓`).
     pub(super) history: Vec<String>,
     pub(super) history_pos: Option<usize>,

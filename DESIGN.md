@@ -2511,7 +2511,11 @@ pgtc (binary)
     base URL and a suggested model; every field stays editable, so a new provider
     that speaks one of the protocols needs no code change. Azure OpenAI is *later*.
   - HTTP through `reqwest` with rustls + `serde` (no provider SDKs, D-017). The
-    request runs in a tokio task; the UI never waits for it (D-006).
+    request runs in a tokio task; the UI never waits for it (D-006). Proxies from
+    the environment and the system settings are used; the key's header is marked
+    sensitive.
+  - Anthropic: the system prompt (instructions and structure) is sent with
+    `cache_control`, so repeated questions with the same scope use the prompt cache.
 - **Setup:** *Settings → AI…* — its own dialog (the Settings dialog must fit 24
   rows, D-051): Enabled, preset, protocol, base URL, model, API key.
   Stored in `settings.toml` under `[ai]` — **never the key itself**; the preset is
@@ -2541,7 +2545,9 @@ pgtc (binary)
   - the server version (so the SQL fits the server);
   - the database structure in compact text, not full DDL: tables, views and foreign
     tables with columns, types, NOT NULL, defaults, identity and generated columns
-    (as `GENERATED …`), primary / unique / foreign keys and checks;
+    (as `GENERATED …`), primary / unique / foreign keys and checks; the comments
+    (`COMMENT ON`) of relations, columns and routines, each as one line of at most
+    200 characters;
     function and procedure signatures; enum types; system schemas left out. Read
     through the query tab's connection with catalog SQL (`sql/ai/`);
   - the current editor text, if not empty; a selection is marked, so the model knows
@@ -2554,7 +2560,10 @@ pgtc (binary)
   (combo); a line *sends about N tokens to <host>* (the size of the whole request
   — instructions, structure, editor text, prompt — four characters a token; follows
   the scope and the prompt); Send / Cancel. A structure that could not be read:
-  Send shows the error. The prompts of the session are
+  Send shows the error. Above 100,000 tokens the note line warns (*Large request …
+  Try one schema as scope*); the request is still sent. `↑` / `↓` in the prompt box
+  move by the rows as shown. A prompt that was not sent (`Esc`, Cancel) is in the box
+  again in the next dialog. The prompts of the session are
   remembered (`↑` / `↓` in an empty box, like the `F4` history, D-054).
 - **Autocomplete in the prompt box** (D-052's list, from the structure read for the
   dialog — no extra queries): opened by `Ctrl+Space` / `Alt+/` and after a typed
@@ -2564,7 +2573,9 @@ pgtc (binary)
   that schema (name only); after `schema.table.` or `table.` (a name only one schema
   has): the columns. Quoted only when needed. The list does not follow the scope.
   `↑` / `↓` choose, typing filters, `Enter` / `Tab` take the entry, `Esc` closes only
-  the list; *loading…* until the structure is there.
+  the list; *loading…* until the structure is there. In a list that opened after a
+  `.` and was not used yet (no arrow key, no letter), `Enter` is a new line — the
+  sentence may have ended with a name; `Tab` takes the entry.
 - **While waiting:** the status line shows *Asking AI …*; `Esc` cancels the request
   (when no dialog, menu, template form or quick search is open — those take it).
   An error (HTTP status, provider message, no answer) is shown in an error dialog;
@@ -2739,3 +2750,4 @@ pgtc (binary)
 | 2026-11-18 | D-073 updated: autocomplete in the prompt box — `Ctrl+Space` / `Alt+/` and after `.`, names from the dialog's structure, objects schema-qualified, columns after `table.`; not limited by the scope. |
 | 2026-11-18 | D-035, D-014 updated: File → Edit connection… / Delete connection…; OK in Edit connection on a connected server applies a name / *AI not allowed* change at once, any other change disconnects (the usual questions; the server's tabs close) and connects again, the tree opening down to the selected object. |
 | 2026-11-18 | D-073 reviewed and corrected: `Esc` cancels a request only when nothing else takes it; `F8` refused with a paused result; a cut-off answer is marked with a comment; the saved key's stars go with the first change; identity and generated columns in the structure; a failed structure read is reported on Send; exact size estimate (with the prompt); the preset is not stored. |
+| 2026-11-18 | D-073 improved: comments (`COMMENT ON`) in the structure; Anthropic prompt cache for instructions and structure; a warning above 100,000 tokens; an unsent prompt is kept for the next dialog; `Enter` in an unused list that opened after `.` is a new line; `↑` / `↓` by shown rows in the prompt box; system proxy settings used; the key header marked sensitive. |

@@ -144,11 +144,15 @@ pub struct Column {
     /// `DEFAULT …`, `GENERATED … AS IDENTITY` or `GENERATED ALWAYS AS (…) STORED`, as
     /// the query wrote it; empty without one.
     pub extra: String,
+    /// `COMMENT ON COLUMN` (one line); empty without one.
+    pub comment: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Relation {
     pub kind: RelKind,
+    /// `COMMENT ON` (one line); empty without one.
+    pub comment: String,
     /// By attnum.
     pub columns: BTreeMap<i32, Column>,
     /// (contype, definition), primary key first, then unique, foreign keys, checks;
@@ -163,6 +167,7 @@ pub struct Routine {
     pub procedure: bool,
     pub args: String,
     pub result: String,
+    pub comment: String,
 }
 
 /// The database structure read by `sql/ai/default/structure.sql`.
@@ -189,6 +194,7 @@ impl Structure {
                             (r(1), r(2)),
                             Relation {
                                 kind,
+                                comment: r(8),
                                 columns: BTreeMap::new(),
                                 constraints: Vec::new(),
                             },
@@ -203,6 +209,7 @@ impl Structure {
                     procedure: r(3) == "p",
                     args: r(4),
                     result: r(5),
+                    comment: r(8),
                 }),
                 Some("e") => {
                     s.enums.insert((r(1), r(2)), r(3));
@@ -220,6 +227,7 @@ impl Structure {
                         ty: r(5),
                         not_null: r(6) == "true",
                         extra: r(7),
+                        comment: r(8),
                     },
                 );
             }
@@ -271,6 +279,9 @@ impl Structure {
                 continue;
             }
             let qualified = quote_qualified(&[s, name]);
+            if !rel.comment.is_empty() {
+                out.push_str(&format!("-- {}\n", rel.comment));
+            }
             if rel.kind.is_view() {
                 let cols: Vec<String> = rel
                     .columns
@@ -284,7 +295,8 @@ impl Structure {
                 ));
                 continue;
             }
-            let mut lines: Vec<String> = rel
+            // (line, comment)
+            let mut lines: Vec<(String, &str)> = rel
                 .columns
                 .values()
                 .map(|c| {
@@ -296,10 +308,10 @@ impl Structure {
                         l.push(' ');
                         l.push_str(&c.extra);
                     }
-                    l
+                    (l, c.comment.as_str())
                 })
                 .collect();
-            lines.extend(rel.constraints.iter().map(|(_, _, def)| def.clone()));
+            lines.extend(rel.constraints.iter().map(|(_, _, def)| (def.clone(), "")));
             let partitioned = if rel.kind == RelKind::PartitionedTable {
                 " -- partitioned"
             } else {
@@ -310,11 +322,15 @@ impl Structure {
                 rel.kind.keyword()
             ));
             let last = lines.len().saturating_sub(1);
-            for (i, l) in lines.iter().enumerate() {
+            for (i, (l, comment)) in lines.iter().enumerate() {
                 out.push_str("  ");
                 out.push_str(l);
                 if i < last {
                     out.push(',');
+                }
+                if !comment.is_empty() {
+                    out.push_str(" -- ");
+                    out.push_str(comment);
                 }
                 out.push('\n');
             }
@@ -323,13 +339,18 @@ impl Structure {
         for r in self.routines.iter().filter(|r| wanted(&r.schema)) {
             let qualified = quote_qualified(&[&r.schema, &r.name]);
             if r.procedure {
-                out.push_str(&format!("PROCEDURE {qualified}({});\n", r.args));
+                out.push_str(&format!("PROCEDURE {qualified}({});", r.args));
             } else {
                 out.push_str(&format!(
-                    "FUNCTION {qualified}({}) RETURNS {};\n",
+                    "FUNCTION {qualified}({}) RETURNS {};",
                     r.args, r.result
                 ));
             }
+            if !r.comment.is_empty() {
+                out.push_str(" -- ");
+                out.push_str(&r.comment);
+            }
+            out.push('\n');
         }
         out
     }
@@ -624,10 +645,17 @@ pub fn request(ai: &AiSettings, key: Option<&str>, ask: &Ask) -> Request {
                 protocol: ai.protocol,
                 url: format!("{base}/v1/messages"),
                 headers,
+                // the instructions and the structure are the same for every request of
+                // a session with the same scope: marked for the prompt cache, so
+                // further questions cost less and start sooner
                 body: json!({
                     "model": model,
                     "max_tokens": MAX_TOKENS,
-                    "system": system,
+                    "system": [{
+                        "type": "text",
+                        "text": system,
+                        "cache_control": {"type": "ephemeral"},
+                    }],
                     "messages": [{"role": "user", "content": user}],
                 }),
             }
@@ -763,7 +791,11 @@ pub async fn send(req: Request) -> Result<String, String> {
     let client = client()?;
     let mut builder = client.post(&req.url).json(&req.body);
     for (name, value) in &req.headers {
-        builder = builder.header(name.as_str(), value.as_str());
+        let mut value = reqwest::header::HeaderValue::from_str(value)
+            .map_err(|_| "The API key has characters that cannot be sent.".to_owned())?;
+        // the key: never shown by any logging of the request
+        value.set_sensitive(true);
+        builder = builder.header(name.as_str(), value);
     }
     let response = builder.send().await.map_err(|e| {
         if e.is_timeout() {
@@ -792,10 +824,20 @@ mod tests {
 
     fn sample() -> Structure {
         Structure::from_rows(vec![
-            row(&["r", "sales", "customer", "r", "", "", "", ""]),
+            row(&["r", "sales", "customer", "r", "", "", "", "", "Who buys"]),
             row(&["r", "sales", "v_customer", "v", "", "", "", ""]),
             row(&["r", "hr", "Employee", "p", "", "", "", ""]),
-            row(&["c", "sales", "customer", "2", "name", "text", "true", ""]),
+            row(&[
+                "c",
+                "sales",
+                "customer",
+                "2",
+                "name",
+                "text",
+                "true",
+                "",
+                "Full name",
+            ]),
             row(&[
                 "c",
                 "sales",
@@ -857,6 +899,7 @@ mod tests {
                 "numeric",
                 "",
                 "",
+                "Sum of orders",
             ]),
             row(&["e", "hr", "mood", "'happy', 'sad'", "", "", "", ""]),
         ])
@@ -871,16 +914,17 @@ mod tests {
             "TABLE hr.\"Employee\" ( -- partitioned",
             "  id bigint NOT NULL GENERATED ALWAYS AS IDENTITY",
             ");",
+            "-- Who buys",
             "TABLE sales.customer (",
             "  customer_id integer NOT NULL DEFAULT nextval('sales.customer_customer_id_seq'::regclass),",
-            "  name text NOT NULL,",
+            "  name text NOT NULL, -- Full name",
             "  territory_id integer,",
             "  PRIMARY KEY (customer_id),",
             "  FOREIGN KEY (territory_id) REFERENCES sales.territory(territory_id)",
             ");",
             "VIEW sales.v_customer (name text);",
             "PROCEDURE sales.add(IN p_name text);",
-            "FUNCTION sales.total(p_id integer) RETURNS numeric;",
+            "FUNCTION sales.total(p_id integer) RETURNS numeric; -- Sum of orders",
         ];
         assert_eq!(s.text(None), want.join("\n") + "\n");
         assert_eq!(s.text(Some("hr")).lines().count(), 4);
@@ -939,11 +983,12 @@ mod tests {
         assert_eq!(r.body["model"], "claude-sonnet-5-5");
         assert_eq!(r.body["max_tokens"], 8192);
         assert!(
-            r.body["system"]
+            r.body["system"][0]["text"]
                 .as_str()
                 .unwrap()
                 .contains("TABLE public.t")
         );
+        assert_eq!(r.body["system"][0]["cache_control"]["type"], "ephemeral");
         let user = r.body["messages"][0]["content"].as_str().unwrap();
         assert_eq!(
             user,

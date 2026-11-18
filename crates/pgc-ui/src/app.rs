@@ -1494,6 +1494,7 @@ impl App {
                     return;
                 };
                 match d.kind {
+                    DialogKind::AskAi { .. } => self.keep_ai_draft(&d),
                     DialogKind::ConfirmProfilerSettings { tab } => self.profiler_answer(tab, false),
                     // the next file dialog starts in the folder again (D-070)
                     DialogKind::OpenFile
@@ -1528,6 +1529,7 @@ impl App {
                     (DialogKind::Settings, Button::Ok) => self.apply_settings(dialog),
                     (DialogKind::AiSettings, Button::Ok) => self.apply_ai_settings(dialog),
                     (DialogKind::AskAi { tab }, Button::Ok) => self.ask_ai(dialog, tab),
+                    (DialogKind::AskAi { .. }, Button::Cancel) => self.keep_ai_draft(&dialog),
                     (DialogKind::FindObject, Button::Ok) => self.find_chosen(dialog),
                     (DialogKind::PsqlCommand, Button::Ok) => {
                         let text = dialog.text("cmd").unwrap_or("").to_owned();

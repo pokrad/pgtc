@@ -1016,12 +1016,47 @@ impl Dialog {
                 return DialogEvent::None;
             }
         }
+        // Up / Down by the rows as they are shown (the text wraps)
+        if matches!(cmd, Some(Command::Up | Command::Down))
+            && !ev.modifiers.contains(KeyModifiers::SHIFT)
+            && self.memo_row_step(cmd == Some(Command::Down))
+        {
+            return DialogEvent::None;
+        }
         if cmd == Some(Command::Accept) {
             self.memo_apply(Action::Insert("\n".to_owned()));
         } else if let Some(action) = editor {
             self.memo_apply(action);
         }
         DialogEvent::None
+    }
+
+    /// Moves the cursor of the focused memo one shown row up or down, keeping its
+    /// column; false when there is no such row.
+    fn memo_row_step(&mut self, down: bool) -> bool {
+        let width = self.width.saturating_sub(CHROME_X + 2) as usize;
+        let Some(WidgetKind::Memo { editor, .. }) =
+            self.widgets.get_mut(self.focus).map(|w| &mut w.kind)
+        else {
+            return false;
+        };
+        let e = &mut editor.0;
+        let chars: Vec<char> = e.text().chars().collect();
+        let rows = wrap_rows(&chars, width);
+        let (row, col) = memo_cursor(&rows, e.cursor());
+        let target = if down { row + 1 } else { row.wrapping_sub(1) };
+        let Some(&(from, to)) = rows.get(target) else {
+            return false;
+        };
+        // the end of a wrapped row is the start of the next one: stay before it
+        let wrapped = rows.get(target + 1).is_some_and(|next| next.0 == to);
+        let last = if wrapped {
+            (to - from).saturating_sub(1)
+        } else {
+            to - from
+        };
+        e.set_cursor(from + col.min(last), false);
+        true
     }
 
     fn memo_apply(&mut self, action: Action) {

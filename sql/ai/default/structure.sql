@@ -1,6 +1,7 @@
 -- AI assistant (F8, D-073): the structure of the database sent with a prompt — no
 -- data. System schemas, partitions and the objects of extensions are left out.
--- No parameters. All rows text, eight columns; the first says what the row is:
+-- No parameters. All rows text, nine columns; the first says what the row is, the
+-- last is the object's comment (COMMENT ON; one line, at most 200 characters):
 --   'r', schema, name, relkind ('r' table, 'p' partitioned table, 'v' view,
 --        'm' materialized view, 'f' foreign table)
 --   'c', schema, relation, attnum, column, type, NOT NULL ('true' / 'false'), the
@@ -31,7 +32,8 @@ WITH n AS (
         )
 )
 SELECT 'r'::text, rel.nspname::text, rel.relname::text, rel.relkind::text,
-    ''::text, ''::text, ''::text, ''::text
+    ''::text, ''::text, ''::text, ''::text,
+    pg_catalog.left(pg_catalog.regexp_replace(coalesce(pg_catalog.obj_description(rel.oid, 'pg_class'), ''), '[[:space:]]+', ' ', 'g'), 200)
 FROM rel
 UNION ALL
 SELECT 'c', rel.nspname::text, rel.relname::text, a.attnum::text, a.attname::text,
@@ -46,21 +48,23 @@ SELECT 'c', rel.nspname::text, rel.relname::text, a.attnum::text, a.attname::tex
 {% endif %}
         WHEN d.adbin IS NOT NULL THEN 'DEFAULT ' || pg_catalog.pg_get_expr(d.adbin, d.adrelid)
         ELSE ''
-    END
+    END,
+    pg_catalog.left(pg_catalog.regexp_replace(coalesce(pg_catalog.col_description(a.attrelid, a.attnum), ''), '[[:space:]]+', ' ', 'g'), 200)
 FROM rel
 JOIN pg_catalog.pg_attribute a
     ON a.attrelid = rel.oid AND a.attnum > 0 AND NOT a.attisdropped
 LEFT JOIN pg_catalog.pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
 UNION ALL
 SELECT 'k', rel.nspname::text, rel.relname::text, con.conname::text, con.contype::text,
-    pg_catalog.pg_get_constraintdef(con.oid, true), '', ''
+    pg_catalog.pg_get_constraintdef(con.oid, true), '', '', ''
 FROM rel
 JOIN pg_catalog.pg_constraint con
     ON con.conrelid = rel.oid AND con.contype IN ('p', 'u', 'f', 'c')
 UNION ALL
 SELECT 'f', n.nspname::text, p.proname::text, p.prokind::text,
     pg_catalog.pg_get_function_identity_arguments(p.oid),
-    coalesce(pg_catalog.pg_get_function_result(p.oid), ''), '', ''
+    coalesce(pg_catalog.pg_get_function_result(p.oid), ''), '', '',
+    pg_catalog.left(pg_catalog.regexp_replace(coalesce(pg_catalog.obj_description(p.oid, 'pg_proc'), ''), '[[:space:]]+', ' ', 'g'), 200)
 FROM pg_catalog.pg_proc p
 JOIN n ON n.oid = p.pronamespace
 WHERE p.prokind IN ('f', 'p')
@@ -70,7 +74,7 @@ WHERE p.prokind IN ('f', 'p')
     )
 UNION ALL
 SELECT 'e', n.nspname::text, t.typname::text,
-    string_agg(quote_literal(e.enumlabel), ', ' ORDER BY e.enumsortorder), '', '', '', ''
+    string_agg(quote_literal(e.enumlabel), ', ' ORDER BY e.enumsortorder), '', '', '', '', ''
 FROM pg_catalog.pg_type t
 JOIN n ON n.oid = t.typnamespace
 JOIN pg_catalog.pg_enum e ON e.enumtypid = t.oid

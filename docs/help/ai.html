@@ -75,9 +75,9 @@ It works only when</p>
 <p>The dialog opens at once; meanwhile pgtc reads the database structure through the tab's connection.</p>
 <div class="tablewrap"><table>
 <tr><th>Part</th><th>Keys</th><th>What it does</th></tr>
-<tr><td class="k"><span class="ui">Prompt</span></td><td class="k"><kbd>Alt+P</kbd></td><td>What you need, in your words. The text wraps; <kbd>Enter</kbd> starts a new line, <kbd>Tab</kbd> leaves the box. In an empty box <kbd>↑</kbd> / <kbd>↓</kbd> bring back the prompts of this session.</td></tr>
+<tr><td class="k"><span class="ui">Prompt</span></td><td class="k"><kbd>Alt+P</kbd></td><td>What you need, in your words. The text wraps; <kbd>Enter</kbd> starts a new line, <kbd>Tab</kbd> leaves the box; <kbd>↑</kbd> / <kbd>↓</kbd> move by the rows as you see them. In an empty box <kbd>↑</kbd> / <kbd>↓</kbd> bring back the prompts of this session. A prompt you did not send — the dialog closed with <kbd>Esc</kbd> or <span class="ui">Cancel</span> — is there again the next time.</td></tr>
 <tr><td class="k"><span class="ui">Scope</span></td><td class="k"><kbd>Alt+O</kbd></td><td><i>Whole database</i>, or <i>Schema …</i> to send the structure of one schema only — smaller and cheaper for large databases.</td></tr>
-<tr><td class="k">The info line</td><td></td><td><i>Sends about N tokens to host</i>: an estimate of the size of everything that is sent, and where it goes. It follows the scope and the prompt.</td></tr>
+<tr><td class="k">The info line</td><td></td><td><i>Sends about N tokens to host</i>: an estimate of the size of everything that is sent, and where it goes. It follows the scope and the prompt. Above about 100,000 tokens the line below warns: <i>Large request: it may be refused or cost a lot. Try one schema as scope.</i></td></tr>
 <tr><td class="k"><span class="ui">Send</span></td><td class="k"><kbd>Alt+S</kbd>, <kbd>Ctrl+Enter</kbd></td><td>Sends the request. An empty prompt is refused; while the structure is still being read, the dialog stays.</td></tr>
 <tr><td class="k"><span class="ui">Cancel</span></td><td class="k"><kbd>Esc</kbd></td><td>Closes the dialog; nothing is sent.</td></tr>
 </table></div>
@@ -98,6 +98,9 @@ extra queries:</p>
   <li>It does <b>not</b> open by itself while you type words — in a sentence that would get in the way.</li>
   <li><kbd>↑</kbd> / <kbd>↓</kbd> choose, typing narrows the list, <kbd>Enter</kbd> or <kbd>Tab</kbd> puts the name in
       (no new line), <kbd>Esc</kbd> closes only the list.</li>
+  <li>One exception: in a list that opened by itself after a <kbd>.</kbd> and that you have not used yet — no
+      arrow key, no letter typed — <kbd>Enter</kbd> is a new line, because your sentence may simply have ended with a
+      table name. <kbd>Tab</kbd> takes the entry there too.</li>
   <li>Names that need quotes get them (<code>hr."Employee"</code>). The list offers every schema, whatever the
       <span class="ui">Scope</span> says.</li>
   <li>Before the structure has been read, the list shows <i>loading…</i> and fills in when it arrives.</li>
@@ -113,7 +116,9 @@ sales.customer_history”</i>, <i>“Rewrite the selected query without the subq
   <li><b>The structure</b> of the database (or the chosen schema) as compact text: tables, views, materialized views
       and foreign tables with their columns, types, <code>NOT NULL</code>, defaults, identity and generated columns (so the model knows which values the database
       fills in itself), primary, unique and foreign keys
-      and checks; the signatures of functions and procedures; enum types. System schemas, partitions and the
+      and checks; the signatures of functions and procedures; enum types; and the <b>comments</b>
+      (<code>COMMENT ON</code>) of tables, views, columns and functions, each as one line — they tell the model
+      what your names mean, so a well-commented database gets better answers. System schemas, partitions and the
       objects of extensions are left out.</li>
   <li><b>The text of the editor</b>, when it is not empty. A <b>selection</b> is marked, so the model knows which part
       you mean — and its answer replaces that part. A text longer than 50,000 characters is cut to the whole lines
@@ -121,7 +126,11 @@ sales.customer_history”</i>, <i>“Rewrite the selected query without the subq
   <li><b>Your prompt</b>, with fixed instructions: PostgreSQL SQL only, explanations as <code>--</code> comments.</li>
 </ul>
 <p><b>Never table data</b>: no rows, no statistics, no results. The request goes straight from pgtc to the base URL
-you set — there is no pgtc server in between.</p>
+you set — there is no pgtc server in between. A proxy set in the environment (<code>HTTPS_PROXY</code>) or in the
+system's proxy settings is used.</p>
+<p>With Claude, the instructions and the structure are marked for the provider's <b>prompt cache</b>: further questions
+with the same scope within a few minutes cost a fraction of the first and start sooner. (OpenAI-compatible services
+that cache do it by themselves.)</p>
 
 <h2 id="wait">Waiting, cancelling, errors</h2>
 <figure>
