@@ -31,7 +31,8 @@ yourself with <kbd>F5</kbd>.</p>
 <tr><td class="k"><span class="ui">Preset</span></td><td>Fills in protocol, base URL and model for a known provider (table below). Every field stays editable; <i>(custom)</i> leaves them as they are.</td></tr>
 <tr><td class="k"><span class="ui">Protocol</span></td><td>The request format: <b>OpenAI-compatible</b> (<code>POST {base URL}/chat/completions</code>) or <b>Anthropic</b> (<code>POST {base URL}/v1/messages</code>).</td></tr>
 <tr><td class="k"><span class="ui">Base URL</span></td><td>Where the requests go. Required when the assistant is enabled.</td></tr>
-<tr><td class="k"><span class="ui">Model</span></td><td>The model name the provider expects. Required. Providers bring out new models often — use any name your account offers.</td></tr>
+<tr><td class="k"><span class="ui">Model</span></td><td>A list of the models <b>your account offers, read from the provider</b> — you do not need to know any model name. The list is read when the dialog opens and again when you change the preset, the base URL or the key (after you leave that field); the line below it says how many models were read, or why they could not be. Claude's models show their names (<i>Claude Sonnet 5.5</i>), newest first. The last entry, <span class="ui">Other…</span>, lets you type a name by hand — for a service that publishes no list. Required. This is the model the <kbd>F8</kbd> dialog starts with.</td></tr>
+<tr><td class="k"><span class="ui">Effort</span></td><td>How much the model thinks before it answers: <i>Default</i> (nothing is sent — the model's own default), <i>Low</i>, <i>Medium</i>, <i>High</i>, <i>Extra high</i>, <i>Max</i>. More effort: better answers to hard requests, slower and more expensive. The <kbd>F8</kbd> dialog starts with this value.</td></tr>
 <tr><td class="k"><span class="ui">API key</span></td><td>The key from your provider's console. Type it, or paste it with your terminal's paste (e.g. a right click, or <kbd>Ctrl+Shift+V</kbd>), and press OK. A saved key shows as <code>********</code>:
   <ul>
     <li>leave the stars as they are — the key stays;</li>
@@ -40,6 +41,13 @@ yourself with <kbd>F5</kbd>.</p>
   </ul>
   Empty: no key is sent (local servers such as Ollama need none).</td></tr>
 </table></div>
+<figure class="small">
+  <img src="img/ai-models.svg" alt="The list of the provider's models" loading="lazy">
+  <figcaption>The <span class="ui">Model</span> list, read from the provider with the URL and key in the dialog.</figcaption>
+</figure>
+<p>So for a new provider: choose the preset, type the key, leave the field — the models appear; choose one, tick
+<span class="ui">Enabled</span>, press OK. OK also saves the list of models that was read: it is what the
+<kbd>F8</kbd> dialog offers. To see models the provider has added since, open this dialog again and press OK.</p>
 <p>The key is saved in its own file, <code>ai_key</code>, in pgtc's config folder next to <code>settings.toml</code>
 (<a href="reference.html#files">Reference → Files and folders</a>) — on Linux and macOS readable only by you, like
 <code>.pgpass</code>. It is <b>not</b> in <code>settings.toml</code>, so you can copy or show that file without giving
@@ -77,6 +85,8 @@ It works only when</p>
 <tr><th>Part</th><th>Keys</th><th>What it does</th></tr>
 <tr><td class="k"><span class="ui">Prompt</span></td><td class="k"><kbd>Alt+P</kbd></td><td>What you need, in your words. The text wraps; <kbd>Enter</kbd> starts a new line, <kbd>Tab</kbd> leaves the box; <kbd>↑</kbd> / <kbd>↓</kbd> move by the rows as you see them. In an empty box <kbd>↑</kbd> / <kbd>↓</kbd> bring back the prompts of this session. A prompt you did not send — the dialog closed with <kbd>Esc</kbd> or <span class="ui">Cancel</span> — is there again the next time.</td></tr>
 <tr><td class="k"><span class="ui">Scope</span></td><td class="k"><kbd>Alt+O</kbd></td><td><i>Whole database</i>, or <i>Schema …</i> to send the structure of one schema only — smaller and cheaper for large databases.</td></tr>
+<tr><td class="k"><span class="ui">Model</span></td><td class="k"><kbd>Alt+M</kbd></td><td>The model for <b>this request</b>. It starts with the model of the settings; the list holds the models that <span class="menu">Settings → AI…</span> read and saved (nothing is read from the network here). Pick a small, fast model for a simple query, the strongest for a hard one.</td></tr>
+<tr><td class="k"><span class="ui">Effort</span></td><td class="k"><kbd>Alt+E</kbd></td><td>The effort for this request; it starts with the value of the settings. What you choose here does not change the settings.</td></tr>
 <tr><td class="k">The info line</td><td></td><td><i>Sends about N tokens to host</i>: an estimate of the size of everything that is sent, and where it goes. It follows the scope and the prompt. Above about 100,000 tokens the line below warns: <i>Large request: it may be refused or cost a lot. Try one schema as scope.</i></td></tr>
 <tr><td class="k"><span class="ui">Send</span></td><td class="k"><kbd>Alt+S</kbd>, <kbd>Ctrl+Enter</kbd></td><td>Sends the request. An empty prompt is refused; while the structure is still being read, the dialog stays.</td></tr>
 <tr><td class="k"><span class="ui">Cancel</span></td><td class="k"><kbd>Esc</kbd></td><td>Closes the dialog; nothing is sent.</td></tr>
@@ -187,6 +197,7 @@ provider's terms for what it keeps.</p>
 <tr><th>Message</th><th>Cause</th><th>What to do</th></tr>
 <tr><td><i>HTTP 401</i> / <i>HTTP 403</i></td><td>No key is saved, or the key is wrong, expired, or not allowed to use the model.</td><td>Check the key in your provider's console and enter it again in <span class="menu">Settings → AI…</span>.</td></tr>
 <tr><td><i>HTTP 404</i> / <i>model not found</i></td><td>The base URL or the model name is wrong.</td><td>Compare them with your provider's documentation; mind the protocol.</td></tr>
+<tr><td>An error that names <i>effort</i>, <i>output_config</i> or <i>reasoning_effort</i></td><td>The chosen model does not take an effort setting (some older and some local models).</td><td>Choose <i>Default</i> as the effort.</td></tr>
 <tr><td><i>HTTP 429</i></td><td>Too many requests, or the account has no credit left.</td><td>Wait, or check your plan.</td></tr>
 <tr><td><i>Could not connect to …</i></td><td>No network, a proxy, or a local server that is not running.</td><td>Start the local server; check the base URL.</td></tr>
 <tr><td>The answer ends with <i>-- (the answer was cut off here: it reached the model's length limit)</i></td><td>Very long answers stop at the model's limit; pgtc marks it, because a half statement must not be run as it is.</td><td>Ask for less at once — one function per request.</td></tr>

@@ -3020,12 +3020,21 @@ async fn help_screenshots() {
         .unwrap()
         .set_combo_selected("preset", 1);
     a.update(Msg::Tick, &Hits::default());
+    // the provider's models, as read from its list
+    a.on_ai_models(crate::app::AiModels {
+        url: "https://api.anthropic.com".into(),
+        result: Ok(ai_models()),
+    });
     let d = a.dialogs.last_mut().unwrap();
     if let Some(i) = d.widgets.iter().position(|w| w.id == "enabled") {
         d.focus = i;
     }
     key(&mut a, "Space");
     out.shot("ai-settings", &a, Crop::Dialog);
+    // the model combo, open
+    key(&mut a, "Alt+M");
+    key(&mut a, "Space");
+    out.shot("ai-models", &a, Crop::Dialog);
 
     let (mut a, _d, ids) = scene();
     short_tree(&mut a, ids);
@@ -3037,6 +3046,8 @@ async fn help_screenshots() {
         protocol: pgc_core::settings::AiProtocol::Anthropic,
         base_url: "https://api.anthropic.com".into(),
         model: "claude-sonnet-5-5".into(),
+        effort: Default::default(),
+        models: ai_models(),
     };
     key(&mut a, "F8");
     let lookup = *a
@@ -3082,6 +3093,8 @@ async fn help_screenshots() {
         protocol: pgc_core::settings::AiProtocol::Anthropic,
         base_url: "https://api.anthropic.com".into(),
         model: "claude-sonnet-5-5".into(),
+        effort: Default::default(),
+        models: ai_models(),
     };
     key(&mut a, "F8");
     let lookup = *a
@@ -3453,6 +3466,18 @@ async fn ai_live_sample() {
     let paths = pgc_core::paths::Paths::from_os().unwrap();
     let settings = pgc_core::settings::Settings::load(&paths.settings_file()).unwrap();
     let key = crate::ai::api_key(&paths.ai_key_file());
+    let mut settings = settings;
+    // PGTC_AI_LIVE=models: the provider's list of models, then a request with a
+    // chosen model and effort
+    if std::env::var("PGTC_AI_LIVE").as_deref() == Ok("models") {
+        let request = crate::ai::models_request(&settings.ai, key.as_deref());
+        let list = crate::ai::fetch_models(request).await.unwrap();
+        for m in &list {
+            println!("MODEL {} = {}", m.id, m.name);
+        }
+        settings.ai.model = "claude-haiku-5-5".into();
+        settings.ai.effort = pgc_core::settings::AiEffort::Low;
+    }
     // PGTC_AI_LIVE=trigger: the second sample (an empty editor)
     let (prompt, editor) = match std::env::var("PGTC_AI_LIVE").as_deref() {
         Ok("trigger") => (AI_TRIGGER_PROMPT, ""),
@@ -3475,4 +3500,22 @@ async fn ai_live_sample() {
         Ok(answer) => println!("=====ANSWER=====\n{answer}\n=====END====="),
         Err(e) => panic!("{e}"),
     }
+}
+
+/// Models as Anthropic's list names them (a part of the list of 2026-11-18).
+fn ai_models() -> Vec<pgc_core::settings::AiModel> {
+    [
+        ("claude-fable-5-2", "Claude Fable 5.2"),
+        ("claude-opus-5-5", "Claude Opus 5.5"),
+        ("claude-sonnet-5-5", "Claude Sonnet 5.5"),
+        ("claude-haiku-5-5", "Claude Haiku 5.5"),
+        ("claude-opus-5", "Claude Opus 5"),
+        ("claude-sonnet-5", "Claude Sonnet 5"),
+    ]
+    .iter()
+    .map(|(id, name)| pgc_core::settings::AiModel {
+        id: (*id).to_owned(),
+        name: (*name).to_owned(),
+    })
+    .collect()
 }

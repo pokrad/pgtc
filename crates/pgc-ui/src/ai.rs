@@ -8,7 +8,7 @@
 use std::collections::BTreeMap;
 
 use pgc_core::quote::{quote_ident, quote_qualified};
-use pgc_core::settings::{AiProtocol, AiSettings};
+use pgc_core::settings::{AiEffort, AiModel, AiProtocol, AiSettings};
 use serde_json::{Value, json};
 
 /// Editor text above this many characters is cut to the part around the cursor.
@@ -20,8 +20,8 @@ pub const SELECTION_END: &str = "<<<END SELECTION>>>";
 
 /// Version of the Anthropic API the request is written for.
 const ANTHROPIC_VERSION: &str = "2023-06-01";
-/// Longest answer asked for (Anthropic needs a limit).
-const MAX_TOKENS: u32 = 8192;
+/// Longest answer asked for (Anthropic needs a limit; thinking counts in it).
+const MAX_TOKENS: u32 = 16_000;
 
 // ---- presets ------------------------------------------------------------------------
 
@@ -605,59 +605,162 @@ pub fn request_chars(ask: &Ask) -> usize {
 /// Added to an answer that stopped at the model's length limit.
 pub const CUT_OFF: &str = "-- (the answer was cut off here: it reached the model's length limit)";
 
-/// An HTTP request, ready for [`send`].
+/// An HTTP request, ready for [`send`] / [`fetch_models`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct Request {
     pub protocol: AiProtocol,
     pub url: String,
     /// Headers besides `content-type`; the key is in here.
     pub headers: Vec<(String, String)>,
+    /// `Null`: a GET request.
     pub body: Value,
 }
 
-/// The request of `ai`'s protocol for `ask`.
-pub fn request(ai: &AiSettings, key: Option<&str>, ask: &Ask) -> Request {
-    let base = ai.base_url.trim().trim_end_matches('/');
-    let system = system_prompt(ask);
-    let user = user_prompt(ask);
-    let model = ai.model.trim();
-    match ai.protocol {
-        AiProtocol::OpenaiCompatible => Request {
-            protocol: ai.protocol,
-            url: format!("{base}/chat/completions"),
-            headers: key
-                .map(|k| vec![("authorization".to_owned(), format!("Bearer {k}"))])
-                .unwrap_or_default(),
-            body: json!({
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
-            }),
-        },
+/// The headers with the key (and the API version) of `protocol`.
+fn auth_headers(protocol: AiProtocol, key: Option<&str>) -> Vec<(String, String)> {
+    match protocol {
+        AiProtocol::OpenaiCompatible => key
+            .map(|k| vec![("authorization".to_owned(), format!("Bearer {k}"))])
+            .unwrap_or_default(),
         AiProtocol::Anthropic => {
             let mut headers = vec![("anthropic-version".to_owned(), ANTHROPIC_VERSION.to_owned())];
             if let Some(k) = key {
                 headers.push(("x-api-key".to_owned(), k.to_owned()));
             }
+            headers
+        }
+    }
+}
+
+/// The request for the provider's list of models.
+pub fn models_request(ai: &AiSettings, key: Option<&str>) -> Request {
+    let base = ai.base_url.trim().trim_end_matches('/');
+    Request {
+        protocol: ai.protocol,
+        url: match ai.protocol {
+            AiProtocol::OpenaiCompatible => format!("{base}/models"),
+            AiProtocol::Anthropic => format!("{base}/v1/models?limit=1000"),
+        },
+        headers: auth_headers(ai.protocol, key),
+        body: Value::Null,
+    }
+}
+
+/// The models of a model list response (`{"data": [{"id": …}]}` in both protocols;
+/// Anthropic adds `display_name` and `created_at`, OpenAI-compatible services
+/// `created`), newest first — by name where no date is given; or the provider's
+/// error.
+pub fn models(status: u16, body: &str) -> Result<Vec<AiModel>, String> {
+    let json: Option<Value> = serde_json::from_str(body).ok();
+    if !(200..300).contains(&status) {
+        let detail = json
+            .as_ref()
+            .and_then(|j| j.pointer("/error/message").and_then(Value::as_str))
+            .map_or_else(|| body.chars().take(300).collect(), str::to_owned);
+        return Err(format!("The AI service answered HTTP {status}: {detail}"));
+    }
+    // (when it was made — a text that sorts by time —, the model)
+    let mut list: Vec<(String, AiModel)> = json
+        .as_ref()
+        .and_then(|j| j.get("data"))
+        .and_then(Value::as_array)
+        .map(|d| {
+            d.iter()
+                .filter_map(|m| {
+                    let id = m.get("id").and_then(Value::as_str)?;
+                    let made = match (m.get("created_at"), m.get("created")) {
+                        (Some(Value::String(t)), _) => t.clone(),
+                        (_, Some(Value::Number(n))) => format!("{:020}", n.as_u64().unwrap_or(0)),
+                        _ => String::new(),
+                    };
+                    let name = m
+                        .get("display_name")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_owned();
+                    Some((
+                        made,
+                        AiModel {
+                            id: id.to_owned(),
+                            name,
+                        },
+                    ))
+                })
+                .collect()
+        })
+        .ok_or("The AI service sent no list of models.")?;
+    list.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.id.cmp(&b.1.id)));
+    let mut out: Vec<AiModel> = list.into_iter().map(|(_, m)| m).collect();
+    out.dedup_by(|a, b| a.id == b.id);
+    if out.is_empty() {
+        return Err("The AI service lists no models.".to_owned());
+    }
+    Ok(out)
+}
+
+/// The request of `ai`'s protocol for `ask`, with `ai`'s model and effort.
+pub fn request(ai: &AiSettings, key: Option<&str>, ask: &Ask) -> Request {
+    let base = ai.base_url.trim().trim_end_matches('/');
+    let system = system_prompt(ask);
+    let user = user_prompt(ask);
+    let model = ai.model.trim();
+    let headers = auth_headers(ai.protocol, key);
+    match ai.protocol {
+        AiProtocol::OpenaiCompatible => {
+            let mut body = json!({
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+            });
+            // (low / medium / high here: the two top levels are sent as high)
+            let effort = match ai.effort {
+                AiEffort::Default => None,
+                AiEffort::Low => Some("low"),
+                AiEffort::Medium => Some("medium"),
+                AiEffort::High | AiEffort::Xhigh | AiEffort::Max => Some("high"),
+            };
+            if let Some(e) = effort {
+                body["reasoning_effort"] = json!(e);
+            }
+            Request {
+                protocol: ai.protocol,
+                url: format!("{base}/chat/completions"),
+                headers,
+                body,
+            }
+        }
+        AiProtocol::Anthropic => {
+            // the instructions and the structure are the same for every request of
+            // a session with the same scope: marked for the prompt cache, so
+            // further questions cost less and start sooner
+            let mut body = json!({
+                "model": model,
+                "max_tokens": MAX_TOKENS,
+                "system": [{
+                    "type": "text",
+                    "text": system,
+                    "cache_control": {"type": "ephemeral"},
+                }],
+                "messages": [{"role": "user", "content": user}],
+            });
+            let effort = match ai.effort {
+                AiEffort::Default => None,
+                AiEffort::Low => Some("low"),
+                AiEffort::Medium => Some("medium"),
+                AiEffort::High => Some("high"),
+                AiEffort::Xhigh => Some("xhigh"),
+                AiEffort::Max => Some("max"),
+            };
+            if let Some(e) = effort {
+                body["output_config"] = json!({"effort": e});
+            }
             Request {
                 protocol: ai.protocol,
                 url: format!("{base}/v1/messages"),
                 headers,
-                // the instructions and the structure are the same for every request of
-                // a session with the same scope: marked for the prompt cache, so
-                // further questions cost less and start sooner
-                body: json!({
-                    "model": model,
-                    "max_tokens": MAX_TOKENS,
-                    "system": [{
-                        "type": "text",
-                        "text": system,
-                        "cache_control": {"type": "ephemeral"},
-                    }],
-                    "messages": [{"role": "user", "content": user}],
-                }),
+                body,
             }
         }
     }
@@ -786,10 +889,15 @@ fn client() -> Result<reqwest::Client, String> {
         .map_err(|e| e.to_string())
 }
 
-/// Sends `req`; the answer text or an error text for the user.
-pub async fn send(req: Request) -> Result<String, String> {
+/// Sends `req` (a GET when it has no body); the status and the body of the answer,
+/// or an error text for the user.
+async fn transport(req: &Request) -> Result<(u16, String), String> {
     let client = client()?;
-    let mut builder = client.post(&req.url).json(&req.body);
+    let mut builder = if req.body.is_null() {
+        client.get(&req.url)
+    } else {
+        client.post(&req.url).json(&req.body)
+    };
     for (name, value) in &req.headers {
         let mut value = reqwest::header::HeaderValue::from_str(value)
             .map_err(|_| "The API key has characters that cannot be sent.".to_owned())?;
@@ -811,7 +919,19 @@ pub async fn send(req: Request) -> Result<String, String> {
         .text()
         .await
         .map_err(|e| format!("Reading the AI answer failed: {e}"))?;
+    Ok((status, body))
+}
+
+/// Sends `req`; the answer text or an error text for the user.
+pub async fn send(req: Request) -> Result<String, String> {
+    let (status, body) = transport(&req).await?;
     answer(req.protocol, status, &body)
+}
+
+/// Sends a [`models_request`]; the model names or an error text for the user.
+pub async fn fetch_models(req: Request) -> Result<Vec<AiModel>, String> {
+    let (status, body) = transport(&req).await?;
+    models(status, &body)
 }
 
 #[cfg(test)]
@@ -975,13 +1095,15 @@ mod tests {
             protocol: AiProtocol::Anthropic,
             base_url: "https://api.anthropic.com/".into(),
             model: "claude-sonnet-5-5".into(),
+            effort: Default::default(),
+            models: Vec::new(),
         };
         let r = request(&ai, Some("k1"), &ask());
         assert_eq!(r.url, "https://api.anthropic.com/v1/messages");
         assert!(r.headers.contains(&("x-api-key".into(), "k1".into())));
         assert!(r.headers.iter().any(|h| h.0 == "anthropic-version"));
         assert_eq!(r.body["model"], "claude-sonnet-5-5");
-        assert_eq!(r.body["max_tokens"], 8192);
+        assert_eq!(r.body["max_tokens"], 16000);
         assert!(
             r.body["system"][0]["text"]
                 .as_str()
@@ -1004,6 +1126,77 @@ mod tests {
         assert_eq!(r.body["messages"][1]["role"], "user");
         let r = request(&ai, Some("k2"), &ask());
         assert_eq!(r.headers, [("authorization".into(), "Bearer k2".into())]);
+    }
+
+    #[test]
+    fn effort_and_model_lists() {
+        let mut ai = AiSettings {
+            enabled: true,
+            protocol: AiProtocol::Anthropic,
+            base_url: "https://api.anthropic.com".into(),
+            model: "claude-opus-5-5".into(),
+            effort: AiEffort::Default,
+            models: Vec::new(),
+        };
+        // the default: nothing is sent
+        let r = request(&ai, None, &ask());
+        assert!(r.body.get("output_config").is_none());
+        assert_eq!(r.body["max_tokens"], 16000);
+        ai.effort = AiEffort::Xhigh;
+        let r = request(&ai, None, &ask());
+        assert_eq!(r.body["output_config"]["effort"], "xhigh");
+        assert_eq!(r.body["model"], "claude-opus-5-5");
+        let m = models_request(&ai, Some("k"));
+        assert_eq!(m.url, "https://api.anthropic.com/v1/models?limit=1000");
+        assert!(m.body.is_null());
+        assert!(m.headers.contains(&("x-api-key".into(), "k".into())));
+
+        ai.protocol = AiProtocol::OpenaiCompatible;
+        ai.base_url = "http://localhost:11434/v1/".into();
+        let r = request(&ai, None, &ask());
+        assert_eq!(
+            r.body["reasoning_effort"], "high",
+            "the top levels are high"
+        );
+        ai.effort = AiEffort::Low;
+        assert_eq!(request(&ai, None, &ask()).body["reasoning_effort"], "low");
+        ai.effort = AiEffort::Default;
+        assert!(
+            request(&ai, None, &ask())
+                .body
+                .get("reasoning_effort")
+                .is_none()
+        );
+        assert_eq!(
+            models_request(&ai, None).url,
+            "http://localhost:11434/v1/models"
+        );
+
+        // Anthropic: names for people, newest first
+        let list = r#"{"data":[
+            {"id":"claude-opus-4-8","display_name":"Claude Opus 4.8","created_at":"2026-03-01T00:00:00Z"},
+            {"id":"claude-sonnet-5-5","display_name":"Claude Sonnet 5.5","created_at":"2026-09-01T00:00:00Z"},
+            {"id":"claude-haiku-5-5","display_name":"Claude Haiku 5.5","created_at":"2026-09-01T00:00:00Z"}
+        ],"has_more":false}"#;
+        let got = models(200, list).unwrap();
+        let labels: Vec<&str> = got.iter().map(AiModel::label).collect();
+        assert_eq!(
+            labels,
+            ["Claude Haiku 5.5", "Claude Sonnet 5.5", "Claude Opus 4.8"]
+        );
+        assert_eq!(got[0].id, "claude-haiku-5-5");
+        // OpenAI-compatible: ids only, `created` as a number; or no date at all
+        let list = r#"{"data":[{"id":"old","created":100},{"id":"new","created":2000}]}"#;
+        let got = models(200, list).unwrap();
+        assert_eq!((got[0].label(), got[1].label()), ("new", "old"));
+        let list = r#"{"data":[{"id":"b"},{"id":"a"}]}"#;
+        assert_eq!(models(200, list).unwrap()[0].id, "a");
+        assert!(models(200, r#"{"data":[]}"#).is_err());
+        assert!(models(200, "nope").is_err());
+        assert_eq!(
+            models(401, r#"{"error":{"message":"invalid x-api-key"}}"#),
+            Err("The AI service answered HTTP 401: invalid x-api-key".into())
+        );
     }
 
     #[test]

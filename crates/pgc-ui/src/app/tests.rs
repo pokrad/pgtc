@@ -4393,6 +4393,8 @@ fn ai_on(a: &mut App) {
         protocol: pgc_core::settings::AiProtocol::Anthropic,
         base_url: "https://api.anthropic.com".into(),
         model: "claude-sonnet-5-5".into(),
+        effort: Default::default(),
+        models: Vec::new(),
     };
 }
 
@@ -4597,13 +4599,13 @@ fn ai_settings_dialog() {
     assert_eq!(d.text("url"), Some("https://api.anthropic.com"));
     assert_eq!(d.selected_combo_item("protocol"), Some("Anthropic"));
     // enabled without a model: refused
-    d.set_text("model", "");
+    a.ai.form_model.clear();
     key(&mut a, "Alt+E");
     key(&mut a, "Alt+O");
     assert_eq!(a.dialogs.len(), 2, "error over the dialog");
     key(&mut a, "Enter");
+    a.ai.form_model = "claude-opus-5-5".into();
     let d = a.dialogs.last_mut().unwrap();
-    d.set_text("model", "claude-opus-5-5");
     d.set_text("key", "sk-secret-1");
     key(&mut a, "Alt+O");
     assert!(
@@ -5057,4 +5059,151 @@ fn memo_up_and_down_follow_the_wrapped_rows() {
     key(&mut d, Command::Down);
     key(&mut d, Command::Down);
     assert_eq!(e(&d), 34 + 3);
+}
+
+/// Model and effort (D-073): Settings → AI… reads the provider's models into a combo
+/// (names for people, *Other…* for a name typed by hand) and saves them; the F8
+/// dialog offers exactly the saved ones — no network —, starting with the settings'
+/// model and effort, and what is chosen there goes into that request only.
+#[tokio::test]
+async fn ai_model_and_effort() {
+    use pgc_core::settings::{AiEffort, AiModel};
+    let (mut a, _d) = app();
+    let model = |id: &str, name: &str| AiModel {
+        id: id.into(),
+        name: name.into(),
+    };
+    let list = || {
+        vec![
+            model("claude-fable-5-2", "Claude Fable 5.2"),
+            model("claude-opus-5-5", "Claude Opus 5.5"),
+            model("claude-sonnet-5-5", "Claude Sonnet 5.5"),
+            model("claude-haiku-5-5", "Claude Haiku 5.5"),
+        ]
+    };
+    let tick = |a: &mut App| {
+        a.update(Msg::Tick, &Hits::default());
+    };
+    let combo = |a: &App, id: &str| {
+        a.dialogs
+            .last()
+            .unwrap()
+            .selected_combo_item(id)
+            .unwrap()
+            .to_owned()
+    };
+
+    // nothing set up: a hint in the model combo, nothing is read
+    a.run(Command::AiSettings);
+    tick(&mut a);
+    assert_eq!(combo(&a, "model"), "(fill in the base URL and the API key)");
+    assert!(a.ai.unsent_models.is_none());
+    // a preset: its suggested model, and the provider's list is asked for
+    a.dialogs
+        .last_mut()
+        .unwrap()
+        .set_combo_selected("preset", 1);
+    tick(&mut a);
+    assert_eq!(combo(&a, "model"), "claude-sonnet-5-5");
+    let req = a.ai.unsent_models.take().expect("the models are read");
+    assert_eq!(req.url, "https://api.anthropic.com/v1/models?limit=1000");
+    assert!(screen_text(&a).contains("Reading the models"));
+    // an answer for another URL is not for this dialog
+    a.on_ai_models(AiModels {
+        url: "https://other.example".into(),
+        result: Ok(vec![model("x", "")]),
+    });
+    assert_eq!(combo(&a, "model"), "claude-sonnet-5-5");
+    // the list: names for people, the suggested model chosen in it
+    a.on_ai_models(AiModels {
+        url: "https://api.anthropic.com".into(),
+        result: Ok(list()),
+    });
+    assert_eq!(combo(&a, "model"), "Claude Sonnet 5.5");
+    assert!(screen_text(&a).contains("4 models read from api.anthropic.com"));
+    // another model and an effort; saved with the list
+    let d = a.dialogs.last_mut().unwrap();
+    d.set_combo_selected("model", 3);
+    d.set_combo_selected("effort", 1);
+    tick(&mut a);
+    key(&mut a, "Alt+E");
+    key(&mut a, "Alt+O");
+    assert!(a.dialogs.is_empty());
+    assert_eq!(a.settings.ai.model, "claude-haiku-5-5");
+    assert_eq!(a.settings.ai.effort, AiEffort::Low);
+    assert_eq!(a.settings.ai.models, list());
+    let saved = std::fs::read_to_string(a.paths.settings_file()).unwrap();
+    assert!(saved.contains("[[ai.models]]"), "{saved}");
+    assert!(saved.contains("name = \"Claude Haiku 5.5\""), "{saved}");
+    let again = Settings::load(&a.paths.settings_file()).unwrap();
+    assert_eq!(again.ai, a.settings.ai);
+
+    // opened again: the saved list at once, and it is read again
+    a.run(Command::AiSettings);
+    assert_eq!(combo(&a, "model"), "Claude Haiku 5.5");
+    tick(&mut a);
+    assert!(a.ai.unsent_models.take().is_some());
+    // a key being typed: read only when the field is left
+    key(&mut a, "Alt+K");
+    typing(&mut a, "sk-1");
+    tick(&mut a);
+    assert!(a.ai.unsent_models.is_none());
+    key(&mut a, "Tab");
+    let req = a.ai.unsent_models.take().expect("read with the new key");
+    assert!(req.headers.contains(&("x-api-key".into(), "sk-1".into())));
+    // the list cannot be read: said in the dialog, the models stay
+    a.on_ai_models(AiModels {
+        url: "https://api.anthropic.com".into(),
+        result: Err("The AI service answered HTTP 401: invalid x-api-key".into()),
+    });
+    assert!(screen_text(&a).contains("Models not read"));
+    assert_eq!(combo(&a, "model"), "Claude Haiku 5.5");
+    // Other…: a name typed by hand
+    a.dialogs.last_mut().unwrap().set_combo_selected("model", 4);
+    assert_eq!(combo(&a, "model"), "Other…");
+    tick(&mut a);
+    let d = a.dialogs.last_mut().unwrap();
+    assert_eq!(d.kind, DialogKind::AiModelOther);
+    d.set_text("name", "my-model");
+    key(&mut a, "Enter");
+    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::AiSettings);
+    assert_eq!(combo(&a, "model"), "my-model");
+    // Esc in the box: the model stays as it was
+    let d = a.dialogs.last_mut().unwrap();
+    d.set_combo_selected("model", 5);
+    tick(&mut a);
+    esc(&mut a);
+    assert_eq!(combo(&a, "model"), "my-model");
+    key(&mut a, "Alt+O");
+    assert!(a.dialogs.is_empty(), "{}", screen_text(&a));
+    assert_eq!(a.settings.ai.model, "my-model");
+    assert_eq!(a.settings.ai.models.len(), 4);
+    a.ai.unsent_models = None;
+
+    // F8: the saved models and the typed one, the settings' values chosen; no network
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    ai_tab(&mut a, uid);
+    key(&mut a, "F8");
+    assert!(a.ai.unsent_models.is_none(), "F8 reads no model list");
+    assert_eq!(combo(&a, "model"), "my-model");
+    assert_eq!(combo(&a, "effort"), "Low");
+    a.lookup_loaded(ai_lookup(&a), Ok(ai_structure_rows()));
+    let d = a.dialogs.last_mut().unwrap();
+    d.set_combo_selected("model", 2);
+    assert_eq!(d.selected_combo_item("model"), Some("Claude Opus 5.5"));
+    d.set_combo_selected("effort", 4);
+    typing(&mut a, "x");
+    key(&mut a, "Alt+S");
+    let req = a.ai.unsent.take().unwrap();
+    assert_eq!(req.body["model"], "claude-opus-5-5");
+    assert_eq!(req.body["output_config"]["effort"], "xhigh");
+    // for that request only
+    assert_eq!(a.settings.ai.model, "my-model");
+    assert_eq!(a.settings.ai.effort, AiEffort::Low);
+    a.cancel_ai();
+    key(&mut a, "F8");
+    assert_eq!(combo(&a, "model"), "my-model");
+    assert_eq!(combo(&a, "effort"), "Low");
 }

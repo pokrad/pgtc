@@ -130,6 +130,16 @@ pub(super) struct AiState {
     pub(super) preset_seen: usize,
     /// The AI settings dialog still shows the saved key as stars, untouched.
     pub(super) key_stars: bool,
+    /// The open AI settings dialog: the provider's models as read, and the chosen
+    /// model (its id; may be one typed by hand).
+    pub(super) form_models: Vec<pgc_core::settings::AiModel>,
+    pub(super) form_model: String,
+    /// The entry of the model combo that was last looked at.
+    pub(super) model_seen: usize,
+    /// Protocol, base URL and key field the model list was last asked for.
+    pub(super) fetch_seen: Option<(usize, String, String)>,
+    /// Without a sink (tests): the model list request that would have been sent.
+    pub(super) unsent_models: Option<crate::ai::Request>,
     /// The autocomplete list of the prompt box.
     pub(super) completion: Option<crate::completion::Popup>,
     /// Without a sink (tests): the request that would have been sent.

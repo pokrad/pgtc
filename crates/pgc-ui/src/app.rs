@@ -48,7 +48,7 @@ use pgc_db::{ConnId, DbEvent, EventSink};
 use pgc_editor::{Action, Editor, SearchOptions};
 use pgc_sql::SqlCatalog;
 
-pub use self::ai::AiEvent;
+pub use self::ai::{AiEvent, AiModels, AiMsg};
 use self::closing::{AfterSave, Bulk};
 use self::definition::{JobKind, StructureJob};
 use self::editing::editor_action;
@@ -93,6 +93,8 @@ pub enum Msg {
     File(FileEvent),
     /// The answer of an AI request (D-073).
     Ai(AiEvent),
+    /// The provider's list of models (D-073).
+    AiModels(AiModels),
 }
 
 /// Side effects requested by `update`, carried out by the event loop.
@@ -879,6 +881,10 @@ impl App {
                 self.on_ai_event(event);
                 Vec::new()
             }
+            Msg::AiModels(models) => {
+                self.on_ai_models(models);
+                Vec::new()
+            }
             Msg::TabTimer(tab, seq) => {
                 self.tab_timer(tab, seq);
                 Vec::new()
@@ -1495,6 +1501,7 @@ impl App {
                 };
                 match d.kind {
                     DialogKind::AskAi { .. } => self.keep_ai_draft(&d),
+                    DialogKind::AiModelOther => self.ai_rebuild_models(),
                     DialogKind::ConfirmProfilerSettings { tab } => self.profiler_answer(tab, false),
                     // the next file dialog starts in the folder again (D-070)
                     DialogKind::OpenFile
@@ -1528,6 +1535,8 @@ impl App {
                     }
                     (DialogKind::Settings, Button::Ok) => self.apply_settings(dialog),
                     (DialogKind::AiSettings, Button::Ok) => self.apply_ai_settings(dialog),
+                    (DialogKind::AiModelOther, Button::Ok) => self.ai_model_typed(&dialog),
+                    (DialogKind::AiModelOther, Button::Cancel) => self.ai_rebuild_models(),
                     (DialogKind::AskAi { tab }, Button::Ok) => self.ask_ai(dialog, tab),
                     (DialogKind::AskAi { .. }, Button::Cancel) => self.keep_ai_draft(&dialog),
                     (DialogKind::FindObject, Button::Ok) => self.find_chosen(dialog),

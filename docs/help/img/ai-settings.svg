@@ -1,6 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="612" height="323" viewBox="0 0 612 323" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15" shape-rendering="crispEdges" xml:space="preserve">
-<rect width="612" height="323" fill="#0037da"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="612" height="380" viewBox="0 0 612 380" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15" shape-rendering="crispEdges" xml:space="preserve">
+<rect width="612" height="380" fill="#0037da"/>
 <rect x="0" y="0" width="594.5" height="19.5" fill="#cccccc"/>
+<text x="594" y="14.25" fill="#cccccc">h</text>
+<text x="603" y="14.25" fill="#f2f2f2">.</text>
 <rect x="0" y="19" width="594.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="19" width="18.5" height="19.5" fill="#0c0c0c"/>
 <text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225" y="33.25" fill="#0c0c0c">┌────────────────────────</text>
@@ -55,51 +57,46 @@
 <rect x="567" y="133" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="133" width="18.5" height="19.5" fill="#0c0c0c"/>
 <text x="9" y="147.25" fill="#0c0c0c">│</text>
-<text x="27" y="147.25" fill="#0037da" text-decoration="underline">M</text>
-<text x="36 45 54 63 72" y="147.25" fill="#0c0c0c">odel:</text>
-<text x="135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279" y="147.25" fill="#0c0c0c">claude-sonnet-5-5</text>
+<text x="27 36 45" y="147.25" fill="#0c0c0c">API</text>
+<text x="63" y="147.25" fill="#0037da" text-decoration="underline">k</text>
+<text x="72 81 90" y="147.25" fill="#0c0c0c">ey:</text>
+<text x="135 144 153 162 171 180 189 198" y="147.25" fill="#0c0c0c">********</text>
 <text x="576" y="147.25" fill="#0c0c0c">│</text>
-<rect x="0" y="152" width="135.5" height="19.5" fill="#cccccc"/>
-<rect x="135" y="152" width="432.5" height="19.5" fill="#3a96dd"/>
-<rect x="567" y="152" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="0" y="152" width="594.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="152" width="18.5" height="19.5" fill="#0c0c0c"/>
 <text x="9" y="166.25" fill="#0c0c0c">│</text>
-<text x="27 36 45" y="166.25" fill="#0c0c0c">API</text>
-<text x="63" y="166.25" fill="#0037da" text-decoration="underline">k</text>
-<text x="72 81 90" y="166.25" fill="#0c0c0c">ey:</text>
-<text x="135 144 153 162 171 180 189 198" y="166.25" fill="#0c0c0c">********</text>
 <text x="576" y="166.25" fill="#0c0c0c">│</text>
-<rect x="0" y="171" width="594.5" height="19.5" fill="#cccccc"/>
+<rect x="0" y="171" width="135.5" height="19.5" fill="#cccccc"/>
+<rect x="135" y="171" width="180.5" height="19.5" fill="#3a96dd"/>
+<rect x="315" y="171" width="279.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="171" width="18.5" height="19.5" fill="#0c0c0c"/>
 <text x="9" y="185.25" fill="#0c0c0c">│</text>
+<text x="27" y="185.25" fill="#0037da" text-decoration="underline">M</text>
+<text x="36 45 54 63 72" y="185.25" fill="#0c0c0c">odel:</text>
+<text x="144 153 162 171 180 189" y="185.25" fill="#0c0c0c">Claude</text>
+<text x="207 216 225 234 243 252" y="185.25" fill="#0c0c0c">Sonnet</text>
+<text x="270 279 288" y="185.25" fill="#0c0c0c">5.5</text>
+<text x="306" y="185.25" fill="#0c0c0c">▼</text>
 <text x="576" y="185.25" fill="#0c0c0c">│</text>
 <rect x="0" y="190" width="594.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="190" width="18.5" height="19.5" fill="#0c0c0c"/>
 <text x="9" y="204.25" fill="#0c0c0c">│</text>
-<text x="27 36 45" y="204.25" fill="#0c0c0c">The</text>
-<text x="63 72 81" y="204.25" fill="#0c0c0c">key</text>
-<text x="99 108" y="204.25" fill="#0c0c0c">is</text>
-<text x="126 135 144 153" y="204.25" fill="#0c0c0c">kept</text>
-<text x="171 180" y="204.25" fill="#0c0c0c">in</text>
-<text x="198 207 216" y="204.25" fill="#0c0c0c">its</text>
-<text x="234 243 252" y="204.25" fill="#0c0c0c">own</text>
-<text x="270 279 288 297" y="204.25" fill="#0c0c0c">file</text>
-<text x="315 324" y="204.25" fill="#0c0c0c">in</text>
-<text x="342 351 360 369 378 387" y="204.25" fill="#0c0c0c">pgtc's</text>
-<text x="405 414 423 432 441 450" y="204.25" fill="#0c0c0c">config</text>
-<text x="468 477 486 495 504 513 522" y="204.25" fill="#0c0c0c">folder,</text>
+<text x="27" y="204.25" fill="#0c0c0c">6</text>
+<text x="45 54 63 72 81 90" y="204.25" fill="#0c0c0c">models</text>
+<text x="108 117 126 135" y="204.25" fill="#0c0c0c">read</text>
+<text x="153 162 171 180" y="204.25" fill="#0c0c0c">from</text>
+<text x="198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351" y="204.25" fill="#0c0c0c">api.anthropic.com.</text>
 <text x="576" y="204.25" fill="#0c0c0c">│</text>
-<rect x="0" y="209" width="594.5" height="19.5" fill="#cccccc"/>
+<rect x="0" y="209" width="135.5" height="19.5" fill="#cccccc"/>
+<rect x="135" y="209" width="117.5" height="19.5" fill="#3a96dd"/>
+<rect x="252" y="209" width="342.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="209" width="18.5" height="19.5" fill="#0c0c0c"/>
 <text x="9" y="223.25" fill="#0c0c0c">│</text>
-<text x="27 36 45" y="223.25" fill="#0c0c0c">not</text>
-<text x="63 72" y="223.25" fill="#0c0c0c">in</text>
-<text x="90 99 108 117 126 135 144 153 162 171 180 189 198 207" y="223.25" fill="#0c0c0c">settings.toml.</text>
-<text x="225 234 243 252 261 270" y="223.25" fill="#0c0c0c">Empty:</text>
-<text x="288 297" y="223.25" fill="#0c0c0c">no</text>
-<text x="315 324 333" y="223.25" fill="#0c0c0c">key</text>
-<text x="351 360 369 378 387 396" y="223.25" fill="#0c0c0c">(local</text>
-<text x="414 423 432 441 450 459 468 477 486" y="223.25" fill="#0c0c0c">servers).</text>
+<text x="27" y="223.25" fill="#0c0c0c">E</text>
+<text x="36" y="223.25" fill="#0037da" text-decoration="underline">f</text>
+<text x="45 54 63 72 81" y="223.25" fill="#0c0c0c">fort:</text>
+<text x="144 153 162 171 180 189 198" y="223.25" fill="#0c0c0c">Default</text>
+<text x="243" y="223.25" fill="#0c0c0c">▼</text>
 <text x="576" y="223.25" fill="#0c0c0c">│</text>
 <rect x="0" y="228" width="594.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="228" width="18.5" height="19.5" fill="#0c0c0c"/>
@@ -108,25 +105,58 @@
 <rect x="0" y="247" width="594.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="247" width="18.5" height="19.5" fill="#0c0c0c"/>
 <text x="9" y="261.25" fill="#0c0c0c">│</text>
-<text x="207 216" y="261.25" fill="#0c0c0c">[&lt;</text>
-<text x="234" y="261.25" fill="#0037da" text-decoration="underline">O</text>
-<text x="243" y="261.25" fill="#0c0c0c">K</text>
-<text x="261 270" y="261.25" fill="#0c0c0c">&gt;]</text>
-<text x="288" y="261.25" fill="#0c0c0c">[</text>
-<text x="306" y="261.25" fill="#0037da" text-decoration="underline">C</text>
-<text x="315 324 333 342 351" y="261.25" fill="#0c0c0c">ancel</text>
-<text x="369" y="261.25" fill="#0c0c0c">]</text>
+<text x="27 36 45" y="261.25" fill="#0c0c0c">The</text>
+<text x="63 72 81" y="261.25" fill="#0c0c0c">key</text>
+<text x="99 108" y="261.25" fill="#0c0c0c">is</text>
+<text x="126 135 144 153" y="261.25" fill="#0c0c0c">kept</text>
+<text x="171 180" y="261.25" fill="#0c0c0c">in</text>
+<text x="198 207 216" y="261.25" fill="#0c0c0c">its</text>
+<text x="234 243 252" y="261.25" fill="#0c0c0c">own</text>
+<text x="270 279 288 297" y="261.25" fill="#0c0c0c">file</text>
+<text x="315 324" y="261.25" fill="#0c0c0c">in</text>
+<text x="342 351 360 369 378 387" y="261.25" fill="#0c0c0c">pgtc's</text>
+<text x="405 414 423 432 441 450" y="261.25" fill="#0c0c0c">config</text>
+<text x="468 477 486 495 504 513 522" y="261.25" fill="#0c0c0c">folder,</text>
 <text x="576" y="261.25" fill="#0c0c0c">│</text>
-<text x="594 603" y="261.25" fill="#767676">──</text>
 <rect x="0" y="266" width="594.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="266" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576" y="280.25" fill="#0c0c0c">└──────────────────────────────────────────────────────────────┘</text>
+<text x="9" y="280.25" fill="#0c0c0c">│</text>
+<text x="27 36 45" y="280.25" fill="#0c0c0c">not</text>
+<text x="63 72" y="280.25" fill="#0c0c0c">in</text>
+<text x="90 99 108 117 126 135 144 153 162 171 180 189 198 207" y="280.25" fill="#0c0c0c">settings.toml.</text>
+<text x="225 234 243 252 261 270" y="280.25" fill="#0c0c0c">Empty:</text>
+<text x="288 297" y="280.25" fill="#0c0c0c">no</text>
+<text x="315 324 333" y="280.25" fill="#0c0c0c">key</text>
+<text x="351 360 369 378 387 396" y="280.25" fill="#0c0c0c">(local</text>
+<text x="414 423 432 441 450 459 468 477 486" y="280.25" fill="#0c0c0c">servers).</text>
+<text x="576" y="280.25" fill="#0c0c0c">│</text>
+<text x="594 603" y="280.25" fill="#767676">──</text>
 <rect x="0" y="285" width="594.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="285" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="594 603" y="299.25" fill="#767676">──</text>
-<rect x="18" y="304" width="594.5" height="19.5" fill="#0c0c0c"/>
-<text x="36 45" y="318.25" fill="#767676">║║</text>
-<text x="81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243" y="318.25" fill="#767676">│firstname│lastname</text>
-<text x="279 288 297 306 315 324 333 342 351 360 369 378 387" y="318.25" fill="#767676">│orders│total</text>
-<text x="450" y="318.25" fill="#767676">│</text>
+<text x="9" y="299.25" fill="#0c0c0c">│</text>
+<text x="576" y="299.25" fill="#0c0c0c">│</text>
+<rect x="0" y="304" width="594.5" height="19.5" fill="#cccccc"/>
+<rect x="594" y="304" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="318.25" fill="#0c0c0c">│</text>
+<text x="207 216" y="318.25" fill="#0c0c0c">[&lt;</text>
+<text x="234" y="318.25" fill="#0037da" text-decoration="underline">O</text>
+<text x="243" y="318.25" fill="#0c0c0c">K</text>
+<text x="261 270" y="318.25" fill="#0c0c0c">&gt;]</text>
+<text x="288" y="318.25" fill="#0c0c0c">[</text>
+<text x="306" y="318.25" fill="#0037da" text-decoration="underline">C</text>
+<text x="315 324 333 342 351" y="318.25" fill="#0c0c0c">ancel</text>
+<text x="369" y="318.25" fill="#0c0c0c">]</text>
+<text x="576" y="318.25" fill="#0c0c0c">│</text>
+<text x="594 603" y="318.25" fill="#767676">──</text>
+<rect x="0" y="323" width="594.5" height="19.5" fill="#cccccc"/>
+<rect x="594" y="323" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576" y="337.25" fill="#0c0c0c">└──────────────────────────────────────────────────────────────┘</text>
+<rect x="0" y="342" width="594.5" height="19.5" fill="#cccccc"/>
+<rect x="594" y="342" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="18" y="361" width="594.5" height="19.5" fill="#0c0c0c"/>
+<text x="36 45" y="375.25" fill="#767676">║║</text>
+<text x="72 81 90 99 108 117 126 135" y="375.25" fill="#767676">2│Andrew</text>
+<text x="171 180 189 198 207 216" y="375.25" fill="#767676">│Dixon</text>
+<text x="279" y="375.25" fill="#767676">│</text>
+<text x="324 333 342 351 360 369 378 387 396 405 414 423 432 441 450" y="375.25" fill="#767676">12│853849.1795│</text>
 </svg>

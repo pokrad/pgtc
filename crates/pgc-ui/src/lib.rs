@@ -64,7 +64,10 @@ pub async fn run(paths: Paths, settings: Settings, startup: Option<Resolved>) ->
     }));
     let ai_tx = tx.clone();
     app.set_ai_sink(std::sync::Arc::new(move |event| {
-        let _ = ai_tx.send(Msg::Ai(event));
+        let _ = ai_tx.send(match event {
+            app::AiMsg::Answer(e) => Msg::Ai(e),
+            app::AiMsg::Models(m) => Msg::AiModels(m),
+        });
     }));
     let mut tui = terminal::enter()?;
     let result = event_loop(&mut tui, &mut app, tx, rx).await;

@@ -262,7 +262,10 @@ safest choice.</p></div>
 </table></div>
 <p>The <code>[ai]</code> section holds what <span class="menu">Settings → AI…</span> saves (<a href="ai.html#setup">AI
 assistant</a>): <code>enabled</code>, <code>protocol</code> (<code>openai-compatible</code> or
-<code>anthropic</code>), <code>base_url</code> and <code>model</code>. The API key itself is never in this file; it
+<code>anthropic</code>), <code>base_url</code>, <code>model</code> and <code>effort</code> (<code>default</code>,
+<code>low</code>, <code>medium</code>, <code>high</code>, <code>xhigh</code>, <code>max</code>), and one
+<code>[[ai.models]]</code> block (<code>id</code>, <code>name</code>) for each model the dialog read from the
+provider. The API key itself is never in this file; it
 is in <code>ai_key</code> next to it.</p>
 <pre><code>[ui]
 color_scheme = "Dracula"
@@ -292,6 +295,7 @@ enabled = true
 protocol = "anthropic"
 base_url = "https://api.anthropic.com"
 model = "claude-sonnet-5-5"
+effort = "default"
 
 [[servers]]
 name = "local"

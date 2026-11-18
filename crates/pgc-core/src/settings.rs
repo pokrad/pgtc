@@ -282,6 +282,65 @@ impl AiProtocol {
     }
 }
 
+/// How much the model thinks before it answers (D-073); what the levels mean is the
+/// provider's.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AiEffort {
+    /// Nothing is sent: the model's own default.
+    #[default]
+    Default,
+    Low,
+    Medium,
+    High,
+    Xhigh,
+    Max,
+}
+
+impl AiEffort {
+    pub const ALL: [AiEffort; 6] = [
+        AiEffort::Default,
+        AiEffort::Low,
+        AiEffort::Medium,
+        AiEffort::High,
+        AiEffort::Xhigh,
+        AiEffort::Max,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            AiEffort::Default => "Default",
+            AiEffort::Low => "Low",
+            AiEffort::Medium => "Medium",
+            AiEffort::High => "High",
+            AiEffort::Xhigh => "Extra high",
+            AiEffort::Max => "Max",
+        }
+    }
+}
+
+/// A model of the AI provider, as its model list named it (D-073).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct AiModel {
+    /// The name the API takes (`claude-sonnet-5-5`).
+    pub id: String,
+    /// The name for people (`Claude Sonnet 5.5`); empty when the provider has none.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub name: String,
+}
+
+impl AiModel {
+    /// The name shown: the one for people, else the id.
+    pub fn label(&self) -> &str {
+        if self.name.is_empty() {
+            &self.id
+        } else {
+            &self.name
+        }
+    }
+}
+
 /// AI assistant settings (D-073). The API key is not here: it is in its own file
 /// (`Paths::ai_key_file`), so this file can be copied and shown without it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -291,6 +350,11 @@ pub struct AiSettings {
     pub protocol: AiProtocol,
     pub base_url: String,
     pub model: String,
+    pub effort: AiEffort,
+    /// The provider's models as Settings → AI… read them last (newest first): what
+    /// the `F8` dialog offers.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub models: Vec<AiModel>,
 }
 
 impl Default for AiSettings {
@@ -300,6 +364,8 @@ impl Default for AiSettings {
             protocol: AiProtocol::OpenaiCompatible,
             base_url: String::new(),
             model: String::new(),
+            effort: AiEffort::Default,
+            models: Vec::new(),
         }
     }
 }

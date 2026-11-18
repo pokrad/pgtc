@@ -99,6 +99,8 @@ pub enum DialogKind {
     PsqlCommand,
     /// Settings → AI… (D-073).
     AiSettings,
+    /// A model name typed by hand, over the AI settings dialog (D-073).
+    AiModelOther,
     /// The `F8` prompt of query tab `tab` (D-073).
     AskAi {
         tab: u64,

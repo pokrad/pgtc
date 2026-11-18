@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use pgc_core::fsutil::{Access, atomic_write};
-use pgc_core::settings::AiProtocol;
+use pgc_core::settings::{AiEffort, AiModel, AiProtocol, AiSettings};
 use pgc_editor::Action;
 use pgc_sql::RenderContext;
 
@@ -16,7 +16,20 @@ use crate::ai::{self, Structure};
 use crate::dialog::{Button, Dialog, DialogKind, Widget};
 
 /// Where the answers of AI requests go (set by the event loop).
-pub type AiSink = Arc<dyn Fn(AiEvent) + Send + Sync>;
+pub type AiSink = Arc<dyn Fn(AiMsg) + Send + Sync>;
+
+/// What comes back from the background.
+pub enum AiMsg {
+    Answer(AiEvent),
+    Models(AiModels),
+}
+
+/// The provider's list of models for base URL `url`, read for the settings dialog.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AiModels {
+    pub url: String,
+    pub result: Result<Vec<AiModel>, String>,
+}
 
 /// The answer of AI request `id`: the text, or an error for the user.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,6 +46,10 @@ const LARGE_TOKENS: usize = 100_000;
 const LARGE_NOTE: &str = "Large request: it may be refused or cost a lot. Try one schema as scope.";
 /// What the key field shows for a saved key (masked: eight stars).
 const SAVED_KEY: &str = "********";
+/// The last entry of the settings' model combo: a name typed by hand.
+const MODEL_OTHER: &str = "Other…";
+/// The model combo before a list could be read.
+const MODEL_HINT: &str = "(fill in the base URL and the API key)";
 /// Label column of the AI settings dialog.
 const AI_LABEL_WIDTH: u16 = 12;
 
@@ -111,6 +128,17 @@ impl App {
         self.ai.structure = None;
         self.ai.size = None;
         self.ai.history_pos = None;
+        // model and effort: the settings' values, changeable for this request; the
+        // models are those the settings dialog read and saved (no network here)
+        let a = &self.settings.ai;
+        let offered = Self::ai_offered_models(a);
+        let model = offered.iter().position(|m| m.id == a.model).unwrap_or(0);
+        let models = offered.iter().map(|m| m.label().to_owned()).collect();
+        let efforts = AiEffort::ALL.iter().map(|e| e.label().to_owned()).collect();
+        let effort = AiEffort::ALL
+            .iter()
+            .position(|e| *e == a.effort)
+            .unwrap_or(0);
         let dialog = Dialog::new(
             DialogKind::AskAi { tab },
             "Ask AI",
@@ -118,6 +146,8 @@ impl App {
             vec![
                 Widget::memo("prompt", "&Prompt", &self.ai.draft, PROMPT_ROWS),
                 Widget::combo("scope", "Sc&ope:", vec![SCOPE_ALL.to_owned()], 0, 8),
+                Widget::combo("model", "&Model:", models, model, 8),
+                Widget::combo("effort", "&Effort:", efforts, effort, 8),
                 Widget::label(""),
                 Widget::label_id("info", "Reading the structure…"),
                 Widget::label_id("note", ""),
@@ -306,7 +336,18 @@ impl App {
             return;
         };
         let key = ai::api_key(&self.paths.ai_key_file());
-        let request = ai::request(&self.settings.ai, key.as_deref(), &ask);
+        // the model and the effort chosen for this request
+        let mut chosen = self.settings.ai.clone();
+        if let Some(m) = dialog
+            .selected("model")
+            .and_then(|i| Self::ai_offered_models(&chosen).into_iter().nth(i))
+        {
+            chosen.model = m.id;
+        }
+        if let Some(e) = dialog.selected("effort").and_then(|i| AiEffort::ALL.get(i)) {
+            chosen.effort = *e;
+        }
+        let request = ai::request(&chosen, key.as_deref(), &ask);
         if self.ai.history.last() != Some(&prompt) {
             self.ai.history.push(prompt.clone());
         }
@@ -318,7 +359,7 @@ impl App {
             Some(sink) => {
                 let task = tokio::spawn(async move {
                     let result = ai::send(request).await;
-                    sink(AiEvent { id, result });
+                    sink(AiMsg::Answer(AiEvent { id, result }));
                 });
                 Some(task.abort_handle())
             }
@@ -555,9 +596,131 @@ impl App {
         e.apply(Action::Insert(item.insert.clone()));
     }
 
+    // ---- the provider's models ------------------------------------------------------
+
+    /// The models the `F8` dialog offers: those the settings dialog read and saved,
+    /// with the settings' model in any case.
+    fn ai_offered_models(a: &AiSettings) -> Vec<AiModel> {
+        let mut out = a.models.clone();
+        if !a.model.is_empty() && !out.iter().any(|m| m.id == a.model) {
+            out.insert(
+                0,
+                AiModel {
+                    id: a.model.clone(),
+                    name: String::new(),
+                },
+            );
+        }
+        out
+    }
+
+    /// The entries of the settings dialog's model combo — a model typed by hand first,
+    /// the provider's models, [`MODEL_OTHER`] last — each with its model id (none for
+    /// the hint and for *Other…*), and the entry of the chosen model.
+    fn ai_model_entries(&self) -> (Vec<(String, Option<String>)>, usize) {
+        let (list, chosen) = (&self.ai.form_models, &self.ai.form_model);
+        let mut out: Vec<(String, Option<String>)> = Vec::new();
+        if !chosen.is_empty() && !list.iter().any(|m| m.id == *chosen) {
+            out.push((chosen.clone(), Some(chosen.clone())));
+        }
+        out.extend(
+            list.iter()
+                .map(|m| (m.label().to_owned(), Some(m.id.clone()))),
+        );
+        if out.is_empty() {
+            out.push((MODEL_HINT.to_owned(), None));
+        }
+        let selected = out
+            .iter()
+            .position(|(_, id)| id.as_ref() == Some(chosen))
+            .unwrap_or(0);
+        out.push((MODEL_OTHER.to_owned(), None));
+        (out, selected)
+    }
+
+    /// Fills the model combo of the open settings dialog from the models read and
+    /// the chosen one.
+    pub(super) fn ai_rebuild_models(&mut self) {
+        let (entries, selected) = self.ai_model_entries();
+        if let Some(d) = self
+            .dialogs
+            .iter_mut()
+            .rev()
+            .find(|d| d.kind == DialogKind::AiSettings)
+        {
+            d.set_combo(
+                "model",
+                entries.into_iter().map(|(label, _)| label).collect(),
+                selected,
+            );
+        }
+        self.ai.model_seen = selected;
+    }
+
+    /// Reads the model list of `a`'s provider in the background ([`AiModels`] follows).
+    fn fetch_ai_models(&mut self, a: &AiSettings, key: Option<String>) {
+        let request = ai::models_request(a, key.as_deref());
+        let url = a.base_url.clone();
+        match self.ai.sink.clone() {
+            Some(sink) => {
+                tokio::spawn(async move {
+                    let result = ai::fetch_models(request).await;
+                    sink(AiMsg::Models(AiModels { url, result }));
+                });
+            }
+            None => self.ai.unsent_models = Some(request),
+        }
+    }
+
+    /// The provider's models have arrived (or could not be read) for the open
+    /// settings dialog: its model combo offers them.
+    pub fn on_ai_models(&mut self, m: AiModels) {
+        // an answer for a URL that is not in the dialog any more is not wanted
+        let Some(d) = self
+            .dialogs
+            .iter_mut()
+            .rev()
+            .find(|d| d.kind == DialogKind::AiSettings)
+            .filter(|d| d.text("url").map(str::trim) == Some(m.url.as_str()))
+        else {
+            return;
+        };
+        match m.result {
+            Ok(list) => {
+                d.set_label(
+                    "minfo",
+                    &format!("{} models read from {}.", list.len(), ai::host(&m.url)),
+                );
+                // nothing chosen yet: the newest
+                if self.ai.form_model.is_empty()
+                    && let Some(first) = list.first()
+                {
+                    self.ai.form_model = first.id.clone();
+                }
+                self.ai.form_models = list;
+            }
+            Err(e) => {
+                let text: String = format!("Models not read: {e}").chars().take(58).collect();
+                d.set_label("minfo", &text);
+                self.status = format!("AI: the list of models could not be read ({e})");
+            }
+        }
+        self.ai_rebuild_models();
+    }
+
+    /// OK in the *Other…* box: the typed name is the model.
+    pub(super) fn ai_model_typed(&mut self, d: &Dialog) {
+        let name = d.text("name").unwrap_or("").trim();
+        if !name.is_empty() {
+            self.ai.form_model = name.to_owned();
+        }
+        self.ai_rebuild_models();
+    }
+
     // ---- Settings → AI… -------------------------------------------------------------
 
-    /// The AI settings dialog (D-073). A saved key shows as [`SAVED_KEY`].
+    /// The AI settings dialog (D-073). A saved key shows as [`SAVED_KEY`]; the models
+    /// are those read last, and are read again at once.
     pub(super) fn open_ai_settings(&mut self) {
         let a = &self.settings.ai;
         let lw = AI_LABEL_WIDTH;
@@ -574,6 +737,13 @@ impl App {
             .position(|p| *p == a.protocol)
             .unwrap_or(0);
         let saved = ai::api_key(&self.paths.ai_key_file()).is_some();
+        let efforts = AiEffort::ALL.iter().map(|e| e.label().to_owned()).collect();
+        let effort = AiEffort::ALL
+            .iter()
+            .position(|e| *e == a.effort)
+            .unwrap_or(0);
+        self.ai.form_models = a.models.clone();
+        self.ai.form_model = a.model.clone();
         let dialog = Dialog::new(
             DialogKind::AiSettings,
             "AI assistant",
@@ -584,8 +754,11 @@ impl App {
                 Widget::combo("preset", "&Preset:", presets, preset, lw),
                 Widget::combo("protocol", "P&rotocol:", protocols, protocol, lw),
                 Widget::field("url", "&Base URL:", &a.base_url, lw),
-                Widget::field("model", "&Model:", &a.model, lw),
                 Widget::field("key", "API &key:", if saved { SAVED_KEY } else { "" }, lw).masked(),
+                Widget::label(""),
+                Widget::combo("model", "&Model:", Vec::new(), 0, lw),
+                Widget::label_id("minfo", ""),
+                Widget::combo("effort", "E&ffort:", efforts, effort, lw),
                 Widget::label(""),
                 Widget::label("The key is kept in its own file in pgtc's config folder,"),
                 Widget::label("not in settings.toml. Empty: no key (local servers)."),
@@ -595,11 +768,15 @@ impl App {
         );
         self.ai.preset_seen = preset;
         self.ai.key_stars = saved;
+        self.ai.fetch_seen = None;
         self.dialogs.push(dialog);
+        self.ai_rebuild_models();
     }
 
-    /// After each update: a newly chosen preset fills in the fields; typing over the
-    /// saved key's stars starts a new key.
+    /// After each update of the settings dialog: a newly chosen preset fills in the
+    /// fields; typing over the saved key's stars starts a new key; the chosen model
+    /// is noted (*Other…* asks for a name); and the provider's models are read when
+    /// the provider or the key has changed (after the field is left).
     pub(super) fn sync_ai_settings(&mut self) {
         let Some(d) = self.dialogs.last_mut() else {
             return;
@@ -614,34 +791,95 @@ impl App {
             d.set_text("key", &typed);
             self.ai.key_stars = false;
         }
-        let chosen = d.selected("preset").unwrap_or(0);
-        if chosen == self.ai.preset_seen {
-            return;
+        // a preset: its protocol, URL and suggested model; the models of the provider
+        // before are not its models
+        let preset = d.selected("preset").unwrap_or(0);
+        if preset != self.ai.preset_seen {
+            self.ai.preset_seen = preset;
+            if let Some(p) = preset.checked_sub(1).and_then(|i| ai::PRESETS.get(i)) {
+                let protocol = AiProtocol::ALL
+                    .iter()
+                    .position(|x| *x == p.protocol)
+                    .unwrap_or(0);
+                d.set_combo_selected("protocol", protocol);
+                d.set_text("url", p.base_url);
+                self.ai.form_model = p.model.to_owned();
+                self.ai.form_models.clear();
+                self.ai_rebuild_models();
+            }
         }
-        self.ai.preset_seen = chosen;
-        let Some(p) = chosen.checked_sub(1).and_then(|i| ai::PRESETS.get(i)) else {
+        let Some(d) = self.dialogs.last_mut() else {
             return;
         };
-        let protocol = AiProtocol::ALL
-            .iter()
-            .position(|x| *x == p.protocol)
-            .unwrap_or(0);
-        d.set_combo_selected("protocol", protocol);
-        d.set_text("url", p.base_url);
-        d.set_text("model", p.model);
+        // the model combo: a model is chosen; Other… asks for a name
+        let selected = d.selected("model").unwrap_or(0);
+        if selected != self.ai.model_seen && !d.combo_open() {
+            self.ai.model_seen = selected;
+            let (entries, _) = self.ai_model_entries();
+            match entries.get(selected) {
+                Some((_, Some(id))) => self.ai.form_model = id.clone(),
+                Some((label, None)) if label == MODEL_OTHER => {
+                    let current = self.ai.form_model.clone();
+                    self.dialogs.push(Dialog::new(
+                        DialogKind::AiModelOther,
+                        "Model",
+                        60,
+                        vec![
+                            Widget::label("The model name as the provider's API takes it:"),
+                            Widget::field("name", "", &current, 0),
+                            Widget::button(Button::Ok, "&OK", true),
+                            Widget::button(Button::Cancel, "&Cancel", false),
+                        ],
+                    ));
+                    return;
+                }
+                _ => {}
+            }
+        }
+        // the models: read when the dialog opens and when protocol, URL or key have
+        // changed — not while the URL or the key is being typed
+        let Some(d) = self.dialogs.last_mut() else {
+            return;
+        };
+        let text = |d: &Dialog, id: &str| d.text(id).unwrap_or("").trim().to_owned();
+        let protocol = d.selected("protocol").unwrap_or(0);
+        let (url, typed) = (text(d, "url"), text(d, "key"));
+        let asked = Some((protocol, url.clone(), typed.clone()));
+        if asked == self.ai.fetch_seen || matches!(d.focused_id(), Some("url" | "key")) {
+            return;
+        }
+        self.ai.fetch_seen = asked;
+        if url.is_empty() {
+            d.set_label("minfo", "");
+            return;
+        }
+        d.set_label("minfo", "Reading the models…");
+        let a = AiSettings {
+            protocol: AiProtocol::ALL.get(protocol).copied().unwrap_or_default(),
+            base_url: url,
+            ..AiSettings::default()
+        };
+        let key = if self.ai.key_stars && typed == SAVED_KEY {
+            ai::api_key(&self.paths.ai_key_file())
+        } else {
+            Some(typed).filter(|k| !k.is_empty())
+        };
+        self.fetch_ai_models(&a, key);
     }
 
-    /// OK in the AI settings dialog: the settings are saved, the key goes into the key
-    /// file (an empty field removes it; the stars keep it).
+    /// OK in the AI settings dialog: the settings are saved — with the models that
+    /// were read, for the `F8` dialog —, the key goes into the key file (an empty
+    /// field removes it; the stars keep it).
     pub(super) fn apply_ai_settings(&mut self, dialog: Dialog) {
         let text = |id: &str| dialog.text(id).unwrap_or("").trim().to_owned();
         let enabled = dialog.checked("enabled");
-        let (url, model, key) = (text("url"), text("model"), text("key"));
+        let (url, key) = (text("url"), text("key"));
+        let model = self.ai.form_model.clone();
         if enabled && (url.is_empty() || model.is_empty()) {
             let mut dialog = dialog;
             dialog.focus_on(if url.is_empty() { "url" } else { "model" });
             self.dialogs.push(dialog);
-            self.error("Base URL and model are needed when AI is enabled.");
+            self.error("A base URL and a model are needed when AI is enabled.");
             return;
         }
         let file = self.paths.ai_key_file();
@@ -662,6 +900,7 @@ impl App {
             self.error(&format!("Could not write {}: {e}", file.display()));
             return;
         }
+        let models = std::mem::take(&mut self.ai.form_models);
         let a = &mut self.settings.ai;
         a.enabled = enabled;
         a.protocol = dialog
@@ -670,6 +909,11 @@ impl App {
             .unwrap_or_default();
         a.base_url = url;
         a.model = model;
+        a.models = models;
+        a.effort = dialog
+            .selected("effort")
+            .and_then(|i| AiEffort::ALL.get(i).copied())
+            .unwrap_or_default();
         self.save_settings();
         self.status = "AI settings saved".to_owned();
     }

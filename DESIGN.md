@@ -2517,7 +2517,7 @@ pgtc (binary)
   - Anthropic: the system prompt (instructions and structure) is sent with
     `cache_control`, so repeated questions with the same scope use the prompt cache.
 - **Setup:** *Settings → AI…* — its own dialog (the Settings dialog must fit 24
-  rows, D-051): Enabled, preset, protocol, base URL, model, API key.
+  rows, D-051): Enabled, preset, protocol, base URL, model, effort, API key.
   Stored in `settings.toml` under `[ai]` — **never the key itself**; the preset is
   not stored (the dialog shows the one the saved protocol and base URL belong to).
   - **API key:** typed into the dialog (masked) and kept in its own key file
@@ -2530,6 +2530,26 @@ pgtc (binary)
     (local servers); a service that needs one answers with its own error. The key
     is never written to the log.
   - AI counts as *set up* when it is enabled and base URL and model are filled.
+  - **Model and effort** are set here as the defaults and can be changed for one
+    request in the `F8` dialog, which opens with the values of the settings.
+    - *Model:* a combo with the provider's models, **read from the provider** by
+      the settings dialog (`GET {base_url}/v1/models` for Anthropic,
+      `GET {base_url}/models` for OpenAI-compatible; with the dialog's URL and
+      key): when the dialog opens, and when the preset, protocol, URL or key have
+      changed (after the URL / key field is left). No built-in list. Shown by the
+      name for people where the provider gives one (Anthropic's `display_name`),
+      newest first where it gives a date, else by id. Until a list is read: a hint;
+      a line below says how many were read or why not. Last entry **Other…**: a
+      name typed by hand (services without a list). OK saves the list with the
+      chosen model (`[[ai.models]]`: `id`, `name`).
+    - The `F8` dialog's model combo offers **only the saved list** (and the
+      settings' model, when it was typed by hand) — it reads nothing from the
+      network.
+    - *Effort:* Default (nothing is sent: the model's own default), Low, Medium,
+      High, Extra high, Max. Anthropic: `output_config.effort`; OpenAI-compatible:
+      `reasoning_effort` (Extra high and Max are sent as `high`). A model that does
+      not take the setting answers with its own error.
+    - Anthropic answers are limited to 16,000 tokens (thinking counts in it).
 - **Opening:** `F8` (`ask_ai` in the keymap, `Esc 8`) in a query tab's editor and
   results (contexts `[editor]`, `[results]`), and *Tools → Ask AI…*. In the tree
   `F8` stays Delete connection, on the dashboard Terminate session (D-035, D-057).
@@ -2557,7 +2577,7 @@ pgtc (binary)
     SQL only, explanations as `--` comments).
 - **Dialog:** a multi-line prompt box (wraps at word ends; `Enter` is a new line,
   `Tab` leaves it, `Ctrl+Enter` / `Alt+S` send); scope *Whole database* (default) / *Schema …*
-  (combo); a line *sends about N tokens to <host>* (the size of the whole request
+  (combo); model and effort (combos, from the settings, for this request only); a line *sends about N tokens to <host>* (the size of the whole request
   — instructions, structure, editor text, prompt — four characters a token; follows
   the scope and the prompt); Send / Cancel. A structure that could not be read:
   Send shows the error. Above 100,000 tokens the note line warns (*Large request …
@@ -2751,3 +2771,5 @@ pgtc (binary)
 | 2026-11-18 | D-035, D-014 updated: File → Edit connection… / Delete connection…; OK in Edit connection on a connected server applies a name / *AI not allowed* change at once, any other change disconnects (the usual questions; the server's tabs close) and connects again, the tree opening down to the selected object. |
 | 2026-11-18 | D-073 reviewed and corrected: `Esc` cancels a request only when nothing else takes it; `F8` refused with a paused result; a cut-off answer is marked with a comment; the saved key's stars go with the first change; identity and generated columns in the structure; a failed structure read is reported on Send; exact size estimate (with the prompt); the preset is not stored. |
 | 2026-11-18 | D-073 improved: comments (`COMMENT ON`) in the structure; Anthropic prompt cache for instructions and structure; a warning above 100,000 tokens; an unsent prompt is kept for the next dialog; `Enter` in an unused list that opened after `.` is a new line; `↑` / `↓` by shown rows in the prompt box; system proxy settings used; the key header marked sensitive. |
+| 2026-11-18 | D-073 updated: model and effort — defaults in Settings → AI… (effort combo; Models… reads the provider's model list), both changeable per request in the `F8` dialog; `output_config.effort` / `reasoning_effort`; Anthropic answer limit 16,000 tokens. |
+| 2026-11-18 | D-073 updated: the model is chosen from a combo in Settings → AI…, filled from the provider's model list (read by the dialog, names for people, newest first, *Other…* for a typed name) and saved; the `F8` dialog offers only the saved list. The Models… button is gone. |
