@@ -28,6 +28,7 @@ LEFT JOIN pg_catalog.pg_class t ON t.oid = x.indrelid
 WHERE pg_catalog.strpos($3::text, c.relkind::text) > 0
     AND ($1::text IS NULL OR n.nspname ~ $1::text)
     AND ($2::text IS NULL OR c.relname ~ $2::text)
+    AND ($1::text IS NOT NULL OR pg_catalog.pg_table_is_visible(c.oid))
     AND n.nspname !~ '^pg_toast'
 {% if hide_system %}
     AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'

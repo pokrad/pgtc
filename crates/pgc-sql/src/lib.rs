@@ -224,6 +224,11 @@ fn qt_ident(value: &Value) -> String {
     // a schema-qualified object from a template combo: both parts (D-046)
     // with its arguments or its table: what DROP / ALTER need (D-050)
     if let Some(q) = value.downcast_object_ref::<devtemplate::QualName>() {
+        // a built-in type name of the `types` source (the only one without a
+        // schema): `integer`, `double precision` are written as they are (D-074)
+        if q.schema.is_empty() && q.table.is_none() && q.args.is_none() {
+            return q.name.clone();
+        }
         let qualified = if q.schema.is_empty() {
             quote_ident(&q.name)
         } else {
@@ -294,6 +299,27 @@ mod tests {
         register(&mut env);
         env.render_str(src, minijinja::context! { server_version => version })
             .unwrap()
+    }
+
+    #[test]
+    fn ident_leaves_a_built_in_type_name_as_it_is() {
+        let env = environment();
+        let render = |q: devtemplate::QualName| {
+            env.render_str(
+                "{{ t|ident }}",
+                minijinja::context! { t => Value::from_object(q) },
+            )
+            .unwrap()
+        };
+        assert_eq!(render(devtemplate::QualName::new("", "integer")), "integer");
+        assert_eq!(
+            render(devtemplate::QualName::new("", "double precision")),
+            "double precision"
+        );
+        assert_eq!(
+            render(devtemplate::QualName::new("sales", "Order Status")),
+            "sales.\"Order Status\""
+        );
     }
 
     #[test]

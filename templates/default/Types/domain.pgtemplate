@@ -33,7 +33,7 @@ name  = "check"
 label = "CHECK (use VALUE)"
 type  = "sql"
 +++
-CREATE DOMAIN {{ schema|ident }}.{{ name|ident }} AS {{ base_type }}{% if not_null %}
+CREATE DOMAIN {{ schema|ident }}.{{ name|ident }} AS {{ base_type|ident }}{% if not_null %}
 
     NOT NULL{% endif %}{% if check %}
 

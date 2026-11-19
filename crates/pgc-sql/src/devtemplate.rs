@@ -913,7 +913,13 @@ pub fn sample_values(params: &[Param]) -> BTreeMap<String, ParamValue> {
                 Some(Shape::Name) | None => ParamValue::Text(text),
                 Some(_) if text.is_empty() => ParamValue::Text(text),
                 Some(shape) => {
-                    let (schema, name) = text.split_once('.').unwrap_or(("schema", &text));
+                    // a `types` default without a schema is a built-in type name
+                    let none = if p.source == Some(Source::Types) {
+                        ""
+                    } else {
+                        "schema"
+                    };
+                    let (schema, name) = text.split_once('.').unwrap_or((none, &text));
                     ParamValue::Object(QualName {
                         args: (shape == Shape::WithArgs).then(String::new),
                         table: (shape == Shape::OnTable).then(|| "table".to_owned()),

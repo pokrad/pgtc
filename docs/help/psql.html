@@ -122,16 +122,18 @@ expression that the server matches with <code>~</code> against the schema name a
 <tr><td class="k"><code>"Order Items"</code></td><td>Double-quoted: matched exactly, case preserved, <code>*</code> <code>?</code> <code>.</code> literal. Unquoted text is folded to lower case, as identifiers are.</td></tr>
 </table></div>
 <ul>
-  <li>Unlike psql, a pattern without a schema part is <b>not</b> limited to relations visible on the
-      <code>search_path</code>: it matches the name in every schema. Likewise, a list without a pattern covers all
-      non-system schemas. Qualify the pattern (<code>public.*</code>) to narrow it.</li>
+  <li>As in psql, a pattern without a schema part — and a list without a pattern — shows only objects that are
+      visible on the session's <code>search_path</code> (<code>pg_table_is_visible()</code>,
+      <code>pg_function_is_visible()</code>, <code>pg_type_is_visible()</code>): an object in a schema that is not on
+      the path, or one hidden by a same-named object earlier on the path, is not listed. Give a schema part
+      (<code>sales.*</code>, <code>*.*</code>) to look outside the path.</li>
   <li>Other regular-expression characters in a pattern are escaped; only <code>*</code> and <code>?</code> are
       wildcards.</li>
   <li>The commands for cluster-wide objects and schemas (<code>l</code>, <code>dn</code>, <code>du</code>,
       <code>dx</code>, <code>db</code>) take a name pattern only; a dot is part of the name there. For the other
       commands, the database part of a three-part pattern (<code>db.schema.name</code>) is ignored.</li>
 </ul>
-<pre><code>dt                    tables in all non-system schemas
+<pre><code>dt                    tables visible on the search_path
 dt sales.*            all tables of schema sales
 dtv+ *order*          tables and views with "order" in the name, with sizes
 df *price*            functions with "price" in the name

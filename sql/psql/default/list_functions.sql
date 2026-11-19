@@ -16,6 +16,7 @@ JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
 LEFT JOIN pg_catalog.pg_language l ON l.oid = p.prolang
 WHERE ($1::text IS NULL OR n.nspname ~ $1::text)
     AND ($2::text IS NULL OR p.proname ~ $2::text)
+    AND ($1::text IS NOT NULL OR pg_catalog.pg_function_is_visible(p.oid))
 {% if hide_system %}
     AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'
 {% endif %}

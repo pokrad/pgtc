@@ -21,6 +21,7 @@ JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
 WHERE c.relkind IN ('r', 'p', 'v', 'm', 'S', 'f')
     AND ($1::text IS NULL OR n.nspname ~ $1::text)
     AND ($2::text IS NULL OR c.relname ~ $2::text)
+    AND ($1::text IS NOT NULL OR pg_catalog.pg_table_is_visible(c.oid))
 {% if hide_system %}
     AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'
 {% endif %}

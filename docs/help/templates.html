@@ -395,7 +395,7 @@ required = true
 <tr><td class="k"><code>sequences</code></td><td><code>pg_class</code>, <code>relkind = 'S'</code></td><td><code>sales.customer_customerid_seq</code></td></tr>
 <tr><td class="k"><code>functions</code></td><td><code>pg_proc</code>, <code>prokind = 'f'</code>, with <code>pg_get_function_identity_arguments()</code></td><td><code>sales.customer_total(integer, integer)</code></td></tr>
 <tr><td class="k"><code>procedures</code></td><td><code>pg_proc</code>, <code>prokind = 'p'</code>, with their identity arguments</td><td><code>sales.close_month(date)</code></td></tr>
-<tr><td class="k"><code>types</code></td><td>Data types for a column: a fixed list of common built-in type names (<code>integer</code>, <code>text</code>, <code>timestamptz</code>, <code>double precision</code>, …), then the non-array base, composite, domain, enum and range types of <code>pg_type</code> outside the system schemas</td><td>Use <code>{{ value }}</code> without <code>ident</code>: <code>integer</code>, <code>sales.mytype</code> (see the note below)</td></tr>
+<tr><td class="k"><code>types</code></td><td>Data types for a column: a fixed list of common built-in type names (<code>integer</code>, <code>text</code>, <code>timestamptz</code>, <code>double precision</code>, …), then the non-array base, composite, domain, enum and range types of <code>pg_type</code> outside the system schemas</td><td><code>integer</code>, <code>double precision</code>, <code>sales."Order Status"</code></td></tr>
 <tr><td class="k"><code>user_types</code></td><td><code>pg_type</code>: enum, stand-alone composite, range and base types — no domains, no array types, no multirange type owned by a range</td><td><code>sales.orderstatus</code></td></tr>
 <tr><td class="k"><code>domains</code></td><td><code>pg_type</code>, <code>typtype = 'd'</code></td><td><code>public."Flag"</code></td></tr>
 <tr><td class="k"><code>indexes</code></td><td><code>pg_index</code>: indexes that <code>DROP INDEX</code> accepts — not those backing a primary-key, unique or exclusion constraint, not the partitions of a partitioned index</td><td><code>sales.ix_customer_territoryid</code></td></tr>
@@ -411,9 +411,9 @@ required = true
       <code>args</code>, a trigger value <code>table</code>. <code>{{ table }}</code> renders the unquoted
       <code>schema.name</code>; <code>{{ table|ident }}</code> quotes each part separately —
       <code>sales."Order Items"</code> — and keeps the argument list or the <code>ON schema.table</code> clause.</li>
-  <li><code>types</code> is the exception: <code>ident</code> would double-quote the built-in names
-      (<code>"integer"</code>, <code>"double precision"</code>), which then no longer resolve. Render a
-      <code>types</code> value plainly, as the built-in <i>Create domain</i> does: <code>AS {{ base_type }}</code>.</li>
+  <li>A built-in type name of the <code>types</code> source has no schema part. <code>ident</code> writes it as it
+      is (<code>integer</code>, <code>double precision</code>) and quotes only the types read from
+      <code>pg_type</code>, so <code>{{ base_type|ident }}</code> is safe for every entry of the list.</li>
   <li>These built-in sources are the ones the <a href="#prefill">tree's selection</a> presets. A list from a custom
       <code>query</code> is not preset.</li>
 </ul>

@@ -201,7 +201,8 @@ impl TemplateTab {
     }
 
     /// The template as it would be saved, or why it cannot be: a header that does not
-    /// parse, or a Jinja error in the body (with its line).
+    /// parse, a Jinja error in the body (with its line), or a body that cannot be
+    /// rendered with the sample values (an unknown filter or feature name).
     pub fn template(&self, body: &str) -> Result<TemplateFile, (String, Option<usize>)> {
         let (name, description, params) = if self.raw {
             devtemplate::parse_header(&self.header.text()).map_err(|e| (e, None))?
@@ -217,12 +218,20 @@ impl TemplateTab {
             let at = line.map_or(String::new(), |l| format!("line {l}: "));
             return Err((format!("body, {at}{message}"), line));
         }
-        Ok(TemplateFile {
+        let file = TemplateFile {
             name,
             description,
             params,
             body: body.to_owned(),
-        })
+        };
+        let ctx = TemplateContext {
+            version: self.version,
+            database: "database".to_owned(),
+        };
+        let values = devtemplate::sample_values(&file.params);
+        devtemplate::render(&file, &values, &ctx)
+            .map_err(|e| (format!("it cannot be rendered: {e}"), None))?;
+        Ok(file)
     }
 
     /// A change was made in the header list.
@@ -882,8 +891,16 @@ type = \"text\"
         let (message, line) = t.template(&body.text()).unwrap_err();
         assert!(message.starts_with("body, line 2:"));
         assert_eq!(line, Some(2));
+        // a body that compiles but cannot be rendered is refused as well
+        body.set_text("{{ n|nosuchfilter }}");
+        t.refresh(&body, ServerVersion(170000), true);
+        assert!(t.status().starts_with("Preview:"), "{}", t.status());
+        let (message, line) = t.template(&body.text()).unwrap_err();
+        assert!(message.starts_with("it cannot be rendered:"), "{message}");
+        assert_eq!(line, None);
         body.set_text("{{ other }}");
         t.refresh(&body, ServerVersion(170000), true);
+        assert!(t.template(&body.text()).is_ok());
         assert_eq!(t.status(), "Not declared: other · Not used: n");
         assert_eq!(t.version_note(), "Preview: PostgreSQL 17 (assumed)");
     }

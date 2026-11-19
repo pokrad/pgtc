@@ -19,6 +19,7 @@ WHERE (t.typrelid = 0
     AND ($1::text IS NULL OR n.nspname ~ $1::text)
     AND ($2::text IS NULL OR t.typname ~ $2::text
         OR pg_catalog.format_type(t.oid, NULL) ~ $2::text)
+    AND ($1::text IS NOT NULL OR pg_catalog.pg_type_is_visible(t.oid))
 {% if hide_system %}
     AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'
 {% endif %}

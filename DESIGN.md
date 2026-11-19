@@ -1553,7 +1553,7 @@ pgtc (binary)
   | `sequences` | sequences | `"s"."q"` |
   | `functions` | functions with their argument types | `"s"."f"(integer, text)` |
   | `procedures` | procedures with their argument types | `"s"."p"(integer)` |
-  | `types` | data types for columns (common built-in types + own types) | `integer`, `"s"."t"` |
+  | `types` | data types for columns (common built-in types + own types); `ident` writes a built-in name (no schema) as it is | `integer`, `"s"."t"` |
   | `user_types` | own types (enum, composite, range, base), no domains | `"s"."t"` |
   | `domains` | domains | `"s"."d"` |
   | `indexes` | indexes that can be dropped alone (not those of constraints or partitions) | `"s"."i"` |
@@ -1727,7 +1727,9 @@ pgtc (binary)
   - Pattern (psql rules): `*` any text, `?` one character, `schema.name`, unquoted
     parts compared in lower case, `"..."` exact; passed as **bind parameters**. Without
     a pattern system schemas are left out; `S` (`dtS`) includes them; `+` adds columns
-    (size, description, ...).
+    (size, description, ...). As in psql, without a schema part (and without a
+    pattern) relations, functions, types, domains and privileges are limited to what
+    is visible on the `search_path` (`pg_*_is_visible()`).
   - `d name` / `d+ name` — describe one table, view, materialized view, sequence or
     foreign table: result sets *Relation*, *Columns*, *Indexes*, *Constraints*,
     *Triggers*, *Definition* (views); empty sections are left out; not found → a
@@ -2707,7 +2709,9 @@ pgtc (binary)
     section (combo of the existing folders, or a typed new one), the version folder
     and the file name (suggested from the template name).
   - **A template that does not parse is not saved** (TOML header or Jinja body): the
-    error is shown and the file is left as it was.
+    error is shown and the file is left as it was. The same holds for a body that
+    cannot be rendered with the preview's sample values (an unknown filter, an unknown
+    feature name); *Test* refuses it too.
   - A template that came with pgtc: *Installing templates overwrites this file* —
     *Save as copy* / *Save anyway* / *Cancel* (D-013).
   - After a save the template library is read again, so `F7` offers the new text.
@@ -2913,3 +2917,4 @@ pgtc (binary)
 | 2026-11-19 | D-074 implemented and detailed: manager buttons (*Edit*, *New*, *Section*, *Copy*, *Rename*, *Delete*, *Close*), a row per version file; header list keys (`Insert`, `Enter`, `Delete`, `Ctrl+Up` / `Down`, `F2`), raw header on `Ctrl+T`; `Alt+Down` / `Alt+Up` between the parts, `Tab` only from the list and the preview (it indents in the body); a hand-written header is kept until the list changes; insert lists with notes, filter placement; `Enter` in the preview jumps to the error; preview sample values. |
 | 2026-11-19 | D-074 updated: autocomplete in the template body — parameters (as whole marks in the SQL, by name inside marks), fields of a list's rows, parts of database objects, filters, statements, feature names; no connection and no database names; not in the raw header. |
 | 2026-11-19 | D-074 updated: the file bar of a template that is not saved yet names its section and version folder. |
+| 2026-11-19 | D-054 updated: lists without a schema part show only objects visible on the `search_path`, as psql does. D-050 / D-074 updated: `ident` writes a built-in type name of the `types` source as it is; a template whose body cannot be rendered with the sample values is not saved or tested. |

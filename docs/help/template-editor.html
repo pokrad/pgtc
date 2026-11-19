@@ -512,9 +512,9 @@ minijinja, and the variables the compiled template references are compared with 
 <tr><td class="k"><i>Header: …</i></td><td>An invalid declaration — a <code>choice</code> without values, a <code>list</code> without fields — or, in the raw header, a TOML error or an unknown key.</td></tr>
 <tr><td class="k"><i>Preview: …</i></td><td>The body compiles but fails at rendering with the sample values: an unknown filter, an unknown feature name in <code>has("…")</code>.</td></tr>
 </table></div>
-<p><i>Not declared</i> and <i>Not used</i> are warnings. <i>Header</i> and <i>Body</i> are errors: such a template
-<a href="#save">is not saved</a> and not tested. A <i>Preview</i> (rendering) error does not block saving — the file
-still parses — but the <kbd>F7</kbd> form will show the same error instead of SQL until it is fixed.</p>
+<p><i>Not declared</i> and <i>Not used</i> are warnings. <i>Header</i>, <i>Body</i> and <i>Preview</i> are errors:
+such a template <a href="#save">is not saved</a> and not tested. A rendering error is checked with the sample values
+of the preview, so an unknown filter in a branch the sample values do not reach is not found.</p>
 <figure>
   <img src="img/tpe-error.svg" alt="A Jinja error" loading="lazy">
   <figcaption><code>{% endfi %}</code> instead of <code>{% endif %}</code>: the status row and the preview name the
