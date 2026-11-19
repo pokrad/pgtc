@@ -1,0 +1,114 @@
+# Release binaries (D-022): pushing a tag `v<version>` builds pgtc for every target and
+# publishes the archives with their checksums as a GitHub Release. A tag with a suffix
+# (`v0.1.0-rc1`) becomes a pre-release.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - name: linux-x64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+          - name: linux-arm64
+            os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+          - name: macos-arm64
+            os: macos-latest
+            target: aarch64-apple-darwin
+          - name: macos-x64
+            os: macos-latest
+            target: x86_64-apple-darwin
+    steps:
+      - uses: actions/checkout@v4
+
+      # the tag must be the version of the workspace (a suffix after "-" is free)
+      - name: Check the version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(grep -m1 '^version' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')"
+          if [ "${tag%%-*}" != "$version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match the workspace version $version"
+            exit 1
+          fi
+
+      # the toolchain pinned in rust-toolchain.toml, with the target
+      - name: Install Rust
+        run: |
+          rustup toolchain install || rustup show
+          rustup target add ${{ matrix.target }}
+
+      # static Linux binaries: the C parts (ring) are compiled with musl-gcc
+      - name: Install musl tools
+        if: contains(matrix.target, 'musl')
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Build
+        run: cargo build --release --locked -p pgtc --target ${{ matrix.target }}
+
+      - name: Package
+        run: |
+          dir="pgtc-$GITHUB_REF_NAME-${{ matrix.name }}"
+          mkdir "$dir"
+          cp LICENSE README.md "$dir/"
+          cp -r THIRD_PARTY_LICENSES "$dir/"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp "target/${{ matrix.target }}/release/pgtc.exe" "$dir/"
+            7z a "$dir.zip" "$dir"
+          else
+            cp "target/${{ matrix.target }}/release/pgtc" "$dir/"
+            tar -czf "$dir.tar.gz" "$dir"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            pgtc-*.zip
+            pgtc-*.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Publish
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: cd dist && sha256sum pgtc-* > SHA256SUMS && cat SHA256SUMS
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=""
+          case "$GITHUB_REF_NAME" in *-*) flags="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "pgtc ${GITHUB_REF_NAME#v}" \
+            --generate-notes $flags

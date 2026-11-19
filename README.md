@@ -75,10 +75,20 @@ right, function keys, menus and dialogs.
 
 *Screenshots: the Dracula colour scheme, drawn by pgtc's own renderer with sample data.*
 
+## Download
+
+Prebuilt binaries for Windows (x64), Linux (x64, ARM64 — static, no glibc dependency)
+and macOS (Apple Silicon, Intel) are on the
+[Releases](https://github.com/pokrad/pgtc/releases) page, with a `SHA256SUMS` file.
+Unpack the archive and run `pgtc`; there is nothing to install.
+
+The binaries are not signed. Windows SmartScreen asks once (*More info → Run anyway*);
+on macOS remove the quarantine flag first: `xattr -d com.apple.quarantine pgtc`.
+
 ## Building
 
-pgtc is distributed as source. You need [Rust](https://rustup.rs/) (the toolchain
-version is pinned in `rust-toolchain.toml`); no C compiler, no libpq.
+You need [Rust](https://rustup.rs/) (the toolchain version is pinned in
+`rust-toolchain.toml`); no libpq.
 
 ```sh
 git clone https://github.com/pokrad/pgtc.git

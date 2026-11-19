@@ -950,17 +950,37 @@ pgtc (binary)
 - **Note:** over SSH the file is written on the machine running pgtc (the
   server), not on the user's local machine.
 
-### D-022 — Distribution: source only
-- **Status:** Accepted (for now)
-- pgtc is distributed **as source code only** — no binary packages
-  (`.deb`, `.rpm`, Homebrew, winget, ...) and no installers for now.
-- Users build it themselves with Cargo, e.g. `cargo build --release` or
+### D-022 — Distribution: source and release binaries
+- **Status:** Accepted (updated 2026-11-20)
+- pgtc is distributed as **source code** and as **prebuilt binaries** attached to
+  GitHub Releases. No packages (`.deb`, `.rpm`, Homebrew, winget, ...) and no
+  installers for now.
+- **Release:** pushing a tag `v<version>` runs `.github/workflows/release.yml`, which
+  builds every target, packs each binary with `LICENSE`, `README.md` and
+  `THIRD_PARTY_LICENSES/`, and publishes the archives with a `SHA256SUMS` file as a
+  GitHub Release. The tag must match the workspace version; a tag with a suffix
+  (`v0.1.0-rc1`) becomes a pre-release. Nothing is published on an ordinary push.
+
+  | Platform | Target | Archive |
+  |----------|--------|---------|
+  | Windows x64 | `x86_64-pc-windows-msvc` | `pgtc-<tag>-windows-x64.zip` |
+  | Linux x64 | `x86_64-unknown-linux-musl` | `pgtc-<tag>-linux-x64.tar.gz` |
+  | Linux ARM64 | `aarch64-unknown-linux-musl` | `pgtc-<tag>-linux-arm64.tar.gz` |
+  | macOS Apple Silicon | `aarch64-apple-darwin` | `pgtc-<tag>-macos-arm64.tar.gz` |
+  | macOS Intel | `x86_64-apple-darwin` | `pgtc-<tag>-macos-x64.tar.gz` |
+
+- **Linux binaries are static (musl):** they do not depend on the distribution's
+  glibc, so one file runs on any server.
+- **The binaries are not signed** (no code-signing certificates): Windows SmartScreen
+  warns on the first run; macOS needs the quarantine flag removed
+  (`xattr -d com.apple.quarantine pgtc`).
+- Building from source stays as before: `cargo build --release` or
   `cargo install --path crates/pgtc`.
 - **Consequences:**
   - The templates that come with pgtc are embedded in the binary and installed into
     the user's templates folder with `--setup` / `--install-templates` (D-013).
-  - CI builds and tests on Windows, Linux and macOS (D-003) but does not publish
-    binaries (*deferred* with CI, D-051).
+  - CI (`.github/workflows/rust.yml`) builds and tests on Linux, Windows and macOS
+    (D-003) at every push to `main`.
 
 ### D-023 — Clipboard: arboard + OSC 52, internal buffer
 - **Status:** Accepted
@@ -996,12 +1016,9 @@ pgtc (binary)
 
 ### D-025 — Source code hosting
 - **Status:** Accepted (for now)
-- Until the first alpha release the source lives **only on the developer's local
-  machine** (`F:\razno\rust\pgtc`).
-- It will probably be published on **GitHub** later; CI system to be chosen then
-  (affects D-022 CI builds and D-024 testing).
-- The folder is a **local git repository** (no remote); commits are made only on the
-  owner's request.
+- The source is published on **GitHub** (`github.com/pokrad/pgtc`); CI and releases
+  run on **GitHub Actions** (D-022).
+- Commits and pushes are made only on the owner's request.
 
 ### D-027 — Rust toolchain and edition
 - **Status:** Accepted
@@ -2924,3 +2941,4 @@ pgtc (binary)
 | 2026-11-19 | D-054 updated: lists without a schema part show only objects visible on the `search_path`, as psql does. D-050 / D-074 updated: `ident` writes a built-in type name of the `types` source as it is; a template whose body cannot be rendered with the sample values is not saved or tested. |
 | 2026-11-19 | In-app texts in PostgreSQL terms: a tab or tree connection that is lost or closed is called a *session* in messages; *Transaction aborted – ROLLBACK needed*; *schema* instead of *structure* in the AI and definition messages; *Backends* in the database statistics; the cancel / terminate key descriptions name `pg_cancel_backend` / `pg_terminate_backend`. "Connection" stays the name of a saved server. |
 | 2026-11-19 | D-054 updated: the `F4` autocomplete offers schemas first wherever the argument can be schema-qualified (inserted as `sales.`, the list goes on with that schema's objects); `di`, `df`, `dT`, `dD` offer schemas only. |
+| 2026-11-20 | D-022 updated: release binaries — a tag `v<version>` builds Windows x64, Linux x64 / ARM64 (static musl) and macOS ARM64 / x64 on GitHub Actions and publishes them, unsigned, with checksums as a GitHub Release; CI builds and tests on the three systems. D-025 updated: the source is on GitHub. |

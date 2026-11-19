@@ -1,22 +1,33 @@
+# Build and test on every push (D-022): Linux, Windows and macOS.
 name: Rust
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 env:
   CARGO_TERM_COLOR: always
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build:
-
-    runs-on: ubuntu-latest
-
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      - uses: actions/checkout@v4
+      # the toolchain pinned in rust-toolchain.toml
+      - name: Install Rust
+        run: rustup toolchain install || rustup show
+      - name: Build
+        run: cargo build --locked
+      - name: Run tests
+        run: cargo test --locked
