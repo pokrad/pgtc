@@ -2297,6 +2297,50 @@ async fn autocomplete_in_the_psql_command_line() {
     key(&mut a, "Ctrl+Space");
     assert!(a.psql_completion.is_none());
     assert_eq!(a.status, "No suggestions");
+    // schemas come first; one is inserted with its dot and the list goes on with
+    // the objects of that schema
+    let q = a.query_mut().unwrap();
+    q.names.set_objects(vec![
+        row("", "public", "schema", "t"),
+        row("", "sales", "schema", "f"),
+        row("public", "orders", "table", "t"),
+        row("sales", "Order Items", "table", "f"),
+    ]);
+    a.dialogs.last_mut().unwrap().set_text("cmd", "dt ");
+    key(&mut a, "Ctrl+Space");
+    let labels: Vec<String> = a
+        .psql_completion
+        .as_ref()
+        .unwrap()
+        .items
+        .iter()
+        .map(|i| format!("{} {}", i.label, i.kind))
+        .collect();
+    assert_eq!(
+        labels,
+        [
+            "public schema",
+            "sales schema",
+            "orders table",
+            "sales.Order Items table"
+        ]
+    );
+    key(&mut a, "Down");
+    key(&mut a, "Enter");
+    assert_eq!(a.dialogs.last().unwrap().text("cmd"), Some("dt sales."));
+    let p = a.psql_completion.as_ref().expect("the list goes on");
+    assert_eq!(p.items.len(), 1);
+    assert_eq!(p.items[0].label, "sales.Order Items");
+    // a list of objects pgtc keeps no names of: the schema only
+    a.psql_completion = None;
+    a.dialogs.last_mut().unwrap().set_text("cmd", "df sa");
+    key(&mut a, "Ctrl+Space");
+    assert_eq!(a.psql_completion.as_ref().unwrap().items.len(), 1);
+    a.status.clear();
+    key(&mut a, "Enter");
+    assert_eq!(a.dialogs.last().unwrap().text("cmd"), Some("df sales."));
+    assert!(a.psql_completion.is_none());
+    assert_eq!(a.status, "");
 }
 
 /// Ctrl+E (D-049): the definition of the read-only view in a new query tab on the same

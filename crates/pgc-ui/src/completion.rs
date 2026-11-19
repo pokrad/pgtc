@@ -244,7 +244,7 @@ pub fn build(a: &Analysis, names: &Names, keywords: &[&str]) -> Built {
 /// The list for the argument of the `F4` input (D-054): objects of `kinds`, offered
 /// as `name` when on the search path, else as `schema.name` (always qualified once
 /// the typed text has a `.`). `typed` filters (quotes ignored, case-insensitive).
-pub fn build_command(names: &Names, kinds: &[&str], typed: &str) -> Built {
+pub fn build_command(names: &Names, kinds: &[&str], schemas: bool, typed: &str) -> Built {
     let mut b = Built::default();
     let Some(objects) = names.objects.as_deref() else {
         b.needs.push(Need::Objects);
@@ -253,17 +253,20 @@ pub fn build_command(names: &Names, kinds: &[&str], typed: &str) -> Built {
     };
     let typed = typed.replace('"', "").to_lowercase();
     let qualified = typed.contains('.');
+    // schemas as the first part of a qualified name: `sales.`, before the objects
+    let prefix = schemas && !qualified;
     let mut out: Vec<Item> = objects
         .iter()
-        .filter(|o| kinds.contains(&o.kind.as_str()))
+        .filter(|o| kinds.contains(&o.kind.as_str()) || (prefix && o.kind == "schema"))
         .filter_map(|o| {
             let Some(schema) = o.schema.as_deref() else {
-                // a schema itself (`gp`)
+                // a schema itself (`gp`), or the schema part of a name
+                let dot = if prefix { "." } else { "" };
                 return (o.kind == "schema" && o.name.to_lowercase().starts_with(&typed)).then(
                     || Item {
                         label: o.name.clone(),
                         kind: kind_label(&o.kind),
-                        insert: quote_ident(&o.name),
+                        insert: format!("{}{dot}", quote_ident(&o.name)),
                     },
                 );
             };
@@ -282,7 +285,8 @@ pub fn build_command(names: &Names, kinds: &[&str], typed: &str) -> Built {
             })
         })
         .collect();
-    out.sort_by(|x, y| (x.label.to_lowercase(), x.kind).cmp(&(y.label.to_lowercase(), y.kind)));
+    let key = |x: &Item| (x.kind != "schema", x.label.to_lowercase(), x.kind);
+    out.sort_by(|x, y| key(x).cmp(&key(y)));
     out.dedup_by(|x, y| x.label == y.label && x.kind == y.kind);
     b.items = out;
     b
@@ -546,34 +550,45 @@ mod tests {
         if let Some(o) = n.objects.as_mut() {
             o.push(obj(Some("public"), "order_view", "view", true));
         }
-        let b = build_command(&n, &["table"], "ord");
+        let b = build_command(&n, &["table"], false, "ord");
         assert_eq!(labels(&b), ["Order Items table", "orders table"]);
         assert_eq!(b.items[0].insert, "\"Order Items\"");
         // not on the search path: schema-qualified
-        let b = build_command(&n, &["table"], "");
+        let b = build_command(&n, &["table"], false, "");
         assert_eq!(
             labels(&b),
             ["Order Items table", "orders table", "sales.invoices table"]
         );
-        let b = build_command(&n, &["table"], "sales.i");
+        let b = build_command(&n, &["table"], false, "sales.i");
         assert_eq!(labels(&b), ["sales.invoices table"]);
         // a `.` qualifies everything; quotes are ignored when filtering
-        let b = build_command(&n, &["table"], "public.\"Ord");
+        let b = build_command(&n, &["table"], false, "public.\"Ord");
         assert_eq!(
             labels(&b),
             ["public.Order Items table", "public.orders table"]
         );
         assert_eq!(b.items[0].insert, "public.\"Order Items\"");
         // only the asked kinds
-        let b = build_command(&n, &["table", "view"], "order");
+        let b = build_command(&n, &["table", "view"], false, "order");
         assert_eq!(
             labels(&b),
             ["Order Items table", "order_view view", "orders table"]
         );
-        let b = build_command(&n, &["sequence"], "");
+        let b = build_command(&n, &["sequence"], false, "");
         assert_eq!(labels(&b), ["orders_id_seq sequence"]);
+        // schemas first, with their dot; none once the name is qualified
+        let b = build_command(&n, &["table"], true, "");
+        let schemas: Vec<&Item> = b.items.iter().filter(|i| i.kind == "schema").collect();
+        assert!(!schemas.is_empty());
+        assert!(schemas.iter().all(|i| i.insert.ends_with('.')));
+        assert_eq!(b.items[..schemas.len()].iter().collect::<Vec<_>>(), schemas);
+        assert!(b.items.len() > schemas.len());
+        let b = build_command(&n, &["table"], true, "sales.");
+        assert_eq!(labels(&b), ["sales.invoices table"]);
+        let b = build_command(&n, &[], true, "sales.");
+        assert!(b.items.is_empty());
         // not read yet
-        let b = build_command(&Names::default(), &["table"], "");
+        let b = build_command(&Names::default(), &["table"], false, "");
         assert!(b.loading && b.needs == [Need::Objects]);
     }
 

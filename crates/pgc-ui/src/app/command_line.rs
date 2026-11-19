@@ -104,9 +104,9 @@ impl App {
         if d.kind != DialogKind::PsqlCommand {
             return None;
         }
-        let (arg, kinds) = crate::psql::completion_target(d.text("cmd")?)?;
+        let (arg, kinds, schemas) = crate::psql::completion_of(d.text("cmd")?)?;
         let q = self.query()?;
-        let mut built = crate::completion::build_command(&q.names, &kinds, arg);
+        let mut built = crate::completion::build_command(&q.names, &kinds, schemas, arg);
         let held = q.running.is_some() && !built.needs.is_empty();
         if held {
             built.needs.clear();
@@ -213,7 +213,8 @@ impl App {
         false
     }
 
-    /// Puts the selected entry in place of the argument.
+    /// Puts the selected entry in place of the argument. After a schema (`sales.`)
+    /// the list opens again with the objects of that schema.
     fn accept_psql_completion(&mut self) {
         let Some(popup) = self.psql_completion.take() else {
             return;
@@ -225,12 +226,20 @@ impl App {
             return;
         };
         let text = d.text("cmd").unwrap_or("");
-        let Some((arg, _)) = crate::psql::completion_target(text) else {
+        let Some((arg, _, _)) = crate::psql::completion_of(text) else {
             return;
         };
         let keep = text.len() - arg.len();
         let new = format!("{}{}", &text[..keep], item.insert);
         d.set_text("cmd", &new);
+        if item.insert.ends_with('.') {
+            let status = std::mem::take(&mut self.status);
+            self.open_psql_completion();
+            if self.psql_completion.is_none() {
+                // nothing to offer in that schema: not worth a message
+                self.status = status;
+            }
+        }
     }
 
     /// Runs a command of the command line; a wrong one keeps the dialog open.

@@ -48,9 +48,15 @@ line.</p>
 Each command offers its own relation kinds: tables for <code>dt</code>, views for <code>dv</code>, materialized views
 for <code>dm</code>, sequences for <code>ds</code> (combined letters add up); tables, views, materialized views,
 foreign tables and sequences for <code>d</code> and <code>dp</code>; the kinds in the <i>Works on</i> column for the
-generate commands; schemas for <code>gp</code> and <code>gf</code>. The other commands (<code>df</code>,
-<code>du</code>, <code>di</code>, …) offer nothing.</p>
+generate commands; schemas for <code>gp</code> and <code>gf</code>. The commands whose argument has no schema part
+(<code>l</code>, <code>dn</code>, <code>du</code>, <code>dx</code>, <code>db</code>) offer nothing.</p>
 <ul>
+  <li>Wherever a name can be schema-qualified, the list starts with the <b>schemas</b>, before the relations.
+      <kbd>Enter</kbd> on a schema inserts it with its dot (<code>sales.</code>) and the list goes on with the
+      relations of that schema. <code>dt sales.</code> is a complete pattern by itself: all tables of
+      <code>sales</code>.</li>
+  <li><code>di</code>, <code>df</code>, <code>dT</code> and <code>dD</code> offer the schemas only: the name cache
+      holds no index, type or domain names for them.</li>
   <li>A relation that is visible on the <code>search_path</code> is offered unqualified (<code>orders</code>), any other
       schema-qualified (<code>sales.customer</code>). Once the argument contains a dot, every entry is qualified:
       <code>sales.c</code> narrows the list to that schema. Matching is case-insensitive, on the start of the name.</li>

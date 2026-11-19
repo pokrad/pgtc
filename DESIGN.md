@@ -1709,7 +1709,11 @@ pgtc (binary)
   - `gtm`, `gtrb`, `gtra`, `gtsb`, `gtsa`, `gpi`, `gpu`, `gpd`, `gpo`, `gtg`, `gtj`,
     `gtr`, `gtau` — tables;
   - `gp`, `gf` — schemas;
-  - all others — nothing (*No suggestions*).
+  - `di`, `df`, `dT`, `dD` — schemas only (as the first part of a pattern);
+  - all others (`l`, `dn`, `du`, `dx`, `db`, ...) — nothing (*No suggestions*).
+  Every command whose argument can be schema-qualified offers the **schemas first**,
+  before its objects; a schema is inserted with its dot (`sales.`) and the list opens
+  again with the objects of that schema.
   Names come from the query tab's name cache (*loading…* until it is read; nothing is
   read while a result runs or is paused). Names on the search path are offered as
   `orders`, others as `sales.orders`; the typed argument filters them (case-insensitive,
@@ -2919,3 +2923,4 @@ pgtc (binary)
 | 2026-11-19 | D-074 updated: the file bar of a template that is not saved yet names its section and version folder. |
 | 2026-11-19 | D-054 updated: lists without a schema part show only objects visible on the `search_path`, as psql does. D-050 / D-074 updated: `ident` writes a built-in type name of the `types` source as it is; a template whose body cannot be rendered with the sample values is not saved or tested. |
 | 2026-11-19 | In-app texts in PostgreSQL terms: a tab or tree connection that is lost or closed is called a *session* in messages; *Transaction aborted – ROLLBACK needed*; *schema* instead of *structure* in the AI and definition messages; *Backends* in the database statistics; the cancel / terminate key descriptions name `pg_cancel_backend` / `pg_terminate_backend`. "Connection" stays the name of a saved server. |
+| 2026-11-19 | D-054 updated: the `F4` autocomplete offers schemas first wherever the argument can be schema-qualified (inserted as `sales.`, the list goes on with that schema's objects); `di`, `df`, `dT`, `dD` offer schemas only. |

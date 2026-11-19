@@ -483,6 +483,28 @@ pub fn completion_target(input: &str) -> Option<(&str, Vec<&'static str>)> {
     (!kinds.is_empty()).then_some((arg, kinds))
 }
 
+/// What the F4 autocomplete offers for the argument typed so far (D-054): the
+/// argument, the object kinds of [`completion_target`], and whether schemas are
+/// offered first (as `sales.`) — for every command whose argument can be
+/// schema-qualified. `None`: nothing is offered.
+pub fn completion_of(input: &str) -> Option<(&str, Vec<&'static str>, bool)> {
+    if let Some((arg, kinds)) = completion_target(input) {
+        // `gp` / `gf` take a schema itself
+        let schemas = kinds.iter().any(|k| *k != "schema");
+        return Some((arg, kinds, schemas));
+    }
+    let input = input.trim_start();
+    let input = input.strip_prefix('\\').unwrap_or(input);
+    let i = input.find(char::is_whitespace)?;
+    let (word, arg) = (&input[..i], input[i..].trim_start());
+    // lists of objects pgtc keeps no names of: only their schema is completed
+    matches!(word.trim_end_matches(MODIFIERS), "di" | "df" | "dT" | "dD").then_some((
+        arg,
+        Vec::new(),
+        true,
+    ))
+}
+
 /// Parses a command. Commands are typed without psql's backslash (F4 already opened
 /// the command line); a backslash typed out of psql habit is ignored.
 pub fn parse(input: &str) -> Result<Cmd, String> {
@@ -2757,6 +2779,24 @@ mod tests {
             pattern_params("public.", true),
             (Some("^(public)$".into()), None)
         );
+    }
+
+    #[test]
+    fn schemas_are_offered_where_a_name_can_be_qualified() {
+        let t = |s: &str| completion_of(s).map(|(a, k, schemas)| (a.to_owned(), k, schemas));
+        assert_eq!(t("dt ord"), Some(("ord".into(), vec!["table"], true)));
+        assert!(t("gts o").unwrap().2);
+        assert_eq!(t("gtv a b").unwrap().0, "b");
+        // no names of their own: schemas only
+        for cmd in ["di", "df", "dT", "dD", "df+", "\\diS"] {
+            assert_eq!(t(&format!("{cmd} x")), Some(("x".into(), vec![], true)));
+        }
+        // a schema itself, or no schema part at all
+        assert_eq!(t("gp sa"), Some(("sa".into(), vec!["schema"], false)));
+        assert_eq!(t("du x"), None);
+        assert_eq!(t("dn x"), None);
+        assert_eq!(t("l x"), None);
+        assert_eq!(t("df"), None, "no argument yet");
     }
 
     #[test]
