@@ -9,50 +9,34 @@
 <body>
 <main>
 <h1>Database definition: export and load</h1>
-<p class="lead">A <code>.pgdef</code> file is a structured, deterministic export of a database's <b>schema
-definition</b> — its DDL-level objects, no data. Loading the file against a database diffs it with that database's
-catalogs and generates the DDL script that brings the database to the definition in the file.</p>
+<p class="lead">A <code>.pgdef</code> file is a deterministic export of a database's schema definition (no data).
+Loading it against a database diffs it with that database's catalogs and generates the DDL script that brings the
+database to the file.</p>
 
 <h2 id="why">What it is good for</h2>
-<ul>
-  <li><b>Schema migration.</b> Export the definition of the development database; load it against test or
-      production; review and execute the script. It contains only the differences.</li>
-  <li><b>Cloning a schema.</b> Load a definition into an empty database: the script creates every object.</li>
-  <li><b>Version control.</b> The file is text with a stable order, so two exports of the same definition are
-      identical and a change shows as a clean diff.</li>
-  <li><b>Schema diff.</b> Load an older file against the current database — or compare two files with any diff
-      tool.</li>
-</ul>
-<div class="note"><p>The scope is the <b>schema definition</b>: tables, columns, constraints, indexes, views,
-functions, … No rows are exported or copied. For data, use <code>pg_dump</code>, or
-<a href="files.html#export">export a result</a>.</p></div>
+<p>Schema migration between environments, cloning a schema into an empty database, keeping the schema in version
+control (stable order, clean diffs), and comparing two states. For data, use <code>pg_dump</code> or
+<a href="files.html#export">export a result</a>.</p>
 
 <h2 id="export">Exporting a definition</h2>
-<ol class="steps">
-  <li>In the object tree, put the cursor on the <b>database</b> (the database row itself).</li>
-  <li>Choose <span class="menu">File → Export database definition…</span> — or <kbd>F2</kbd> on the database and
-      <span class="menu">Export database definition…</span>.</li>
-  <li>Choose the folder and type a file name ending in <code>.pgdef</code>, for example
-      <code>adventureworks.pgdef</code>, then <kbd>Enter</kbd>. An existing file is overwritten only after a question.</li>
-</ol>
+<p>With the tree cursor on a <b>database row</b>: <span class="menu">File → Export database definition…</span>
+(also in the <kbd>F2</kbd> menu); name a <code>.pgdef</code> file.</p>
 <figure class="mid">
   <img src="img/pgdef-export.svg" alt="Export database definition dialog" loading="lazy">
-  <figcaption>The export dialog names the database it will export. <code>.pgdef</code> files are highlighted.</figcaption>
+  <figcaption>The export dialog.</figcaption>
 </figure>
-<p>pgtc reads the catalogs through a session of its own (<i>Reading the schema of adventureworks…</i>), writes
-the file in the background and then reports <i>Definition of adventureworks exported to …</i> in the status line.
-The UI is not blocked meanwhile.</p>
-<p>All catalog queries of an export run in one <code>READ ONLY</code>, <code>REPEATABLE READ</code> transaction, so
-the file describes a single snapshot even while other sessions execute DDL. They run with an empty
-<code>search_path</code>, so every name the server deparses into the file is schema-qualified.</p>
-<p>The export always covers <b>the whole database</b>: all schemas except the system schemas
-(<code>pg_catalog</code>, <code>information_schema</code>, <code>pg_toast</code>, temporary schemas) and schemas
-created by an extension. There are no options.</p>
-<p>The menu item is available only while a database row is selected.</p>
+<ul>
+  <li>The catalogs are read through a session of its own, in one <code>READ ONLY</code>,
+      <code>REPEATABLE READ</code> transaction (one snapshot), with an empty <code>search_path</code>, so every
+      deparsed name is schema-qualified.</li>
+  <li>Always the whole database: all schemas except <code>pg_catalog</code>, <code>information_schema</code>,
+      <code>pg_toast</code>, temporary schemas and schemas created by an extension. No options.</li>
+  <li>Reading and writing run in the background; the status line reports
+      <i>Definition of adventureworks exported to …</i>.</li>
+</ul>
 
 <h2 id="file">The .pgdef file</h2>
-<p>A <code>.pgdef</code> file is pretty-printed <a href="https://www.json.org">JSON</a>. The start of a small
-one:</p>
+<p>Pretty-printed JSON:</p>
 <pre><code>{
   "format": 1,
   "schemas": [
@@ -66,10 +50,6 @@ one:</p>
               "name": "customerid",
               "type": "integer",
               "not_null": true
-            },
-            {
-              "name": "personid",
-              "type": "integer"
             },
             {
               "name": "createdby",
@@ -91,62 +71,43 @@ one:</p>
   ]
 }</code></pre>
 <ul>
-  <li><b>Deterministic.</b> Schemas, tables, functions and so on are sorted by name; columns keep their
-      <code>attnum</code> order. The same definition always produces the same file, byte for byte.</li>
-  <li><b>Definition only.</b> The file has no timestamp, no server version, no OIDs, no owners and no privileges.
-      Two exports differ only if the definition differs.</li>
-  <li><b>Server-deparsed expressions.</b> Constraint, index, view and function definitions, defaults and partition
-      bounds are stored as the server prints them (<code>pg_get_constraintdef()</code>,
-      <code>pg_get_indexdef()</code>, <code>pg_get_viewdef()</code>, <code>pg_get_functiondef()</code>,
-      <code>pg_get_expr()</code>), and are compared as text.</li>
-  <li><b>Self-contained.</b> The file refers to nothing outside itself.</li>
-  <li><code>"format": 1</code> is the version of the file layout. A file with a higher number, written by a newer
-      pgtc, is refused with <i>This definition file was written by a newer pgtc (format N).</i></li>
+  <li><b>Deterministic:</b> objects sorted by name, columns in <code>attnum</code> order; no timestamp, server
+      version, OIDs, owners or privileges. The same definition gives the same bytes.</li>
+  <li><b>Server-deparsed:</b> constraint, index, view and function definitions, defaults and partition bounds are
+      stored as <code>pg_get_constraintdef()</code>, <code>pg_get_indexdef()</code>, <code>pg_get_viewdef()</code>,
+      <code>pg_get_functiondef()</code> and <code>pg_get_expr()</code> print them, and compared as text.</li>
+  <li><code>"format"</code> is the layout version; a higher one is refused (<i>This definition file was written by a
+      newer pgtc (format N).</i>).</li>
 </ul>
-<div class="tip"><p>For syntax highlighting of <code>.pgdef</code> files in an editor, associate the extension
-<code>.pgdef</code> with JSON.</p></div>
 
 <h3 id="covered">What is in the file — and what is not</h3>
 <div class="tablewrap"><table>
 <tr><th>Included</th><th>Details</th></tr>
-<tr><td>Extensions</td><td>Name and schema. Member objects of an extension (<code>pg_depend.deptype = 'e'</code>) are not listed — <code>CREATE EXTENSION</code> creates them.</td></tr>
-<tr><td>Schemas</td><td>With their comments.</td></tr>
+<tr><td>Extensions</td><td>Name and schema; member objects are not listed.</td></tr>
+<tr><td>Schemas</td><td></td></tr>
 <tr><td>Types</td><td>Enum, composite, domain, range.</td></tr>
-<tr><td>Sequences</td><td>Data type, <code>START</code>, <code>INCREMENT</code>, <code>MINVALUE</code> / <code>MAXVALUE</code>, <code>CACHE</code>, <code>CYCLE</code>, <code>OWNED BY</code>.</td></tr>
-<tr><td>Tables</td><td>Columns (type, <code>NOT NULL</code>, default, identity, generated); constraints (primary key, unique, foreign key, check, exclusion); indexes that do not back a constraint; triggers; rules; row-level security policies; partition key and partitions with their bounds; storage parameters; comments.</td></tr>
-<tr><td>Views, materialized views</td><td>Their query, options, and for materialized views their indexes.</td></tr>
-<tr><td>Functions, procedures</td><td>Identity arguments, result type and the full <code>pg_get_functiondef()</code> text.</td></tr>
+<tr><td>Sequences</td><td>All parameters and <code>OWNED BY</code>.</td></tr>
+<tr><td>Tables</td><td>Columns (type, <code>NOT NULL</code>, default, identity, generated); constraints; indexes that do not back a constraint; triggers; rules; policies; partition key and partitions with bounds; storage parameters.</td></tr>
+<tr><td>Views, materialized views</td><td>Query, options; indexes of materialized views.</td></tr>
+<tr><td>Functions, procedures</td><td>Identity arguments, result type, <code>pg_get_functiondef()</code> text.</td></tr>
 <tr><td>Comments</td><td>On all of the above.</td></tr>
 </table></div>
 <div class="tablewrap"><table>
-<tr><th>Not included</th><th>Why it matters</th></tr>
-<tr><td>Owners and privileges (<code>GRANT</code>)</td><td>A load never emits <code>OWNER TO</code>, <code>GRANT</code> or <code>REVOKE</code>. New objects are owned by the role that executes the script.</td></tr>
-<tr><td>Roles, tablespaces</td><td>Cluster-wide objects, not part of a database.</td></tr>
-<tr><td>Foreign data wrappers and foreign tables, publications, subscriptions, event triggers, casts, operators, aggregates, collations, full-text search objects</td><td>Not covered yet. A database that uses them needs them created by hand.</td></tr>
-<tr><td>Data</td><td>No rows.</td></tr>
+<tr><th>Not included</th><th>Consequence</th></tr>
+<tr><td>Owners and privileges</td><td>A load never emits <code>OWNER TO</code>, <code>GRANT</code> or <code>REVOKE</code>; new objects belong to the executing role.</td></tr>
+<tr><td>Roles, tablespaces</td><td>Cluster-wide.</td></tr>
+<tr><td>Foreign data wrappers and foreign tables, publications, subscriptions, event triggers, casts, operators, aggregates, collations, full-text search objects</td><td>Not covered yet; create them by hand.</td></tr>
 </table></div>
 
 <h2 id="load">Loading a definition</h2>
-<p>Loading diffs a file against an <b>existing database</b> and generates a script. Nothing is executed by the load
-itself.</p>
-<ol class="steps">
-  <li>In the object tree, put the cursor on the <b>target</b> database. (For a clone, create an empty database
-      first — <code>CREATE DATABASE …</code> in a query tab — refresh the tree and select it.)</li>
-  <li>Choose <span class="menu">File → Load database definition…</span> — or <kbd>F2</kbd> on the database.</li>
-  <li>Pick the <code>.pgdef</code> file.</li>
-  <li>pgtc parses the file, reads the catalogs of the target the same way an export does, and diffs the two models
-      (the status line shows <i>Reading the schema of …</i>, then <i>Comparing the definition with …</i>).</li>
-  <li>A <b>new query tab</b> opens with a session on the target database and the script as its text. The status
-      line says <i>Sync script for adventureworks: review it, then run it with F5</i>.</li>
-  <li><b>Review the script.</b> Then execute it with <kbd>F5</kbd> — or save it, edit it, or close the tab.</li>
-</ol>
+<p>With the tree cursor on the <b>target database</b>: <span class="menu">File → Load database definition…</span>
+(also in the <kbd>F2</kbd> menu); pick the file. pgtc reads the target's catalogs as an export does, diffs the two
+models and opens the script in a <b>new query tab</b> on the target. Nothing is executed by the load. An empty diff
+opens no tab (<i>The schema of adventureworks already matches the definition file.</i>).</p>
 <figure>
   <img src="img/pgdef-script.svg" alt="A sync script in a query tab" loading="lazy">
-  <figcaption>The script for a database that lacks two columns, a table with its index and foreign key, and has an
-  older version of a view.</figcaption>
+  <figcaption>A sync script: two columns, a table with index and foreign key, a changed view.</figcaption>
 </figure>
-<p>If the diff is empty, no tab opens; a message says
-<i>The schema of adventureworks already matches the definition file.</i></p>
 
 <h3 id="script">Reading the script</h3>
 <pre><code>-- Sync script generated by pgtc: brings this database to the structure of the
@@ -170,87 +131,62 @@ CREATE INDEX ix_customernote_customerid ON sales.customernote USING btree (custo
 
 ALTER TABLE sales.customernote ADD CONSTRAINT customernote_customerid_fkey
     FOREIGN KEY (customerid) REFERENCES sales.customer(customerid);</code></pre>
-<p>This is a real script: the file had two more columns in <code>sales.customer</code>, a new table
-<code>sales.customernote</code>, and a changed view.</p>
 <ul>
-  <li><b>Only the differences.</b> The columns <code>sales.customer</code> already has are not mentioned.</li>
-  <li><b>Minimal statements.</b> A missing column is an <code>ALTER TABLE … ADD COLUMN</code>, not a re-created
-      table.</li>
-  <li><b>Dependency order.</b> Statements are emitted in this order: schemas; extensions; types, sequences,
-      functions, tables, views and materialized views, topologically sorted by their normal dependencies in
-      <code>pg_depend</code>; indexes; foreign keys and <code>OWNED BY</code>; triggers, rules and policies. All
-      foreign keys come after all tables, so tables that reference each other need no special handling.</li>
-  <li><b>Qualified names.</b> Every object is schema-qualified and quoted where needed; the script does not depend on
-      the session's <code>search_path</code>.</li>
+  <li><b>Only the differences</b>, as minimal statements (<code>ADD COLUMN</code>, not a re-created table).</li>
+  <li><b>Order:</b> schemas; extensions; types, sequences, functions, tables, views and materialized views,
+      topologically sorted by their normal dependencies in <code>pg_depend</code>; indexes; foreign keys and
+      <code>OWNED BY</code>; triggers, rules and policies. All foreign keys come after all tables.</li>
+  <li><b>Names</b> are schema-qualified and quoted; the script does not depend on <code>search_path</code>.</li>
 </ul>
 
 <h3 id="rules">The rules of a load</h3>
-<div class="tip">
-<p><b>A load creates and alters. It never drops an object that exists only in the database.</b> A table, column,
-function or index that is in the database but not in the file is left untouched. Loading an older file cannot remove
-an object.</p>
-</div>
+<p><b>A load creates and alters. It never drops an object that exists only in the database.</b></p>
 <div class="tablewrap"><table>
 <tr><th>Situation</th><th>What the script does</th></tr>
-<tr><td>Object is in the file, not in the database</td><td><code>CREATE</code> it.</td></tr>
-<tr><td>Object is in the database, not in the file</td><td>Nothing.</td></tr>
-<tr><td>A column is missing; a column's type, default or <code>NOT NULL</code> differs</td><td><code>ALTER TABLE … ADD COLUMN</code> / <code>ALTER COLUMN … TYPE</code>, <code>SET</code> / <code>DROP DEFAULT</code>, <code>SET</code> / <code>DROP NOT NULL</code>.</td></tr>
-<tr><td>A property of an existing object is absent in the file (a default, a comment)</td><td>It is removed: <code>DROP DEFAULT</code>, <code>COMMENT ON … IS NULL</code>. Properties follow the file; only whole objects and parts are kept.</td></tr>
+<tr><td>Object only in the file</td><td><code>CREATE</code>.</td></tr>
+<tr><td>Object only in the database</td><td>Nothing.</td></tr>
+<tr><td>A column is missing; its type, default or <code>NOT NULL</code> differs</td><td><code>ADD COLUMN</code> / <code>ALTER COLUMN … TYPE</code>, <code>SET</code> / <code>DROP DEFAULT</code>, <code>SET</code> / <code>DROP NOT NULL</code>.</td></tr>
+<tr><td>A property of an existing object is absent in the file (a default, a comment)</td><td>Removed: <code>DROP DEFAULT</code>, <code>COMMENT ON … IS NULL</code>. Properties follow the file; only whole objects and parts are kept.</td></tr>
 <tr><td>An enum lacks labels; a composite type lacks or has different attributes</td><td><code>ALTER TYPE … ADD VALUE IF NOT EXISTS</code>; <code>ADD ATTRIBUTE</code> / <code>ALTER ATTRIBUTE … TYPE</code>.</td></tr>
-<tr><td>A view or function differs</td><td><code>CREATE OR REPLACE</code>, or — where PostgreSQL does not allow that, for example when the result type of a function changed — <code>DROP</code> and <code>CREATE</code>.</td></tr>
-<tr><td>A constraint, index, trigger, rule, policy or materialized view differs</td><td><code>DROP</code> and <code>CREATE</code> — their definitions cannot be altered.</td></tr>
+<tr><td>A view or function differs</td><td><code>CREATE OR REPLACE</code>, or <code>DROP</code> and <code>CREATE</code> where PostgreSQL does not allow that (changed result type).</td></tr>
+<tr><td>A constraint, index, trigger, rule, policy or materialized view differs</td><td><code>DROP</code> and <code>CREATE</code>.</td></tr>
 <tr><td>A generated column's expression differs</td><td><code>DROP COLUMN</code> and <code>ADD COLUMN</code>.</td></tr>
-<tr><td>A table's <b>partition key</b> differs</td><td>Re-create the table, <b>keeping the rows</b> — see below.</td></tr>
-<tr><td>A difference that no <code>ALTER</code> can apply (a domain's base type, for example)</td><td>A <code>-- NOTE:</code> comment in the script; nothing is executed for it.</td></tr>
+<tr><td>A table's <b>partition key</b> differs</td><td>The table is re-created, <b>keeping the rows</b> — see below.</td></tr>
+<tr><td>No <code>ALTER</code> can apply the difference (a domain's base type)</td><td>A <code>-- NOTE:</code> comment only.</td></tr>
 </table></div>
 
-<h4>Tables are never dropped without a copy</h4>
-<p>A table is re-created only when its partition key differs (it cannot be altered). The script then:</p>
+<h4>Re-created tables</h4>
+<p>Only when the partition key differs. The script:</p>
 <ol>
-  <li>copies the table with all its rows into <code>_TableCopy_&lt;name&gt;</code> in the same schema;</li>
-  <li>drops the table — its partitions go with it — and creates it and its partitions as in the file, plus any
-      columns and parts that exist only in the database;</li>
-  <li>loads the rows back with <code>INSERT … OVERRIDING SYSTEM VALUE</code>, advances the sequences of identity
-      columns with <code>setval()</code> to the highest loaded value, and restores <code>OWNED BY</code> of its
-      sequences;</li>
-  <li>ends with a <b>commented-out</b> line for each copy:
-      <pre><code>-- DROP TABLE sales."_TableCopy_orders";</code></pre>
-      The copies are never dropped by the script; drop them after verifying the result.</li>
+  <li>copies the table with its rows into <code>_TableCopy_&lt;name&gt;</code> in the same schema;</li>
+  <li>drops the table (partitions go with it) and creates it and its partitions as in the file, plus the columns and
+      parts that exist only in the database;</li>
+  <li>loads the rows back with <code>INSERT … OVERRIDING SYSTEM VALUE</code>, advances identity sequences with
+      <code>setval()</code> and restores <code>OWNED BY</code>;</li>
+  <li>ends with a commented-out <code>-- DROP TABLE sales."_TableCopy_orders";</code> per copy. The script never
+      drops the copies.</li>
 </ol>
 
 <h4>What a load cannot know</h4>
 <ul>
-  <li><b>Renames.</b> Objects are matched by name. If <code>note</code> was renamed to <code>remark</code>, the file
-      has <code>remark</code> and the database has <code>note</code>: the script adds <code>remark</code> and leaves
-      <code>note</code>. Rename by hand (<code>ALTER TABLE … RENAME COLUMN</code>) <b>before</b> loading.</li>
-  <li><b>Data.</b> The diff does not look at rows. Adding a <code>NOT NULL</code> column without a default to a
-      non-empty table fails; a type change may need a <code>USING</code> expression. Edit the script where the data
-      requires it.</li>
-  <li><b>Owners and privileges</b> are never touched.</li>
+  <li><b>Renames.</b> Objects are matched by name: a renamed column is added under the new name and the old one
+      stays. Rename by hand before loading.</li>
+  <li><b>Data.</b> Rows are not examined: a new <code>NOT NULL</code> column without a default fails on a non-empty
+      table; a type change may need <code>USING</code>. Edit the script.</li>
 </ul>
 
-<h3>Running the script safely</h3>
-<ul>
-  <li>The script is sent as one request and runs as <b>one transaction</b> (see
-      <a href="query.html#script">Scripts</a>): if a statement fails, everything is rolled back. Fix the cause and
-      execute it again.</li>
-  <li>To inspect the result before committing, turn off <span class="menu">Query → Auto commit</span> before
-      <kbd>F5</kbd>, check the result, then <span class="menu">Query → Commit</span> or
-      <span class="menu">Rollback</span>.</li>
-  <li>Save the script (<kbd>Ctrl+S</kbd>) if the same change must be applied to other databases, or reviewed.</li>
-  <li>Afterwards, <kbd>Ctrl+R</kbd> on the database in the tree shows the new objects. Loading the same file again
-      should now report that the structure already matches.</li>
-</ul>
+<h3>Running the script</h3>
+<p>It is sent as one request and runs as one transaction (see <a href="query.html#script">Scripts</a>): a failing
+statement rolls everything back. To inspect before committing, turn off <span class="menu">Query → Auto
+commit</span> first.</p>
 
 <h2 id="example">Example: from development to test</h2>
 <ol class="steps">
-  <li>Connect the development server. Select its database <code>adventureworks</code> and choose
-      <span class="menu">File → Export database definition…</span>; save as <code>adventureworks.pgdef</code>.</li>
-  <li>Connect the test server. Select <b>its</b> <code>adventureworks</code> database and choose
-      <span class="menu">File → Load database definition…</span>; pick the file.</li>
-  <li>Review the script in the new tab. It contains exactly what test lacks or has in a different form.</li>
-  <li><kbd>F5</kbd>. Test now has every table, column, view and function of development, and has kept every object
-      that existed only in test.</li>
+  <li>On the development server's <code>adventureworks</code>:
+      <span class="menu">File → Export database definition…</span>.</li>
+  <li>On the test server's <code>adventureworks</code>:
+      <span class="menu">File → Load database definition…</span>, pick the file.</li>
+  <li>Review the script, <kbd>F5</kbd>. Objects that exist only in test are kept.</li>
 </ol>
 </main>
 <script src="help.js"></script>

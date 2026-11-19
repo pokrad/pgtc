@@ -9,73 +9,50 @@
 <body>
 <main>
 <h1>pgtc — Postgres terminal commander</h1>
-<p class="lead">A PostgreSQL administration and query tool that runs entirely in the terminal — locally or over SSH,
-on Linux, Windows and macOS. It looks and is used like Midnight Commander and works like pgAdmin.</p>
+<p class="lead">A PostgreSQL administration and query tool for the terminal — locally or over SSH, on Linux, Windows
+and macOS. Midnight Commander's look and keys, pgAdmin's functions.</p>
 
 <figure>
   <img src="img/query.svg" alt="pgtc: the object tree on the left, a query tab with its result on the right">
-  <figcaption>pgtc with the AdventureWorks sample database: the object tree on the left, a query tab with its result on
-  the right. Click any picture in this help to see it in full size.</figcaption>
+  <figcaption>Object tree and a query tab. Click a picture to enlarge it.</figcaption>
 </figure>
 
-<h2 id="what">What you can do with pgtc</h2>
+<h2 id="what">Chapters</h2>
 <div class="cards">
-  <a href="tree.html"><b>Browse a server</b><span>Databases, schemas, relations, columns, indexes, functions, triggers, roles, tablespaces — read from the system catalogs; find any object by name.</span></a>
-  <a href="objects.html"><b>Read definitions</b><span>The DDL of the selected object, reconstructed from the catalogs, as in pgAdmin's SQL tab.</span></a>
-  <a href="query.html"><b>Run SQL</b><span>Query tabs, each with its own session: streamed result sets, messages, cancel, transaction control and PL/pgSQL mode.</span></a>
-  <a href="editor.html"><b>Edit comfortably</b><span>A fast editor with highlighting, find / replace, undo and autocomplete from the live database.</span></a>
-  <a href="files.html"><b>Work with files</b><span>Open and save SQL files; export any result to CSV, JSON or XML.</span></a>
-  <a href="psql.html"><b>Use psql's commands</b><span><code>dt</code>, <code>d table</code>, <code>df</code>… and commands that generate SELECT, INSERT, UPDATE, MERGE, triggers and views for a table.</span></a>
-  <a href="templates.html"><b>Generate SQL from templates</b><span>Fill in a short form, get ready-to-run CREATE and DROP statements. Add your own templates.</span></a>
-  <a href="template-editor.html"><b>Make your own templates</b><span>The template editor: parameters from dialogs, helpers for the body, a live preview, a test in the real form.</span></a>
-  <a href="ai.html"><b>Ask AI for SQL</b><span>Describe what you need in your words; a model that knows your database structure writes the SQL into the editor. Nothing runs by itself.</span></a>
-  <a href="pgdef.html"><b>Synchronise a schema</b><span>Export a database's schema definition to a <code>.pgdef</code> file and generate the DDL that brings another database to it.</span></a>
-  <a href="dashboard.html"><b>Watch a server</b><span>Live graphs, sessions, blocking, progress of VACUUM and CREATE INDEX, locks; cancel or terminate sessions.</span></a>
-  <a href="profiler.html"><b>Profile SQL</b><span>Every statement the server runs, with duration, parameters and errors.</span></a>
-  <a href="dbstats.html"><b>Read statistics</b><span>Size, cache hit ratio, transactions, tuples and more for one database, from the cumulative statistics views.</span></a>
-  <a href="settings.html"><b>Make it yours</b><span>Settings, six colour schemes (or your own), every key changeable.</span></a>
+  <a href="tree.html"><b>Object tree</b><span>The cluster's objects, read lazily from the system catalogs; find by name.</span></a>
+  <a href="objects.html"><b>Definitions</b><span>DDL of the selected object, reconstructed from the catalogs.</span></a>
+  <a href="query.html"><b>Query tabs</b><span>One session per tab: streamed result sets, messages, cancel, transaction control, PL/pgSQL mode.</span></a>
+  <a href="editor.html"><b>Editor</b><span>Highlighting, find / replace, undo, autocomplete from the catalogs.</span></a>
+  <a href="files.html"><b>Files and export</b><span>SQL files; result sets to CSV, JSON or XML.</span></a>
+  <a href="psql.html"><b>psql-style commands</b><span><code>dt</code>, <code>d table</code>, <code>df</code>…, and generators of DML, triggers and views for a table.</span></a>
+  <a href="templates.html"><b>Developer templates</b><span>A form per template; the rendered DDL goes to the cursor.</span></a>
+  <a href="template-editor.html"><b>Template editor</b><span>Parameters, Jinja helpers, live preview, test.</span></a>
+  <a href="ai.html"><b>AI assistant</b><span>SQL written by a model that is given the schema, never the data. Nothing is executed.</span></a>
+  <a href="pgdef.html"><b>Schema sync</b><span>Export a schema to a <code>.pgdef</code> file; generate the DDL that brings another database to it.</span></a>
+  <a href="dashboard.html"><b>Dashboard</b><span>Activity, blocking, progress views, locks; cancel or terminate backends.</span></a>
+  <a href="profiler.html"><b>SQL profiler</b><span>Every statement the cluster executes, from the server log.</span></a>
+  <a href="dbstats.html"><b>Database statistics</b><span><code>pg_stat_database</code> for one database.</span></a>
+  <a href="settings.html"><b>Settings</b><span>Options, colour schemes, keymap.</span></a>
 </div>
 
-<h2 id="how">How to read this help</h2>
+<h2 id="how">Using this help</h2>
 <ul>
-  <li><b>New to pgtc?</b> Read <a href="start.html">Getting started</a> — it takes you from building the program to
-      your first query in a few minutes — then <a href="window.html">The window, menus and keys</a>.</li>
-  <li><b>Looking for one thing?</b> Each chapter in the menu on the left covers one area. The current chapter shows
-      its sections under its name.</li>
-  <li><b>Looking for a key?</b> <a href="reference.html">Reference</a> lists every key, every menu item and every
-      file pgtc uses.</li>
-  <li><b>Something does not work?</b> See <a href="trouble.html">Troubleshooting</a>.</li>
+  <li>First steps: <a href="start.html">Getting started</a>, then <a href="window.html">The window, menus and keys</a>.</li>
+  <li>Every key, menu item and file: <a href="reference.html">Reference</a>. Problems: <a href="trouble.html">Troubleshooting</a>.</li>
+  <li>Keys named here are the defaults. <kbd>F1</kbd> in pgtc shows the keys that work at the moment, with your own
+      <code>keymap.toml</code> bindings.</li>
+  <li><kbd>Esc</kbd> <kbd>5</kbd> means the keys pressed one after the other.</li>
+  <li>Examples and screenshots use the PostgreSQL port of AdventureWorks (database <code>adventureworks</code>, schemas
+      <code>humanresources</code>, <code>person</code>, <code>production</code>, <code>purchasing</code>,
+      <code>sales</code>) on a saved server <i>local</i>; colour scheme <i>Classic</i>, 120 × 34 cells.</li>
 </ul>
-
-<h3>Conventions</h3>
-<div class="tablewrap"><table>
-<tr><th>You see</th><th>It means</th></tr>
-<tr><td class="k"><kbd>F5</kbd>, <kbd>Ctrl+N</kbd>, <kbd>Alt+Shift+C</kbd></td><td>A key, or keys pressed together.</td></tr>
-<tr><td class="k"><kbd>Esc</kbd> <kbd>5</kbd></td><td>Keys pressed one after the other.</td></tr>
-<tr><td class="k"><span class="menu">File → New query</span></td><td>A menu item: open the menu with <kbd>F9</kbd>.</td></tr>
-<tr><td class="k"><span class="ui">Save password</span></td><td>A field, checkbox or button of a dialog.</td></tr>
-<tr><td class="k"><code>settings.toml</code>, <code>dt sales.*</code></td><td>A file name, or text that you type.</td></tr>
-</table></div>
-<p>The keys named in this help are the built-in ones. If you have changed keys in <code>keymap.toml</code>, pgtc itself
-always shows your keys: press <kbd>F1</kbd> for the keys that work at the moment.</p>
-
-<h3>About the examples</h3>
-<p>The examples and screenshots use <b>AdventureWorks</b>, the well-known sample database of a bicycle manufacturer,
-in its PostgreSQL form: a database <code>adventureworks</code> with the schemas <code>humanresources</code>,
-<code>person</code>, <code>production</code>, <code>purchasing</code> and <code>sales</code>. Most examples use the
-tables <code>sales.customer</code>, <code>sales.salesorderheader</code>, <code>sales.salesterritory</code> and
-<code>person.person</code>. The screenshots show a server saved as <i>local</i> and a second one, <i>production</i>.</p>
-<p>The pictures are drawn by pgtc's own screen renderer in the default colour scheme <i>Classic</i> on a
-120 × 34 terminal; the data in them is sample data.</p>
 
 <h2 id="servers">Supported servers and terminals</h2>
 <ul>
-  <li><b>PostgreSQL 11 and newer.</b> pgtc reads <code>server_version_num</code> after connecting and refuses an
-      older server. Major versions up to 18 are verified; a newer one connects with the warning <i>“PostgreSQL N –
-      not yet verified with pgtc”</i> and is handled with the catalog queries of the newest known version.</li>
-  <li><b>Any terminal</b> on Linux, Windows and macOS, also over SSH. The default colours need only the 16 basic
-      colours. No special font is needed.</li>
-  <li>Everything can be done from the <b>keyboard</b>; the mouse is optional.</li>
+  <li><b>PostgreSQL 11 and newer</b>; an older server is refused (<code>server_version_num</code>). Verified up to 18;
+      a newer major version connects with the warning <i>“PostgreSQL N – not yet verified with pgtc”</i> and uses the
+      catalog queries of the newest known version.</li>
+  <li><b>Any terminal</b> with 16 colours, also over SSH; no special font. The mouse is optional.</li>
 </ul>
 </main>
 <script src="help.js"></script>

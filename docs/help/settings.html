@@ -9,80 +9,47 @@
 <body>
 <main>
 <h1>Settings, colours and keys</h1>
-<p class="lead">The Settings dialog, the built-in and user-defined colour schemes, key bindings
-(<code>keymap.toml</code>) and the settings file (<code>settings.toml</code>).</p>
+<p class="lead">The Settings dialog, colour schemes, <code>keymap.toml</code> and <code>settings.toml</code>.</p>
 
 <h2 id="dialog">The Settings dialog</h2>
 <figure class="small">
   <img src="img/settings.svg" alt="The Settings dialog" loading="lazy">
   <figcaption><span class="menu">Settings → Settings…</span></figcaption>
 </figure>
-<p>Open it with <span class="menu">Settings → Settings…</span> (<kbd>F9</kbd>, then <kbd>Alt+S</kbd> for the <i>Settings</i> menu, <kbd>Enter</kbd>). <span class="ui">OK</span> (<kbd>Enter</kbd>) applies the values and writes them to <code>settings.toml</code>;
-<kbd>Esc</kbd> discards the changes.</p>
-
-<h3>Appearance</h3>
+<p><span class="ui">OK</span> applies the values and writes <code>settings.toml</code>. Settings that need a note:</p>
 <div class="tablewrap"><table>
-<tr><th>Setting</th><th>Default</th><th>Meaning</th></tr>
-<tr><td class="k"><span class="ui">Colour scheme</span></td><td>Classic</td><td>The colour scheme of the whole UI. See <a href="#schemes">Colour schemes</a>. A scheme picked in the list is previewed immediately.</td></tr>
-<tr><td class="k"><span class="ui">ASCII frames (+ - |)</span></td><td>off</td><td>Draw all frames and lines with the plain characters <code>+ - = |</code> instead of line-drawing characters. See <a href="#ascii">below</a>.</td></tr>
+<tr><th>Setting</th><th>Default</th><th>Note</th></tr>
+<tr><td class="k"><span class="ui">Colour scheme</span></td><td>Classic</td><td>Previewed while you move through the list. See <a href="#schemes">Colour schemes</a>.</td></tr>
+<tr><td class="k"><span class="ui">ASCII frames (+ - |)</span></td><td>off</td><td>See <a href="#ascii">below</a>.</td></tr>
+<tr><td class="k"><span class="ui">Connect timeout (s)</span></td><td>10</td><td><code>connect_timeout</code> of every session pgtc opens (1 – 3,600).</td></tr>
+<tr><td class="k"><span class="ui">Show system objects in the tree</span></td><td>off</td><td>Adds the <code>pg_toast</code> and temporary schemas, template databases, the <code>pg_*</code> roles and extension members. Also applies to <a href="tree.html#find">Find object</a>.</td></tr>
+<tr><td class="k"><span class="ui">Rows per batch</span></td><td>1000</td><td>Rows read before a result is paused (1 – 1,000,000). See <a href="query.html#batches">Large results</a>.</td></tr>
+<tr><td class="k"><span class="ui">Cancel wait (s)</span></td><td>5</td><td>Time after a cancel request before pgtc offers to close the session (1 – 3,600). See <a href="query.html#cancel">Cancelling</a>.</td></tr>
+<tr><td class="k"><span class="ui">Auto commit</span> / <span class="ui">Auto rollback on error</span></td><td>on / off</td><td>Initial state of <b>new</b> query tabs only; open tabs keep theirs (<a href="query.html#tx">Query menu</a>).</td></tr>
+<tr><td class="k"><span class="ui">Ask to save query tabs when closing</span></td><td>on</td><td>Off: unsaved text is discarded without a question — also on quit and disconnect.</td></tr>
+<tr><td class="k"><span class="ui">System clipboard</span></td><td>on</td><td>The clipboard of the host pgtc runs on.</td></tr>
+<tr><td class="k"><span class="ui">OSC 52 clipboard (terminal, SSH)</span></td><td>on</td><td>Copy also goes to the terminal as an OSC 52 sequence — what makes copy work over SSH (<a href="editor.html#clipboard">Copy and paste</a>). Turn off if the terminal prints garbage on copy.</td></tr>
 </table></div>
-
-<h3>Tree and connections</h3>
-<div class="tablewrap"><table>
-<tr><th>Setting</th><th>Default</th><th>Meaning</th></tr>
-<tr><td class="k"><span class="ui">Connect timeout (s)</span></td><td>10</td><td>The <code>connect_timeout</code> of every session pgtc opens, in seconds (1 – 3,600): a connection attempt that has not succeeded by then is abandoned. Raise it for servers behind a slow link.</td></tr>
-<tr><td class="k"><span class="ui">Show system objects in the tree</span></td><td>off</td><td>Also show the <code>pg_toast</code> and temporary schemas, template databases, the predefined <code>pg_*</code> roles and objects that belong to an extension. Applies to the tree and to <a href="tree.html#find">Find object</a>.</td></tr>
-</table></div>
-
-<h3>Query tabs</h3>
-<div class="tablewrap"><table>
-<tr><th>Setting</th><th>Default</th><th>Meaning</th></tr>
-<tr><td class="k"><span class="ui">Rows per batch</span></td><td>1000</td><td>Number of rows of a result set read per batch (1 – 1,000,000); after each batch the result is paused until more rows are needed. See <a href="query.html#batches">Large results</a>. A larger batch means fewer pauses when scrolling, a smaller one a quicker first screen.</td></tr>
-<tr><td class="k"><span class="ui">Cancel wait (s)</span></td><td>5</td><td>Seconds (1 – 3,600) pgtc waits after sending a cancel request; if the backend has not ended the statement by then, pgtc offers to close the session. See <a href="query.html#cancel">Cancelling</a>.</td></tr>
-<tr><td class="k"><span class="ui">Auto commit in new query tabs</span></td><td>on</td><td>Initial state of <a href="query.html#tx">Auto commit</a> in a new query tab.</td></tr>
-<tr><td class="k"><span class="ui">Auto rollback on error in new tabs</span></td><td>off</td><td>Initial state of <i>Auto rollback on error</i> in a new query tab.</td></tr>
-<tr><td class="k"><span class="ui">Ask to save query tabs when closing</span></td><td>on</td><td>Off: a query tab with unsaved text closes without the <i>Save them?</i> question — the text is discarded. Also when quitting and disconnecting.</td></tr>
-</table></div>
-<p>The two <i>Auto…</i> settings are only the initial values for tabs opened from now on. Open tabs keep their
-own state (<span class="menu">Query</span> menu).</p>
-
-<h3>Clipboard</h3>
-<div class="tablewrap"><table>
-<tr><th>Setting</th><th>Default</th><th>Meaning</th></tr>
-<tr><td class="k"><span class="ui">System clipboard</span></td><td>on</td><td>Use the clipboard of the host pgtc runs on.</td></tr>
-<tr><td class="k"><span class="ui">OSC 52 clipboard (terminal, SSH)</span></td><td>on</td><td>On copy, also send the text to the terminal as an OSC 52 escape sequence; the terminal puts it into the clipboard of the machine it runs on. This is what makes copy work over SSH.</td></tr>
-</table></div>
-<p>Both are explained in <a href="editor.html#clipboard">Copy and paste</a>. Turn OSC 52 off if your terminal prints
-strange characters when you copy; turn the system clipboard off if you do not want pgtc to touch it.</p>
-
-<p>A value outside its range, or a non-numeric value in a numeric field, is reported on <span class="ui">OK</span>;
-the dialog stays open.</p>
 
 <h2 id="ascii">ASCII frames</h2>
 <figure>
   <img src="img/ascii-frames.svg" alt="pgtc with ASCII frames" loading="lazy">
-  <figcaption>The same window with <span class="ui">ASCII frames</span> on.</figcaption>
+  <figcaption><span class="ui">ASCII frames</span> on.</figcaption>
 </figure>
-<p>pgtc draws its frames with line-drawing characters (<code>║ ═ ╔ │ ─ ┌</code>). A few terminals, fonts and old serial
-consoles do not have them and show letters, question marks or gaps instead. With
-<span class="ui">ASCII frames</span> checked, the outer frames are drawn with <code>+ = |</code>, the inner lines and
-the frames of dialogs and menus with <code>+ - |</code>. Everything else stays the same.</p>
-<p>If your screen is so garbled that you cannot find the dialog: quit pgtc and set the option in the settings file —
-<code>ascii_frames = true</code> under <code>[ui]</code> (see <a href="#file">below</a>).</p>
+<p>For terminals or fonts without line-drawing characters: all frames and lines are drawn with <code>+ - = |</code>.
+If the screen is too garbled to reach the dialog, set <code>ascii_frames = true</code> under <code>[ui]</code> in
+<a href="#file"><code>settings.toml</code></a>.</p>
 
 <h2 id="schemes">Colour schemes</h2>
 <figure class="small">
   <img src="img/settings-scheme.svg" alt="The list of colour schemes" loading="lazy">
-  <figcaption>The list of schemes. Move through it with <kbd>Up</kbd> / <kbd>Down</kbd>; <kbd>Enter</kbd> takes one.</figcaption>
+  <figcaption>The list of schemes.</figcaption>
 </figure>
 <div class="tablewrap"><table>
-<tr><th>Scheme</th><th>Look</th><th>Needs</th></tr>
-<tr><td><b>Classic</b> (default)</td><td>The look of Midnight Commander: blue panels, cyan highlight, grey dialogs.</td><td>Only the 16 basic colours — works on every terminal.</td></tr>
-<tr><td><b>Dark</b></td><td>Light text on a dark background.</td><td>16 colours.</td></tr>
-<tr><td><b>Light</b></td><td>Dark text on a light background.</td><td>16 colours.</td></tr>
-<tr><td><b>Terminal default</b></td><td>Uses your terminal's own background and text colour, and only its 16 colours — pgtc looks like the rest of your terminal.</td><td>Nothing. The choice for limited terminals and for terminals with a colour theme you like.</td></tr>
-<tr><td><b>Tokyo Night</b></td><td>The “Night” palette of the Tokyo Night theme.</td><td rowspan="2">A terminal with true colour (24-bit): Windows Terminal, iTerm2, kitty, WezTerm, Alacritty, GNOME Terminal, Konsole and most modern ones.</td></tr>
-<tr><td><b>Dracula</b></td><td>The palette of the Dracula theme.</td></tr>
+<tr><th>Scheme</th><th>Needs</th></tr>
+<tr><td><b>Classic</b> (default), <b>Dark</b>, <b>Light</b></td><td>The 16 basic colours; their exact shades are the terminal's.</td></tr>
+<tr><td><b>Terminal default</b></td><td>The terminal's own background, text colour and 16 colours.</td></tr>
+<tr><td><b>Tokyo Night</b>, <b>Dracula</b></td><td>True colour (24-bit). Wrong or blocky colours: the terminal, the SSH client or <code>screen</code> / <code>tmux</code> does not pass it.</td></tr>
 </table></div>
 <div class="shots">
 <figure><img src="img/scheme-classic.svg" alt="Classic" loading="lazy"><figcaption>Classic</figcaption></figure>
@@ -92,26 +59,17 @@ the frames of dialogs and menus with <code>+ - |</code>. Everything else stays t
 <figure><img src="img/scheme-tokyo-night.svg" alt="Tokyo Night" loading="lazy"><figcaption>Tokyo Night</figcaption></figure>
 <figure><img src="img/scheme-dracula.svg" alt="Dracula" loading="lazy"><figcaption>Dracula</figcaption></figure>
 </div>
-<ul>
-  <li>The 16-colour schemes look a little different in every terminal, because each terminal has its own idea of
-      “blue” or “cyan”. The pictures show the colours of Windows Terminal.</li>
-  <li>If Tokyo Night or Dracula show wrong or blocky colours, your terminal (or the SSH client, or <code>screen</code> /
-      <code>tmux</code> in between) does not pass true colour: use one of the first four.</li>
-  <li>In every scheme the highlighted letters of menus and buttons are also underlined, and the text cursor is drawn
-      in reverse, so both stay visible whatever your terminal does with colours.</li>
-</ul>
 
 <h3 id="own-scheme">Your own colour scheme</h3>
-<p>A colour scheme is a TOML file. A <code>.toml</code> file in the <code>themes</code> folder appears in the list
-of the Settings dialog (restart pgtc if it does not show up):</p>
+<p>A <code>.toml</code> file in the <code>themes</code> folder appears in the list after a restart:</p>
 <div class="tablewrap"><table>
 <tr><th>Platform</th><th>Themes folder</th></tr>
 <tr><td>Linux</td><td><code>~/.local/share/pgtc/themes</code></td></tr>
 <tr><td>macOS</td><td><code>~/Library/Application Support/pgtc/themes</code></td></tr>
 <tr><td>Windows</td><td><code>%APPDATA%\pgtc\themes</code></td></tr>
 </table></div>
-<p>A scheme lists only what it overrides; every role it does not mention is inherited from <i>Classic</i>. This
-complete file is “Classic with a green editor”:</p>
+<p>A scheme lists only what it overrides; the rest is inherited from <i>Classic</i>. The built-in schemes are in the
+<code>themes</code> folder of the source code.</p>
 <pre><code>name = "Green editor"
 
 [editor]
@@ -122,67 +80,53 @@ number      = "lightcyan on black"
 comment     = "darkgray on black italic"
 selection   = "black on lightgreen"
 line_number = "green on black"</code></pre>
-<h4>Writing a colour</h4>
-<p>Every entry is <code>"<i>text colour</i> on <i>background colour</i>"</code>, optionally followed by one or more of
-<code>bold</code>, <code>dim</code>, <code>italic</code>, <code>underlined</code>, <code>reversed</code>.</p>
+<p>An entry is <code>"<i>foreground</i> on <i>background</i>"</code>, optionally followed by <code>bold</code>,
+<code>dim</code>, <code>italic</code>, <code>underlined</code>, <code>reversed</code>.</p>
 <div class="tablewrap"><table>
 <tr><th>Colour</th><th>Write</th></tr>
-<tr><td>The 8 normal colours</td><td><code>black</code> <code>red</code> <code>green</code> <code>yellow</code> (or <code>brown</code>) <code>blue</code> <code>magenta</code> <code>cyan</code> <code>lightgray</code></td></tr>
-<tr><td>The 8 bright colours</td><td><code>darkgray</code> <code>lightred</code> <code>lightgreen</code> <code>lightyellow</code> <code>lightblue</code> <code>lightmagenta</code> <code>lightcyan</code> <code>white</code></td></tr>
-<tr><td>The terminal's own colour</td><td><code>default</code></td></tr>
-<tr><td>An exact colour (true colour terminals)</td><td><code>#rrggbb</code>, for example <code>#ffb86c</code></td></tr>
+<tr><td>Normal</td><td><code>black</code> <code>red</code> <code>green</code> <code>yellow</code> (or <code>brown</code>) <code>blue</code> <code>magenta</code> <code>cyan</code> <code>lightgray</code></td></tr>
+<tr><td>Bright</td><td><code>darkgray</code> <code>lightred</code> <code>lightgreen</code> <code>lightyellow</code> <code>lightblue</code> <code>lightmagenta</code> <code>lightcyan</code> <code>white</code></td></tr>
+<tr><td>The terminal's own</td><td><code>default</code></td></tr>
+<tr><td>True colour</td><td><code>#rrggbb</code></td></tr>
 </table></div>
-<h4>What can be coloured</h4>
 <div class="tablewrap"><table>
 <tr><th>Section</th><th>Entry</th><th>Colours</th></tr>
-<tr><td rowspan="6"><code>[core]</code></td><td><code>normal</code></td><td>The object tree and the background of the window.</td></tr>
-<tr><td><code>border</code></td><td>Frames and lines.</td></tr>
-<tr><td><code>title</code>, <code>title_focused</code></td><td>The <i>Connections</i> title of the tree, without / with the focus.</td></tr>
+<tr><td rowspan="5"><code>[core]</code></td><td><code>normal</code>, <code>border</code></td><td>The object tree and window background; frames and lines.</td></tr>
+<tr><td><code>title</code>, <code>title_focused</code></td><td>The tree's title, without / with the focus.</td></tr>
 <tr><td><code>selected</code></td><td>The cursor row of the tree and of lists, with the focus.</td></tr>
 <tr><td><code>selected_unfocused</code></td><td>The cursor row while the focus is elsewhere.</td></tr>
 <tr><td><code>hint</code></td><td>Quiet texts such as <i>loading…</i>.</td></tr>
-<tr><td rowspan="3"><code>[menu]</code></td><td><code>normal</code>, <code>hotkey</code></td><td>The menu bar, the pull-down and context menus, the autocomplete list; the highlighted letters.</td></tr>
+<tr><td rowspan="3"><code>[menu]</code></td><td><code>normal</code>, <code>hotkey</code></td><td>Menu bar, pull-down and context menus, the autocomplete list; the highlighted letters.</td></tr>
 <tr><td><code>selected</code>, <code>selected_hotkey</code></td><td>The highlighted item.</td></tr>
 <tr><td><code>disabled</code></td><td>Items that cannot run now.</td></tr>
-<tr><td rowspan="5"><code>[dialog]</code></td><td><code>normal</code>, <code>title</code>, <code>hotkey</code></td><td>Dialogs: text, title, highlighted letters.</td></tr>
-<tr><td><code>focus</code>, <code>focus_hotkey</code></td><td>The button or list row that has the focus.</td></tr>
+<tr><td rowspan="4"><code>[dialog]</code></td><td><code>normal</code>, <code>title</code>, <code>hotkey</code></td><td>Dialog text, title, highlighted letters.</td></tr>
+<tr><td><code>focus</code>, <code>focus_hotkey</code></td><td>The focused button or list row.</td></tr>
 <tr><td><code>input</code>, <code>input_focus</code></td><td>Input fields, without / with the focus.</td></tr>
-<tr><td><code>disabled</code></td><td>Parts that cannot be used.</td></tr>
-<tr><td><code>shadow</code></td><td>The shadow of a dialog.</td></tr>
+<tr><td><code>disabled</code>, <code>shadow</code></td><td>Unusable parts; the dialog's shadow.</td></tr>
 <tr><td><code>[error]</code></td><td><code>normal</code>, <code>title</code></td><td>Error messages.</td></tr>
-<tr><td rowspan="3"><code>[tabs]</code></td><td><code>bar</code>, <code>inactive</code></td><td>The tab strip; tabs that are not shown; the file bar.</td></tr>
-<tr><td><code>active</code></td><td>The shown tab while its part has the focus.</td></tr>
-<tr><td><code>active_unfocused</code></td><td>The shown tab while the focus is elsewhere.</td></tr>
-<tr><td rowspan="2"><code>[status]</code></td><td><code>normal</code></td><td>The status row of a tab.</td></tr>
-<tr><td><code>window</code></td><td>The bottom line of the screen.</td></tr>
-<tr><td rowspan="3"><code>[editor]</code></td><td><code>text</code>, <code>line_number</code></td><td>Plain text; the line numbers.</td></tr>
-<tr><td><code>keyword</code>, <code>string</code>, <code>number</code>, <code>comment</code>, <code>quoted_ident</code>, <code>operator</code></td><td>The parts of SQL.</td></tr>
+<tr><td rowspan="2"><code>[tabs]</code></td><td><code>bar</code>, <code>inactive</code></td><td>The tab strip; tabs not shown; the file bar.</td></tr>
+<tr><td><code>active</code>, <code>active_unfocused</code></td><td>The shown tab, with / without the focus.</td></tr>
+<tr><td><code>[status]</code></td><td><code>normal</code>, <code>window</code></td><td>A tab's status row; the bottom line of the screen.</td></tr>
+<tr><td rowspan="3"><code>[editor]</code></td><td><code>text</code>, <code>line_number</code></td><td>Plain text; line numbers.</td></tr>
+<tr><td><code>keyword</code>, <code>string</code>, <code>number</code>, <code>comment</code>, <code>quoted_ident</code>, <code>operator</code></td><td>SQL tokens.</td></tr>
 <tr><td><code>selection</code></td><td>Selected text.</td></tr>
-<tr><td rowspan="2"><code>[grid]</code></td><td><code>header</code>, <code>row_number</code></td><td>The column names; the row numbers.</td></tr>
+<tr><td rowspan="2"><code>[grid]</code></td><td><code>header</code>, <code>row_number</code></td><td>Column names; row numbers.</td></tr>
 <tr><td><code>cursor</code>, <code>null</code></td><td>The cell cursor; <code>[null]</code>.</td></tr>
 <tr><td><code>[messages]</code></td><td><code>error</code>, <code>notice</code>, <code>info</code></td><td>The lines of <i>Messages</i>.</td></tr>
 <tr><td rowspan="3"><code>[dashboard]</code></td><td><code>graph</code></td><td>The graphs.</td></tr>
 <tr><td><code>blocked</code>, <code>blocking</code>, <code>idle_in_transaction</code>, <code>tagged</code></td><td>Session rows.</td></tr>
 <tr><td><code>slow</code>, <code>very_slow</code></td><td>Durations from 1 s / from 10 s; warning values of the summary.</td></tr>
 </table></div>
-<div class="tip"><p>The easiest start: the schemes that come with pgtc are in the folder <code>themes</code> of the source
-code. Copy <code>dracula.toml</code>, give it a new <code>name</code>, and change colours.</p></div>
-<p>Choose colours that differ clearly: text needs contrast with its background, and the cursor row, inputs and the
-focused button must stand out from their surroundings.</p>
 
 <h2 id="keymap">Changing keys: keymap.toml</h2>
-<p>Every command has a name and can be bound to any key. Overrides of the built-in bindings go into
-<code>keymap.toml</code> in pgtc's configuration folder:</p>
 <div class="tablewrap"><table>
 <tr><th>Platform</th><th>File</th></tr>
 <tr><td>Linux</td><td><code>~/.config/pgtc/keymap.toml</code></td></tr>
 <tr><td>macOS</td><td><code>~/Library/Application Support/pgtc/keymap.toml</code></td></tr>
 <tr><td>Windows</td><td><code>%APPDATA%\pgtc\keymap.toml</code></td></tr>
 </table></div>
-<p>The actual path is shown at the end of <span class="menu">Help → Keyboard shortcuts</span>. pgtc does not
-create the file; it is read once, at start.</p>
-
-<h3>The file</h3>
+<p>pgtc does not create the file and reads it once, at start. The actual path is at the end of
+<span class="menu">Help → Keyboard shortcuts</span>.</p>
 <pre><code># keymap.toml — only what differs from the built-in keys
 
 [editor]
@@ -195,77 +139,47 @@ export_result = "Alt+X"
 
 [tree]
 quick_search = "Alt+S"             # only this key; Ctrl+S no longer searches
-drop_object = []                   # no key at all: F8 does nothing in the tree</code></pre>
+drop_object = []                   # no key at all</code></pre>
 <ul>
-  <li>The file has one <b>section per part of the window</b>; a line gives a command its key or keys <b>in that
-      part</b>.</li>
-  <li>A line <b>replaces</b> all built-in keys of that command in that section. To keep a built-in key and add one,
-      list both.</li>
-  <li><code>[]</code> takes all keys away from a command.</li>
-  <li>Commands you do not mention keep their built-in keys.</li>
+  <li>A line <b>replaces</b> all built-in keys of that command in that section; to add a key, list both.</li>
+  <li>A key is looked up in the section of the focused part, then in <code>[global]</code>. A command used in
+      several parts must be bound in each (<code>execute</code> under <code>[editor]</code> and
+      <code>[results]</code>).</li>
+  <li>Command names and their sections: last column of the <a href="reference.html#keys">Keyboard reference</a>.</li>
 </ul>
-
-<h3>Sections</h3>
 <div class="tablewrap"><table>
-<tr><th>Section</th><th>Keys work when the focus is in…</th></tr>
-<tr><td class="k"><code>[global]</code></td><td>any part — unless that part uses the key for something else.</td></tr>
+<tr><th>Section</th><th>Focus in…</th></tr>
+<tr><td class="k"><code>[global]</code></td><td>any part, unless that part binds the key itself.</td></tr>
 <tr><td class="k"><code>[tree]</code></td><td>the object tree.</td></tr>
 <tr><td class="k"><code>[editor]</code></td><td>the SQL editor, an object definition, a statement pane.</td></tr>
-<tr><td class="k"><code>[results]</code></td><td>the result grid and <i>Messages</i> of a query tab.</td></tr>
+<tr><td class="k"><code>[results]</code></td><td>the result grid and <i>Messages</i>.</td></tr>
 <tr><td class="k"><code>[dashboard]</code>, <code>[profiler]</code>, <code>[db_stats]</code></td><td>the list of that tab.</td></tr>
 <tr><td class="k"><code>[dialog]</code></td><td>dialogs, menus and lists.</td></tr>
 </table></div>
-<p>pgtc looks for a pressed key first in the section of the focused part, then in <code>[global]</code>. That is why
-<kbd>Ctrl+R</kbd> can refresh in the tree and hide the results in a query tab: it is bound to different commands in
-<code>[tree]</code> and <code>[editor]</code>.</p>
-<p>A command used in several parts must be bound in each: to run with <kbd>Ctrl+Enter</kbd> from the editor <b>and</b>
-from the results, write <code>execute = …</code> under <code>[editor]</code> and under <code>[results]</code>.</p>
-
-<h3>Key names</h3>
 <div class="tablewrap"><table>
-<tr><th>Kind</th><th>Write</th></tr>
-<tr><td>Modifiers</td><td><code>Ctrl</code>, <code>Alt</code>, <code>Shift</code>, joined to the key with <code>+</code>: <code>Ctrl+Shift+Z</code></td></tr>
+<tr><th>Key names</th><th>Write</th></tr>
+<tr><td>Modifiers</td><td><code>Ctrl</code>, <code>Alt</code>, <code>Shift</code>, joined with <code>+</code>: <code>Ctrl+Shift+Z</code>. Case does not matter.</td></tr>
 <tr><td>Function keys</td><td><code>F1</code> … <code>F24</code></td></tr>
 <tr><td>Named keys</td><td><code>Esc</code> <code>Tab</code> <code>Enter</code> <code>Space</code> <code>Backspace</code> <code>Delete</code> <code>Insert</code> <code>Home</code> <code>End</code> <code>PageUp</code> (<code>PgUp</code>) <code>PageDown</code> (<code>PgDn</code>) <code>Up</code> <code>Down</code> <code>Left</code> <code>Right</code></td></tr>
-<tr><td>Letters, digits, signs</td><td>The character itself: <code>Ctrl+E</code>, <code>Alt+1</code>, <code>Alt+/</code>, <code>Alt+.</code></td></tr>
+<tr><td>Characters</td><td>The character itself: <code>Ctrl+E</code>, <code>Alt+1</code>, <code>Alt+/</code></td></tr>
 </table></div>
-<p>Upper and lower case do not matter (<code>ctrl+e</code> = <code>Ctrl+E</code>). Key names are texts: always in quotes.</p>
-
-<h3>Command names</h3>
-<p>The names — <code>execute</code>, <code>commit</code>, <code>quick_search</code>, … — are in the last column of the
-<a href="reference.html#keys">Keyboard reference</a>, together with the section each one belongs to. The commands that
-have no built-in key are listed at its end.</p>
-
-<h3>If something is wrong in the file</h3>
 <ul>
-  <li>An unknown section, command or key name is <b>skipped</b>; the rest of the file is used. pgtc tells you at start
-      what it skipped.</li>
-  <li>If you give the same key to two commands of one section, the later one has it — and you are told.</li>
-  <li>If the file cannot be read as TOML at all (a missing quote), pgtc starts with the built-in keys.</li>
+  <li>An unknown section, command or key name is skipped and reported at start; the rest of the file is used.</li>
+  <li>The same key for two commands of one section: the later one has it, and it is reported.</li>
+  <li>A file that is not valid TOML: pgtc starts with the built-in keys.</li>
+  <li>Bind only keys the terminal delivers — see <a href="trouble.html#keys">If a key does not work</a>.</li>
 </ul>
-<p>After a change, restart pgtc and check with <kbd>F1</kbd> or <span class="menu">Help → Keyboard shortcuts</span>: both
-show your keys.</p>
-<div class="warn"><p>Choose keys your terminal really delivers. Many terminals keep some combinations for themselves —
-see <a href="trouble.html#keys">If a key does not work</a>. Keys with <kbd>Alt</kbd> and the function keys are the
-safest choice.</p></div>
 
 <h2 id="file">The settings file</h2>
-<p>Everything the Settings dialog saves, and the saved connections, is in <code>settings.toml</code>, next to
-<code>keymap.toml</code>. A few settings exist <b>only</b> in the file:</p>
+<p><code>settings.toml</code>, next to <code>keymap.toml</code>, holds the dialog's values and the saved connections.
+Settings that exist only in the file:</p>
 <div class="tablewrap"><table>
 <tr><th>Section and key</th><th>Default</th><th>Meaning</th></tr>
-<tr><td class="k"><code>[editor]</code> <code>tab_width</code></td><td><code>4</code></td><td>Display width of a tab character, in columns.</td></tr>
-<tr><td class="k"><code>[editor]</code> <code>line_numbers</code></td><td><code>true</code></td><td>Show line numbers in the editor.</td></tr>
-<tr><td class="k"><code>[ui]</code> <code>tree_width</code></td><td>a third of the window</td><td>The width of the object tree in columns. Written when you drag the tree's border.</td></tr>
+<tr><td class="k"><code>[editor]</code> <code>tab_width</code></td><td><code>4</code></td><td>Display width of a tab character.</td></tr>
+<tr><td class="k"><code>[editor]</code> <code>line_numbers</code></td><td><code>true</code></td><td></td></tr>
+<tr><td class="k"><code>[ui]</code> <code>tree_width</code></td><td>a third of the window</td><td>Columns; written when the tree's border is dragged.</td></tr>
 <tr><td class="k"><code>[export]</code> <code>format</code>, <code>csv_separator</code>, <code>csv_bom</code></td><td><code>csv</code>, <code>comma</code>, <code>false</code></td><td>The last choices of the export dialog.</td></tr>
 </table></div>
-<p>The <code>[ai]</code> section holds what <span class="menu">Settings → AI…</span> saves (<a href="ai.html#setup">AI
-assistant</a>): <code>enabled</code>, <code>protocol</code> (<code>openai-compatible</code> or
-<code>anthropic</code>), <code>base_url</code>, <code>model</code> and <code>effort</code> (<code>default</code>,
-<code>low</code>, <code>medium</code>, <code>high</code>, <code>xhigh</code>, <code>max</code>), and one
-<code>[[ai.models]]</code> block (<code>id</code>, <code>name</code>) for each model the dialog read from the
-provider. The API key itself is never in this file; it
-is in <code>ai_key</code> next to it.</p>
 <pre><code>[ui]
 color_scheme = "Dracula"
 show_system_objects = false
@@ -297,14 +211,6 @@ model = "claude-sonnet-5-5"
 effort = "default"
 
 [[servers]]
-name = "local"
-host = "localhost"
-port = 5432
-database = "postgres"
-username = "postgres"
-ssl_mode = "prefer"
-
-[[servers]]
 name = "production"
 host = "db.example.com"
 port = 5432
@@ -314,24 +220,26 @@ ssl_mode = "verify-full"
 ssl_root_cert = "/etc/ssl/our-ca.pem"
 ai_not_allowed = true</code></pre>
 <ul>
-  <li>Edit the file only while pgtc is <b>not running</b> — pgtc writes it when you change a setting or a connection.</li>
-  <li>A missing key takes its default. An unknown key is ignored.</li>
-  <li>Each <code>[[servers]]</code> block is one <a href="connections.html#saved">saved connection</a>;
-      <code>database</code> is its maintenance database, <code>ssl_mode</code> its <code>sslmode</code>,
-      <code>ssl_root_cert</code> its <code>sslrootcert</code>. <b>Passwords are never in this file</b>; they are
-      in <a href="connections.html#passwords"><code>.pgpass</code></a>.</li>
-  <li>To move your setup to another machine, copy <code>settings.toml</code>, <code>keymap.toml</code>, and the
-      <code>themes</code> and <code>developer_templates</code> folders. All locations are listed in
-      <a href="reference.html#files">Reference → Files and folders</a>.</li>
+  <li>Edit it only while pgtc is not running: pgtc rewrites it on every change of a setting or connection.</li>
+  <li>A missing key takes its default; an unknown key is ignored.</li>
+  <li><code>[[servers]]</code>: one <a href="connections.html#saved">saved connection</a> each; <code>database</code>
+      is the maintenance database. Passwords are in <a href="connections.html#passwords"><code>.pgpass</code></a>,
+      never here.</li>
+  <li><code>[ai]</code>: what <span class="menu">Settings → AI…</span> saves (<a href="ai.html#setup">AI
+      assistant</a>) — <code>protocol</code> is <code>openai-compatible</code> or <code>anthropic</code>,
+      <code>effort</code> one of <code>default</code>, <code>low</code>, <code>medium</code>, <code>high</code>,
+      <code>xhigh</code>, <code>max</code>; one <code>[[ai.models]]</code> block (<code>id</code>, <code>name</code>)
+      per model read from the provider. The API key is in the file <code>ai_key</code> next to it.</li>
+  <li>All locations: <a href="reference.html#files">Reference → Files and folders</a>.</li>
 </ul>
 
 <h2 id="menu">The other items of the Settings menu</h2>
 <div class="tablewrap"><table>
 <tr><th>Item</th><th>What it does</th></tr>
-<tr><td class="k"><span class="menu">AI…</span></td><td>Provider, model and API key of the <a href="ai.html">AI assistant</a> (<kbd>F8</kbd>).</td></tr>
-<tr><td class="k"><span class="menu">Run setup</span></td><td>Runs every installation step, like <code>pgtc --setup</code>, and shows the result of each step in a message.</td></tr>
-<tr><td class="k"><span class="menu">Install templates</span></td><td>Copies the <a href="templates.html">developer templates</a> that come with pgtc into your templates folder, like <code>pgtc --install-templates</code>. Asks before overwriting when the folder exists.</td></tr>
-<tr><td class="k"><span class="menu">Show templates folder</span></td><td>Shows the path of the templates folder. (pgtc cannot open a file manager for you — least of all over SSH.)</td></tr>
+<tr><td class="k"><span class="menu">AI…</span></td><td>Provider, model and API key of the <a href="ai.html">AI assistant</a>.</td></tr>
+<tr><td class="k"><span class="menu">Run setup</span></td><td>As <code>pgtc --setup</code>; reports each step.</td></tr>
+<tr><td class="k"><span class="menu">Install templates</span></td><td>As <code>pgtc --install-templates</code>: copies the built-in <a href="templates.html">developer templates</a> into the templates folder; asks before overwriting.</td></tr>
+<tr><td class="k"><span class="menu">Show templates folder</span></td><td>Shows the folder's path.</td></tr>
 </table></div>
 </main>
 <script src="help.js"></script>

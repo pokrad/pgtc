@@ -9,88 +9,47 @@
 <body>
 <main>
 <h1>SQL editor and autocomplete</h1>
-<p class="lead">The editor widget of the query tabs: cursor movement, selection, editing, undo, find and replace,
-the clipboard, syntax highlighting — and autocomplete, which reads names from the system catalogs of the tab's
-database.</p>
-
-<p>The editor is modeless and uses the conventional CUA key bindings. The same widget, read-only, shows object
-definitions and the statement text in the dashboard and the profiler; there the movement, selection, copy and find
-keys work and the editing keys are ignored.</p>
+<p class="lead">A modeless editor with conventional (CUA) keys, and autocomplete from the system catalogs. The same
+widget, read-only, shows definitions and the statement text in the dashboard and the profiler.</p>
 
 <h2 id="moving">Moving</h2>
-<div class="tablewrap"><table>
-<tr><th>Key</th><th>Cursor movement</th></tr>
-<tr><td class="k"><kbd>Left</kbd> <kbd>Right</kbd> <kbd>Up</kbd> <kbd>Down</kbd></td><td>One character / one line.</td></tr>
-<tr><td class="k"><kbd>Ctrl+Left</kbd> / <kbd>Ctrl+Right</kbd></td><td>One word left / right.</td></tr>
-<tr><td class="k"><kbd>Home</kbd></td><td>To the first non-blank character of the line; pressed again, to column 1.</td></tr>
-<tr><td class="k"><kbd>End</kbd></td><td>To the end of the line.</td></tr>
-<tr><td class="k"><kbd>PgUp</kbd> / <kbd>PgDn</kbd></td><td>One screen up / down.</td></tr>
-<tr><td class="k"><kbd>Ctrl+Home</kbd> / <kbd>Ctrl+End</kbd></td><td>To the start / end of the text.</td></tr>
-</table></div>
-<p>The cursor position is shown at the right of the tab status row: <code>Ln 3, Col 62</code>. Line numbers are in
-the left gutter; they are the numbers that <code>LINE n:</code> of an error message refers to
-(<a href="query.html#errors">Errors</a>). With the mouse: a click places the cursor, the wheel scrolls.</p>
+<p>Arrows, <kbd>Ctrl+Left</kbd> / <kbd>Ctrl+Right</kbd> (word), <kbd>End</kbd>, <kbd>PgUp</kbd> / <kbd>PgDn</kbd>,
+<kbd>Ctrl+Home</kbd> / <kbd>Ctrl+End</kbd> as usual. <kbd>Home</kbd> goes to the first non-blank character; pressed
+again, to column 1. The gutter's line numbers are those of <code>LINE n:</code> in an
+<a href="query.html#errors">error</a>.</p>
 
 <h2 id="selecting">Selecting</h2>
-<p><kbd>Shift</kbd> with any movement key extends the selection:</p>
-<div class="tablewrap"><table>
-<tr><th>Key</th><th>Extends the selection</th></tr>
-<tr><td class="k"><kbd>Shift</kbd> + arrows</td><td>Character by character, line by line.</td></tr>
-<tr><td class="k"><kbd>Ctrl+Shift+Left</kbd> / <kbd>Ctrl+Shift+Right</kbd></td><td>Word by word.</td></tr>
-<tr><td class="k"><kbd>Shift+Home</kbd> / <kbd>Shift+End</kbd></td><td>To the start / end of the line.</td></tr>
-<tr><td class="k"><kbd>Shift+PgUp</kbd> / <kbd>Shift+PgDn</kbd></td><td>A screen.</td></tr>
-<tr><td class="k"><kbd>Ctrl+Shift+Home</kbd> / <kbd>Ctrl+Shift+End</kbd></td><td>To the start / end of the text. Second keys: <kbd>Alt+Shift+Home</kbd> / <kbd>Alt+Shift+End</kbd>.</td></tr>
-<tr><td class="k"><kbd>Ctrl+A</kbd></td><td>Everything.</td></tr>
-<tr><td class="k">drag with the mouse</td><td>From the press position to the release position.</td></tr>
-</table></div>
-<p>A selection changes three commands: <kbd>F5</kbd> sends only the selected text to the server; typing or pasting
-replaces it; <kbd>Tab</kbd> indents all its lines.</p>
+<p><kbd>Shift</kbd> with any movement key; <kbd>Ctrl+A</kbd>; mouse drag. Second keys for
+<kbd>Ctrl+Shift+Home</kbd> / <kbd>Ctrl+Shift+End</kbd>: <kbd>Alt+Shift+Home</kbd> / <kbd>Alt+Shift+End</kbd>.
+With a selection, <kbd>F5</kbd> sends only the selected text and <kbd>Tab</kbd> indents its lines.</p>
 
 <h2 id="editing">Editing</h2>
 <div class="tablewrap"><table>
 <tr><th>Key</th><th>Action</th></tr>
-<tr><td class="k"><kbd>Enter</kbd></td><td>New line.</td></tr>
-<tr><td class="k"><kbd>Backspace</kbd> / <kbd>Delete</kbd></td><td>Deletes the character left / right of the cursor, or the selection.</td></tr>
-<tr><td class="k"><kbd>Ctrl+Backspace</kbd> / <kbd>Ctrl+Delete</kbd></td><td>Deletes the word left / right of the cursor.</td></tr>
-<tr><td class="k"><kbd>Ctrl+Y</kbd></td><td>Deletes the whole line. With a selection: every line the selection touches. The clipboard is not changed.</td></tr>
-<tr><td class="k"><kbd>Tab</kbd></td><td>Inserts a tab character. With a selection: indents all selected lines.</td></tr>
-<tr><td class="k"><kbd>Shift+Tab</kbd></td><td>Removes one level of indentation from the line, or from all selected lines.</td></tr>
-<tr><td class="k"><kbd>Ctrl+Z</kbd></td><td>Undo.</td></tr>
-<tr><td class="k"><kbd>Ctrl+Shift+Z</kbd> or <kbd>Alt+Shift+Z</kbd></td><td>Redo.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Backspace</kbd> / <kbd>Ctrl+Delete</kbd></td><td>Delete the word left / right.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Y</kbd></td><td><b>Delete the line</b> (as in Midnight Commander — not redo), or every line the selection touches. The clipboard is not changed.</td></tr>
+<tr><td class="k"><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd></td><td>Indent / unindent the line or the selected lines.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Z</kbd></td><td>Undo — every change made in the tab, including replace-all and inserted templates.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Shift+Z</kbd> / <kbd>Alt+Shift+Z</kbd></td><td>Redo. Many terminals send <kbd>Ctrl+Shift+Z</kbd> as <kbd>Ctrl+Z</kbd>: use <kbd>Alt+Shift+Z</kbd>.</td></tr>
 </table></div>
-<ul>
-  <li><b>Indentation</b> is a tab character (U+0009), displayed 4 columns wide; it is sent to the server and written
-      to files as a tab. The display width is <code>editor.tab_width</code> in
-      <a href="settings.html#file"><code>settings.toml</code></a>.</li>
-  <li><b>Undo</b> covers every change made in the tab, step by step, including replace-all and inserted
-      templates.</li>
-  <li><kbd>Ctrl+Y</kbd> is <b>delete line</b> (as in Midnight Commander), not redo.</li>
-  <li>Many terminals send <kbd>Ctrl+Shift+Z</kbd> as <kbd>Ctrl+Z</kbd>; use <kbd>Alt+Shift+Z</kbd> for redo there.</li>
-</ul>
+<p>Indentation is a tab character, displayed 4 columns wide (<code>editor.tab_width</code> in
+<a href="settings.html#file"><code>settings.toml</code></a>); it is sent and saved as a tab.</p>
 
 <h2 id="clipboard">Copy and paste</h2>
-<div class="tablewrap"><table>
-<tr><th>Key</th><th>Also</th><th>Action</th></tr>
-<tr><td class="k"><kbd>Ctrl+C</kbd></td><td class="k"><kbd>Ctrl+Insert</kbd></td><td>Copy the selection.</td></tr>
-<tr><td class="k"><kbd>Ctrl+X</kbd></td><td class="k"><kbd>Shift+Delete</kbd></td><td>Cut the selection.</td></tr>
-<tr><td class="k"><kbd>Ctrl+V</kbd></td><td class="k"><kbd>Shift+Insert</kbd></td><td>Paste.</td></tr>
-</table></div>
-<p>A process in a terminal has no guaranteed access to the clipboard of the workstation — over SSH it runs on
-another host. pgtc therefore uses three mechanisms together:</p>
+<p><kbd>Ctrl+C</kbd> / <kbd>Ctrl+X</kbd> / <kbd>Ctrl+V</kbd>, also <kbd>Ctrl+Insert</kbd> / <kbd>Shift+Delete</kbd> /
+<kbd>Shift+Insert</kbd>.</p>
 <div class="tablewrap"><table>
 <tr><th>Mechanism</th><th>Available</th><th>Used for</th></tr>
-<tr><td><b>Internal buffer</b></td><td>Always</td><td>Copy and paste <b>inside pgtc</b>.</td></tr>
-<tr><td><b>System clipboard</b></td><td>When pgtc runs on the local machine (Windows, macOS, Linux with X11 or Wayland)</td><td>Copy and paste between pgtc and other programs.</td></tr>
-<tr><td><b>OSC 52</b> — a terminal escape sequence</td><td>Over SSH, in terminals that implement it: Windows Terminal, iTerm2, kitty, WezTerm, Alacritty and others</td><td><b>Copy</b> from pgtc on a remote host into the clipboard of the machine the terminal runs on.</td></tr>
+<tr><td><b>Internal buffer</b></td><td>Always</td><td>Copy and paste inside pgtc.</td></tr>
+<tr><td><b>System clipboard</b></td><td>pgtc on the local machine (Windows, macOS, Linux with X11 or Wayland)</td><td>Copy and paste with other programs.</td></tr>
+<tr><td><b>OSC 52</b></td><td>Over SSH, in terminals that implement it (Windows Terminal, iTerm2, kitty, WezTerm, Alacritty, …)</td><td><b>Copy</b> from a remote pgtc into the clipboard of the terminal's machine.</td></tr>
 </table></div>
 <ul>
-  <li><b>Copy</b> writes the text to the internal buffer, to the system clipboard if there is one, and — in an
-      SSH session or without a system clipboard — to the terminal as an OSC 52 sequence.</li>
-  <li><b>Paste</b> with <kbd>Ctrl+V</kbd> reads the system clipboard; if there is none or it is empty, the internal
-      buffer.</li>
-  <li><b>Paste over SSH:</b> use the <b>terminal's own paste</b> — <kbd>Ctrl+Shift+V</kbd>, the right mouse button,
-      or whatever the terminal binds. pgtc enables bracketed paste, so the text arrives as one insertion, also
-      when it has many lines.</li>
+  <li><b>Copy</b> writes to all that apply: the internal buffer, the system clipboard, and — in an SSH session or
+      without a system clipboard — OSC 52.</li>
+  <li><b>Paste</b> reads the system clipboard; if there is none or it is empty, the internal buffer.</li>
+  <li><b>Paste over SSH:</b> use the terminal's own paste (<kbd>Ctrl+Shift+V</kbd>, right mouse button, …).
+      Bracketed paste is enabled, so the text arrives as one insertion.</li>
   <li>The system clipboard and OSC 52 can each be disabled in <a href="settings.html">Settings</a>.</li>
 </ul>
 
@@ -99,156 +58,97 @@ another host. pgtc therefore uses three mechanisms together:</p>
   <img src="img/find.svg" alt="The Find dialog" loading="lazy">
   <figcaption><kbd>Ctrl+F</kbd> in the editor.</figcaption>
 </figure>
-<h3>Finding</h3>
-<ol class="steps">
-  <li>Press <kbd>Ctrl+F</kbd>.</li>
-  <li>Type the text in <span class="ui">Search for</span> and press <kbd>Enter</kbd> (<span class="ui">Find</span>).
-      The dialog closes and the first match after the cursor is selected.</li>
-  <li><kbd>F3</kbd> jumps to the next match, <kbd>Shift+F3</kbd> (or <kbd>Alt+F3</kbd>) to the previous one — with the
-      same text and options, as often as you like.</li>
-</ol>
-<div class="tablewrap"><table>
-<tr><th>Option</th><th>Checked</th></tr>
-<tr><td class="k"><span class="ui">Case sensitive</span></td><td><code>Total</code> does not match <code>total</code>. Unchecked, the search is case-insensitive.</td></tr>
-<tr><td class="k"><span class="ui">Whole words</span></td><td><code>total</code> does not match <code>totaldue</code>.</td></tr>
-<tr><td class="k"><span class="ui">Regular expression</span></td><td>The text is a regular expression: <code>sales\.\w+</code> matches every name qualified with schema <code>sales</code>; <code>^\s*--</code> matches comment lines. In this mode <span class="ui">Replace with</span> may reference capture groups as <code>$1</code>, <code>$2</code>, ….</td></tr>
-</table></div>
-<p>Matching is per line: a match never spans a line break. If nothing matches, the status line says so.</p>
-
-<h3>Replacing</h3>
-<ol class="steps">
-  <li>Press <kbd>Ctrl+F</kbd>, fill in <span class="ui">Search for</span> and <span class="ui">Replace with</span>.</li>
-  <li>Choose <span class="ui">Replace</span> to go through the matches one by one, or <span class="ui">Replace all</span>
-      to replace every match at once.</li>
-  <li>With <span class="ui">Replace</span>, pgtc stops at each match and asks:
-    <figure>
-      <img src="img/replace-confirm.svg" alt="Replace this occurrence?" loading="lazy">
-    </figure>
-    <div class="tablewrap"><table>
-    <tr><th>Button</th><th>Action</th></tr>
-    <tr><td class="k"><span class="ui">Replace</span></td><td>Replaces this match and goes to the next.</td></tr>
-    <tr><td class="k"><span class="ui">All</span></td><td>Replaces this and all following matches without asking.</td></tr>
-    <tr><td class="k"><span class="ui">Skip</span></td><td>Leaves this match and goes to the next.</td></tr>
-    <tr><td class="k"><span class="ui">Cancel</span></td><td>Stops. What was replaced so far stays replaced.</td></tr>
-    </table></div>
-  </li>
-</ol>
-<p>All changes of a replace can be undone with <kbd>Ctrl+Z</kbd>.</p>
+<ul>
+  <li><kbd>Ctrl+F</kbd>, then <kbd>F3</kbd> for the next match and <kbd>Shift+F3</kbd> (<kbd>Alt+F3</kbd>) for the
+      previous one.</li>
+  <li><span class="ui">Regular expression</span>: <span class="ui">Replace with</span> may reference capture groups
+      as <code>$1</code>, <code>$2</code>, ….</li>
+  <li>Matching is per line: a match never spans a line break.</li>
+  <li><span class="ui">Replace</span> asks at each match (<span class="ui">Replace</span> / <span class="ui">All</span>
+      / <span class="ui">Skip</span> / <span class="ui">Cancel</span>); <span class="ui">Replace all</span> does not.
+      Both can be undone.</li>
+</ul>
+<figure>
+  <img src="img/replace-confirm.svg" alt="Replace this occurrence?" loading="lazy">
+</figure>
 
 <h2 id="highlight">Syntax highlighting</h2>
-<p>The editor has its own lexer for PostgreSQL's SQL dialect. It classifies:</p>
 <ul>
-  <li><b>keywords</b> (<code>SELECT</code>, <code>FROM</code>, <code>CREATE</code>, …, also the PL/pgSQL ones such as
-      <code>DECLARE</code>, <code>LOOP</code>, <code>RAISE</code>);</li>
-  <li><b>string constants</b> — <code>'text'</code>, escape strings <code>E'text\n'</code> and dollar-quoted
-      <code>$$text$$</code> / <code>$tag$text$tag$</code>;</li>
-  <li><b>numbers</b>, <b>operators</b>;</li>
-  <li><b>quoted identifiers</b> — <code>"Order Items"</code>;</li>
-  <li><b>comments</b> — <code>-- to the end of the line</code> and <code>/* between the marks */</code>.</li>
+  <li>pgtc's own lexer for PostgreSQL SQL and PL/pgSQL: keywords, string constants (also <code>E'…'</code> and
+      dollar-quoted), numbers, operators, quoted identifiers, comments.</li>
+  <li>A dollar-quoted string after <code>AS</code> or <code>DO</code> is highlighted as code; any other as a string
+      constant.</li>
+  <li>Lexical only: nothing is parsed or validated.</li>
+  <li><b>Large scripts:</b> only the visible lines are drawn and highlighted; a plain-format dump of hundreds of
+      megabytes opens and scrolls without delay.</li>
 </ul>
-<p>A dollar-quoted string after <code>AS</code> or <code>DO</code> — the body of a function, procedure or anonymous
-code block — is lexed as code and highlighted as SQL. Any other dollar-quoted string, as in
-<code>SELECT $$some text$$</code>, is highlighted as a string constant.</p>
-<p>Highlighting is lexical only: the text is not parsed and nothing is validated; syntax errors come from the
-server at execution. The colours come from the <a href="settings.html#schemes">colour scheme</a>.</p>
-
-<h3>Large scripts</h3>
-<p>The buffer is built for very large texts — a plain-format dump of hundreds of megabytes opens and scrolls
-without delay. Only the visible lines are drawn and highlighted.</p>
 
 <h2 id="autocomplete">Autocomplete</h2>
 <figure>
   <img src="img/ac-columns.svg" alt="Autocomplete: columns after an alias" loading="lazy">
-  <figcaption>After <code>c.</code> — where <code>c</code> is the alias of <code>sales.customer</code> in the same
-  statement — the list offers the columns of that table.</figcaption>
+  <figcaption>Columns after the alias of <code>sales.customer</code>.</figcaption>
 </figure>
-<p>Autocomplete offers the object names of the tab's database: schemas, relations, functions, types and columns,
-read from the system catalogs through the query tab's own session. It is available in connected query tabs and in
-the SQL boxes of the <a href="templates.html">developer template</a> forms. It is a heuristic on the editor's lexer,
-not a SQL parser.</p>
+<p>Names are read from the catalogs through the query tab's own session. Available in connected query tabs and in
+the SQL boxes of <a href="templates.html">developer template</a> forms. It is a heuristic on the lexer, not a
+parser.</p>
 
 <h3>When the list opens</h3>
-<div class="tablewrap"><table>
-<tr><th>How</th><th>When</th></tr>
-<tr><td>Automatically</td><td>After typing a <code>.</code> and after the <b>third letter</b> of a word — only if there are candidates.</td></tr>
-<tr><td><kbd>Ctrl+Space</kbd> or <kbd>Alt+/</kbd></td><td>On request. Without candidates, the status line says <i>No suggestions</i>.</td></tr>
-</table></div>
-<p>Some terminals and operating systems intercept <kbd>Ctrl+Space</kbd> (input-method switching);
-<kbd>Alt+/</kbd> is the alternative binding.</p>
-<p>The list never opens inside a string constant, a comment or a quoted identifier. It does open inside the
-dollar-quoted body of a function or <code>DO</code> block, which is code.</p>
+<ul>
+  <li>By itself after a <code>.</code> and after the <b>third letter</b> of a word, if there are candidates.</li>
+  <li>On <kbd>Ctrl+Space</kbd> or <kbd>Alt+/</kbd> (for terminals that intercept <kbd>Ctrl+Space</kbd>).</li>
+  <li>Never inside a string constant, a comment or a quoted identifier — but inside the dollar-quoted body of a
+      function or <code>DO</code> block.</li>
+</ul>
 
 <h3>What the list offers</h3>
-<p>The context is the statement around the cursor — the text between two <code>;</code> — and the tokens directly
-before the cursor:</p>
+<p>The context is the statement around the cursor (between two <code>;</code>):</p>
 <div class="tablewrap"><table>
-<tr><th>Before the cursor</th><th>Offered</th><th>Example</th></tr>
-<tr><td><code>FROM</code>, <code>JOIN</code>, <code>UPDATE</code>, <code>INTO</code>, <code>TABLE</code>, or a <code>,</code> in a <code>FROM</code> list</td><td>Schemas, and the tables, views, materialized views and foreign tables visible on the session's <code>search_path</code></td><td><code>SELECT * FROM cus</code>█</td></tr>
-<tr><td><code>schema.</code></td><td>The relations, functions and types of that schema</td><td><code>FROM sales.c</code>█</td></tr>
-<tr><td><code>alias.</code> or <code>table.</code> — a relation in the <code>FROM</code> / <code>JOIN</code> of this statement</td><td>The columns of that relation</td><td><code>SELECT c.</code>█<code> FROM sales.customer c</code></td></tr>
-<tr><td>anything else</td><td>The columns of the relations of this statement; relations and functions visible on the <code>search_path</code>; SQL keywords</td><td><code>SELECT territoryid, co</code>█</td></tr>
+<tr><th>Before the cursor</th><th>Offered</th></tr>
+<tr><td><code>FROM</code>, <code>JOIN</code>, <code>UPDATE</code>, <code>INTO</code>, <code>TABLE</code>, or a <code>,</code> in a <code>FROM</code> list</td><td>Schemas, and the tables, views, materialized views and foreign tables visible on the <code>search_path</code></td></tr>
+<tr><td><code>schema.</code></td><td>The relations, functions and types of that schema</td></tr>
+<tr><td><code>alias.</code> or <code>table.</code> of this statement's <code>FROM</code> / <code>JOIN</code></td><td>The columns of that relation</td></tr>
+<tr><td>anything else</td><td>Columns of this statement's relations; visible relations and functions; keywords</td></tr>
 </table></div>
 <div class="shots">
-<figure><img src="img/ac-tables.svg" alt="Tables of a schema" loading="lazy"><figcaption>After <code>sales.c</code>: the tables of the schema that start with <code>c</code>.</figcaption></figure>
-<figure><img src="img/ac-prefix.svg" alt="Functions and keywords" loading="lazy"><figcaption>After <code>co</code> in the select list: functions, then keywords.</figcaption></figure>
+<figure><img src="img/ac-tables.svg" alt="Tables of a schema" loading="lazy"><figcaption>After <code>sales.c</code>.</figcaption></figure>
+<figure><img src="img/ac-prefix.svg" alt="Functions and keywords" loading="lazy"><figcaption>After <code>co</code> in the select list.</figcaption></figure>
 </div>
 <ul>
-  <li>The typed prefix <b>filters</b> the list: a case-insensitive prefix match on the name.</li>
-  <li>Each entry is labelled with its kind: <i>column</i>, <i>table</i>, <i>view</i>, <i>function</i>, <i>schema</i>,
-      <i>type</i>, <i>keyword</i>, ….</li>
-  <li>Order: columns, then relations, functions, schemas, types, keywords — each group sorted by name.
-      An overloaded function is listed once.</li>
+  <li>The typed prefix filters: case-insensitive, on the start of the name.</li>
+  <li>Order: columns, relations, functions, schemas, types, keywords. An overloaded function is listed once.</li>
+  <li>Write the <code>FROM</code> clause first, and the select list can offer the columns.</li>
 </ul>
-<p>Write the <code>FROM</code> clause first: with <code>SELECT  FROM sales.customer c</code> in place, the select list
-can already offer the columns.</p>
 
 <h3>Keys while the list is open</h3>
-<div class="tablewrap"><table>
-<tr><th>Key</th><th>Action</th></tr>
-<tr><td class="k"><kbd>Up</kbd> / <kbd>Down</kbd>, <kbd>PgUp</kbd> / <kbd>PgDn</kbd></td><td>Move in the list.</td></tr>
-<tr><td class="k"><kbd>Enter</kbd> or <kbd>Tab</kbd></td><td>Replaces the typed prefix with the highlighted entry.</td></tr>
-<tr><td class="k"><kbd>Esc</kbd>, or a mouse click</td><td>Closes the list.</td></tr>
-<tr><td class="k">letters, <kbd>Backspace</kbd></td><td>Edit the text as usual; the list is filtered again.</td></tr>
-<tr><td class="k">any other key</td><td>Closes the list and performs its normal action.</td></tr>
-</table></div>
-<p>Inserted text:</p>
 <ul>
-  <li><b>keywords in UPPER CASE</b> (<code>coalesce</code> typed, <code>COALESCE</code> inserted);</li>
-  <li><b>identifiers as stored in the catalog</b>, double-quoted only where required (the rule of
-      <code>quote_ident</code>): <code>customer</code>, but <code>"Order Items"</code>.</li>
+  <li><kbd>Enter</kbd> or <kbd>Tab</kbd> inserts; <kbd>Esc</kbd> closes; typing and <kbd>Backspace</kbd> refilter;
+      any other key closes the list and acts as usual.</li>
+  <li>Keywords are inserted in UPPER CASE; identifiers as stored, quoted by the rule of <code>quote_ident</code>.</li>
 </ul>
 
 <h3>Where the names come from, and when they are read again</h3>
 <ul>
-  <li><b>Objects</b> are read with one query, <b>once per query tab</b>, when the list first needs them: schemas from
-      <code>pg_namespace</code>, relations from <code>pg_class</code> (tables, partitioned tables, views,
-      materialized views, foreign tables, sequences), routines from <code>pg_proc</code> (functions, procedures,
-      aggregates; no window functions), types from <code>pg_type</code> (base, composite, domain, enum, range and
-      multirange types; no array types and no row types of relations).</li>
-  <li>“Visible” is what the server reports for the session: <code>pg_table_is_visible()</code>,
-      <code>pg_function_is_visible()</code>, <code>pg_type_is_visible()</code> — the <code>search_path</code> in
-      effect when the names are read. After <code>SET search_path</code>, refresh the tree to read them again.</li>
-  <li><b>Columns</b> are read per relation, the first time it is used, from <code>pg_attribute</code> in
-      <code>attnum</code> order (no system columns, no dropped columns); schema and relation name are passed as
-      bind parameters.</li>
-  <li>Until the names arrive the list shows <i>loading…</i> and fills in when they do.</li>
+  <li><b>Objects:</b> one query, <b>once per query tab</b>, on first need — <code>pg_namespace</code>;
+      <code>pg_class</code> (tables, partitioned tables, views, materialized views, foreign tables, sequences);
+      <code>pg_proc</code> (no window functions); <code>pg_type</code> (no array types, no row types of
+      relations).</li>
+  <li><b>Visible</b> is <code>pg_table_is_visible()</code> / <code>pg_function_is_visible()</code> /
+      <code>pg_type_is_visible()</code> when the names are read. After <code>SET search_path</code>, refresh the
+      tree to read them again.</li>
+  <li><b>Columns:</b> per relation on first use, from <code>pg_attribute</code> in <code>attnum</code> order.</li>
   <li>The cache is dropped after the tab executes a <code>CREATE</code>, <code>ALTER</code>, <code>DROP</code> or
-      <code>COMMENT</code> (detected by the command tag), and on <a href="tree.html#refresh">Refresh</a> in the object tree. DDL
-      committed by another session is not noticed: refresh the tree.</li>
-  <li>The catalog queries do not check privileges: objects the role may not use are offered too.</li>
-  <li>Schemas <code>pg_toast</code>, <code>pg_temp_<i>n</i></code> and <code>pg_toast_temp_<i>n</i></code> are left
-      out; <code>pg_catalog</code> objects (built-in functions, system catalogs and views) are offered like all
-      others.</li>
+      <code>COMMENT</code> (by command tag) and on <a href="tree.html#refresh">Refresh</a> in the object tree. DDL
+      of another session is not noticed.</li>
+  <li>No privilege checks: objects the role may not use are offered too.</li>
+  <li><code>pg_toast</code>, <code>pg_temp_<i>n</i></code> and <code>pg_toast_temp_<i>n</i></code> are left out;
+      <code>pg_catalog</code> objects are offered.</li>
+  <li><b>While a statement executes or its result is paused</b> no catalog query can be sent: the list offers
+      cached names and keywords only.</li>
 </ul>
-<div class="note"><p><b>While a statement is executing or its result is paused</b> (more rows available), the tab's
-session is busy, so no catalog query can be sent. The list then offers what is cached, plus keywords; opened by
-key, the status line says that new names are read after the result ends. Press <kbd>Alt+End</kbd> to fetch all
-rows, or <kbd>Alt+Shift+C</kbd> to end the result.</p></div>
 
 <h3>Limits</h3>
-<p>Since there is no parser, output columns of a subquery or a <code>WITH</code> query (CTE) and unusual syntax
-are not resolved: the list may offer nothing, or too much. Inside a function or <code>DO</code> body each statement
-of the body is analysed on its own. Typing is never blocked by the list.</p>
+<p>Output columns of a subquery or a <code>WITH</code> query are not resolved. Inside a function or <code>DO</code>
+body each statement is analysed on its own.</p>
 </main>
 <script src="help.js"></script>
 </body>

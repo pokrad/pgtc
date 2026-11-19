@@ -9,123 +9,83 @@
 <body>
 <main>
 <h1>Getting started</h1>
-<p class="lead">From the source code to the first query: build pgtc, start it, save a connection, browse the
-catalogs and execute a statement.</p>
+<p class="lead">Build, set up, connect, run a statement.</p>
 
-<h2 id="build">1. Build pgtc</h2>
-<p>pgtc is distributed as source. You need <a href="https://rustup.rs/">Rust</a>; the exact toolchain version is
-pinned in the file <code>rust-toolchain.toml</code> and installed by <code>rustup</code> automatically. You need no C
-compiler and no PostgreSQL client library.</p>
+<h2 id="build">1. Build</h2>
+<p>Source only. Needs <a href="https://rustup.rs/">Rust</a> (the toolchain is pinned in
+<code>rust-toolchain.toml</code>); no C compiler, no libpq.</p>
 <pre><code>git clone https://github.com/pokrad/pgtc.git
 cd pgtc
-cargo build --release</code></pre>
-<p>The program is then <code>target/release/pgtc</code> (<code>pgtc.exe</code> on Windows). It is one file: copy it
-wherever you like. Or let Cargo install it into <code>~/.cargo/bin</code>, which is normally on your <code>PATH</code>:</p>
-<pre><code>cargo install --path crates/pgtc</code></pre>
-<div class="note"><p>To use pgtc on a server over SSH, build (or copy) it <b>on that server</b> and start it there. It
-then connects to PostgreSQL locally and only the terminal output travels over SSH.</p></div>
+cargo build --release          # target/release/pgtc, a single file
+cargo install --path crates/pgtc   # or: into ~/.cargo/bin</code></pre>
+<div class="note"><p>For a remote server, run pgtc <b>on that server</b> over SSH: it connects locally and only the
+terminal output crosses the network.</p></div>
 
-<h2 id="setup">2. Run the setup once</h2>
+<h2 id="setup">2. Setup</h2>
 <pre><code>pgtc --setup</code></pre>
-<p>This runs every installation step and prints one line per step. Today there is one step: it copies the
-<a href="templates.html">developer templates</a> that come with pgtc into your user folder. Without it everything works
-except <kbd>F7</kbd>, which then says <i>No developer templates — run Settings → Install templates</i>.</p>
-<p>You can do the same later from inside the program: <span class="menu">Settings → Run setup</span>.</p>
+<p>Copies the built-in <a href="templates.html">developer templates</a> into your user folder (also
+<span class="menu">Settings → Run setup</span>). Only <kbd>F7</kbd> needs it.</p>
 
-<h2 id="first">3. Start pgtc and save a connection</h2>
-<pre><code>pgtc</code></pre>
-<p>The first time, the object tree on the left is empty. Save your first server:</p>
-<ol class="steps">
-  <li>Press <kbd>F9</kbd> to open the menu bar. The <span class="menu">File</span> menu opens; its first item is
-      <span class="menu">New connection…</span> — press <kbd>Enter</kbd>.</li>
-  <li>Fill in the dialog. Move between the fields with <kbd>Tab</kbd> and <kbd>Shift+Tab</kbd>.
-      <figure class="small">
-        <img src="img/conn-new.svg" alt="The New connection dialog" loading="lazy">
-        <figcaption>The New connection dialog.</figcaption>
-      </figure>
-      <ul>
-        <li><span class="ui">Name</span> — display name of the connection in the tree; not sent to the server.</li>
-        <li><span class="ui">Host</span>, <span class="ui">Port</span> — <code>host</code> and <code>port</code> (<code>localhost</code>, <code>5432</code>).</li>
-        <li><span class="ui">Maintenance DB</span> — <code>dbname</code> of the server session, used for the cluster-wide catalogs (<code>pg_database</code>, <code>pg_roles</code>, <code>pg_tablespace</code>); normally <code>postgres</code>.</li>
-        <li><span class="ui">User name</span>, <span class="ui">Password</span> — the role to connect as, and its password.</li>
-        <li><span class="ui">Save password</span> — check it (with <kbd>Space</kbd>) to have the password written to
-            <code>.pgpass</code> after the first successful authentication.</li>
-      </ul>
-  </li>
-  <li>Press <kbd>Enter</kbd> on <span class="ui">OK</span>. The server appears in the tree.</li>
-  <li>With the cursor on the server, press <kbd>F2</kbd> and choose <span class="menu">Connect</span> (or use
-      <span class="menu">File → Connect</span>). pgtc opens a session on the maintenance database; the server row changes to
-      <i>(connected)</i> and expands to the cluster-wide groups <i>Databases</i>, <i>Login/Group Roles</i> and
-      <i>Tablespaces</i>.</li>
-</ol>
-<p>All of this is explained in detail in <a href="connections.html">Connections</a>.</p>
+<h2 id="first">3. Save a connection</h2>
+<p><span class="menu">File → New connection…</span> (<kbd>F9</kbd> opens the menu), then
+<span class="menu">Connect</span> from <kbd>F2</kbd> on the server row.</p>
+<figure class="small">
+  <img src="img/conn-new.svg" alt="The New connection dialog" loading="lazy">
+  <figcaption>New connection.</figcaption>
+</figure>
+<ul>
+  <li><span class="ui">Maintenance DB</span> — <code>dbname</code> of the server session, which reads the cluster-wide
+      catalogs (<code>pg_database</code>, <code>pg_roles</code>, <code>pg_tablespace</code>).</li>
+  <li><span class="ui">Save password</span> — writes the password to <code>.pgpass</code> after the first successful
+      authentication.</li>
+</ul>
+<p>Details: <a href="connections.html">Connections</a>.</p>
 
-<h3>Or: start with the connection on the command line</h3>
-<p>pgtc takes the same connection options as <code>psql</code>:</p>
+<h3>Or from the command line</h3>
 <pre><code>pgtc -h localhost -U postgres adventureworks</code></pre>
-<p>The connection is saved (unless an identical one exists) and connected at once. See
-<a href="reference.html#cli">Command line</a> for every option.</p>
+<p>psql's connection options. The connection is saved (unless an identical one exists) and connected at once; see
+<a href="reference.html#cli">Command line</a>.</p>
 
-<h2 id="look">4. Look around</h2>
+<h2 id="look">4. Browse</h2>
 <figure>
   <img src="img/window.svg" alt="The main window" loading="lazy">
-  <figcaption>The object tree is open down to the tables of schema <code>sales</code>; the cursor is on
-  <code>customer</code> and the right side shows its definition.</figcaption>
+  <figcaption>Cursor on <code>sales.customer</code>; its DDL on the right.</figcaption>
 </figure>
-<ol class="steps">
-  <li>Move in the tree with the arrow keys. <kbd>Right</kbd> opens a row, <kbd>Left</kbd> closes it. Open
-      <i>Databases</i>, then your database, then <i>Schemas</i>, a schema, and <i>Tables</i>.</li>
-  <li>Stop on a table. A moment later the right side — the <i>Default</i> tab — shows its DDL, reconstructed from
-      the system catalogs: <code>CREATE TABLE</code> with its constraints, owner, comments, privileges and
-      indexes.</li>
-  <li>Press <kbd>F6</kbd> to move into the definition; scroll with the arrow keys and <kbd>PgDn</kbd>. Press
-      <kbd>F6</kbd> again to go back to the tree.</li>
-  <li>Press <kbd>F1</kbd> at any time: a window lists the keys that work <b>right now</b>, in the part of the window
-      where you are. <kbd>Esc</kbd> closes it.</li>
-</ol>
-
-<h2 id="query">5. Run your first query</h2>
-<ol class="steps">
-  <li>In the tree, put the cursor on a database or on anything inside it — for example on the table
-      <code>customer</code>.</li>
-  <li>Press <kbd>Ctrl+N</kbd>. A new tab <i>Query 1 – adventureworks</i> opens with a session of its own on that
-      database, and the cursor is in its editor.</li>
-  <li>Type a statement:
-<pre><code>SELECT name, "group" FROM sales.salesterritory ORDER BY name;</code></pre>
-      After the third letter of a name, a list of suggestions appears by itself; <kbd>Enter</kbd> or <kbd>Tab</kbd>
-      takes the highlighted one, <kbd>Esc</kbd> closes the list.</li>
-  <li>Press <kbd>F5</kbd>. The statement is executed and the result set appears in the grid below the
-      editor.</li>
-  <li>Press <kbd>Alt+Down</kbd> to move into the grid, and <kbd>Alt+Up</kbd> to go back to the editor.</li>
-</ol>
-<figure>
-  <img src="img/query-selection.svg" alt="A query tab after F5" loading="lazy">
-  <figcaption>The second statement was selected and run with <kbd>F5</kbd>: with a selection, only the selection is
-  executed.</figcaption>
-</figure>
-<div class="tip"><p><b>Even quicker:</b> put the cursor on a table in the tree and press <kbd>Ctrl+B</kbd>. pgtc opens a
-query tab with <code>SELECT * FROM … LIMIT 100;</code> and runs it.</p></div>
-
-<h2 id="quit">6. Close and quit</h2>
 <ul>
-  <li><kbd>Ctrl+W</kbd> closes the tab. If you typed text and did not save it, pgtc asks <i>Save them?</i> —
-      <span class="ui">No</span> discards the text.</li>
-  <li><kbd>F10</kbd> quits pgtc. It asks the same question for every query tab with unsaved text and asks what to do
-      with open transactions.</li>
+  <li><kbd>Right</kbd> / <kbd>Left</kbd> expand and collapse a tree row. The <i>Default</i> tab shows the DDL of the
+      row under the cursor.</li>
+  <li><kbd>F6</kbd> switches between the tree and the right side.</li>
+  <li><kbd>F1</kbd> lists the keys that work where the focus is.</li>
 </ul>
 
-<h2 id="next">Where to go next</h2>
+<h2 id="query">5. Run a query</h2>
+<ul>
+  <li><kbd>Ctrl+N</kbd> on a database, or anything inside it, opens a query tab with its own session on that
+      database.</li>
+  <li><kbd>F5</kbd> executes the selection, or the whole text when nothing is selected.</li>
+  <li><kbd>Alt+Down</kbd> / <kbd>Alt+Up</kbd> move between the editor and the result grid.</li>
+  <li><kbd>Ctrl+B</kbd> on a table in the tree opens a tab with <code>SELECT * FROM … LIMIT 100;</code> and runs
+      it.</li>
+</ul>
+<figure>
+  <img src="img/query-selection.svg" alt="A query tab after F5" loading="lazy">
+  <figcaption>Only the selected statement was executed.</figcaption>
+</figure>
+
+<h2 id="quit">6. Close and quit</h2>
+<p><kbd>Ctrl+W</kbd> closes the tab, <kbd>F10</kbd> quits. Both ask about unsaved text and open transactions.</p>
+
+<h2 id="next">Next</h2>
 <div class="cards">
-  <a href="window.html"><b>The window, menus and keys</b><span>How the screen is built and how to move in it.</span></a>
-  <a href="query.html"><b>Query tabs</b><span>Result sets, messages, errors, cancel, transactions.</span></a>
-  <a href="psql.html"><b>psql-style commands</b><span>List and describe commands, and DML generated for a table.</span></a>
-  <a href="trouble.html"><b>Troubleshooting</b><span>If a key does nothing in your terminal.</span></a>
+  <a href="window.html"><b>The window, menus and keys</b><span>Layout and navigation.</span></a>
+  <a href="query.html"><b>Query tabs</b><span>Result sets, messages, cancel, transactions.</span></a>
+  <a href="psql.html"><b>psql-style commands</b><span>List, describe and generate commands.</span></a>
+  <a href="trouble.html"><b>Troubleshooting</b><span>Keys the terminal does not pass.</span></a>
 </div>
 
 <div class="note">
-<p><b>If F-keys do not reach pgtc</b> (some SSH clients, macOS): press <kbd>Esc</kbd> and then a digit —
-<kbd>Esc</kbd> <kbd>5</kbd> is <kbd>F5</kbd>, <kbd>Esc</kbd> <kbd>9</kbd> is <kbd>F9</kbd>, <kbd>Esc</kbd> <kbd>0</kbd> is
-<kbd>F10</kbd>.</p>
+<p><b>No F-keys</b> (some SSH clients, macOS): <kbd>Esc</kbd> then a digit — <kbd>Esc</kbd> <kbd>5</kbd> is
+<kbd>F5</kbd>, <kbd>Esc</kbd> <kbd>0</kbd> is <kbd>F10</kbd>.</p>
 </div>
 </main>
 <script src="help.js"></script>

@@ -9,214 +9,131 @@
 <body>
 <main>
 <h1>SQL files and result export</h1>
-<p class="lead">Loading SQL scripts into query tabs and saving them, the file dialog shared by all file commands,
-and exporting a result set — all of its rows, not only the fetched ones — as CSV, JSON or XML.</p>
+<p class="lead">SQL files in query tabs, the file dialog, and the export of a whole result set as CSV, JSON or
+XML.</p>
 
-<div class="note"><p><b>All paths are client-side.</b> pgtc reads and writes files in the file system of the host
-<b>it runs on</b>, never on the database server (unlike server-side <code>COPY … TO '<i>file</i>'</code>). When pgtc
-runs on a remote host over SSH, the files are on that host, not on the workstation.</p></div>
+<div class="note"><p><b>All paths are client-side</b>: the host pgtc runs on — over SSH that is the remote host —
+never the database server.</p></div>
 
 <h2 id="open">Opening a SQL file</h2>
-<ol class="steps">
-  <li>In the tree, put the cursor on the target database (or on any object below it). The new tab opens its
-      session on that database.</li>
-  <li>Choose <span class="menu">File → Open SQL file…</span> (also in the context menu of the tree, <kbd>F2</kbd>).</li>
-  <li>Pick the file in the <a href="#dialog">file dialog</a> and press <kbd>Enter</kbd>.</li>
-</ol>
+<p><span class="menu">File → Open SQL file…</span> (also in the tree's context menu, <kbd>F2</kbd>) loads the file
+into a <b>new query tab</b> on the database selected in the tree. Nothing is executed. Without a selected database
+the command is disabled.</p>
 <figure class="mid">
   <img src="img/file-open.svg" alt="Open SQL file dialog" loading="lazy">
-  <figcaption>Folders first, then files; <code>.sql</code> files are highlighted.</figcaption>
+  <figcaption><i>Open SQL file</i>.</figcaption>
 </figure>
-<p>The file is loaded into a <b>new query tab</b> named after the file. Nothing is executed. Reading runs in the
-background: the status line shows <i>Opening …</i>, the UI stays usable, and the tab appears when the file is
-read.</p>
 <ul>
-  <li>The file must be valid <b>UTF-8</b> (a leading byte-order mark is accepted and dropped). pgtc does not convert
-      encodings; a file that is not valid UTF-8 — a LATIN1 or WIN1250 dump, for example — is rejected with an
-      error. The sessions always use <code>client_encoding = UTF8</code>.</li>
-  <li>There is no size limit in practice — see <a href="editor.html#highlight">Large scripts</a>. Remember that
-      <kbd>F5</kbd> sends the whole text as one request (<a href="query.html#script">Scripts</a>), and that psql
-      meta-commands in a dump (<code>\connect</code>, <code>\.</code> data blocks of <code>COPY … FROM stdin</code>)
-      are not interpreted.</li>
-  <li>Without a database selected in the tree, the command is disabled.</li>
+  <li>The file must be valid <b>UTF-8</b> (a BOM is dropped); pgtc converts no encodings. Sessions use
+      <code>client_encoding = UTF8</code>.</li>
+  <li>No practical size limit (<a href="editor.html#highlight">Large scripts</a>) — but <kbd>F5</kbd> sends the
+      whole text as one request (<a href="query.html#script">Scripts</a>), and psql meta-commands in a dump
+      (<code>\connect</code>, <code>COPY … FROM stdin</code> data with <code>\.</code>) are not interpreted.</li>
 </ul>
 
 <h2 id="save">Saving</h2>
 <figure>
   <img src="img/file-bar.svg" alt="A query tab with a file" loading="lazy">
-  <figcaption>A tab that belongs to a file: the tab is named after the file, and the <b>file bar</b> above the editor
-  shows the full path. The <code>*</code> means there are changes that are not saved yet.</figcaption>
+  <figcaption>The file bar: full path, <code>*</code> while unsaved.</figcaption>
 </figure>
-<div class="tablewrap"><table>
-<tr><th>Command</th><th>Key</th><th>Action</th></tr>
-<tr><td><span class="menu">File → Save SQL file</span></td><td class="k"><kbd>Ctrl+S</kbd></td><td>A tab <b>with</b> a file: writes the editor text to that file — no dialog, no confirmation. The status line says <i>Saved …</i>. A tab <b>without</b> a file: the same as <i>Save as</i>.</td></tr>
-<tr><td><span class="menu">File → Save SQL file as…</span></td><td></td><td>Always opens the file dialog, in the folder of the tab's file and with its name filled in (a tab without a file: <code>query.sql</code>). Afterwards the tab is bound to the new file.</td></tr>
-</table></div>
+<ul>
+  <li><kbd>Ctrl+S</kbd> (<span class="menu">File → Save SQL file</span>) writes to the tab's file without a
+      question; a tab without a file gets <i>Save as</i>. In the object tree the key is
+      <a href="tree.html#quick">quick search</a>.</li>
+  <li><span class="menu">File → Save SQL file as…</span> binds the tab to the new file; it asks before
+      overwriting.</li>
+  <li>Written as UTF-8 without BOM — always the whole text, also with a selection.</li>
+  <li>The write is atomic: <code><i>name</i>.tmp</code> in the same folder, flushed, renamed over the target. An
+      existing file keeps its permissions; a symbolic link is followed. Where no temporary file can be created,
+      the file is written in place.</li>
+  <li>Saving commits nothing; an open transaction is asked about separately when the tab closes
+      (<a href="query.html#close">Closing a query tab</a>).</li>
+</ul>
 <figure class="mid">
   <img src="img/file-save.svg" alt="Save SQL file as dialog" loading="lazy">
   <figcaption><i>Save SQL file as</i>.</figcaption>
 </figure>
-<ul>
-  <li><i>Save as</i> asks before it overwrites an existing file.</li>
-  <li>Files are written as UTF-8 without a byte-order mark. Always the whole editor text is written, also when
-      there is a selection.</li>
-  <li>The write is atomic: the text goes to a temporary file <code><i>name</i>.tmp</code> in the same folder, is
-      flushed to disk, and is then renamed over the target, so a crash or a full disk leaves the old file intact.
-      An existing file keeps its permissions; a symbolic link is followed. In a folder where no temporary file can
-      be created, the file is written in place.</li>
-  <li>Saving runs in the background (<i>Saving …</i>); typing can continue. Text changed while the file was being
-      written leaves the tab marked as modified.</li>
-  <li><kbd>Ctrl+S</kbd> saves while the focus is in the editor or in the results. In the object tree the same key is
-      <a href="tree.html#quick">quick search</a>.</li>
-  <li>Both commands are available only in a query tab.</li>
-</ul>
-<p>A path that is too long for the file bar is shortened from the left: <code>…\reports\best_customers.sql</code>.</p>
-<p>Closing a tab with unsaved changes asks whether to save them — see
-<a href="query.html#close">Closing a query tab</a>. The file is independent of the session: saving does not commit
-anything, and an open transaction is asked about separately.</p>
 
 <h2 id="dialog">The file dialog</h2>
-<p>One dialog serves every file command: opening and saving SQL files, exporting a result, exporting and loading a
-database definition (<code>.pgdef</code>). It is modelled on the one in Midnight Commander.</p>
+<p>One dialog for all file commands (SQL files, result export, <code>.pgdef</code>), modelled on Midnight
+Commander's. <span class="ui">OK</span> takes whichever was used last: the selected row or the typed text.</p>
 <div class="tablewrap"><table>
-<tr><th>Part</th><th>Content</th></tr>
-<tr><td class="k"><span class="ui">Folder:</span></td><td>The directory listed below.</td></tr>
-<tr><td class="k"><span class="ui">Name or path</span></td><td>An input for a file name or a path.</td></tr>
-<tr><td>The list</td><td><code>..</code> (the parent directory), then the directories — with a trailing <code>\</code> or <code>/</code> — then the files. Files with the extension the command expects are highlighted.</td></tr>
-<tr><td class="k"><span class="ui">OK</span>, <span class="ui">Places</span>, <span class="ui">Cancel</span></td><td>Buttons. <span class="ui">OK</span> takes whichever was used last: the row selected in the list, or the text of the input.</td></tr>
-</table></div>
-
-<h3>Choosing with the list</h3>
-<ol class="steps">
-  <li>Press <kbd>Tab</kbd> to move from the input to the list (or click into it).</li>
-  <li>Move with <kbd>Up</kbd> / <kbd>Down</kbd> / <kbd>PgUp</kbd> / <kbd>PgDn</kbd> / <kbd>Home</kbd> / <kbd>End</kbd>.</li>
-  <li><kbd>Enter</kbd> — or a double click — on a <b>folder</b> opens it; on <code>..</code> goes up; on a <b>file</b>
-      chooses it. So does clicking a row and then <span class="ui">OK</span>.</li>
-</ol>
-
-<h3>Typing a name or a path</h3>
-<p>Type into <span class="ui">Name or path</span> and press <kbd>Enter</kbd>:</p>
-<div class="tablewrap"><table>
-<tr><th>Input</th><th>Resolved as</th></tr>
-<tr><td class="k"><code>report.sql</code></td><td>A file in the listed directory.</td></tr>
-<tr><td class="k"><code>reports/2026/q3.sql</code>, <code>../other/x.sql</code></td><td>A path relative to the listed directory.</td></tr>
-<tr><td class="k"><code>D:\work\x.sql</code>, <code>/home/me/x.sql</code>, <code>\\server\share\x.sql</code></td><td>An absolute path.</td></tr>
-<tr><td class="k"><code>~</code>, <code>~/sql/x.sql</code></td><td>The home directory of the OS user — on every platform, Windows included.</td></tr>
-<tr><td class="k"><code>D:</code></td><td>Windows: the root directory of drive D.</td></tr>
+<tr><th>Typed</th><th>Resolved as</th></tr>
+<tr><td class="k"><code>report.sql</code>, <code>reports/q3.sql</code>, <code>../x.sql</code></td><td>Relative to the listed directory.</td></tr>
+<tr><td class="k"><code>D:\work\x.sql</code>, <code>/home/me/x.sql</code>, <code>\\server\share\x.sql</code></td><td>Absolute.</td></tr>
+<tr><td class="k"><code>~</code>, <code>~/sql/x.sql</code></td><td>The home directory — also on Windows.</td></tr>
+<tr><td class="k"><code>D:</code></td><td>Windows: the root of drive D.</td></tr>
 </table></div>
 <ul>
-  <li>A path that names a <b>directory</b> changes to it; the dialog stays open.</li>
-  <li>A path that names a <b>file</b> (or, when saving, a new name) is opened or saved.</li>
-  <li>If the parent directory of the path does not exist, an error is shown and the dialog stays open. pgtc does
-      not create directories.</li>
-  <li>When saving, no extension is appended: type <code>report.sql</code>, not <code>report</code>.</li>
+  <li>A path that names a directory changes to it.</li>
+  <li>pgtc creates no directories and appends no extension when saving.</li>
+  <li>The first dialog of a run opens in the user's <b>documents</b> folder, later ones where the last one was;
+      the location is not kept across runs.</li>
+  <li>Directories are listed in the background (<i>Reading…</i>), so a slow share does not block the UI.</li>
 </ul>
 
 <h3 id="places">Places: drives and other starting points</h3>
 <figure class="mid">
   <img src="img/file-places.svg" alt="Places in the file dialog" loading="lazy">
-  <figcaption>The places on Windows: the home folder and the drives with their labels.</figcaption>
+  <figcaption>Places on Windows.</figcaption>
 </figure>
-<p>Press <kbd>Alt+P</kbd> (the <span class="ui">Places</span> button). The list now shows starting points instead of a
-directory, and the <span class="ui">Folder:</span> line says <i>Places</i>:</p>
-<ol>
-  <li><code>~</code> — the home directory;</li>
-  <li>the folder of the current tab's file, if the tab has one;</li>
-  <li><b>Windows:</b> every drive with its label (<code>C:\  System</code>); network drives are marked
-      <i>Network</i>, CD/DVD drives <i>CD/DVD</i>;<br>
-      <b>Linux:</b> <code>/</code>, then the entries under <code>/media/&lt;user&gt;</code>,
-      <code>/run/media/&lt;user&gt;</code> and <code>/mnt</code>;<br>
-      <b>macOS:</b> <code>/</code>, then the volumes under <code>/Volumes</code>.</li>
-</ol>
-<p><kbd>Enter</kbd> or a double click opens a place; <code>..</code> returns to the previous directory. On Windows,
-<code>..</code> in the root directory of a drive also leads to the places — the way to change the drive without
-typing.</p>
-
-<h3>Where the dialog starts</h3>
-<p>The first file dialog of a pgtc run opens in the user's <b>documents</b> folder (not in the process's working
-directory). After that, every file dialog opens where the last one was. The location is not persisted across
-runs.</p>
-<p>Directories are listed in the background: the dialog appears at once and shows <i>Reading…</i> until the listing
-arrives, so a slow network share does not block the UI.</p>
+<p><kbd>Alt+P</kbd> (<span class="ui">Places</span>) lists: the home directory; the folder of the tab's file;
+on <b>Windows</b> every drive with its label; on <b>Linux</b> <code>/</code> and the entries under
+<code>/media/&lt;user&gt;</code>, <code>/run/media/&lt;user&gt;</code> and <code>/mnt</code>; on <b>macOS</b>
+<code>/</code> and <code>/Volumes</code>. On Windows, <code>..</code> in the root of a drive also leads here.</p>
 
 <h2 id="export">Exporting a result</h2>
-<p>Any result set of a query tab can be written to a file as <b>CSV</b>, <b>JSON</b> or <b>XML</b>. The export is
-done by pgtc from the rows of the already executed statement; it is not <code>COPY</code> and needs no privileges
-beyond those of the query.</p>
-<ol class="steps">
-  <li>Execute the query and select the result set to export (if there are several).</li>
-  <li>Choose <span class="menu">Query → Export result…</span> — or, in the grid, <kbd>F2</kbd> and
-      <span class="menu">Export result…</span>.</li>
-  <li>Choose the directory and the name as in every file dialog. The proposed name is <code>result_1.csv</code>
-      (the number of the result set).</li>
-  <li>Choose the <span class="ui">Format</span>; the extension of the name follows it. For CSV, choose the
-      <span class="ui">CSV separator</span> and whether to write a BOM.</li>
-  <li>Press <kbd>Enter</kbd> on <span class="ui">OK</span>. An existing file is overwritten only after confirmation.</li>
-</ol>
+<p><span class="menu">Query → Export result…</span> (or <kbd>F2</kbd> in the grid) writes the selected result set
+as <b>CSV</b>, <b>JSON</b> or <b>XML</b>. pgtc writes the rows itself: no <code>COPY</code>, no extra
+privileges.</p>
 <figure class="mid">
   <img src="img/export.svg" alt="Export result dialog" loading="lazy">
-  <figcaption>The export dialog: the file dialog plus the format options.</figcaption>
+  <figcaption>The file dialog plus the format options.</figcaption>
 </figure>
-<p>Format, separator and BOM choice are stored in the settings and proposed for the next export.</p>
-
-<h3>The whole result — not only what the grid shows</h3>
-<div class="tip">
-<p>The export always contains <b>every row of the result set</b>, also when the grid has fetched only the first
-batch of 1,000. pgtc writes the rows already loaded, then resumes reading the
-<a href="query.html#batches">paused result</a> and streams the remaining rows <b>directly to the file</b>. The
-statement is <b>not</b> executed again — the file is consistent with the grid, from the same snapshot — and the rows
-are never held in memory, so a result of many millions of rows can be exported.</p>
-</div>
 <ul>
-  <li>While it runs, the status line counts the rows written and the tab status row says <i>Exporting…</i>.</li>
-  <li><kbd>Alt+Shift+C</kbd> cancels. A cancelled or failed export <b>removes its incomplete file</b> and reports
-      the reason.</li>
-  <li>Afterwards the grid still shows the rows it had loaded, and its label says, for example,
-      <code>1,000 of 1,234,567 rows (rest exported)</code>: the remaining rows went to the file, not to the grid.
-      The statement has then completed on the server; its snapshot and locks are released as after
-      <i>Fetch all</i>.</li>
-  <li>While an export runs, the tab's session is busy: nothing else can be executed in the tab.</li>
-  <li>Values are written in the server's text output format, as the grid shows them; they depend on session
-      settings such as <code>DateStyle</code>, <code>IntervalStyle</code>, <code>bytea_output</code> and
-      <code>extra_float_digits</code>.</li>
+  <li><b>Every row is exported</b>, not only the fetched batch: pgtc writes the loaded rows, then resumes the
+      <a href="query.html#batches">paused result</a> and streams the rest <b>directly to the file</b>. The
+      statement is not executed again (same snapshot as the grid) and the rows are not held in memory.</li>
+  <li>Afterwards the grid keeps its loaded rows, labelled e.g. <code>1,000 of 1,234,567 rows (rest exported)</code>;
+      the statement has completed on the server.</li>
+  <li><kbd>Alt+Shift+C</kbd> cancels. A cancelled or failed export <b>removes its incomplete file</b>.</li>
+  <li>While an export runs, nothing else can be executed in the tab.</li>
+  <li>Values are the server's text output (<code>DateStyle</code>, <code>IntervalStyle</code>,
+      <code>bytea_output</code>, <code>extra_float_digits</code>).</li>
+  <li>Format, separator and BOM choice are remembered in the settings. The extension follows the format; an
+      existing file is overwritten only after confirmation.</li>
 </ul>
 
 <h3 id="csv">CSV</h3>
 <pre><code>territoryid,name,countryregioncode,salesytd
 1,Northwest,US,7887186.7882
-6,Canada,CA,6771829.1376
-7,France,FR,4772398.3078</code></pre>
+6,Canada,CA,6771829.1376</code></pre>
 <div class="tablewrap"><table>
 <tr><th>Property</th><th>Written as</th></tr>
-<tr><td>Header</td><td>One line with the column names of the result set.</td></tr>
-<tr><td>Separator</td><td><code>,</code> (default), <code>;</code> or a tab character — chosen in the dialog.</td></tr>
-<tr><td>Quoting</td><td>RFC 4180: a field is enclosed in <code>"…"</code> only when it contains the separator, a double quote or a line break; an embedded double quote is doubled (<code>""</code>).</td></tr>
-<tr><td>NULL</td><td>An empty field — not distinguishable from an empty string (unlike <code>COPY … CSV</code>, which writes an empty string as <code>""</code>).</td></tr>
+<tr><td>Header</td><td>One line with the column names.</td></tr>
+<tr><td>Separator</td><td><code>,</code> (default), <code>;</code> or tab.</td></tr>
+<tr><td>Quoting</td><td>RFC 4180: only fields containing the separator, a double quote or a line break; <code>"</code> is doubled.</td></tr>
+<tr><td>NULL</td><td>An empty field — indistinguishable from an empty string (unlike <code>COPY … CSV</code>).</td></tr>
 <tr><td>Line ends</td><td>CR LF.</td></tr>
-<tr><td>Encoding</td><td>UTF-8, with a leading BOM if <span class="ui">CSV with UTF-8 BOM</span> is checked.</td></tr>
+<tr><td>Encoding</td><td>UTF-8; a BOM if <span class="ui">CSV with UTF-8 BOM</span> is checked.</td></tr>
 </table></div>
-<div class="tip"><p><b>For Excel:</b> check <span class="ui">CSV with UTF-8 BOM</span>; without it Excel reads the file
-in the ANSI code page and non-ASCII characters (č, š, ž, ü) are garbled. Where the Windows locale uses the comma as
-decimal separator (most of Europe), Excel expects <code>;</code> as list separator: choose it, and the file opens in
-columns on a double click.</p></div>
+<p>For Excel: check the BOM, and choose <code>;</code> where the locale's decimal separator is a comma.</p>
 
 <h3 id="json">JSON</h3>
 <pre><code>[
   {"territoryid": 1, "name": "Northwest", "countryregioncode": "US", "salesytd": 7887186.7882},
   {"territoryid": 6, "name": "Canada", "countryregioncode": "CA", "salesytd": 6771829.1376}
 ]</code></pre>
-<p>An array with one object per row; the keys are the column names. The JSON type of a value follows the data type
-(type OID) of its column:</p>
+<p>One object per row; the JSON type follows the column's type OID:</p>
 <div class="tablewrap"><table>
 <tr><th>Column type</th><th>In JSON</th></tr>
-<tr><td><code>int2</code>, <code>int4</code>, <code>int8</code>, <code>oid</code>, <code>float4</code>, <code>float8</code>, <code>numeric</code></td><td>A number: the digits of the server's text output, copied unchanged — no conversion through a binary float, so <code>numeric</code> and <code>int8</code> keep full precision in the file (the reader's JSON parser may still round). <code>NaN</code>, <code>Infinity</code> and <code>-Infinity</code> are not JSON numbers and are written as strings.</td></tr>
+<tr><td><code>int2</code>, <code>int4</code>, <code>int8</code>, <code>oid</code>, <code>float4</code>, <code>float8</code>, <code>numeric</code></td><td>A number: the digits of the text output, copied unchanged (full precision in the file). <code>NaN</code>, <code>Infinity</code>, <code>-Infinity</code> are written as strings.</td></tr>
 <tr><td><code>bool</code></td><td><code>true</code> / <code>false</code></td></tr>
-<tr><td><code>json</code>, <code>jsonb</code></td><td>Embedded as a JSON value, not as a string.</td></tr>
+<tr><td><code>json</code>, <code>jsonb</code></td><td>Embedded as a JSON value.</td></tr>
 <tr><td>SQL NULL</td><td><code>null</code></td></tr>
-<tr><td>Every other type (<code>text</code>, <code>timestamptz</code>, <code>uuid</code>, <code>money</code>, <code>bytea</code>, arrays, composites, domains, …)</td><td>A string with the server's text output of the value.</td></tr>
+<tr><td>Every other type</td><td>A string with the text output.</td></tr>
 </table></div>
-<p>Duplicate column names in a result set (<code>SELECT 1 AS a, 2 AS a</code>) are made unique: the second key
-becomes <code>a_2</code>, so no value is lost.</p>
+<p>Duplicate column names are made unique: the second <code>a</code> becomes <code>a_2</code>.</p>
 
 <h3 id="xml">XML</h3>
 <pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
@@ -226,26 +143,20 @@ becomes <code>a_2</code>, so no value is lost.</p>
   &lt;row&gt;&lt;value&gt;6&lt;/value&gt;&lt;value null="true"/&gt;&lt;/row&gt;
 &lt;/result&gt;</code></pre>
 <ul>
-  <li>The column names are listed once, as attributes in <code>&lt;columns&gt;</code> (a column name need not be a
-      valid XML element name); each <code>&lt;row&gt;</code> has one <code>&lt;value&gt;</code> per column, in the
-      same order.</li>
-  <li>SQL NULL is <code>&lt;value null="true"/&gt;</code> — distinct from an empty string,
-      <code>&lt;value&gt;&lt;/value&gt;</code>.</li>
-  <li><code>&lt;</code>, <code>&gt;</code> and <code>&amp;</code> are escaped. All values are text; there is no typing
-      as in JSON.</li>
-  <li>XML 1.0 forbids most control characters (U+0001–U+0008, U+000B, U+000C, U+000E–U+001F), even as character
-      references. A value containing one is written base64-encoded and marked <code>encoding="base64"</code>, so
-      the file stays well-formed and no data is lost.</li>
+  <li>Column names are attributes in <code>&lt;columns&gt;</code>; each <code>&lt;row&gt;</code> has one
+      <code>&lt;value&gt;</code> per column, in order. All values are text.</li>
+  <li>SQL NULL is <code>&lt;value null="true"/&gt;</code>, distinct from <code>&lt;value&gt;&lt;/value&gt;</code>.</li>
+  <li>A value with a control character XML 1.0 forbids (U+0001–U+0008, U+000B, U+000C, U+000E–U+001F) is written
+      base64-encoded and marked <code>encoding="base64"</code>.</li>
 </ul>
 
 <h3>Other ways to get data out</h3>
 <ul>
-  <li><b>A few values:</b> <kbd>Ctrl+C</kbd> in the grid copies the cell; <kbd>Ctrl+A</kbd> then <kbd>Ctrl+C</kbd> copies
-      the loaded rows, tab-separated with a header row.</li>
-  <li><b>Server-side:</b> <code>COPY (<i>query</i>) TO '<i>file</i>'</code> executed in a query tab writes on the
-      database server and needs superuser or membership in <code>pg_write_server_files</code>.
-      <code>COPY … TO STDOUT</code> is <a href="query.html#limits">not supported</a>.</li>
-  <li><b>The schema of a database</b> (DDL, no data): <a href="pgdef.html">Database definition</a>.</li>
+  <li><kbd>Ctrl+C</kbd> in the grid (cell), or <kbd>Ctrl+A</kbd> then <kbd>Ctrl+C</kbd> (loaded rows,
+      tab-separated).</li>
+  <li>Server-side <code>COPY (<i>query</i>) TO '<i>file</i>'</code> in a query tab; <code>COPY … TO STDOUT</code>
+      is <a href="query.html#limits">not supported</a>.</li>
+  <li>The schema of a database, without data: <a href="pgdef.html">Database definition</a>.</li>
 </ul>
 </main>
 <script src="help.js"></script>

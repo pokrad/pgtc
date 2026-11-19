@@ -9,89 +9,63 @@
 <body>
 <main>
 <h1>Database statistics</h1>
-<p class="lead">The cumulative statistics of one database — its rows in <code>pg_stat_database</code> and
-<code>pg_stat_database_conflicts</code>, plus size, connection limit and <code>datfrozenxid</code> age from
-<code>pg_database</code> — formatted, on one page.</p>
+<p class="lead">One database's rows in <code>pg_stat_database</code> and <code>pg_stat_database_conflicts</code>,
+plus size, connection limit and XID ages from <code>pg_database</code>, formatted.</p>
 
 <figure>
   <img src="img/dbstats.svg" alt="The database statistics tab" loading="lazy">
-  <figcaption>The statistics of <code>adventureworks</code>: five summary boxes, and below them every value.</figcaption>
 </figure>
 
 <h2 id="open">Opening the statistics</h2>
-<p>Put the tree cursor on a <b>database row</b> of a connected server and press <kbd>Alt+I</kbd> — or press
-<kbd>F2</kbd> and choose <span class="menu">Database statistics</span>.</p>
-<ul>
-  <li>The tab is named <i>Stats: local · adventureworks</i>. Opening the statistics of the same database again
-      switches to that tab.</li>
-  <li>It works only on the database row itself, not on rows inside the database.</li>
-  <li>The tab holds its own session on that database (the values are those of
-      <code>current_database()</code>); close it like any tab (<kbd>Ctrl+W</kbd>).</li>
-</ul>
+<p><kbd>Alt+I</kbd> on a <b>database row</b> of a connected server (not on rows inside it), or the context menu
+(<kbd>F2</kbd>). One tab per database, with its own session on that database; the values are those of
+<code>current_database()</code>.</p>
 
 <h2 id="refresh">The values are read when you ask</h2>
-<p>Unlike the <a href="dashboard.html">dashboard</a>, this tab has <b>no timer</b>. One query reads all values when
-the tab opens, and again on each <kbd>F5</kbd>. The tab status row shows the <code>statement_timestamp()</code> of
-that query: <i>Read at 2026-11-16 10:48:12+01 (F5 refreshes)</i> — server clock.</p>
-<p>All counters are cumulative since <i>Statistics reset</i> (<code>stats_reset</code>). To measure a workload: read
-the values, run the test, press <kbd>F5</kbd>, and compare.</p>
+<p>No timer: one query when the tab opens and on each <kbd>F5</kbd>. The status row shows its
+<code>statement_timestamp()</code> (server clock). All counters are cumulative since <code>stats_reset</code>.</p>
 
 <h2 id="summary">The summary boxes</h2>
 <div class="tablewrap"><table>
-<tr><th>Box</th><th>Shows</th><th>How to read it</th></tr>
-<tr><td><b>Size</b></td><td><code>pg_database_size()</code> of the database.</td><td>All relations of the database, in all tablespaces.</td></tr>
-<tr><td><b>Backends</b></td><td><code>numbackends</code> and the database's <code>CONNECTION LIMIT</code> (<code>datconnlimit</code>): <i>41 (no limit)</i> or <i>41 / 100</i>.</td><td>At the limit, new sessions on this database are refused. The statistics tab's own backend is counted.</td></tr>
-<tr><td><b>Cache hit ratio</b></td><td><code>blks_hit / (blks_hit + blks_read)</code>.</td><td>Share of block requests served from <code>shared_buffers</code>, since the last statistics reset. A <i>read</i> may still come from the operating system's page cache.</td></tr>
-<tr><td><b>Transactions</b></td><td><code>xact_commit</code> and <code>xact_rollback</code>.</td><td>A high share of rollbacks deserves a look at the application.</td></tr>
-<tr><td><b>XID age</b></td><td><code>age(datfrozenxid)</code>.</td><td>Autovacuum forces an anti-wraparound <code>VACUUM</code> on tables older than <code>autovacuum_freeze_max_age</code> (default 200 million). A value that keeps growing beyond that means vacuum cannot advance the freeze horizon — often because of a session with an old <code>backend_xmin</code> (the <a href="dashboard.html#summary">dashboard</a> names it), a forgotten prepared transaction or a stale replication slot.</td></tr>
+<tr><th>Box</th><th>Source</th></tr>
+<tr><td><b>Size</b></td><td><code>pg_database_size()</code>.</td></tr>
+<tr><td><b>Backends</b></td><td><code>numbackends</code> and <code>datconnlimit</code>: <i>41 (no limit)</i> or <i>41 / 100</i>. The tab's own backend is counted.</td></tr>
+<tr><td><b>Cache hit ratio</b></td><td><code>blks_hit / (blks_hit + blks_read)</code>, since the statistics reset.</td></tr>
+<tr><td><b>Transactions</b></td><td><code>xact_commit</code>, <code>xact_rollback</code>.</td></tr>
+<tr><td><b>XID age</b></td><td><code>age(datfrozenxid)</code>. The backend holding back the xmin horizon is named on the <a href="dashboard.html#summary">dashboard</a>.</td></tr>
 </table></div>
 
 <h2 id="list">The list</h2>
-<p>Every statistic as one row: <i>Group</i>, <i>Statistic</i>, <i>Value</i>.</p>
 <div class="tablewrap"><table>
-<tr><th>Group</th><th>Statistics</th><th>Source and notes</th></tr>
-<tr><td><b>Database</b></td><td>Size · Backends · Connection limit · Transaction ID age · Multixact ID age · Statistics reset</td><td><code>pg_database_size()</code>, <code>numbackends</code>, <code>datconnlimit</code>, <code>age(datfrozenxid)</code>, <code>mxid_age(datminmxid)</code>, <code>stats_reset</code>.</td></tr>
-<tr><td><b>Transactions</b></td><td>Committed · Rolled back · Deadlocks</td><td><code>xact_commit</code>, <code>xact_rollback</code>, <code>deadlocks</code> (deadlocks detected).</td></tr>
-<tr><td><b>Block I/O</b></td><td>Blocks read · Blocks hit · Cache hit ratio · Read time · Write time</td><td><code>blks_read</code>, <code>blks_hit</code>, <code>blk_read_time</code>, <code>blk_write_time</code>. The times stay 0 unless <code>track_io_timing = on</code>.</td></tr>
-<tr><td><b>Tuples</b></td><td>Returned · Fetched · Inserted · Updated · Deleted</td><td><code>tup_returned</code>, <code>tup_fetched</code>, <code>tup_inserted</code>, <code>tup_updated</code>, <code>tup_deleted</code>.</td></tr>
-<tr><td><b>Temporary files</b></td><td>Files · Size</td><td><code>temp_files</code>, <code>temp_bytes</code>: files written by sorts, hashes and other nodes that exceeded <code>work_mem</code>.</td></tr>
-<tr><td><b>Sessions</b> (PostgreSQL 14+)</td><td>Sessions · Abandoned · Ended by fatal errors · Terminated · Session time · Active time · Idle in transaction time</td><td><code>sessions</code>, <code>sessions_abandoned</code>, <code>sessions_fatal</code>, <code>sessions_killed</code>, <code>session_time</code>, <code>active_time</code>, <code>idle_in_transaction_time</code>.</td></tr>
-<tr><td><b>Checksums</b> (PostgreSQL 12+)</td><td>Failures · Last failure</td><td><code>checksum_failures</code>, <code>checksum_last_failure</code>. <i>checksums off</i> when the cluster has no data checksums. Any failure means a corrupted page.</td></tr>
-<tr><td><b>Parallel workers</b> (PostgreSQL 18+)</td><td>Planned · Launched</td><td><code>parallel_workers_to_launch</code>, <code>parallel_workers_launched</code>. Launched far below planned: the worker pool (<code>max_parallel_workers</code>, <code>max_worker_processes</code>) is exhausted.</td></tr>
-<tr><td><b>Recovery conflicts</b></td><td>Total · Tablespace · Lock · Snapshot · Buffer pin · Deadlock · Logical slot (16+)</td><td><code>conflicts</code> and the <code>confl_*</code> columns of <code>pg_stat_database_conflicts</code>. Non-zero only on a standby: queries cancelled because they conflicted with WAL replay.</td></tr>
+<tr><th>Group</th><th>Source</th></tr>
+<tr><td><b>Database</b></td><td><code>pg_database_size()</code>, <code>numbackends</code>, <code>datconnlimit</code>, <code>age(datfrozenxid)</code>, <code>mxid_age(datminmxid)</code>, <code>stats_reset</code>.</td></tr>
+<tr><td><b>Transactions</b></td><td><code>xact_commit</code>, <code>xact_rollback</code>, <code>deadlocks</code>.</td></tr>
+<tr><td><b>Block I/O</b></td><td><code>blks_read</code>, <code>blks_hit</code>, the hit ratio, <code>blk_read_time</code>, <code>blk_write_time</code> (0 unless <code>track_io_timing = on</code>).</td></tr>
+<tr><td><b>Tuples</b></td><td><code>tup_returned</code>, <code>tup_fetched</code>, <code>tup_inserted</code>, <code>tup_updated</code>, <code>tup_deleted</code>.</td></tr>
+<tr><td><b>Temporary files</b></td><td><code>temp_files</code>, <code>temp_bytes</code>.</td></tr>
+<tr><td><b>Sessions</b> (14+)</td><td><code>sessions</code>, <code>sessions_abandoned</code>, <code>sessions_fatal</code>, <code>sessions_killed</code>, <code>session_time</code>, <code>active_time</code>, <code>idle_in_transaction_time</code>.</td></tr>
+<tr><td><b>Checksums</b> (12+)</td><td><code>checksum_failures</code>, <code>checksum_last_failure</code>; <i>checksums off</i> without data checksums.</td></tr>
+<tr><td><b>Parallel workers</b> (18+)</td><td><code>parallel_workers_to_launch</code>, <code>parallel_workers_launched</code>.</td></tr>
+<tr><td><b>Recovery conflicts</b></td><td><code>conflicts</code> and the <code>confl_*</code> columns of <code>pg_stat_database_conflicts</code> (logical slot: 16+).</td></tr>
 </table></div>
-<p>Groups whose columns the server's version does not have are left out.</p>
+<p>Groups the server version does not have are left out.</p>
 
 <h3>How values are written</h3>
-<div class="tablewrap"><table>
-<tr><th>Kind</th><th>Shown as</th></tr>
-<tr><td>Counts</td><td>With thousands separators: <code>1,284,977,310</code>.</td></tr>
-<tr><td>Sizes</td><td>Readable, with the exact number of bytes: <code>1250 MB (1,310,368,640 bytes)</code>.</td></tr>
-<tr><td>Times</td><td>In the fitting unit: <code>850 ms</code>, <code>12.3 s</code>, <code>6 min 53 s</code>, <code>2 h 03 min</code>.</td></tr>
-<tr><td>Ratios</td><td>In percent, two decimals.</td></tr>
-<tr><td>SQL <code>NULL</code></td><td><code>[null]</code>.</td></tr>
-</table></div>
+<p>Counts with thousands separators; sizes readable plus exact bytes (<code>1250 MB (1,310,368,640 bytes)</code>);
+times in the fitting unit; ratios in percent; <code>NULL</code> as <code>[null]</code>.</p>
 
 <h2 id="keys">Keys</h2>
 <div class="tablewrap"><table>
-<tr><th>Key</th><th>What it does</th></tr>
-<tr><td class="k"><kbd>F5</kbd></td><td>Read the statistics again (and reconnect after a lost session).</td></tr>
-<tr><td class="k">Arrows, <kbd>PgUp</kbd> / <kbd>PgDn</kbd>, <kbd>Home</kbd> / <kbd>End</kbd></td><td>Move in the list.</td></tr>
-<tr><td class="k"><kbd>Ctrl+C</kbd></td><td>Copy the cell.</td></tr>
-<tr><td class="k"><kbd>Ctrl+A</kbd>, then <kbd>Ctrl+C</kbd></td><td>Copy the whole list, tab-separated — to keep a “before” next to an “after”.</td></tr>
-<tr><td class="k"><kbd>F2</kbd></td><td>Context menu: <i>Refresh</i>, <i>Copy</i>, <i>Select all</i>.</td></tr>
+<tr><th>Key</th><th></th></tr>
+<tr><td class="k"><kbd>F5</kbd></td><td>Read again; reconnect after a lost session.</td></tr>
+<tr><td class="k"><kbd>Ctrl+C</kbd></td><td>Copy the cell; after <kbd>Ctrl+A</kbd>, the whole list, tab-separated.</td></tr>
+<tr><td class="k"><kbd>F2</kbd></td><td>Context menu.</td></tr>
 </table></div>
 
 <h2 id="more">Where to look for more</h2>
-<ul>
-  <li><b>Current activity</b> — <code>pg_stat_activity</code>, lock waits, progress of maintenance commands: the
-      <a href="dashboard.html">server dashboard</a> of the database (<kbd>Alt+D</kbd>).</li>
-  <li><b>Statement trace</b>: the <a href="profiler.html">SQL profiler</a>.</li>
-  <li><b>Per-relation statistics</b> have no tab; query the views in a query tab:
-<pre><code>SELECT relname, seq_scan, idx_scan, n_live_tup, n_dead_tup, last_autovacuum
-FROM pg_stat_user_tables
-ORDER BY n_dead_tup DESC;</code></pre></li>
-</ul>
+<p>Current activity: the <a href="dashboard.html">server dashboard</a>. Statement trace: the
+<a href="profiler.html">SQL profiler</a>. Per-relation statistics (<code>pg_stat_user_tables</code>)
+have no tab; query them in a query tab.</p>
 </main>
 <script src="help.js"></script>
 </body>

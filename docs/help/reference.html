@@ -14,8 +14,7 @@ the menus, and the files pgtc reads and writes.</p>
 
 <h2 id="cli">Command line</h2>
 <pre><code>pgtc [OPTION]... [DBNAME [USERNAME]]</code></pre>
-<p>The connection options are psql's. Each one sets a connection parameter of the session pgtc opens at
-start.</p>
+<p>The connection options are psql's.</p>
 <div class="tablewrap"><table>
 <tr><th>Option</th><th>Meaning</th></tr>
 <tr><td class="k"><code>-h</code>, <code>--host HOSTNAME</code></td><td><code>host</code>: host name or IP address, or the directory of the server's Unix-domain socket.</td></tr>
@@ -29,8 +28,7 @@ start.</p>
 <tr><td class="k"><code>-?</code>, <code>--help</code></td><td>Show the options and exit. (<code>-h</code> is <code>host</code>, as in psql.)</td></tr>
 <tr><td class="k"><code>-V</code>, <code>--version</code></td><td>Show the version and exit.</td></tr>
 </table></div>
-<p>Positional arguments work as in psql: the first fills <code>dbname</code> unless <code>-d</code> is given, the
-next fills <code>user</code> unless <code>-U</code> is given: <code>pgtc adventureworks postgres</code>.</p>
+<p>Positional arguments as in psql.</p>
 
 <h3>Examples</h3>
 <pre><code>pgtc                                         start with the saved connections
@@ -43,8 +41,7 @@ pgtc --setup</code></pre>
 
 <h3>Connection URIs</h3>
 <pre><code>postgresql://[user[:password]@][host][:port][/dbname][?sslmode=...&amp;sslrootcert=...]</code></pre>
-<p>Also with <code>postgres://</code>. Quote a URI that contains <code>?</code> or <code>&amp;</code>, or the shell will
-interpret it.</p>
+<p>Also <code>postgres://</code>.</p>
 <ul>
   <li>Percent-encoding is decoded; an IPv6 address goes in brackets (<code>[::1]</code>).</li>
   <li>The query part accepts <code>sslmode</code>, <code>sslrootcert</code>, <code>host</code>, <code>port</code>,
@@ -67,18 +64,13 @@ invalid <code>PGPORT</code> or <code>PGSSLMODE</code> is an error at start.</p>
 <p><b>Precedence:</b> a URI, then the options, then the environment variables, then the built-in defaults —
 <code>host</code> <code>localhost</code>, <code>port</code> <code>5432</code>, <code>user</code> = your operating-system
 user name, <code>dbname</code> = the user name, <code>sslmode</code> <code>prefer</code>.</p>
-<p><b>Effect:</b> when any connection argument is given, pgtc saves the connection (unless one with the same host,
-port, database, user and <code>sslmode</code> is already saved) and connects it at start.</p>
+<p><b>Effect:</b> with any connection argument, pgtc saves the connection (unless one with the same host, port, database, user and <code>sslmode</code> is saved) and connects it at start.</p>
 
 <h2 id="keys">Keyboard reference</h2>
-<p>The default bindings, by keymap context — the part of the window that has the focus. The last column is the
-command name used in <a href="settings.html#keymap"><code>keymap.toml</code></a>. Inside pgtc, <kbd>F1</kbd> shows the
-keys that work in the current context and <span class="menu">Help → Keyboard shortcuts</span> shows the
-<i>effective</i> keymap, your overrides applied.</p>
+<p>Default bindings by keymap context; the last column is the command name for <a href="settings.html#keymap"><code>keymap.toml</code></a>. <kbd>F1</kbd> in pgtc shows the effective keymap.</p>
 <figure>
   <img src="img/shortcuts.svg" alt="Help → Keyboard shortcuts" loading="lazy">
-  <figcaption><span class="menu">Help → Keyboard shortcuts</span>: the effective keymap, in a scrolling window. Its
-  last lines give the path of your <code>keymap.toml</code>.</figcaption>
+  <figcaption><span class="menu">Help → Keyboard shortcuts</span>; the last lines give the path of <code>keymap.toml</code>.</figcaption>
 </figure>
 
 <h3>Everywhere <code>[global]</code></h3>
@@ -121,7 +113,7 @@ keys that work in the current context and <span class="menu">Help → Keyboard s
 </table></div>
 
 <h3>Editor and object view <code>[editor]</code></h3>
-<p>Also used by the read-only object view and the statement pane, where the editing keys do nothing.</p>
+<p>Also the read-only object view and the statement pane.</p>
 <div class="tablewrap"><table>
 <tr><th>Key</th><th>What it does</th><th>Command</th></tr>
 <tr><td class="k"><kbd>F5</kbd></td><td>Execute the selection or the whole script</td><td><code>execute</code></td></tr>
@@ -242,9 +234,7 @@ keys that work in the current context and <span class="menu">Help → Keyboard s
 </table></div>
 
 <h3>Template tab <code>[template]</code></h3>
-<p>The tab of the <a href="template-editor.html">developer template editor</a>. <kbd>F5</kbd>, <kbd>F7</kbd> and
-<kbd>Ctrl+T</kbd> work in every part of the tab; the other keys in its header list (in the body, the raw header and
-the preview the <code>[editor]</code> keys apply).</p>
+<p>The <a href="template-editor.html">template editor</a> tab. <kbd>F5</kbd>, <kbd>F7</kbd> and <kbd>Ctrl+T</kbd> work in every part; the other keys in the header list (elsewhere the <code>[editor]</code> keys apply).</p>
 <div class="tablewrap"><table>
 <tr><th>Key</th><th>What it does</th><th>Command</th></tr>
 <tr><td class="k"><kbd>F5</kbd></td><td>Test the template in its form (nothing is inserted)</td><td><code>template_test</code></td></tr>
@@ -284,7 +274,7 @@ the preview the <code>[editor]</code> keys apply).</p>
 </table></div>
 
 <h3>Commands without a default key</h3>
-<p>Reachable from the menus; bind them in <code>keymap.toml</code>:</p>
+<p>Menu only; bind them in <code>keymap.toml</code>:</p>
 <p><code>commit</code>, <code>rollback</code>, <code>toggle_auto_commit</code>, <code>toggle_auto_rollback</code>,
 <code>export_result</code>, <code>copy_all_messages</code>, <code>save_file_as</code>, <code>open_file</code>,
 <code>toggle_system_objects</code>, <code>new_connection</code>, <code>edit_connection</code>, <code>delete_connection</code>,
@@ -295,8 +285,7 @@ the preview the <code>[editor]</code> keys apply).</p>
 <code>template_add_variant</code>.</p>
 
 <h2 id="menus">Menu reference</h2>
-<p>Open the menu bar with <kbd>F9</kbd>. The key column shows the default binding of the command, and in brackets
-the context in which it applies.</p>
+<p><kbd>F9</kbd> opens the menu bar. Keys are the default bindings, with their context in brackets.</p>
 <div class="tablewrap"><table>
 <tr><th>Menu</th><th>Item</th><th>Key</th><th>Notes</th></tr>
 <tr><td rowspan="12">File</td><td>New connection…</td><td></td><td>Save a new set of connection parameters</td></tr>
@@ -368,26 +357,20 @@ the context in which it applies.</p>
 </table></div>
 
 <h3 id="log">Log</h3>
-<p>pgtc never writes to stdout or stderr while the TUI is active; it logs to a file. The default level is
-<code>info</code>. <code>PGTC_LOG</code> takes a level or a per-module filter: <code>PGTC_LOG=debug</code>,
-<code>PGTC_LOG=pgc_db=trace</code>.</p>
+<p>pgtc logs to a file, never to stdout or stderr. Default level <code>info</code>; <code>PGTC_LOG</code> takes a level or a per-module filter (<code>PGTC_LOG=debug</code>, <code>PGTC_LOG=pgc_db=trace</code>).</p>
 
 <h3>Window position (Windows)</h3>
-<p>Started from Explorer, a shortcut or Win+R, pgtc gets its own classic console window; its position and maximized
-state are saved on exit and restored at the next start. A terminal you opened yourself (cmd, PowerShell, Windows
-Terminal, SSH) is never moved.</p>
+<p>Started from Explorer, a shortcut or Win+R, pgtc has its own console window and restores its position and maximized state. A terminal you opened yourself is never moved.</p>
 
 <h2 id="about">About and licences</h2>
 <figure class="small">
   <img src="img/about.svg" alt="About pgtc" loading="lazy">
   <figcaption><span class="menu">Help → About pgtc</span>.</figcaption>
 </figure>
-<p>pgtc is released under the <b>PostgreSQL Licence</b>. Its catalog queries are adapted from the SQL templates of
-pgAdmin 4, which has the same licence.</p>
+<p><b>PostgreSQL Licence</b>. The catalog queries are adapted from pgAdmin 4 (same licence).</p>
 <figure>
   <img src="img/licences.svg" alt="Third-party licences" loading="lazy">
-  <figcaption><span class="menu">Help → Third-party licences</span>: the licence of pgAdmin's SQL and of every library
-  pgtc is built from, each with the list of what it applies to.</figcaption>
+  <figcaption><span class="menu">Help → Third-party licences</span>.</figcaption>
 </figure>
 </main>
 <script src="help.js"></script>

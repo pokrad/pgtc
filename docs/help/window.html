@@ -9,8 +9,7 @@
 <body>
 <main>
 <h1>The window, menus and keys</h1>
-<p class="lead">How the screen is built, how to move between its parts, and how menus, dialogs and the mouse work.
-These rules are the same everywhere in pgtc.</p>
+<p class="lead">Layout, focus, menus, dialogs and the mouse.</p>
 
 <h2 id="parts">The parts of the window</h2>
 <figure>
@@ -18,211 +17,145 @@ These rules are the same everywhere in pgtc.</p>
   <figcaption>The main window.</figcaption>
 </figure>
 <div class="tablewrap"><table>
-<tr><th>Part</th><th>Where</th><th>What it is for</th></tr>
-<tr><td><b>Menu bar</b></td><td>Top row</td><td><i>File · View · Query · Tools · Settings · Help</i>. Opened with <kbd>F9</kbd>.</td></tr>
-<tr><td><b>Object tree</b></td><td>Left frame, titled <i>Connections</i></td><td>The saved connections and, below a connected server, its cluster-wide objects, databases and the objects in them. See <a href="tree.html">Object tree</a>.</td></tr>
-<tr><td><b>Tabs</b></td><td>Right frame</td><td>The <i>Default</i> tab, object tabs, query tabs and the dashboard, profiler and statistics tabs.</td></tr>
-<tr><td><b>Tab strip</b></td><td>First row of the right frame</td><td>The names of the open tabs. Every tab except <i>Default</i> has a <code>×</code> to close it with the mouse.</td></tr>
-<tr><td><b>Tab status row</b></td><td>Last row inside the right frame</td><td>Belongs to the tab you see: its session as <i>connection · role@database</i> (<code>local · postgres@adventureworks</code>), what it is doing, and the cursor position (<code>Ln 1, Col 1</code>).</td></tr>
-<tr><td><b>Window status line</b></td><td>Bottom row of the screen</td><td>Messages of the program: <i>Saved …</i>, <i>Disconnected</i>, hints why a key did nothing, the quick-search text.</td></tr>
+<tr><th>Part</th><th>Notes</th></tr>
+<tr><td><b>Menu bar</b></td><td><kbd>F9</kbd>.</td></tr>
+<tr><td><b>Object tree</b> (<i>Connections</i>)</td><td>Saved connections and the objects of the connected ones. See <a href="tree.html">Object tree</a>.</td></tr>
+<tr><td><b>Tab status row</b> (last row of the right frame)</td><td>The tab's session as <i>connection · role@database</i>, its state, the cursor position.</td></tr>
+<tr><td><b>Window status line</b> (bottom row)</td><td>Program messages, the reason a key did nothing, the quick-search text.</td></tr>
 </table></div>
-<p>There is no row of function-key hints at the bottom and there are no icons: the space goes to your data.
-<kbd>F1</kbd> tells you the keys at any moment.</p>
+<p>There is no key-hint bar: <kbd>F1</kbd> shows the keys.</p>
 
 <h3>The tabs of the right frame</h3>
 <div class="tablewrap"><table>
 <tr><th>Tab</th><th>Opened with</th><th>Shows</th></tr>
-<tr><td><i>Default</i></td><td>Always there; cannot be closed</td><td>The definition of the row selected in the tree. It changes as you move in the tree.</td></tr>
-<tr><td>Object tab (named after the object)</td><td><kbd>F3</kbd> in the tree</td><td>The definition of one object; it stays while you move on.</td></tr>
-<tr><td><i>Query n – database</i></td><td><kbd>Ctrl+N</kbd></td><td>A SQL editor and its results. See <a href="query.html">Query tabs</a>.</td></tr>
+<tr><td><i>Default</i></td><td>Always open</td><td>The definition of the tree row under the cursor.</td></tr>
+<tr><td>Object tab</td><td><kbd>F3</kbd> in the tree</td><td>The definition of one object, pinned.</td></tr>
+<tr><td><i>Query n – database</i></td><td><kbd>Ctrl+N</kbd></td><td><a href="query.html">Query tab</a>.</td></tr>
 <tr><td><i>Dashboard: server</i></td><td><kbd>Alt+D</kbd> in the tree</td><td><a href="dashboard.html">Server dashboard</a>.</td></tr>
 <tr><td><i>Profiler: server</i></td><td><kbd>Alt+P</kbd> in the tree</td><td><a href="profiler.html">SQL profiler</a>.</td></tr>
 <tr><td><i>Stats: server · database</i></td><td><kbd>Alt+I</kbd> on a database</td><td><a href="dbstats.html">Database statistics</a>.</td></tr>
 </table></div>
 
-<h2 id="focus">Focus: where your keys go</h2>
-<p>Exactly one part of the window has the focus and gets your keys. You always see which one: its strip is drawn in
-the highlight colour —</p>
-<ul>
-  <li>the tree's title <i>Connections</i> while the <b>tree</b> has the focus;</li>
-  <li>the active tab's name while the <b>upper part of the right frame</b> has it (the editor, the definition, a list);</li>
-  <li>the active label of the results bar (<i>Messages</i> or a result set) while the <b>results</b> have it.</li>
-</ul>
-<p>A strip without the focus is shown in a quieter colour, so only one strip stands out.</p>
-
-<h3>Moving the focus</h3>
+<h2 id="focus">Focus</h2>
+<p>The focused part has its strip in the highlight colour: the tree's title, the active tab's name (upper part of the
+right frame), or the active label of the results bar.</p>
 <div class="tablewrap"><table>
 <tr><th>Key</th><th>Second key</th><th>Goes to</th></tr>
-<tr><td class="k"><kbd>F6</kbd></td><td class="k"><kbd>Ctrl+Tab</kbd></td><td>From the tree to the right frame, and back. In the right frame you land in the part you used last.</td></tr>
-<tr><td class="k"><kbd>Alt+1</kbd></td><td class="k"><kbd>Ctrl+1</kbd></td><td>The object tree — from anywhere.</td></tr>
-<tr><td class="k"><kbd>Alt+2</kbd></td><td class="k"><kbd>Ctrl+2</kbd></td><td>The right frame — from anywhere.</td></tr>
-<tr><td class="k"><kbd>Alt+Down</kbd></td><td class="k"><kbd>Ctrl+Shift+Down</kbd></td><td>The <b>lower</b> part of the right frame: the results or messages of a query tab, the statement pane of the dashboard and the profiler. If that part is hidden, it is shown first.</td></tr>
-<tr><td class="k"><kbd>Alt+Up</kbd></td><td class="k"><kbd>Ctrl+Shift+Up</kbd></td><td>The <b>upper</b> part: the editor, the list.</td></tr>
+<tr><td class="k"><kbd>F6</kbd></td><td class="k"><kbd>Ctrl+Tab</kbd></td><td>Tree ↔ right frame (the part used last).</td></tr>
+<tr><td class="k"><kbd>Alt+1</kbd></td><td class="k"><kbd>Ctrl+1</kbd></td><td>The tree.</td></tr>
+<tr><td class="k"><kbd>Alt+2</kbd></td><td class="k"><kbd>Ctrl+2</kbd></td><td>The right frame.</td></tr>
+<tr><td class="k"><kbd>Alt+Down</kbd></td><td class="k"><kbd>Ctrl+Shift+Down</kbd></td><td>The lower part of the right frame (results, messages, statement pane); shown first if hidden.</td></tr>
+<tr><td class="k"><kbd>Alt+Up</kbd></td><td class="k"><kbd>Ctrl+Shift+Up</kbd></td><td>The upper part (editor, list).</td></tr>
 </table></div>
-<p>The second keys with <kbd>Ctrl</kbd> work only in terminals that report them (the Windows console, terminals with
-the kitty keyboard protocol). <kbd>F6</kbd> and the <kbd>Alt</kbd> keys work nearly everywhere.</p>
-<div class="note"><p><kbd>Tab</kbd> does <b>not</b> switch between the parts of the window. In the editor it indents; in
-dialogs it goes to the next field; in the tree and the results it does nothing.</p></div>
+<ul>
+  <li>The <kbd>Ctrl</kbd> keys need a terminal that reports them (Windows console, kitty keyboard protocol).</li>
+  <li><kbd>Tab</kbd> never moves between the parts: it indents in the editor and moves between fields in dialogs.</li>
+</ul>
 
 <h3>Switching tabs</h3>
-<p><kbd>Alt+Left</kbd> and <kbd>Alt+Right</kbd> switch <b>the tabs nearest to the focus</b>:</p>
+<p><kbd>Alt+Left</kbd> / <kbd>Alt+Right</kbd> switch the tabs nearest to the focus:</p>
 <div class="tablewrap"><table>
-<tr><th>Focus is in…</th><th><kbd>Alt+Left</kbd> / <kbd>Alt+Right</kbd> switch…</th></tr>
-<tr><td>the editor, a definition, a statement pane, the profiler list</td><td>the main tabs of the right frame</td></tr>
-<tr><td>the results or messages of a query tab</td><td><i>Messages</i> and the result sets (<i>1</i> → <i>2</i> → … → <i>Messages</i>)</td></tr>
-<tr><td>the dashboard's list</td><td>the dashboard's lists (<i>Sessions</i>, <i>Blocking</i>, …)</td></tr>
-<tr><td>the object tree</td><td>nothing — use <span class="menu">View → Next tab</span> / <span class="menu">Previous tab</span>, or go to the right frame first</td></tr>
+<tr><th>Focus</th><th>Switches</th></tr>
+<tr><td>Editor, definition, statement pane, profiler list</td><td>The main tabs.</td></tr>
+<tr><td>Results or messages of a query tab</td><td>The result sets, then <i>Messages</i>.</td></tr>
+<tr><td>The dashboard's list</td><td>The dashboard's lists.</td></tr>
+<tr><td>The tree</td><td>Nothing; use <span class="menu">View → Next tab</span> / <span class="menu">Previous tab</span>.</td></tr>
 </table></div>
-<p><kbd>Ctrl+W</kbd> closes the active tab; so does a click on its <code>×</code>.</p>
+<p><kbd>Ctrl+W</kbd> closes the active tab.</p>
 
 <h2 id="f1">F1: the keys that work now</h2>
 <figure>
   <img src="img/f1.svg" alt="The F1 window in a query editor" loading="lazy">
-  <figcaption><kbd>F1</kbd> in the editor of a query tab. The list scrolls; <kbd>Esc</kbd> or <kbd>Enter</kbd> closes it.</figcaption>
+  <figcaption><kbd>F1</kbd> in a query editor.</figcaption>
 </figure>
-<p><kbd>F1</kbd> opens the window <i>Keys available now</i>. It lists only keys that do something in the situation you
-are in:</p>
 <ul>
-  <li>first the keys of the part that has the focus, under its name (<i>Object tree</i>, <i>Query editor</i>,
-      <i>Object view</i>, <i>Results</i>, <i>Messages</i>, <i>Server dashboard</i>, …), in groups: <i>Actions</i>,
-      <i>File</i>, <i>Moving</i>, <i>Selecting</i>, <i>Editing</i>, <i>Clipboard and undo</i>, <i>Find</i>,
-      <i>Results</i>, <i>Windows and tabs</i>;</li>
-  <li>then <i>Everywhere</i> — the keys that work in every part;</li>
-  <li>then <i>Other keys</i> — <kbd>Esc</kbd> + digit and the menu letters.</li>
+  <li>Lists the keys of the focused part, then those that work everywhere. A key whose command cannot run at the moment
+      is left out (<i>Cancel</i> only while a statement runs).</li>
+  <li>All keys: <span class="menu">Help → Keyboard shortcuts</span> or the <a href="reference.html#keys">Keyboard
+      reference</a>.</li>
 </ul>
-<p>A key whose command cannot run at the moment is left out: <i>Execute</i> is listed only in a query tab that is not
-running, <i>Cancel</i> only while a query runs, editing keys only where text can be edited, and so on. With a dialog
-open, <kbd>F1</kbd> shows the keys of dialogs.</p>
-<p>For the list of <b>all</b> keys, in every part, use <span class="menu">Help → Keyboard shortcuts</span> or the
-<a href="reference.html#keys">Keyboard reference</a>.</p>
 
 <h3>The same key in different parts</h3>
-<p>A few keys have a different job depending on where the focus is:</p>
 <div class="tablewrap"><table>
 <tr><th>Key</th><th>Object tree</th><th>Query tab</th><th>Dashboard / profiler / statistics</th></tr>
 <tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Refresh the tree</td><td>Show / hide the results</td><td>Show / hide the statement pane</td></tr>
-<tr><td class="k"><kbd>Ctrl+F</kbd></td><td>Find an object</td><td>Find / replace in the text</td><td>Profiler: filter</td></tr>
+<tr><td class="k"><kbd>Ctrl+F</kbd></td><td>Find an object</td><td>Find / replace</td><td>Profiler: filter</td></tr>
 <tr><td class="k"><kbd>Ctrl+S</kbd></td><td>Quick search</td><td>Save the SQL file</td><td></td></tr>
 <tr><td class="k"><kbd>Ctrl+P</kbd></td><td>Open the SQL profiler</td><td>PL/pgSQL mode on / off</td><td>Pause / resume</td></tr>
 <tr><td class="k"><kbd>F5</kbd></td><td></td><td>Execute</td><td>Refresh; profiler: start / stop</td></tr>
-<tr><td class="k"><kbd>F8</kbd></td><td>Delete the saved connection</td><td>Ask AI for SQL (into the editor, not run)</td><td>Dashboard: terminate the session</td></tr>
+<tr><td class="k"><kbd>F8</kbd></td><td>Delete the saved connection</td><td>Ask AI for SQL</td><td>Dashboard: terminate the session</td></tr>
 <tr><td class="k"><kbd>F3</kbd></td><td>Object in a new tab</td><td>Find next</td><td></td></tr>
 </table></div>
-<p>To reach an action of another part, move the focus there — or use the menu, which is the same everywhere.</p>
 
 <h2 id="esc">Esc + digit instead of F-keys</h2>
-<p>Some terminals, SSH clients and macOS do not pass function keys through. As in Midnight Commander, press
-<kbd>Esc</kbd> and then a digit within one second:</p>
-<div class="tablewrap"><table>
-<tr><th>Press</th><th>Works as</th><th>Press</th><th>Works as</th></tr>
-<tr><td class="k"><kbd>Esc</kbd> <kbd>1</kbd></td><td><kbd>F1</kbd></td><td class="k"><kbd>Esc</kbd> <kbd>6</kbd></td><td><kbd>F6</kbd></td></tr>
-<tr><td class="k"><kbd>Esc</kbd> <kbd>2</kbd></td><td><kbd>F2</kbd></td><td class="k"><kbd>Esc</kbd> <kbd>7</kbd></td><td><kbd>F7</kbd></td></tr>
-<tr><td class="k"><kbd>Esc</kbd> <kbd>3</kbd></td><td><kbd>F3</kbd></td><td class="k"><kbd>Esc</kbd> <kbd>8</kbd></td><td><kbd>F8</kbd></td></tr>
-<tr><td class="k"><kbd>Esc</kbd> <kbd>4</kbd></td><td><kbd>F4</kbd></td><td class="k"><kbd>Esc</kbd> <kbd>9</kbd></td><td><kbd>F9</kbd></td></tr>
-<tr><td class="k"><kbd>Esc</kbd> <kbd>5</kbd></td><td><kbd>F5</kbd></td><td class="k"><kbd>Esc</kbd> <kbd>0</kbd></td><td><kbd>F10</kbd></td></tr>
-</table></div>
-<p>After <kbd>Esc</kbd> the status line shows that pgtc waits for a digit. If you press nothing for a second,
-<kbd>Esc</kbd> acts as plain <kbd>Esc</kbd>; if you press another key, <kbd>Esc</kbd> is handled first and then that key.</p>
+<p>As in Midnight Commander: <kbd>Esc</kbd>, then a digit within one second — <kbd>Esc</kbd> <kbd>1</kbd> …
+<kbd>Esc</kbd> <kbd>9</kbd> are <kbd>F1</kbd> … <kbd>F9</kbd>, <kbd>Esc</kbd> <kbd>0</kbd> is <kbd>F10</kbd>. Without
+a digit <kbd>Esc</kbd> acts as plain <kbd>Esc</kbd> after that second.</p>
 
 <h2 id="menus">Menus</h2>
 <div class="shots">
 <figure><img src="img/menu-file.svg" alt="File menu" loading="lazy"><figcaption><span class="menu">File</span></figcaption></figure>
 <figure><img src="img/menu-view.svg" alt="View menu" loading="lazy"><figcaption><span class="menu">View</span></figcaption></figure>
-<figure><img src="img/menu-query.svg" alt="Query menu" loading="lazy"><figcaption><span class="menu">Query</span> — on/off items show <code>[x]</code></figcaption></figure>
+<figure><img src="img/menu-query.svg" alt="Query menu" loading="lazy"><figcaption><span class="menu">Query</span></figcaption></figure>
 <figure><img src="img/menu-tools.svg" alt="Tools menu" loading="lazy"><figcaption><span class="menu">Tools</span></figcaption></figure>
 <figure><img src="img/menu-settings.svg" alt="Settings menu" loading="lazy"><figcaption><span class="menu">Settings</span></figcaption></figure>
 <figure><img src="img/menu-help.svg" alt="Help menu" loading="lazy"><figcaption><span class="menu">Help</span></figcaption></figure>
 </div>
-<h3>Using the menu bar</h3>
-<div class="tablewrap"><table>
-<tr><th>Key</th><th>What it does</th></tr>
-<tr><td class="k"><kbd>F9</kbd></td><td>Opens the menu bar (the <i>File</i> menu). <kbd>F9</kbd> again, or <kbd>Esc</kbd>, closes it.</td></tr>
-<tr><td class="k"><kbd>Left</kbd> / <kbd>Right</kbd></td><td>The menu to the left / right.</td></tr>
-<tr><td class="k"><kbd>Up</kbd> / <kbd>Down</kbd>, <kbd>Home</kbd> / <kbd>End</kbd></td><td>Move among the items; disabled items are skipped.</td></tr>
-<tr><td class="k"><kbd>Enter</kbd></td><td>Runs the highlighted item.</td></tr>
-<tr><td class="k">a letter</td><td>Runs the item of the open menu whose highlighted (underlined) letter it is.</td></tr>
-<tr><td class="k"><kbd>Alt</kbd> + letter</td><td>Opens the menu with that letter in its title (<kbd>Alt+Q</kbd> = <i>Query</i>).</td></tr>
-</table></div>
-<p>So <kbd>F9</kbd>, <kbd>Right</kbd>, <kbd>Right</kbd>, <kbd>E</kbd> runs <span class="menu">Query → Execute</span>.</p>
 <ul>
-  <li>The key shown at the right of an item is the key of that command <b>in the part of the window you came from</b>.</li>
-  <li>An item that cannot run now is drawn in the quiet “disabled” colour: for example the whole <i>Query</i> menu
-      while no query tab is active, or <i>New query</i> while no database is selected in the tree.</li>
-  <li>With the mouse: click a menu title, then an item.</li>
+  <li><kbd>F9</kbd> opens the menu bar; <kbd>Alt</kbd> + letter opens one menu (<kbd>Alt+Q</kbd> = <i>Query</i>). In
+      an open menu the underlined letter runs the item.</li>
+  <li>The key shown beside an item is its key in the part of the window the focus came from.</li>
+  <li>Items that cannot run now are disabled, e.g. the <i>Query</i> menu without an active query tab.</li>
+  <li>Every item: <a href="reference.html#menus">Menu reference</a>.</li>
 </ul>
-<p>Every menu item is described in the <a href="reference.html#menus">Menu reference</a>.</p>
 
 <h3>Context menus</h3>
-<p><kbd>F2</kbd> — or a click with the right mouse button — opens a small menu for what is under the cursor: a row
-of the tree, the result grid, the messages, a list of the dashboard or the profiler. It holds only what applies to
-that row. It is used like a pull-down menu: arrows, <kbd>Enter</kbd>, the highlighted letter, <kbd>Esc</kbd>.</p>
+<p><kbd>F2</kbd> or a right click: the commands for the row under the cursor (tree, result grid, messages,
+dashboard and profiler lists).</p>
 <figure class="mid">
   <img src="img/tree-menu-db.svg" alt="Context menu of a database" loading="lazy">
-  <figcaption><kbd>F2</kbd> on the database <code>adventureworks</code>.</figcaption>
+  <figcaption><kbd>F2</kbd> on a database.</figcaption>
 </figure>
 
 <h2 id="dialogs">Dialogs</h2>
 <figure class="small">
   <img src="img/settings.svg" alt="The Settings dialog" loading="lazy">
-  <figcaption>A typical dialog: inputs, checkboxes, a drop-down list and buttons.</figcaption>
+  <figcaption>Settings.</figcaption>
 </figure>
 <div class="tablewrap"><table>
 <tr><th>Key</th><th>What it does</th></tr>
-<tr><td class="k"><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd></td><td>Next / previous field or button.</td></tr>
-<tr><td class="k"><kbd>Alt</kbd> + letter</td><td>Jumps to the field whose label has that letter highlighted.</td></tr>
-<tr><td class="k"><kbd>Enter</kbd></td><td>Presses the default button — the one drawn as <code>[&lt; OK &gt;]</code>. On another button: presses that button. In a list: chooses the row.</td></tr>
-<tr><td class="k"><kbd>Ctrl+Enter</kbd></td><td>Presses the default button from <b>any</b> field, also from a list or a multi-line box. Only where the terminal reports Ctrl+Enter (Windows, kitty-protocol terminals); elsewhere it arrives as <kbd>Enter</kbd>.</td></tr>
-<tr><td class="k"><kbd>Esc</kbd>, <kbd>F10</kbd></td><td>Cancel: closes the dialog without doing anything.</td></tr>
-<tr><td class="k"><kbd>Space</kbd></td><td>Checks / unchecks a checkbox <code>[x]</code>.</td></tr>
-<tr><td class="k">Arrows, <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>Backspace</kbd>, <kbd>Delete</kbd></td><td>Edit the text of an input; move in a list.</td></tr>
-<tr><td class="k"><kbd>Ctrl+V</kbd> / the terminal's paste</td><td>Pastes into the input.</td></tr>
+<tr><td class="k"><kbd>Alt</kbd> + letter</td><td>The field with that letter underlined.</td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>The default button <code>[&lt; OK &gt;]</code>; on another button, that button; in a list, the row.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Enter</kbd></td><td>The default button from any field, also from a list or a multi-line box. Only where the terminal reports it (Windows, kitty protocol).</td></tr>
+<tr><td class="k"><kbd>Esc</kbd>, <kbd>F10</kbd></td><td>Cancel.</td></tr>
 </table></div>
-<p>In questions with <span class="ui">Yes</span> / <span class="ui">No</span> buttons you can also press the highlighted
-letter of a button (<kbd>Y</kbd>, <kbd>N</kbd>).</p>
-<p>A <b>double click</b> on a row of a list is the same as selecting it and pressing <kbd>Enter</kbd>.</p>
+<p>In <span class="ui">Yes</span> / <span class="ui">No</span> questions the underlined letter of a button also works.
+A double click on a list row is <kbd>Enter</kbd>.</p>
 
 <h3>Drop-down lists (combo boxes)</h3>
 <figure class="small">
   <img src="img/settings-scheme.svg" alt="An open drop-down list" loading="lazy">
-  <figcaption>The <span class="ui">Colour scheme</span> list, open.</figcaption>
+  <figcaption>An open list.</figcaption>
 </figure>
-<p>A field with a <code>▼</code> at its right is a list of choices. It works the same in every dialog and in the
-developer template forms.</p>
-<div class="tablewrap"><table>
-<tr><th>The list is…</th><th>Key</th><th>What it does</th></tr>
-<tr><td rowspan="2">closed</td><td class="k"><kbd>Enter</kbd>, <kbd>Space</kbd>, click</td><td>Opens the list.</td></tr>
-<tr><td class="k"><kbd>Left</kbd> / <kbd>Right</kbd></td><td>Changes the value without opening the list.</td></tr>
-<tr><td rowspan="5">open</td><td class="k"><kbd>Up</kbd>, <kbd>Down</kbd>, <kbd>PgUp</kbd>, <kbd>PgDn</kbd>, <kbd>Home</kbd>, <kbd>End</kbd></td><td>Move.</td></tr>
-<tr><td class="k"><kbd>Enter</kbd>, <kbd>Space</kbd>, click</td><td>Takes the highlighted value.</td></tr>
-<tr><td class="k"><kbd>Esc</kbd>, click outside</td><td>Closes the list; the value stays as it was.</td></tr>
-<tr><td class="k"><kbd>Tab</kbd></td><td>Closes the list and moves to the next field.</td></tr>
-<tr><td class="k">letters</td><td>In a list longer than its box: narrows the list to what you type (the frame says <i>type to filter</i>).</td></tr>
-</table></div>
+<ul>
+  <li>Closed: <kbd>Enter</kbd> / <kbd>Space</kbd> opens it; <kbd>Left</kbd> / <kbd>Right</kbd> change the value
+      without opening.</li>
+  <li>Open: <kbd>Esc</kbd> keeps the old value; <kbd>Tab</kbd> closes and moves on. In a list longer than its box,
+      typing filters it.</li>
+</ul>
 
 <h3>Message and help windows</h3>
-<p>Messages and errors have one button; <kbd>Enter</kbd> or <kbd>Esc</kbd> closes them. Errors are drawn in the error
-colour (white on red in <i>Classic</i>). Long texts — the key lists, the licences, a whole dashboard row — open in a
-scrolling window: <kbd>Up</kbd> / <kbd>Down</kbd>, <kbd>PgUp</kbd> / <kbd>PgDn</kbd>, <kbd>Home</kbd> / <kbd>End</kbd> or
-the mouse wheel scroll it, and a <code>▼</code> at the right edge shows that there is more below.</p>
+<p>Long texts (key lists, licences, a whole dashboard row) open in a scrolling window; <code>▼</code> at the right
+edge marks more below.</p>
 
 <h2 id="mouse">Mouse</h2>
-<p>The mouse is optional — nothing needs it — but it works where you would expect:</p>
-<div class="tablewrap"><table>
-<tr><th>Action</th><th>Where</th><th>What it does</th></tr>
-<tr><td rowspan="6">Left click</td><td>A menu title, a menu item</td><td>Opens the menu, runs the item.</td></tr>
-<tr><td>A tab name; the <code>×</code> of a tab</td><td>Switches to the tab; closes it (with the same questions as <kbd>Ctrl+W</kbd>).</td></tr>
-<tr><td>A row of the tree, a cell of a grid, the editor</td><td>Moves the cursor there and gives that part the focus.</td></tr>
-<tr><td>A label of the results bar</td><td>Shows <i>Messages</i> or that result set.</td></tr>
-<tr><td>A button, checkbox, input or list row of a dialog</td><td>Presses, toggles, focuses, selects.</td></tr>
-<tr><td>Twice on a list row or a message</td><td>As <kbd>Enter</kbd> there.</td></tr>
-<tr><td>Right click</td><td>Tree, results, lists</td><td>The context menu (<kbd>F2</kbd>).</td></tr>
-<tr><td rowspan="3">Drag</td><td>The border between the tree and the tabs</td><td>Changes the width of the tree. The width is remembered.</td></tr>
-<tr><td>The line above the results bar (or above a statement pane)</td><td>Changes the height of the results.</td></tr>
-<tr><td>In the editor</td><td>Selects text.</td></tr>
-<tr><td>Wheel</td><td>Editor, grids, lists, help windows</td><td>Scrolls.</td></tr>
-</table></div>
-<div class="tip"><p>pgtc takes the mouse over from the terminal. To select and copy text with the <b>terminal's</b> own
-selection, hold <kbd>Shift</kbd> while you drag.</p></div>
+<p>Optional. Clicks, double clicks, right click (context menu) and the wheel work as expected. Less obvious:</p>
+<ul>
+  <li>The <code>×</code> of a tab closes it, with the same questions as <kbd>Ctrl+W</kbd>.</li>
+  <li>Drag the border between the tree and the tabs to resize the tree (remembered); drag the line above the results
+      bar or a statement pane to resize it.</li>
+  <li>pgtc captures the mouse. Hold <kbd>Shift</kbd> while dragging to use the terminal's own selection.</li>
+</ul>
 </main>
 <script src="help.js"></script>
 </body>

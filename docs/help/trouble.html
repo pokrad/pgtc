@@ -9,215 +9,102 @@
 <body>
 <main>
 <h1>Troubleshooting</h1>
-<p class="lead">Key combinations the terminal does not deliver, rendering problems, connection and authentication
-errors with their server-side cause, frequent questions, and the log file.</p>
+<p class="lead">Keys the terminal does not deliver, rendering problems, connection errors specific to pgtc,
+frequent questions, and the log file.</p>
 
 <h2 id="keys">If a key does not work</h2>
-<p>pgtc receives only the key events the <b>terminal emulator</b> delivers. Every terminal reserves some
-combinations for itself — switching its own tabs, scrolling, changing the input method — and the legacy terminal
-protocol cannot encode others at all (<kbd>Ctrl+Enter</kbd> and <kbd>Enter</kbd> are the same byte).</p>
-<p>Three workarounds always apply:</p>
-<ol>
-  <li><b>Use the alternative binding.</b> The commands usually affected have one — see the table.</li>
-  <li><b>Use the menu.</b> <kbd>F9</kbd> (or <kbd>Esc</kbd> <kbd>9</kbd>) reaches nearly every command.</li>
-  <li><b>Rebind the command</b> in <a href="settings.html#keymap"><code>keymap.toml</code></a>.</li>
-</ol>
+<p>pgtc sees only what the terminal emulator delivers. The affected commands have a second binding (below), are in
+the menu (<kbd>F9</kbd> or <kbd>Esc</kbd> <kbd>9</kbd>), and can be rebound in
+<a href="settings.html#keymap"><code>keymap.toml</code></a>. <kbd>F1</kbd> lists the keys of the focused part: a
+listed key that does nothing is intercepted by the terminal.</p>
 <div class="tablewrap"><table>
-<tr><th>Key</th><th>What happens instead</th><th>Use</th></tr>
-<tr><td class="k"><kbd>F1</kbd> … <kbd>F10</kbd></td><td>Nothing, or the terminal's own help or menu opens (GNOME Terminal: <kbd>F1</kbd>, <kbd>F10</kbd>). Common over some SSH clients and on Mac keyboards.</td><td><kbd>Esc</kbd> then a digit: <kbd>Esc</kbd> <kbd>5</kbd> = <kbd>F5</kbd>, <kbd>Esc</kbd> <kbd>0</kbd> = <kbd>F10</kbd>. On a Mac also <kbd>Fn</kbd> + the key.</td></tr>
-<tr><td class="k"><kbd>Ctrl+Tab</kbd></td><td>The terminal switches its own tabs, or pgtc receives a plain <kbd>Tab</kbd>.</td><td><kbd>F6</kbd>, or <kbd>Alt+1</kbd> / <kbd>Alt+2</kbd>.</td></tr>
-<tr><td class="k"><kbd>Ctrl+Shift+Z</kbd> (redo)</td><td>Arrives as <kbd>Ctrl+Z</kbd> and undoes once more.</td><td><kbd>Alt+Shift+Z</kbd>.</td></tr>
-<tr><td class="k"><kbd>Ctrl+Space</kbd> (autocomplete)</td><td>Switches the input language (macOS, Windows input methods).</td><td><kbd>Alt+/</kbd>.</td></tr>
-<tr><td class="k"><kbd>Ctrl+PgUp</kbd> / <kbd>Ctrl+PgDn</kbd></td><td>GNOME Terminal and xfce Terminal switch their own tabs.</td><td><kbd>Alt+PgUp</kbd> / <kbd>Alt+PgDn</kbd>.</td></tr>
+<tr><th>Key</th><th>Problem</th><th>Use</th></tr>
+<tr><td class="k"><kbd>F1</kbd> … <kbd>F10</kbd></td><td>Taken by the terminal (GNOME Terminal: <kbd>F1</kbd>, <kbd>F10</kbd>), lost over some SSH clients, Mac keyboards.</td><td><kbd>Esc</kbd> then a digit: <kbd>Esc</kbd> <kbd>5</kbd> = <kbd>F5</kbd>, <kbd>Esc</kbd> <kbd>0</kbd> = <kbd>F10</kbd>. Mac: <kbd>Fn</kbd> + the key.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Tab</kbd></td><td>Switches the terminal's tabs, or arrives as <kbd>Tab</kbd>.</td><td><kbd>F6</kbd>, <kbd>Alt+1</kbd> / <kbd>Alt+2</kbd>.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Shift+Z</kbd></td><td>Arrives as <kbd>Ctrl+Z</kbd>.</td><td><kbd>Alt+Shift+Z</kbd>.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Space</kbd></td><td>Switches the input language (macOS, Windows).</td><td><kbd>Alt+/</kbd>.</td></tr>
+<tr><td class="k"><kbd>Ctrl+PgUp</kbd> / <kbd>Ctrl+PgDn</kbd></td><td>GNOME Terminal, xfce Terminal: their own tabs.</td><td><kbd>Alt+PgUp</kbd> / <kbd>Alt+PgDn</kbd>.</td></tr>
 <tr><td class="k"><kbd>Ctrl+Shift+Home</kbd> / <kbd>End</kbd></td><td>Windows Terminal scrolls its buffer.</td><td><kbd>Alt+Shift+Home</kbd> / <kbd>Alt+Shift+End</kbd>.</td></tr>
-<tr><td class="k"><kbd>Shift+F3</kbd> (find previous)</td><td>Lost in some Linux terminals.</td><td><kbd>Alt+F3</kbd>.</td></tr>
-<tr><td class="k"><kbd>Alt+Shift</kbd> + arrows (resize the results)</td><td>Windows Terminal moves between its panes.</td><td>Drag the line above the results with the mouse.</td></tr>
-<tr><td class="k"><kbd>Shift+PgUp</kbd> / <kbd>Shift+PgDn</kbd></td><td>GNOME Terminal, xterm and Konsole scroll their buffer.</td><td><kbd>Shift</kbd> + arrows, or the mouse.</td></tr>
-<tr><td class="k"><kbd>Ctrl+Backspace</kbd></td><td>Arrives as a plain <kbd>Backspace</kbd> in many terminals.</td><td>Select the word with <kbd>Ctrl+Shift+Left</kbd> and delete it.</td></tr>
-<tr><td class="k"><kbd>Ctrl+Enter</kbd> (OK from any field)</td><td>Arrives as a plain <kbd>Enter</kbd> in most terminals.</td><td><kbd>Tab</kbd> to the <span class="ui">OK</span> button.</td></tr>
+<tr><td class="k"><kbd>Shift+F3</kbd></td><td>Lost in some Linux terminals.</td><td><kbd>Alt+F3</kbd>.</td></tr>
+<tr><td class="k"><kbd>Alt+Shift</kbd> + arrows</td><td>Windows Terminal moves between its panes.</td><td>Drag the line above the results.</td></tr>
+<tr><td class="k"><kbd>Shift+PgUp</kbd> / <kbd>Shift+PgDn</kbd></td><td>GNOME Terminal, xterm, Konsole scroll their buffer.</td><td><kbd>Shift</kbd> + arrows.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Backspace</kbd>, <kbd>Ctrl+Enter</kbd></td><td>Arrive as plain <kbd>Backspace</kbd> / <kbd>Enter</kbd> in most terminals.</td><td><kbd>Ctrl+Shift+Left</kbd> then delete; <kbd>Tab</kbd> to <span class="ui">OK</span>.</td></tr>
 <tr><td class="k"><kbd>Ctrl+1</kbd>, <kbd>Ctrl+2</kbd>, <kbd>Ctrl+Shift</kbd> + arrows</td><td>Not reported by most terminals.</td><td><kbd>Alt+1</kbd>, <kbd>Alt+2</kbd>, <kbd>Alt</kbd> + arrows.</td></tr>
-<tr><td class="k"><kbd>Ctrl+A</kbd> (select all)</td><td>Inside GNU <code>screen</code>, it is screen's command key.</td><td>Press <kbd>Ctrl+A</kbd> <kbd>A</kbd>, change screen's command key, or use <code>tmux</code>.</td></tr>
-<tr><td class="k">Every <kbd>Alt</kbd> key</td><td>macOS Terminal and iTerm2 type special characters (<code>å</code>, <code>∂</code>) instead.</td><td>Turn on <i>Use Option as Meta key</i> (Terminal: Settings → Profiles → Keyboard; iTerm2: Profiles → Keys → Left Option key: Esc+).</td></tr>
-<tr><td class="k"><kbd>Alt</kbd> + letter</td><td>On Windows or Linux desktops, the terminal's window menu opens.</td><td>Turn off the terminal's menu shortcuts (“menu access keys”) in its settings.</td></tr>
+<tr><td class="k"><kbd>Ctrl+A</kbd></td><td>GNU <code>screen</code>'s command key.</td><td><kbd>Ctrl+A</kbd> <kbd>A</kbd>, or change screen's command key.</td></tr>
+<tr><td class="k">Every <kbd>Alt</kbd> key</td><td>macOS Terminal and iTerm2 type special characters.</td><td><i>Use Option as Meta key</i> (Terminal: Settings → Profiles → Keyboard; iTerm2: Profiles → Keys → Left Option key: Esc+).</td></tr>
+<tr><td class="k"><kbd>Alt</kbd> + letter</td><td>Opens the terminal's window menu (Windows, Linux desktops).</td><td>Turn off the terminal's menu access keys.</td></tr>
 </table></div>
-<div class="tip">
-<p><b>Terminals that deliver every key.</b> Terminals with the kitty keyboard protocol — kitty, WezTerm, foot,
-Ghostty, recent Alacritty, iTerm2 when it is enabled — report all of these combinations unambiguously; pgtc enables
-the protocol at start. The Windows console and Windows Terminal also report most of them.</p>
-</div>
-<h3>PuTTY</h3>
-<p><kbd>Alt</kbd> + arrows work with PuTTY's default settings. In PuTTY 0.77 and newer you can also choose
-<i>Terminal → Keyboard → Arrow keys with modifiers: xterm-style</i>.</p>
-<h3>Finding out what a key does</h3>
-<p>Press <kbd>F1</kbd>: if the key is listed but pressing it does nothing — or something else — the terminal
-intercepts or alters it. If it is not listed, the command is not available in the focused part.</p>
+<ul>
+  <li>Terminals with the kitty keyboard protocol (kitty, WezTerm, foot, Ghostty, recent Alacritty, iTerm2 when
+      enabled) deliver all of these; pgtc enables the protocol at start. The Windows console and Windows Terminal
+      deliver most.</li>
+  <li>PuTTY: <kbd>Alt</kbd> + arrows work with the default settings; 0.77 and newer also with <i>Terminal → Keyboard
+      → Arrow keys with modifiers: xterm-style</i>.</li>
+</ul>
 
 <h2 id="screen">The screen looks wrong</h2>
 <div class="tablewrap"><table>
-<tr><th>You see</th><th>Why</th><th>Do</th></tr>
-<tr><td>Frames made of letters (<code>q</code>, <code>x</code>, <code>l</code>), question marks or boxes</td><td>The terminal or its font has no line-drawing characters, or it is not set to UTF-8.</td><td>Set the terminal to UTF-8; or turn on <a href="settings.html#ascii">ASCII frames</a>.</td></tr>
-<tr><td>Frames with small gaps, columns that do not line up</td><td>A font that is not monospaced, or one that draws line characters narrower.</td><td>Choose a monospaced font in the terminal (Cascadia Mono, Consolas, DejaVu Sans Mono, Menlo).</td></tr>
-<tr><td>Wrong or blocky colours in <i>Tokyo Night</i> / <i>Dracula</i></td><td>The terminal, the SSH client, or <code>screen</code> / <code>tmux</code> in between does not pass true colour.</td><td>Use <i>Classic</i>, <i>Dark</i>, <i>Light</i> or <i>Terminal default</i>.</td></tr>
-<tr><td>Text that is hard to read in one scheme</td><td>Terminals define the 16 basic colours differently.</td><td>Try another scheme, or change your terminal's palette.</td></tr>
-<tr><td>The screen is garbled after the window was resized or the connection hiccuped</td><td>The terminal lost part of the picture.</td><td>Resize the window a little; pgtc draws everything again.</td></tr>
-<tr><td>The terminal is unusable after pgtc ended badly</td><td>It was left in raw mode on the alternate screen — rare; pgtc restores the terminal on exit and in its panic hook.</td><td>Type <code>reset</code> and press <kbd>Enter</kbd> (you may not see what you type).</td></tr>
-<tr><td>The window is too small for a dialog</td><td>The terminal window has too few rows or columns.</td><td>Enlarge the terminal window or choose a smaller font.</td></tr>
+<tr><th>Symptom</th><th>Cause and fix</th></tr>
+<tr><td>Frames made of letters (<code>q</code>, <code>x</code>, <code>l</code>), question marks or boxes</td><td>No line-drawing characters, or the terminal is not UTF-8: set UTF-8, or turn on <a href="settings.html#ascii">ASCII frames</a>.</td></tr>
+<tr><td>Gaps in frames, misaligned columns</td><td>The font is not monospaced.</td></tr>
+<tr><td>Wrong or blocky colours in <i>Tokyo Night</i> / <i>Dracula</i></td><td>No true colour through the terminal, SSH client or <code>screen</code> / <code>tmux</code>: use a 16-colour scheme.</td></tr>
+<tr><td>Garbled after a resize or a network hiccup</td><td>Resize the window slightly; pgtc redraws everything.</td></tr>
+<tr><td>Terminal unusable after pgtc ended badly</td><td><code>reset</code>.</td></tr>
 </table></div>
 
 <h2 id="connect">Connecting fails</h2>
-<p>Errors with a severity (<code>FATAL:</code>) come from the server and are shown verbatim, with their
-<code>DETAIL</code> and <code>HINT</code>; the others are raised on the client side before a backend exists. The
-server log has the authoritative reason for every rejected connection.</p>
+<p>Server errors (<code>FATAL: …</code>) are shown verbatim with <code>DETAIL</code> and <code>HINT</code>. What is
+specific to pgtc:</p>
 <div class="tablewrap"><table>
-<tr><th>Message or symptom</th><th>Cause</th><th>Check</th></tr>
-<tr><td>No reaction for 10 seconds, then a timeout</td><td>The connection attempt does not complete within <i>Connect timeout</i>: wrong host or port, packets dropped by a firewall, a VPN that is not up.</td><td>Host and port of the saved connection. From the same machine: <code>psql -h … -p …</code> or <code>pg_isready -h … -p …</code>. Raise <a href="settings.html#dialog">Connect timeout</a> for slow links.</td></tr>
-<tr><td><i>Connection refused</i></td><td>Nothing listens on that address and port: the postmaster is not running, uses another <code>port</code>, or its <code>listen_addresses</code> does not include the interface (default: <code>localhost</code> only).</td><td><code>listen_addresses</code> and <code>port</code> in <code>postgresql.conf</code>; both need a server restart.</td></tr>
-<tr><td><i>FATAL: password authentication failed for user …</i> (SQLSTATE <code>28P01</code>)</td><td>Wrong password for the role — possibly a stale line in <code>.pgpass</code> — or the role has no password or an expired one (<code>VALID UNTIL</code>). The server does not tell the client which.</td><td>The login dialog reappears: enter the password and tick <span class="ui">Save password</span> to replace the <code>.pgpass</code> line.</td></tr>
-<tr><td><i>FATAL: no pg_hba.conf entry for host …, user …, database …</i> (SQLSTATE <code>28000</code>)</td><td>No <code>pg_hba.conf</code> record matches the client address, role, database and encryption state (<i>SSL encryption</i> / <i>no encryption</i> in the message) — for example only <code>hostssl</code> records exist and the session is unencrypted.</td><td>The server's <code>pg_hba.conf</code> (reloaded with <code>pg_reload_conf()</code>); for <code>hostssl</code> records set SSL mode <code>require</code> or stricter.</td></tr>
-<tr><td><i>FATAL: database … does not exist</i> (SQLSTATE <code>3D000</code>)</td><td><span class="ui">Maintenance DB</span> of the saved connection names no database of that cluster. (A missing role is reported as <i>password authentication failed</i> under password authentication, as <i>role … does not exist</i> under <code>trust</code>.)</td><td><span class="menu">File → Edit connection…</span></td></tr>
-<tr><td><i>FATAL: sorry, too many clients already</i> / <i>too many connections for role …</i> / <i>for database …</i> (SQLSTATE <code>53300</code>)</td><td><code>max_connections</code>, or the <code>CONNECTION LIMIT</code> of the role or the database, is reached. Every pgtc tab holds <a href="connections.html#many">a session of its own</a>.</td><td>Close tabs that are not needed; find idle sessions in the <a href="dashboard.html">dashboard</a>.</td></tr>
-<tr><td>A certificate error with <code>verify-ca</code> / <code>verify-full</code></td><td>The server certificate does not chain to a CA in the trust store, or (<code>verify-full</code>) its subject does not match the <span class="ui">Host</span> of the connection.</td><td>Set <span class="ui">Root cert. file</span> to the PEM file of the issuing CA; connect by the host name the certificate was issued for.</td></tr>
-<tr><td>The login dialog appears on every connect</td><td>No password is stored for host, port, maintenance database and user — or <code>.pgpass</code> is ignored because of its permissions.</td><td>Tick <span class="ui">Save password</span>. On Linux / macOS: <code>chmod 600 ~/.pgpass</code>. See <a href="connections.html#passwords">Passwords</a>.</td></tr>
-<tr><td>The server is refused after connecting</td><td><code>server_version_num</code> is below 110000.</td><td>pgtc supports PostgreSQL 11 and newer.</td></tr>
-<tr><td>A warning <i>not yet verified with pgtc</i></td><td>The server's major version is newer than the newest one pgtc was verified against; the catalog queries of the newest known version are used.</td><td>A notice only. If a tree group fails to load, look for a newer pgtc.</td></tr>
-<tr><td>A database cannot be expanded in the tree</td><td>The role lacks the <code>CONNECT</code> privilege on it, or the database has <code>datallowconn = false</code> (<code>template0</code>).</td><td>—</td></tr>
+<tr><th>Symptom</th><th>Cause and fix</th></tr>
+<tr><td>A timeout after 10 seconds</td><td><a href="settings.html#dialog">Connect timeout</a>; raise it for slow links.</td></tr>
+<tr><td><i>password authentication failed</i> (<code>28P01</code>)</td><td>Possibly a stale <code>.pgpass</code> line. The login dialog reappears; <span class="ui">Save password</span> replaces the line.</td></tr>
+<tr><td><i>no pg_hba.conf entry … no encryption</i></td><td>Only <code>hostssl</code> records match: set SSL mode <code>require</code> or stricter.</td></tr>
+<tr><td><i>database … does not exist</i> (<code>3D000</code>)</td><td><span class="ui">Maintenance DB</span> of the saved connection.</td></tr>
+<tr><td><i>too many clients already</i> / <i>too many connections for role …</i> (<code>53300</code>)</td><td>Every pgtc tab holds <a href="connections.html#many">a session of its own</a>: close tabs.</td></tr>
+<tr><td>A certificate error with <code>verify-ca</code> / <code>verify-full</code></td><td>Set <span class="ui">Root cert. file</span> to the issuing CA's PEM file; for <code>verify-full</code> the <span class="ui">Host</span> must match the certificate.</td></tr>
+<tr><td>The login dialog on every connect</td><td>No stored password for host, port, maintenance database and user, or <code>.pgpass</code> is ignored for its mode (<code>chmod 600</code>). See <a href="connections.html#passwords">Passwords</a>.</td></tr>
+<tr><td>The server is refused after connecting</td><td><code>server_version_num</code> below 110000; pgtc supports PostgreSQL 11 and newer.</td></tr>
+<tr><td><i>not yet verified with pgtc</i></td><td>A newer major version than pgtc knows; the catalog queries of the newest known version are used. A notice only.</td></tr>
+<tr><td>A database cannot be expanded in the tree</td><td>No <code>CONNECT</code> privilege, or <code>datallowconn = false</code>.</td></tr>
 </table></div>
 
 <h2 id="faq">Questions and answers</h2>
-
-<h3>“New query” and “Open SQL file” are disabled</h3>
-<p>A query tab is a session on one database. Put the tree cursor on a database — or on any object inside one — on a
-connected server. A server row, a role and a tablespace are cluster-wide: they name no database to connect to.</p>
-
-<h3>F7 says “No developer templates”</h3>
-<p>The templates are not installed yet: <span class="menu">Settings → Install templates</span>, or
-<code>pgtc --setup</code> on the command line.</p>
-
-<h3>F7, F4 or autocomplete say I should finish or close the result first</h3>
-<p>The tab has a <b>paused result</b> — its label shows <code>1,000+ rows</code> — or an export is running. The
-statement is still in progress on the tab's session: the backend has not sent all rows yet, and a session executes
-one statement at a time, so the catalog queries these commands need cannot run. Press <kbd>Alt+End</kbd> to fetch the
-remaining rows, or <kbd>Alt+Shift+C</kbd> to close the result; then try again. See
-<a href="query.html#batches">Large results</a>.</p>
-
-<h3>A statement says it “cannot run inside a transaction block”</h3>
-<p>SQLSTATE <code>25001</code>. pgtc sends the script as one simple-protocol <code>Query</code> message, and the
-server runs a multi-statement message as an implicit transaction block. <code>VACUUM</code>,
-<code>CREATE DATABASE</code>, <code>CREATE INDEX CONCURRENTLY</code>, <code>ALTER SYSTEM</code> and a few others must
-run outside any transaction block. Select that statement alone and press <kbd>F5</kbd> — with <i>Auto commit</i> on,
-since with it off pgtc sends <code>BEGIN</code> first.</p>
-
-<h3>My script failed in the middle. What was changed?</h3>
-<p>Nothing — unless the script contains its own <code>COMMIT</code>s. The statements of one <code>Query</code>
-message form an implicit transaction block: on the first error the server rolls it back and skips the rest of the
-message. An explicit <code>COMMIT</code> inside the script makes everything before it durable. Fix the statement the
-error position points to and run the script again.</p>
-
-<h3>Every statement answers “current transaction is aborted”</h3>
-<p>SQLSTATE <code>25P02</code>: a statement failed inside a transaction block — <i>Auto commit</i> is off, or the
-script issued <code>BEGIN</code> — and the session is in the aborted-transaction state (the status row says
-<i>Transaction aborted – ROLLBACK needed</i>). The server rejects everything except <code>ROLLBACK</code> /
-<code>ROLLBACK TO SAVEPOINT</code>. Choose <span class="menu">Query → Rollback</span>. To have pgtc send the
-<code>ROLLBACK</code> itself after an error, turn on <span class="menu">Query → Auto rollback on error</span>.</p>
-
-<h3>I created a table but the tree does not show it</h3>
-<p>The tree caches the catalog rows it has loaded and does not watch for DDL. Put the cursor on the schema (or on
-<i>Tables</i>) and press <kbd>Ctrl+R</kbd> to read them again.</p>
-
-<h3>Autocomplete does not offer a new table or column</h3>
-<p>Each query tab caches the names it has read from the catalogs. The cache is dropped after <b>that tab</b>
-executes a <code>CREATE</code> / <code>ALTER</code> / <code>DROP</code>, and after a refresh of the tree
-(<kbd>Ctrl+R</kbd> there). DDL executed in another tab or by another session is not noticed: refresh the tree.</p>
-
-<h3>Copy does not reach my clipboard over SSH</h3>
-<p>Over SSH the text reaches the local clipboard through the terminal, as an OSC 52 escape sequence. The terminal
-must support it and allow it — Windows Terminal, iTerm2, kitty, WezTerm and Alacritty do; in some it is a setting (iTerm2: <i>Applications in
-terminal may access clipboard</i>; <code>tmux</code>: <code>set -g set-clipboard on</code>). In pgtc,
-<i>OSC 52 clipboard</i> must be on in Settings. If your terminal cannot do it, select the text with the terminal
-itself: hold <kbd>Shift</kbd> and drag.</p>
-
-<h3>Paste with Ctrl+V pastes something old (over SSH)</h3>
-<p>Over SSH, <kbd>Ctrl+V</kbd> reads the clipboard of the remote host or pgtc's internal buffer. To paste from the
-<b>local</b> clipboard, use the terminal's paste: <kbd>Ctrl+Shift+V</kbd>, <kbd>Shift+Insert</kbd> or the
-right mouse button.</p>
-
-<h3>Where did my exported file go?</h3>
-<p>To the host pgtc <b>runs on</b> — the export is written client-side by pgtc, not by the server (it is not
-<code>COPY … TO</code> a server file) — into the folder shown in the dialog's <span class="ui">Folder:</span> line.
-Over SSH that is the remote host; fetch the file with <code>scp</code> or <code>sftp</code>.</p>
-
-<h3>I cannot select text with the mouse to copy it out of the terminal</h3>
-<p>pgtc enables mouse reporting. Hold <kbd>Shift</kbd> while dragging and the terminal does its own selection.</p>
-
-<h3>A SQL file does not open because it is not UTF-8</h3>
-<p>pgtc reads SQL files as UTF-8. Convert the file, for example:
-<code>iconv -f WINDOWS-1250 -t UTF-8 old.sql &gt; new.sql</code>.</p>
-
-<h3>The profiler does not start</h3>
-<ul>
-  <li><i>logging_collector is off</i> — the profiler reads the server log through SQL, which requires the logging
-      collector. Set <code>logging_collector = on</code> (<code>postgresql.conf</code> or
-      <code>ALTER SYSTEM</code>) and restart the server; pgtc does not restart servers.</li>
-  <li>Missing privileges — the profiler changes <code>log_destination</code> and
-      <code>log_min_duration_statement</code> with <code>ALTER SYSTEM</code> and <code>pg_reload_conf()</code>, and
-      reads the log file with <code>pg_read_binary_file()</code>. That needs a superuser, or
-      <code>pg_read_server_files</code> plus the right to run <code>ALTER SYSTEM</code>.</li>
-  <li>A managed cloud service — usually neither is granted there.</li>
-</ul>
-<p>See <a href="profiler.html#how">SQL profiler</a>.</p>
-
-<h3>pgtc asks about “logging settings” when I connect</h3>
-<p>The profiler was running when pgtc last ended without being able to restore the logging parameters it had
-changed with <code>ALTER SYSTEM</code>; the server still logs every statement. Answer <span class="ui">Yes</span> to
-restore them. See
-<a href="profiler.html#restore">If pgtc could not put the settings back</a>.</p>
-
-<h3>The dashboard shows “-” for some values, or no query text for other sessions</h3>
-<p><code>pg_stat_activity</code> and the other statistics views expose the details of other roles' sessions only to
-superusers and to members of <code>pg_read_all_stats</code> (included in <code>pg_monitor</code>):
-<code>GRANT pg_monitor TO your_role;</code></p>
-
-<h3>Cancel or terminate in the dashboard is refused</h3>
-<p><code>pg_cancel_backend()</code> and <code>pg_terminate_backend()</code> are permitted on backends of the calling
-role (and of roles it is a member of); for others the caller must be a superuser or a member of
-<code>pg_signal_backend</code>. Backends of superusers can be signalled only by superusers.</p>
-
-<h3>Can I change a table / drop an object with a dialog?</h3>
-<p>No — pgtc generates DDL for review instead of executing it from a dialog. To change an object: <kbd>Ctrl+E</kbd> on it
-(<a href="objects.html#edit">Edit in new query tab</a>). To create or drop one: <kbd>F7</kbd>
-(<a href="templates.html">developer templates</a>). To write statements for a table's rows: <kbd>F4</kbd> and
-<code>gti</code>, <code>gtu</code>, … (<a href="psql.html#generate">generate commands</a>).</p>
-
-<h3>Can I edit the rows of a result in the grid?</h3>
-<p>No. The grid is read-only. Change data with <code>UPDATE</code> / <code>INSERT</code> / <code>DELETE</code>;
-<code>gtu table</code> on <kbd>F4</kbd> generates the <code>UPDATE</code> with every column.</p>
-
-<h3>Can I see the query plan?</h3>
-<p>Prefix the statement with <code>EXPLAIN</code> or <code>EXPLAIN (ANALYZE, BUFFERS)</code> and run it: the plan is
-returned as the result set. <code>EXPLAIN ANALYZE</code> executes the statement — run DML with <i>Auto commit</i> off
-and roll back.</p>
-
-<h3>How do I move my settings to another machine?</h3>
-<p>Copy <code>settings.toml</code> and <code>keymap.toml</code> from the config folder and the <code>themes</code> and
-<code>developer_templates</code> folders from the data folder — see
-<a href="reference.html#files">Files and folders</a>. Passwords are in <code>.pgpass</code>.</p>
+<div class="tablewrap"><table>
+<tr><th>Question</th><th>Answer</th></tr>
+<tr><td><i>New query</i> / <i>Open SQL file</i> are disabled</td><td>The tree cursor is on a server, role or tablespace: these name no database. Select a database or an object in one.</td></tr>
+<tr><td><kbd>F7</kbd>: <i>No developer templates</i></td><td><span class="menu">Settings → Install templates</span>, or <code>pgtc --setup</code>.</td></tr>
+<tr><td><kbd>F7</kbd>, <kbd>F4</kbd>, <kbd>F8</kbd> or autocomplete ask to finish or close the result</td><td>The tab has a paused result (<code>1,000+ rows</code>) or a running export, so its session cannot run the catalog queries. <kbd>Alt+End</kbd> fetches the rest, <kbd>Alt+Shift+C</kbd> closes the result. See <a href="query.html#batches">Large results</a>.</td></tr>
+<tr><td><i>cannot run inside a transaction block</i> (<code>25001</code>)</td><td>The script goes as one simple-protocol <code>Query</code> message, which the server runs as an implicit transaction block. Select the statement (<code>VACUUM</code>, <code>CREATE DATABASE</code>, <code>CREATE INDEX CONCURRENTLY</code>, …) alone and run it with <i>Auto commit</i> on — with it off pgtc sends <code>BEGIN</code> first.</td></tr>
+<tr><td>A script failed in the middle</td><td>Nothing was changed, for the same reason — unless the script has its own <code>COMMIT</code>s.</td></tr>
+<tr><td><i>current transaction is aborted</i> (<code>25P02</code>)</td><td>Status row: <i>Transaction aborted – ROLLBACK needed</i>. <span class="menu">Query → Rollback</span>; <span class="menu">Query → Auto rollback on error</span> makes pgtc send it.</td></tr>
+<tr><td>The tree does not show a new object</td><td>The tree does not watch for DDL: <kbd>Ctrl+R</kbd> on the schema or group.</td></tr>
+<tr><td>Autocomplete does not offer a new name</td><td>The tab's name cache is dropped only after DDL executed in <b>that tab</b> and after a tree refresh: refresh the tree.</td></tr>
+<tr><td>Copy does not reach the local clipboard over SSH</td><td>It goes through the terminal as OSC 52, which the terminal must allow (iTerm2: <i>Applications in terminal may access clipboard</i>; <code>tmux</code>: <code>set -g set-clipboard on</code>), with <i>OSC 52 clipboard</i> on in Settings. Otherwise select with the terminal: <kbd>Shift</kbd> + drag.</td></tr>
+<tr><td><kbd>Ctrl+V</kbd> pastes something old over SSH</td><td>It reads the remote host's clipboard or pgtc's internal buffer. Use the terminal's paste (<kbd>Ctrl+Shift+V</kbd>, <kbd>Shift+Insert</kbd>, right click).</td></tr>
+<tr><td>Selecting text with the mouse for the terminal's own copy</td><td>pgtc enables mouse reporting: hold <kbd>Shift</kbd> while dragging.</td></tr>
+<tr><td>Where is the exported file?</td><td>On the host pgtc runs on (over SSH: the remote host); the export is written by pgtc, not by the server.</td></tr>
+<tr><td>A SQL file is refused as not UTF-8</td><td>Convert it: <code>iconv -f WINDOWS-1250 -t UTF-8 old.sql &gt; new.sql</code>.</td></tr>
+<tr><td>The profiler does not start</td><td><code>logging_collector</code> must be on (needs a server restart). The role must be allowed to run <code>ALTER SYSTEM</code>, <code>pg_reload_conf()</code> and <code>pg_read_binary_file()</code>: a superuser, or <code>pg_read_server_files</code> plus the right to run <code>ALTER SYSTEM</code> — usually not available on managed services. See <a href="profiler.html#how">SQL profiler</a>.</td></tr>
+<tr><td>A question about <i>logging settings</i> on connect</td><td>pgtc ended while the profiler ran; the server still logs every statement. <span class="ui">Yes</span> restores the parameters. See <a href="profiler.html#restore">If pgtc could not put the settings back</a>.</td></tr>
+<tr><td>The dashboard shows <i>-</i> or no query text for other sessions</td><td>The role is neither superuser nor member of <code>pg_read_all_stats</code> (<code>pg_monitor</code>).</td></tr>
+<tr><td>Cancel or terminate is refused in the dashboard</td><td><code>pg_cancel_backend()</code> / <code>pg_terminate_backend()</code> on other roles' backends need <code>pg_signal_backend</code>; on superusers' backends, a superuser.</td></tr>
+<tr><td>Altering or dropping an object from a dialog</td><td>Not offered; pgtc generates DDL for review: <kbd>Ctrl+E</kbd> (<a href="objects.html#edit">Edit in new query tab</a>), <kbd>F7</kbd> (<a href="templates.html">developer templates</a>), <kbd>F4</kbd> (<a href="psql.html#generate">generate commands</a>).</td></tr>
+<tr><td>Editing rows in the result grid</td><td>The grid is read-only; <code>gtu table</code> on <kbd>F4</kbd> generates the <code>UPDATE</code>.</td></tr>
+<tr><td>Moving the setup to another machine</td><td><code>settings.toml</code>, <code>keymap.toml</code>, the <code>themes</code> and <code>developer_templates</code> folders (<a href="reference.html#files">Files and folders</a>), and <code>.pgpass</code>.</td></tr>
+</table></div>
 
 <h2 id="log">The log file</h2>
-<p>pgtc writes nothing to stdout or stderr while the UI is active. Diagnostics go to a log file, rotated daily, in
-the <code>logs</code> folder of its data folder:</p>
+<p>Rotated daily (<code>pgtc.2026-11-16.log</code>), the last 7 kept, default level <code>info</code>:</p>
 <div class="tablewrap"><table>
 <tr><th>Platform</th><th>Log folder</th></tr>
 <tr><td>Linux</td><td><code>~/.local/share/pgtc/logs</code></td></tr>
 <tr><td>macOS</td><td><code>~/Library/Application Support/pgtc/logs</code></td></tr>
 <tr><td>Windows</td><td><code>%APPDATA%\pgtc\logs</code></td></tr>
 </table></div>
-<p>The files are named <code>pgtc.2026-11-16.log</code>; the last 7 are kept. The default level is
-<code>info</code>. For a reproducible problem, raise the level and read the end of today's file:</p>
 <pre><code>PGTC_LOG=debug pgtc                 Linux, macOS
 $env:PGTC_LOG="debug"; pgtc         Windows PowerShell
-set PGTC_LOG=debug &amp;&amp; pgtc          Windows cmd</code></pre>
-<p><code>PGTC_LOG=pgc_db=trace</code> sets <code>trace</code> for the database layer (the <code>pgc_db</code>
-crate) only.</p>
+PGTC_LOG=pgc_db=trace pgtc          one crate only (the database layer)</code></pre>
 </main>
 <script src="help.js"></script>
 </body>

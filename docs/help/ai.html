@@ -9,53 +9,42 @@
 <body>
 <main>
 <h1>AI assistant</h1>
-<p class="lead">The assistant sends a prompt to a language model together with the schema of the tab's database —
-read from the system catalogs, no table data — and the editor text. The model's answer is inserted into the SQL
-editor and is <b>never executed</b> by pgtc: review it and run it with <kbd>F5</kbd>.</p>
+<p class="lead">Sends a prompt to a language model with the schema of the tab's database (from the system catalogs,
+no table data) and the editor text. The answer is inserted into the editor and <b>never executed</b> by pgtc.</p>
 
 <figure>
   <img src="img/ai-dialog.svg" alt="The Ask AI dialog over a query tab" loading="lazy">
-  <figcaption><kbd>F8</kbd> in a query tab: prompt, scope, and the estimated request size with its destination
-  host.</figcaption>
+  <figcaption><kbd>F8</kbd> in a query tab.</figcaption>
 </figure>
 
 <h2 id="setup">Setting it up</h2>
-<p>The assistant is disabled until it is configured in <span class="menu">Settings → AI…</span>:</p>
 <figure class="small">
   <img src="img/ai-settings.svg" alt="The AI assistant settings dialog" loading="lazy">
-  <figcaption>The <i>Claude</i> preset chosen; a key is saved, so the field shows stars.</figcaption>
+  <figcaption><span class="menu">Settings → AI…</span>; a saved key shows as stars.</figcaption>
 </figure>
 <div class="tablewrap"><table>
 <tr><th>Field</th><th>Meaning</th></tr>
-<tr><td class="k"><span class="ui">Enabled</span></td><td>Master switch. Off: <kbd>F8</kbd> reports <i>AI is not set up</i> and no request is ever made.</td></tr>
-<tr><td class="k"><span class="ui">Preset</span></td><td>Fills in protocol, base URL and model for a known provider (table below). Every field stays editable; <i>(custom)</i> leaves them as they are.</td></tr>
-<tr><td class="k"><span class="ui">Protocol</span></td><td>The API: <b>OpenAI-compatible</b> (<code>POST {base URL}/chat/completions</code>, key as <code>Authorization: Bearer</code>) or <b>Anthropic</b> (<code>POST {base URL}/v1/messages</code>, key as <code>x-api-key</code>).</td></tr>
-<tr><td class="k"><span class="ui">Base URL</span></td><td>The endpoint all requests go to. Required when the assistant is enabled.</td></tr>
-<tr><td class="k"><span class="ui">Model</span></td><td>The models <b>the provider lists for the key</b> (<code>GET {base URL}/models</code>; Anthropic: <code>/v1/models</code>). The list is read when the dialog opens and again after the preset, the base URL or the key changes (on leaving that field); the line below it shows the number of models read, or the error. Claude's models show their names (<i>Claude Sonnet 5.5</i>), newest first. The last entry, <span class="ui">Other…</span>, takes a model ID typed by hand — for a service without a model list. Required. This is the default model of the <kbd>F8</kbd> dialog.</td></tr>
-<tr><td class="k"><span class="ui">Effort</span></td><td>The model's reasoning effort: <i>Default</i> (no effort parameter is sent — the model's own default), <i>Low</i>, <i>Medium</i>, <i>High</i>, <i>Extra high</i>, <i>Max</i>. The OpenAI-compatible protocol knows three levels (<code>reasoning_effort</code>): the two highest are sent as <code>high</code>. More effort: better answers to hard requests, slower and more expensive. This is the default effort of the <kbd>F8</kbd> dialog.</td></tr>
-<tr><td class="k"><span class="ui">API key</span></td><td>The key from your provider's console. Type it, or paste it with your terminal's paste (e.g. a right click, or <kbd>Ctrl+Shift+V</kbd>), and press OK. A saved key shows as <code>********</code>:
-  <ul>
-    <li>leave the stars as they are — the key stays;</li>
-    <li>type over them — the new key replaces the old one;</li>
-    <li>delete them (<kbd>Backspace</kbd>) and press OK — the key is removed.</li>
-  </ul>
-  Empty: no key is sent (local servers such as Ollama need none).</td></tr>
+<tr><td class="k"><span class="ui">Enabled</span></td><td>Off: <kbd>F8</kbd> reports <i>AI is not set up</i>; no request is ever made.</td></tr>
+<tr><td class="k"><span class="ui">Preset</span></td><td>Fills in protocol, base URL and model (<a href="#presets">table below</a>); every field stays editable.</td></tr>
+<tr><td class="k"><span class="ui">Protocol</span></td><td><b>OpenAI-compatible</b>: <code>POST {base URL}/chat/completions</code>, key as <code>Authorization: Bearer</code>. <b>Anthropic</b>: <code>POST {base URL}/v1/messages</code>, key as <code>x-api-key</code>.</td></tr>
+<tr><td class="k"><span class="ui">Model</span></td><td>The models the provider lists for the key (<code>GET {base URL}/models</code>; Anthropic: <code>/v1/models</code>), read when the dialog opens and after the preset, base URL or key changes. <span class="ui">Other…</span> takes a model ID typed by hand. Default model of the <kbd>F8</kbd> dialog.</td></tr>
+<tr><td class="k"><span class="ui">Effort</span></td><td><i>Default</i> sends no effort parameter. The OpenAI-compatible protocol has three levels (<code>reasoning_effort</code>): <i>Extra high</i> and <i>Max</i> are sent as <code>high</code>. Default effort of the <kbd>F8</kbd> dialog.</td></tr>
+<tr><td class="k"><span class="ui">API key</span></td><td>A saved key shows as <code>********</code>: leave the stars to keep it, type over them to replace it, delete them to remove it. Empty: no key is sent (local servers).</td></tr>
 </table></div>
 <figure class="small">
   <img src="img/ai-models.svg" alt="The list of the provider's models" loading="lazy">
-  <figcaption>The <span class="ui">Model</span> list, read from the provider with the URL and key in the dialog.</figcaption>
+  <figcaption>The <span class="ui">Model</span> list.</figcaption>
 </figure>
-<p>For a new provider: choose the preset, enter the key, leave the field — the model list is read; choose a model,
-tick <span class="ui">Enabled</span>, press OK. OK also saves the model list: it is what the <kbd>F8</kbd> dialog
-offers. To pick up models the provider has added since, open this dialog again and press OK.</p>
-<p>The key is saved in its own file, <code>ai_key</code>, in pgtc's config folder next to <code>settings.toml</code>
-(<a href="reference.html#files">Reference → Files and folders</a>) — on Linux and macOS with mode <code>0600</code>,
-like <code>.pgpass</code>. It is <b>not</b> in <code>settings.toml</code>, so that file can be copied or shown without
-exposing the key, and it is never written to the log. The other fields are in the <code>[ai]</code> section of
-<a href="settings.html#file"><code>settings.toml</code></a>.</p>
+<ul>
+  <li>OK also saves the model list — it is what the <kbd>F8</kbd> dialog offers. To pick up new models, open the
+      dialog again and press OK.</li>
+  <li>The key is stored in its own file <code>ai_key</code> in the config folder
+      (<a href="reference.html#files">Files and folders</a>), mode <code>0600</code> on Linux and macOS; never in
+      <code>settings.toml</code> or the log. The other fields are in <code>[ai]</code> of
+      <a href="settings.html#file"><code>settings.toml</code></a>.</li>
+</ul>
 
 <h3 id="presets">Providers</h3>
-<p>The two protocols cover nearly every model provider; a preset only fills in protocol and base URL:</p>
 <div class="tablewrap"><table>
 <tr><th>Preset</th><th>Protocol</th><th>Base URL</th><th>Key</th></tr>
 <tr><td>Claude</td><td>Anthropic</td><td><code>https://api.anthropic.com</code></td><td>needed</td></tr>
@@ -64,186 +53,136 @@ exposing the key, and it is never written to the log. The other fields are in th
 <tr><td>Gemini</td><td>OpenAI-compatible</td><td><code>https://generativelanguage.googleapis.com/v1beta/openai</code></td><td>needed</td></tr>
 <tr><td>Ollama (local)</td><td>OpenAI-compatible</td><td><code>http://localhost:11434/v1</code></td><td>no key</td></tr>
 </table></div>
-<p>Other services with an OpenAI-compatible endpoint — Mistral, DeepSeek, Groq, OpenRouter, LM Studio, vLLM,
-llama.cpp's server — work too: choose <i>(custom)</i>, the OpenAI-compatible protocol, and their base URL and model.</p>
-<div class="note"><p>With a <b>local model</b> (Ollama, LM Studio, …) the schema never leaves the machine — the
-option for databases whose schema must not be disclosed to a third party.</p></div>
+<p>Any other OpenAI-compatible endpoint: <i>(custom)</i> with its base URL and model. With a local model the schema
+never leaves the machine.</p>
 
 <h2 id="ask">Asking</h2>
-<p>Press <kbd>F8</kbd> in the editor or the results of a query tab, or choose <span class="menu">Tools → Ask AI…</span>.
-Preconditions:</p>
+<p><kbd>F8</kbd> in a query tab, or <span class="menu">Tools → Ask AI…</span>. Refused unless:</p>
 <ul>
-  <li>the assistant is configured (otherwise: <i>AI is not set up (Settings → AI…)</i>),</li>
-  <li>the query tab has a <b>session</b> (<i>Connect the query tab first</i>),</li>
-  <li>the saved connection is not marked <a href="#privacy">AI not allowed</a>,</li>
-  <li>the tab's session is idle: no statement running, no paused result (<code>1,000+ rows</code>) and no export —
-      the catalog query would have to end that result; fetch all rows or close the result first,</li>
+  <li>the assistant is enabled and the tab has a session;</li>
+  <li>the saved connection is not marked <a href="#privacy">AI not allowed</a>;</li>
+  <li>the session is idle — no running statement, no paused result (<code>1,000+ rows</code>), no export;</li>
   <li>no other AI request is pending.</li>
 </ul>
-<p>The dialog opens immediately. In the background pgtc runs one read-only catalog query on <b>the tab's own
-session</b> to read the schema (<a href="#sent">What is sent</a>).</p>
+<p>When the dialog opens, pgtc reads the schema with one catalog query on the tab's own session
+(<a href="#sent">What is sent</a>).</p>
 <div class="tablewrap"><table>
-<tr><th>Part</th><th>Keys</th><th>What it does</th></tr>
-<tr><td class="k"><span class="ui">Prompt</span></td><td class="k"><kbd>Alt+P</kbd></td><td>The request, in natural language. The text wraps; <kbd>Enter</kbd> starts a new line, <kbd>Tab</kbd> leaves the box; <kbd>↑</kbd> / <kbd>↓</kbd> move by the rows as you see them. In an empty box <kbd>↑</kbd> / <kbd>↓</kbd> bring back the prompts of this session. A prompt you did not send — the dialog closed with <kbd>Esc</kbd> or <span class="ui">Cancel</span> — is there again the next time.</td></tr>
-<tr><td class="k"><span class="ui">Scope</span></td><td class="k"><kbd>Alt+O</kbd></td><td><i>Whole database</i>, or <i>Schema …</i> to send the objects of one schema only — a smaller request for databases with many relations.</td></tr>
-<tr><td class="k"><span class="ui">Model</span></td><td class="k"><kbd>Alt+M</kbd></td><td>The model for <b>this request</b>; initially the model of the settings. The list holds the models that <span class="menu">Settings → AI…</span> read and saved (no network request is made here). Pick a small, fast model for a simple query, the strongest for a hard one.</td></tr>
-<tr><td class="k"><span class="ui">Effort</span></td><td class="k"><kbd>Alt+E</kbd></td><td>The effort for this request; initially the value of the settings. A choice made here does not change the settings.</td></tr>
-<tr><td class="k">The info line</td><td></td><td><i>Sends about N tokens to host</i>: the size of the complete request, estimated at four characters per token, and the host of the base URL. It follows the scope and the prompt. Above about 100,000 tokens the line below warns: <i>Large request: it may be refused or cost a lot. Try one schema as scope.</i></td></tr>
-<tr><td class="k"><span class="ui">Send</span></td><td class="k"><kbd>Alt+S</kbd>, <kbd>Ctrl+Enter</kbd></td><td>Sends the request. An empty prompt is refused; while the catalog query is still running, the dialog stays open.</td></tr>
-<tr><td class="k"><span class="ui">Cancel</span></td><td class="k"><kbd>Esc</kbd></td><td>Closes the dialog; nothing is sent.</td></tr>
+<tr><th>Part</th><th>Keys</th><th>Note</th></tr>
+<tr><td class="k"><span class="ui">Prompt</span></td><td class="k"><kbd>Alt+P</kbd></td><td><kbd>Enter</kbd> is a new line. In an empty box <kbd>↑</kbd> / <kbd>↓</kbd> recall the prompts of this session. An unsent prompt is kept for the next dialog.</td></tr>
+<tr><td class="k"><span class="ui">Scope</span></td><td class="k"><kbd>Alt+O</kbd></td><td><i>Whole database</i> or one schema — a smaller request.</td></tr>
+<tr><td class="k"><span class="ui">Model</span>, <span class="ui">Effort</span></td><td class="k"><kbd>Alt+M</kbd>, <kbd>Alt+E</kbd></td><td>For this request only; the settings are not changed. The list is the one saved in the settings (no network request).</td></tr>
+<tr><td class="k">Info line</td><td></td><td><i>Sends about N tokens to host</i>: the whole request at four characters per token. Above about 100,000 tokens a warning suggests one schema as scope.</td></tr>
+<tr><td class="k"><span class="ui">Send</span></td><td class="k"><kbd>Alt+S</kbd>, <kbd>Ctrl+Enter</kbd></td><td>Waits while the catalog query is still running.</td></tr>
 </table></div>
 <h3 id="complete">Naming tables and columns: autocomplete</h3>
 <figure>
   <img src="img/ai-complete.svg" alt="Autocomplete in the prompt box" loading="lazy">
-  <figcaption>After <code>sales.</code> the list shows that schema's tables, views, functions and types.</figcaption>
+  <figcaption>After <code>sales.</code>: that schema's objects.</figcaption>
 </figure>
-<p>The prompt box completes object names from the schema the dialog has already read; no further catalog queries
-are run:</p>
+<p>From the schema the dialog has read; no further catalog queries.</p>
 <ul>
-  <li><kbd>Ctrl+Space</kbd> (or <kbd>Alt+/</kbd>) opens the list for the word before the cursor: schemas, and every
-      table, view, function and type — matched on the unqualified name (<code>cust</code> finds
-      <code>sales.customer</code>). Objects are inserted <b>schema-qualified</b>, independent of any
-      <code>search_path</code>.</li>
-  <li>Typing a <kbd>.</kbd> opens it by itself: after a schema (<code>sales.</code>) with the objects of that
-      schema, after a table (<code>sales.customer.</code>, or <code>customer.</code> when only one schema has that
-      name) with its columns.</li>
-  <li>It does <b>not</b> open by itself while you type words — in a sentence that would get in the way.</li>
-  <li><kbd>↑</kbd> / <kbd>↓</kbd> choose, typing narrows the list, <kbd>Enter</kbd> or <kbd>Tab</kbd> puts the name in
-      (no new line), <kbd>Esc</kbd> closes only the list.</li>
-  <li>One exception: in a list that opened by itself after a <kbd>.</kbd> and that you have not used yet — no
-      arrow key, no letter typed — <kbd>Enter</kbd> is a new line, because your sentence may simply have ended with a
-      table name. <kbd>Tab</kbd> takes the entry there too.</li>
-  <li>Identifiers that need quoting are quoted (<code>hr."Employee"</code>). The list offers every schema,
-      whatever the <span class="ui">Scope</span>.</li>
-  <li>Until the catalog query has returned, the list shows <i>loading…</i>.</li>
+  <li><kbd>Ctrl+Space</kbd> / <kbd>Alt+/</kbd>: schemas, tables, views, functions and types, matched on the
+      unqualified name. Objects are inserted schema-qualified, quoted where needed, whatever the
+      <span class="ui">Scope</span>.</li>
+  <li>A typed <kbd>.</kbd> opens the list by itself: after a schema with its objects, after a table with its
+      columns. Typing words never opens it.</li>
+  <li><kbd>Enter</kbd> or <kbd>Tab</kbd> inserts; <kbd>Esc</kbd> closes only the list. In a list that opened by itself
+      and was not used yet, <kbd>Enter</kbd> is a new line (<kbd>Tab</kbd> still inserts).</li>
 </ul>
-
-<p>Effective prompts name the result wanted and its constraints: <i>“Orders of the last 30 days per territory, with the
-total and the average”</i>, <i>“A procedure that moves a customer to another territory and writes the change to
-sales.customer_history”</i>, <i>“Rewrite the selected query without the subquery”</i>.</p>
 
 <h2 id="sent">What is sent</h2>
-<p>One HTTPS request per <span class="ui">Send</span>, from pgtc directly to the base URL — there is no pgtc service in
-between. It contains:</p>
+<p>One HTTPS request per <span class="ui">Send</span>, from pgtc directly to the base URL:</p>
 <ul>
-  <li><b>The server version and the database name</b> (<code>PostgreSQL 16.2</code>, <code>adventureworks</code>), so
-      the SQL is valid for that major version.</li>
-  <li><b>The schema</b> of the database, or of the schema chosen as scope, as compact text. It is read with a single
-      query on the system catalogs (<code>pg_namespace</code>, <code>pg_class</code>, <code>pg_attribute</code>,
-      <code>pg_attrdef</code>, <code>pg_constraint</code>, <code>pg_proc</code>, <code>pg_type</code> /
-      <code>pg_enum</code>):
+  <li><b>Server version and database name.</b></li>
+  <li><b>The schema</b> of the database or of the scope, as compact text, read with one query on
+      <code>pg_namespace</code>, <code>pg_class</code>, <code>pg_attribute</code>, <code>pg_attrdef</code>,
+      <code>pg_constraint</code>, <code>pg_proc</code>, <code>pg_type</code> / <code>pg_enum</code>:
       <ul>
-        <li>tables, partitioned tables, views, materialized views and foreign tables with their columns: name,
-            data type (<code>format_type()</code>), <code>NOT NULL</code>, and the <code>DEFAULT</code> /
-            <code>GENERATED … AS IDENTITY</code> / <code>GENERATED ALWAYS AS (…)</code> clause — so the model knows
-            which values the server supplies;</li>
-        <li><code>PRIMARY KEY</code>, <code>UNIQUE</code>, <code>FOREIGN KEY</code> and <code>CHECK</code>
-            constraints, as <code>pg_get_constraintdef()</code> prints them;</li>
-        <li>functions and procedures as signatures: identity arguments and result type;</li>
-        <li>enum types with their labels;</li>
-        <li>the <b>comments</b> (<code>COMMENT ON</code>) of relations, columns and functions, collapsed to one
-            line and truncated to 200 characters. They tell the model what the names mean: a commented schema gets
-            better answers.</li>
+        <li>tables, partitioned tables, views, materialized views, foreign tables: columns with type
+            (<code>format_type()</code>), <code>NOT NULL</code>, <code>DEFAULT</code> / identity / generated
+            clause;</li>
+        <li><code>PRIMARY KEY</code>, <code>UNIQUE</code>, <code>FOREIGN KEY</code>, <code>CHECK</code>
+            (<code>pg_get_constraintdef()</code>);</li>
+        <li>function and procedure signatures (identity arguments, result type); enum labels;</li>
+        <li>comments of relations, columns and functions, one line, truncated to 200 characters.</li>
       </ul>
-      Left out: <code>pg_catalog</code>, <code>information_schema</code>, the <code>pg_toast</code> and
-      <code>pg_temp_*</code> schemas; partitions (<code>relispartition</code>) — only the partitioned parent is sent;
-      objects that belong to an extension (<code>pg_depend.deptype = 'e'</code>); aggregates and window functions.
-      Not sent either: view definitions, function bodies, indexes, triggers, sequences, privileges.</li>
-  <li><b>The editor text</b>, when not empty. A <b>selection</b> is delimited by markers, so the model knows which
-      part is meant — its answer replaces that part. A text longer than 50,000 characters is cut to the whole lines
-      around the cursor, and the dialog says so.</li>
-  <li><b>The prompt</b>, with fixed instructions: PostgreSQL SQL only, valid for that server version, explanations
-      as <code>--</code> comments, use the objects of the schema.</li>
+      Left out: <code>pg_catalog</code>, <code>information_schema</code>, <code>pg_toast</code>,
+      <code>pg_temp_*</code>; partitions (only the parent); extension members; aggregates and window functions;
+      view definitions, function bodies, indexes, triggers, sequences, privileges.</li>
+  <li><b>The editor text</b>, when not empty; a selection is marked, and the answer replaces it. Above 50,000
+      characters only the whole lines around the cursor are sent (the dialog says so).</li>
+  <li><b>The prompt</b>, with fixed instructions: PostgreSQL SQL only, valid for that version, explanations as
+      <code>--</code> comments.</li>
 </ul>
-<p><b>Never table data</b>: no rows, no result sets, no planner statistics (<code>pg_stats</code>), no row counts.
-Nothing from other databases of the cluster, no roles, and no connection parameters other than the database name.
-The server certificate of the provider is verified against the operating system's trust store. A proxy set in the
-environment (<code>HTTPS_PROXY</code>) or in the system's proxy settings is used.</p>
-<p>With the Anthropic protocol, the instructions and the schema are marked for the provider's <b>prompt cache</b>
-(<code>cache_control</code>): further requests with the same scope within a few minutes cost a fraction of the first
-and start sooner. (OpenAI-compatible services that cache do so on their own.)</p>
+<p><b>Never sent:</b> rows, result sets, <code>pg_stats</code>, row counts, other databases, roles, connection
+parameters other than the database name.</p>
+<ul>
+  <li>The provider's certificate is verified against the OS trust store; <code>HTTPS_PROXY</code> and the system
+      proxy settings are used.</li>
+  <li>Anthropic protocol: instructions and schema are marked for the prompt cache (<code>cache_control</code>), so
+      repeated requests with the same scope are cheaper and faster.</li>
+</ul>
 
 <h2 id="wait">Waiting, cancelling, errors</h2>
 <figure>
   <img src="img/ai-waiting.svg" alt="The status line while the AI answers" loading="lazy">
-  <figcaption>While the request is pending, the status line shows <i>Asking AI (host) … Esc cancels</i>. The UI is
-  not blocked.</figcaption>
+  <figcaption>The request is pending; the UI is not blocked.</figcaption>
 </figure>
+<ul>
+  <li><kbd>Esc</kbd> cancels the request (after closing any open menu, dialog or quick search); a late answer is
+      ignored.</li>
+  <li>An error is shown with the provider's own text; the editor is not changed.</li>
+  <li>Timeouts: 15 s to connect, 3 minutes without data, 15 minutes for the whole answer.</li>
+</ul>
 <h3 id="progress">Progress in Messages</h3>
 <figure>
   <img src="img/ai-progress.svg" alt="The steps of an AI request in the Messages tab" loading="lazy">
-  <figcaption>The <i>Messages</i> of the query tab while the model works.</figcaption>
+  <figcaption><i>Messages</i> while the model works.</figcaption>
 </figure>
-<p>The answer is requested as a stream (server-sent events), and every step of the request is written to the
-<b>Messages</b> of the query tab (<kbd>Alt+M</kbd> shows them; pgtc does not switch there by itself):</p>
-<div class="tablewrap"><table>
-<tr><th>Line</th><th>Meaning</th></tr>
-<tr><td><i>AI: asking Claude Sonnet 5.5, effort high — about 12,400 tokens to api.anthropic.com</i></td><td>The request was sent: model, effort (when not the default), estimated size, host.</td></tr>
-<tr><td><i>AI: thinking…</i></td><td>The model has started to reason about the request.</td></tr>
-<tr><td><i>AI: thinking: …</i></td><td>The model's own short <b>summary of its thinking</b>, as it arrives — you see what it is working out. Claude sends these; other services only where they offer it.</td></tr>
-<tr><td><i>AI: writing the answer…</i>, <i>AI: writing… 3,000 characters</i></td><td>The SQL is being written; a line for about every 1,500 characters.</td></tr>
-<tr><td><i>AI: 12,460 tokens sent (11,900 from the prompt cache), 840 received</i></td><td>The token usage the provider reports — and how much of the input its prompt cache covered.</td></tr>
-<tr><td><i>AI: answer complete after 9.4 s — inserted into the editor, not run</i></td><td>The end. Or <i>AI: failed after …</i> with the error, or <i>AI: cancelled after …</i>.</td></tr>
-</table></div>
-<p>The SQL is inserted into the editor only when the answer is complete — never a partial statement.</p>
-<ul>
-  <li><kbd>Esc</kbd> cancels the request; an answer that comes later is ignored. (While a menu, a dialog or the
-      quick search is open, <kbd>Esc</kbd> closes that first.)</li>
-  <li>An error — a rejected key, an unknown model, no connection to the host — is shown in an error
-      message with the provider's own text. The editor is not changed.</li>
-  <li><b>Timeouts:</b> 15 s to connect to the host, 3 minutes without any data from the provider (<i>The AI
-      service stopped answering</i>), 15 minutes for the whole answer.</li>
-</ul>
+<p>The answer is a server-sent-event stream; its steps are written to the tab's <i>Messages</i> (pgtc does not
+switch there): the request with model, effort, estimated size and host; <i>thinking…</i> and, where the provider
+sends them, summaries of the model's thinking; <i>writing…</i> about every 1,500 characters; the token usage the
+provider reports, including the part served from its prompt cache; and the outcome with the elapsed time. The SQL
+is inserted only when the answer is complete.</p>
 
 <h2 id="answer">The answer</h2>
 <figure>
   <img src="img/ai-answer.svg" alt="The AI's answer in the editor" loading="lazy">
-  <figcaption>A real answer of Claude, below the existing text: the prompt as comments, then the SQL — with the
-  model's own note on why it chose a <code>LEFT JOIN</code>. Nothing has run.</figcaption>
+  <figcaption>The prompt as comments, then the SQL. Nothing has run.</figcaption>
 </figure>
 <ul>
-  <li>It <b>replaces the selection</b>, or is inserted <b>at the cursor</b> when nothing is selected — on a line of its own.</li>
-  <li>The prompt precedes it as <code>--</code> comment lines, as a record of what was asked.</li>
-  <li>Markdown code fences are removed; text the model wrote around them becomes comments.</li>
-  <li><kbd>Ctrl+Z</kbd> removes the whole answer in one undo step.</li>
-  <li><b>It is never executed.</b> Review it before <kbd>F5</kbd>: a model can misread the request, reference a
-      wrong column, or write DML or DDL you did not ask for. With <a href="query.html#tx">auto commit</a> off the
-      statement runs inside a transaction block and can still be rolled back.</li>
+  <li>Replaces the selection, or is inserted at the cursor on a line of its own, preceded by the prompt as
+      <code>--</code> comments.</li>
+  <li>Markdown code fences are removed; text around them becomes comments.</li>
+  <li>One undo step removes the whole answer.</li>
+  <li>An answer cut off at the model's length limit ends with a comment that says so.</li>
 </ul>
 
 <h2 id="examples">Another example: a trigger</h2>
 <figure>
   <img src="img/ai-trigger.svg" alt="A trigger written by the AI" loading="lazy">
   <figcaption>The prompt <i>“generate before insert row level trigger for humanresources.employee”</i> in an empty
-  editor — Claude's real answer (the top of it; the results are hidden with <kbd>Ctrl+R</kbd>).</figcaption>
+  editor.</figcaption>
 </figure>
-<p>The prompt does not say what the trigger should do, and the model says so in its first comment: it wrote a
-reasonable body — trimming and upper-casing values, filling in values passed as <code>NULL</code>, stamping
-<code>modifieddate</code>, and a check that the employee was 18 when hired — for you to change. It knew the column
-names, their types and the table's <code>CHECK</code> constraints from the structure. Below the function follow
-<code>DROP TRIGGER IF EXISTS …</code> and <code>CREATE TRIGGER … BEFORE INSERT … FOR EACH ROW</code>.</p>
-<div class="note"><p>Read every answer before running it — here the <code>DROP TRIGGER</code> would silently replace a
-trigger of the same name. The more precisely you ask (<i>“… that sets modifieddate and refuses employees under
-18”</i>), the less the model has to guess.</p></div>
+<p>The prompt names no behaviour, so the model invented a body from the column types and <code>CHECK</code>
+constraints it was sent, and says so in a comment. The script also contains <code>DROP TRIGGER IF EXISTS</code> —
+one reason to read an answer before <kbd>F5</kbd>.</p>
 
 <h2 id="privacy">Privacy: AI not allowed</h2>
-<p>For servers whose schema must not be disclosed — production, customer systems — set
-<span class="ui">AI not allowed</span> on the saved connection (<span class="menu">Edit connection…</span>;
-<code>ai_not_allowed = true</code> in <code>settings.toml</code>). <kbd>F8</kbd> is then refused with <i>AI is not
-allowed for this connection</i> in every query tab of that server, before any catalog query or request is made.</p>
-<p>Without that flag, the schema of the database is sent to the provider on every Send. Check the provider's terms
-for data retention.</p>
+<p><span class="ui">AI not allowed</span> on a saved connection (<span class="menu">Edit connection…</span>;
+<code>ai_not_allowed = true</code> in <code>settings.toml</code>) refuses <kbd>F8</kbd> in every query tab of that
+server, before any catalog query or request. Without it, the schema goes to the provider on every Send.</p>
 
 <h2 id="trouble">If it does not work</h2>
 <div class="tablewrap"><table>
-<tr><th>Message</th><th>Cause</th><th>What to do</th></tr>
-<tr><td><i>HTTP 401</i> / <i>HTTP 403</i></td><td>No key is saved, or the key is wrong, expired, or not allowed to use the model.</td><td>Check the key in your provider's console and enter it again in <span class="menu">Settings → AI…</span>.</td></tr>
-<tr><td><i>HTTP 404</i> / <i>model not found</i></td><td>The base URL or the model name is wrong.</td><td>Compare them with your provider's documentation; mind the protocol.</td></tr>
-<tr><td>An error that names <i>effort</i>, <i>output_config</i> or <i>reasoning_effort</i></td><td>The chosen model does not take an effort setting (some older and some local models).</td><td>Choose <i>Default</i> as the effort.</td></tr>
-<tr><td><i>HTTP 429</i></td><td>Too many requests, or the account has no credit left.</td><td>Wait, or check your plan.</td></tr>
-<tr><td><i>Could not connect to …</i></td><td>The host of the base URL is not reachable: no network, a proxy, or a local model server that is not running.</td><td>Start the local server; check the base URL.</td></tr>
-<tr><td>The answer ends with <i>-- (the answer was cut off here: it reached the model's length limit)</i></td><td>Very long answers stop at the model's limit; pgtc marks it, because a half statement must not be run as it is.</td><td>Ask for less at once — one function per request.</td></tr>
-<tr><td><i>The schema of the database could not be read</i></td><td>The catalog query failed on the tab's session — usually because the session is in an aborted transaction (<i>current transaction is aborted</i>, SQLSTATE <code>25P02</code>).</td><td><span class="menu">Query → Rollback</span>, then <kbd>F8</kbd> again.</td></tr>
+<tr><th>Message</th><th>Cause and fix</th></tr>
+<tr><td><i>HTTP 401</i> / <i>403</i></td><td>No key, a wrong or expired key, or one not allowed to use the model.</td></tr>
+<tr><td><i>HTTP 404</i> / <i>model not found</i></td><td>Wrong base URL, model name or protocol.</td></tr>
+<tr><td>An error naming <i>effort</i>, <i>output_config</i> or <i>reasoning_effort</i></td><td>The model takes no effort setting: choose <i>Default</i>.</td></tr>
+<tr><td><i>HTTP 429</i></td><td>Rate limit, or no credit left.</td></tr>
+<tr><td><i>Could not connect to …</i></td><td>The host of the base URL is unreachable — network, proxy, or a local model server that is not running.</td></tr>
+<tr><td><i>-- (the answer was cut off here: it reached the model's length limit)</i></td><td>Ask for less per request.</td></tr>
+<tr><td><i>The schema of the database could not be read</i></td><td>The catalog query failed on the tab's session, usually in an aborted transaction (SQLSTATE <code>25P02</code>): <span class="menu">Query → Rollback</span>, then <kbd>F8</kbd> again.</td></tr>
 </table></div>
 </main>
 <script src="help.js"></script>

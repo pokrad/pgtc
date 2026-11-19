@@ -9,68 +9,53 @@
 <body>
 <main>
 <h1>Object view (definitions)</h1>
-<p class="lead">For every object in the tree, pgtc shows its DDL, reconstructed from the system catalogs and the
-server's <code>pg_get_*def</code> functions — the equivalent of pgAdmin's <i>SQL</i> tab. The text is read only; it
-is also the starting point for changing the object.</p>
+<p class="lead">The DDL of the selected object, reconstructed from the catalogs and the server's
+<code>pg_get_*def</code> functions — pgAdmin's <i>SQL</i> tab. Read only.</p>
 
 <figure>
   <img src="img/window.svg" alt="The definition of a table" loading="lazy">
-  <figcaption>The definition of <code>sales.customer</code> in the <i>Default</i> tab.</figcaption>
+  <figcaption><code>sales.customer</code> in the <i>Default</i> tab.</figcaption>
 </figure>
 
 <h2 id="default">The Default tab follows the tree</h2>
-<p>The <i>Default</i> tab shows the definition of the row under the tree cursor. The definition is one catalog
-query with the object's OID as bind parameter, sent when the cursor has rested on the row for 200 ms; until the
-result arrives the tab says <i>loading…</i>. A result for a row the cursor has already left is discarded.</p>
-<p>The tab status row names the connection, role and database, and that the text is read only:
-<code>local · postgres@adventureworks · read only</code>.</p>
+<p>One catalog query with the object's OID as bind parameter, sent after the tree cursor has rested 200 ms. A result
+for a row the cursor has left is discarded.</p>
 
 <h2 id="content">What a definition contains</h2>
-<p>Every kind of object uses the same layout, which follows pgAdmin:</p>
-<pre><code>-- Table: sales.customer                         what it is
+<p>The layout follows pgAdmin: a header comment, the <code>DROP</code> as a comment, the <code>CREATE</code>, then
+<code>OWNER</code>, <code>COMMENT</code>, <code>GRANT</code> and the dependent parts.</p>
+<pre><code>-- Table: sales.customer
 
--- DROP TABLE IF EXISTS sales.customer;           how to drop it (as a comment)
+-- DROP TABLE IF EXISTS sales.customer;
 
-CREATE TABLE IF NOT EXISTS sales.customer         how to create it
+CREATE TABLE IF NOT EXISTS sales.customer
 (
     customerid integer NOT NULL DEFAULT nextval('sales.customer_customerid_seq'::regclass),
-    personid integer,
-    storeid integer,
-    territoryid integer,
-    rowguid uuid NOT NULL DEFAULT uuid_generate_v1(),
-    modifieddate timestamp without time zone NOT NULL DEFAULT now(),
+    ...
     CONSTRAINT "PK_Customer_CustomerID" PRIMARY KEY (customerid),
-    CONSTRAINT "FK_Customer_Person_PersonID" FOREIGN KEY (personid) REFERENCES person.person(businessentityid),
     ...
 )
 TABLESPACE pg_default;
 
-ALTER TABLE IF EXISTS sales.customer              its owner
+ALTER TABLE IF EXISTS sales.customer
     OWNER to postgres;
 
-COMMENT ON TABLE sales.customer                   comments
+COMMENT ON TABLE sales.customer
     IS 'Current customer information. Also see the Person and Store tables.';
 
-COMMENT ON COLUMN sales.customer.customerid
-    IS 'Primary key.';
+GRANT SELECT ON TABLE sales.customer TO reporting;
 
-GRANT SELECT ON TABLE sales.customer TO reporting;    privileges
-
--- Index: ix_customer_territoryid                 the things that belong to it
+-- Index: ix_customer_territoryid
 
 CREATE INDEX IF NOT EXISTS ix_customer_territoryid
     ON sales.customer USING btree (territoryid);</code></pre>
 <div class="tablewrap"><table>
 <tr><th>Object</th><th>Its definition also includes</th></tr>
-<tr><td>Table, partition</td><td>Columns with defaults, identity and generated expressions; all constraints; the partition key (<code>PARTITION BY</code>); then its indexes, triggers, rules and row-level security policies.</td></tr>
-<tr><td>View</td><td>Its rules and triggers.</td></tr>
-<tr><td>Materialized view</td><td>Its indexes.</td></tr>
-<tr><td>Function, procedure</td><td>The complete <code>CREATE OR REPLACE FUNCTION …</code> / <code>PROCEDURE …</code> with its body.</td></tr>
-<tr><td>Column, constraint, index, trigger, rule, policy</td><td>The statement that adds just that part.</td></tr>
-<tr><td>Sequence, type, domain, schema, extension, role, database, tablespace, …</td><td>Its <code>CREATE</code> statement with owner, comment and privileges where they apply.</td></tr>
+<tr><td>Table, partition</td><td>Constraints, partition key, then indexes, triggers, rules and policies.</td></tr>
+<tr><td>View</td><td>Rules and triggers.</td></tr>
+<tr><td>Materialized view</td><td>Indexes.</td></tr>
+<tr><td>Column, constraint, index, trigger, rule, policy</td><td>Only the statement that adds that part.</td></tr>
 </table></div>
-<p>Wherever PostgreSQL has a function that deparses an object, the text is the server's own output, so it is exact
-on every server version:</p>
 <div class="tablewrap"><table>
 <tr><th>Part</th><th>Source</th></tr>
 <tr><td>View and materialized view query</td><td><code>pg_get_viewdef()</code></td></tr>
@@ -80,82 +65,49 @@ on every server version:</p>
 <tr><td>Trigger</td><td><code>pg_get_triggerdef()</code></td></tr>
 <tr><td>Rule</td><td><code>pg_get_ruledef()</code></td></tr>
 <tr><td>Partition key</td><td><code>pg_get_partkeydef()</code></td></tr>
-<tr><td>Column defaults and other stored expressions</td><td><code>pg_get_expr()</code></td></tr>
+<tr><td>Defaults and other stored expressions</td><td><code>pg_get_expr()</code></td></tr>
 <tr><td>Type names</td><td><code>format_type()</code></td></tr>
 <tr><td>Comments</td><td><code>obj_description()</code>, <code>col_description()</code></td></tr>
-<tr><td>Privileges</td><td>The object's ACL, expanded with <code>aclexplode()</code> into <code>GRANT</code> statements.</td></tr>
+<tr><td>Privileges</td><td>The ACL through <code>aclexplode()</code>, as <code>GRANT</code> statements.</td></tr>
 </table></div>
-<p>The rest — <code>CREATE TABLE</code>, <code>CREATE SEQUENCE</code>, <code>CREATE TYPE</code>, roles, databases,
-schemas — is assembled by pgtc from the catalog columns. Names are schema-qualified and quoted with
-<code>quote_ident()</code>.</p>
-
-<h3>Rows that are not objects</h3>
-<ul>
-  <li>A <b>group</b> (<i>Tables</i>, <i>Columns</i>, …) lists its objects.</li>
-  <li>A <b>server</b> shows its connection parameters, state, server version and <code>pg_settings</code> — see
-      <a href="connections.html#info">Connections</a>.</li>
-</ul>
+<p>The rest — <code>CREATE TABLE</code>, <code>SEQUENCE</code>, <code>TYPE</code>, roles, databases, schemas — is
+assembled by pgtc from catalog columns. Names are schema-qualified and quoted with <code>quote_ident()</code>.</p>
+<p>A group row lists its objects; a server row shows its parameters and <code>pg_settings</code> — see
+<a href="connections.html#info">Connections</a>.</p>
 
 <h2 id="reading">Reading a definition</h2>
-<p>Press <kbd>F6</kbd> (or <kbd>Alt+2</kbd>) to move from the tree into the text. The view is the editor of a query
-tab in <b>read-only</b> mode: moving, selecting, copying and searching work; editing keys are ignored, with a hint
-in the status line.</p>
-<div class="tablewrap"><table>
-<tr><th>Key</th><th>What it does</th></tr>
-<tr><td class="k">Arrows, <kbd>PgUp</kbd> / <kbd>PgDn</kbd></td><td>Move and scroll.</td></tr>
-<tr><td class="k"><kbd>Ctrl+Home</kbd> / <kbd>Ctrl+End</kbd></td><td>Start / end of the definition.</td></tr>
-<tr><td class="k"><kbd>Ctrl+F</kbd>, then <kbd>F3</kbd> / <kbd>Shift+F3</kbd></td><td>Find text; next / previous match.</td></tr>
-<tr><td class="k"><kbd>Shift</kbd> + arrows, <kbd>Ctrl+A</kbd></td><td>Select; select all.</td></tr>
-<tr><td class="k"><kbd>Ctrl+C</kbd> or <kbd>Ctrl+Insert</kbd></td><td>Copy the selection.</td></tr>
-<tr><td class="k"><kbd>Ctrl+E</kbd></td><td>Edit the definition in a new query tab.</td></tr>
-<tr><td class="k"><kbd>F6</kbd></td><td>Back to the tree.</td></tr>
-</table></div>
-<p>Long lines are not wrapped; the view scrolls horizontally with the arrow keys or <kbd>End</kbd>.</p>
+<p><kbd>F6</kbd> (or <kbd>Alt+2</kbd>) moves from the tree into the text and back. It is the query tab's editor in
+read-only mode: moving, selecting, copying and <kbd>Ctrl+F</kbd> work. Lines are not wrapped.</p>
 
 <h2 id="f3">Keeping a definition open: F3</h2>
 <figure>
   <img src="img/object-tab.svg" alt="A view in its own tab" loading="lazy">
-  <figcaption><kbd>F3</kbd> on the view <code>vindividualcustomer</code>: it now has its own tab next to
-  <i>Default</i>.</figcaption>
+  <figcaption><kbd>F3</kbd> on the view <code>vindividualcustomer</code>.</figcaption>
 </figure>
-<p>The <i>Default</i> tab changes with every step in the tree. To keep a definition — to compare two tables, or to
-read a function while writing a query — press <kbd>F3</kbd> in the tree: the selected object opens in its
-<b>own tab</b>, named after it. Any number can be open; switch between them with <kbd>Alt+Left</kbd> /
-<kbd>Alt+Right</kbd> and close one with <kbd>Ctrl+W</kbd>.</p>
-<p>An object tab is a snapshot: it shows the definition as read when the tab was opened and does not follow later
-DDL.</p>
+<p><kbd>F3</kbd> in the tree opens the object in its own tab, which does not follow the tree cursor. It is a
+snapshot: later DDL does not update it.</p>
 
 <h2 id="edit">Changing an object: Edit in new query tab (Ctrl+E)</h2>
-<p>pgtc has no property dialogs that generate <code>ALTER</code> statements. Objects are changed with DDL in a
-query tab, which can be reviewed before it is executed.</p>
-<ol class="steps">
-  <li>Select the object in the tree and wait for its definition (or go to its object tab).</li>
-  <li>Press <kbd>Ctrl+E</kbd> — or <span class="menu">View → Edit in new query tab</span>, or the context menu.</li>
-  <li>A <b>new query tab</b> opens with the whole definition as its text and a session on the object's database.</li>
-  <li>Change the text and execute it with <kbd>F5</kbd>.</li>
-</ol>
+<p>pgtc has no property dialogs. <kbd>Ctrl+E</kbd> (<span class="menu">View → Edit in new query tab</span>, context
+menu) copies the shown definition into a new query tab with a session on the object's database.</p>
 <figure>
   <img src="img/edit-in-tab.svg" alt="A definition in a query tab" loading="lazy">
-  <figcaption>The definition of the view in a query tab: now it can be edited and executed.</figcaption>
+  <figcaption>The definition of the view in a query tab.</figcaption>
 </figure>
-<p>Whether the text can be executed as it is depends on the kind of object:</p>
 <div class="tablewrap"><table>
-<tr><th>Object</th><th>What to do in the query tab</th></tr>
-<tr><td>Function, procedure, view</td><td>The definition is <code>CREATE OR REPLACE …</code>: change it and execute it. The usual limits of <code>CREATE OR REPLACE</code> apply — a changed result type of a function, or removed or retyped columns of a view, need a <code>DROP</code> first.</td></tr>
-<tr><td>Table</td><td>The definition is <code>CREATE TABLE IF NOT EXISTS …</code>, a no-op on an existing table. Use it as the reference for writing <code>ALTER TABLE</code> statements, or as the start of a similar table.</td></tr>
-<tr><td>Index, trigger, constraint, policy</td><td>Uncomment the <code>DROP</code> line to drop and re-create the object.</td></tr>
+<tr><th>Object</th><th>The text in the query tab</th></tr>
+<tr><td>Function, procedure, view</td><td><code>CREATE OR REPLACE …</code>: executable as it is.</td></tr>
+<tr><td>Table</td><td><code>CREATE TABLE IF NOT EXISTS …</code>: a no-op on the existing table; a reference for <code>ALTER TABLE</code>.</td></tr>
+<tr><td>Index, trigger, constraint, policy</td><td>Uncomment the <code>DROP</code> line to re-create.</td></tr>
 </table></div>
-<p>The text in the new tab counts as unsaved text: closing the tab asks whether to save it to a file.</p>
-<p><kbd>Ctrl+E</kbd> is refused, with a hint in the status line:</p>
+<p>Refused, with a hint in the status line:</p>
 <ul>
-  <li>while the definition is still loading, and on rows without a definition (groups, errors);</li>
-  <li>on roles and tablespaces — they are cluster-wide objects, so there is no database to open the tab's session
-      on;</li>
+  <li>while the definition is loading, and on rows without one (groups, errors);</li>
+  <li>on roles and tablespaces — cluster-wide, so there is no database for the tab's session;</li>
   <li>on a server that is not connected.</li>
 </ul>
-<div class="tip"><p>For <code>CREATE</code> and <code>DROP</code> statements, the
-<a href="templates.html">developer templates</a> (<kbd>F7</kbd> in a query tab) generate the statement from a form —
-for example <i>Drop table</i> with the table selected in the tree already filled in.</p></div>
+<p>For <code>CREATE</code> and <code>DROP</code> from a form, see the
+<a href="templates.html">developer templates</a> (<kbd>F7</kbd>).</p>
 </main>
 <script src="help.js"></script>
 </body>

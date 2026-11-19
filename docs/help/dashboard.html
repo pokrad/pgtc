@@ -9,305 +9,230 @@
 <body>
 <main>
 <h1>Server dashboard</h1>
-<p class="lead">A periodic sample of the cumulative statistics system: rates from <code>pg_stat_database</code>, the
-backends in <code>pg_stat_activity</code>, lock waits (<code>pg_blocking_pids()</code>), the
-<code>pg_stat_progress_*</code> views, <code>pg_locks</code>, prepared transactions and <code>pg_settings</code> —
-with <code>pg_cancel_backend()</code> and <code>pg_terminate_backend()</code> on a key.</p>
+<p class="lead">A periodic sample of <code>pg_stat_database</code>, <code>pg_stat_activity</code>, lock waits, the
+<code>pg_stat_progress_*</code> views, <code>pg_locks</code>, <code>pg_prepared_xacts</code> and
+<code>pg_settings</code>, with <code>pg_cancel_backend()</code> / <code>pg_terminate_backend()</code> on a key.</p>
 
 <figure>
   <img src="img/dashboard.svg" alt="The server dashboard" loading="lazy">
-  <figcaption>The dashboard of the database <code>adventureworks</code>: graphs at the top, the summary in the middle,
-  the <i>Sessions</i> list below.</figcaption>
+  <figcaption>Graphs, summary, the <i>Sessions</i> list.</figcaption>
 </figure>
 
 <h2 id="open">Opening the dashboard</h2>
-<p>Put the tree cursor on a row of a <b>connected</b> server and press <kbd>Alt+D</kbd> (also <kbd>Ctrl+D</kbd>) — or
-choose <span class="menu">Tools → Server dashboard</span>, or <span class="menu">Server dashboard</span> in the context
-menu (<kbd>F2</kbd>).</p>
+<p><kbd>Alt+D</kbd> (also <kbd>Ctrl+D</kbd>) on a row of a connected server; <span class="menu">Tools → Server
+dashboard</span>; the context menu (<kbd>F2</kbd>).</p>
 <div class="tablewrap"><table>
-<tr><th>Cursor is on…</th><th>The dashboard shows</th><th>Tab name</th></tr>
-<tr><td>the server row (or <i>Databases</i>, a role, a tablespace)</td><td>The <b>whole cluster</b>: all databases summed. Its session is on the maintenance database.</td><td><i>Dashboard: local</i></td></tr>
-<tr><td>a database, or anything inside it</td><td><b>That database</b> only: every query is filtered by <code>datname</code>. Its session is on that database.</td><td><i>Dashboard: local · adventureworks</i></td></tr>
+<tr><th>Tree cursor on</th><th>Scope</th><th>Session on</th></tr>
+<tr><td>the server row, <i>Databases</i>, a role, a tablespace</td><td>The cluster: all databases summed.</td><td>the maintenance database</td></tr>
+<tr><td>a database or anything inside it</td><td>That database: every query is filtered by <code>datname</code>.</td><td>that database</td></tr>
 </table></div>
 <ul>
-  <li>The dashboard is a <b>tab</b>. It stays open beside your query tabs and keeps refreshing while you work
-      elsewhere. Close it like any tab: <kbd>Ctrl+W</kbd>.</li>
-  <li>Opening it again for the same server and database switches to the tab that is already open. You can have a
-      server-wide dashboard and dashboards of single databases at the same time.</li>
-  <li>It holds its <b>own session</b>. Its queries exclude <code>pg_backend_pid()</code>, so the dashboard's backend
-      is in none of its session counts and lists.</li>
-  <li>If its session is lost, the tab says so; <kbd>F5</kbd> connects again.</li>
+  <li>One tab per server and scope; opening it again switches to it.</li>
+  <li>Its own session. The queries exclude <code>pg_backend_pid()</code>.</li>
+  <li><b>Cost:</b> a refresh is two queries — one row of counters and the list that is shown; the other lists are
+      not read. No user table is scanned. Two values touch the file system: <code>pg_database_size()</code> (at most
+      every 30 s) and <code>pg_ls_tmpdir()</code>.</li>
+  <li><b>Privileges:</b> without superuser or <code>pg_read_all_stats</code> (<code>pg_monitor</code>) you see the
+      details only of your own backends, and some summary values show <code>-</code>.</li>
 </ul>
-<div class="note"><p><b>Cost on a busy production server.</b> A refresh is two queries: one row of counters, and
-the list that is shown — the other five lists are not read. They read shared-memory views
-(<code>pg_stat_activity</code>, <code>pg_stat_database</code>, <code>pg_stat_replication</code>,
-<code>pg_replication_slots</code>, <code>pg_locks</code>, <code>pg_stat_progress_*</code>) and scan no user table.
-Two values touch the file system: <code>pg_database_size()</code>, called at most every 30 seconds, and the
-temporary-file count, a directory listing with <code>pg_ls_tmpdir()</code>.</p></div>
-
-<h3>What you may see</h3>
-<p><code>pg_stat_activity</code> shows the details of other roles' backends (<code>query</code>, <code>state</code>,
-wait events, timestamps) only to superusers and members of <code>pg_read_all_stats</code> (which
-<code>pg_monitor</code> includes). Any other role sees one row per backend, with the details only of its own
-sessions. A few summary values need those privileges too and show <code>-</code> without them.</p>
 
 <h2 id="refresh">Refreshing</h2>
-<p>The dashboard samples every <b>2 seconds</b>. The right end of the tab status row shows the rhythm:
-<i>Refresh every 2 s</i>.</p>
 <div class="tablewrap"><table>
-<tr><th>Key</th><th>What it does</th></tr>
-<tr><td class="k"><kbd>F5</kbd></td><td>Refresh now.</td></tr>
-<tr><td class="k"><kbd>Ctrl+P</kbd></td><td>Pause — the screen freezes so you can read it — and resume.</td></tr>
-<tr><td class="k"><kbd>Ctrl+T</kbd></td><td>Next refresh interval: 0.5 → 1 → 2 → 5 → 10 → 30 seconds, and round again.</td></tr>
+<tr><th>Key</th><th></th></tr>
+<tr><td class="k"><kbd>F5</kbd></td><td>Refresh now; reconnect after a lost session.</td></tr>
+<tr><td class="k"><kbd>Ctrl+P</kbd></td><td>Pause / resume.</td></tr>
+<tr><td class="k"><kbd>Ctrl+T</kbd></td><td>Interval: 0.5 → 1 → 2 (default) → 5 → 10 → 30 s.</td></tr>
 </table></div>
-<p>The timer for the next refresh starts only when the previous one has been answered, so requests never pile up
-on a slow server. During a refresh the cursor of the list stays on the same PID, even when the rows change their
-order.</p>
+<p>The next refresh is timed from the answer of the previous one, so requests do not pile up. The list cursor stays
+on its PID.</p>
 
 <h2 id="graphs">The graphs</h2>
-<p>Five boxes, each with a title, a small graph of the last readings (the newest at the right) and the current
-numbers.</p>
 <div class="tablewrap"><table>
-<tr><th>Box</th><th>Numbers</th><th>What it tells you</th></tr>
-<tr><td><b>Sessions</b></td><td>total · active · idle</td><td>Rows of <code>pg_stat_activity</code> with <code>backend_type = 'client backend'</code>, by <code>state</code>.</td></tr>
-<tr><td><b>Transactions per second</b></td><td>total · commits · rollbacks</td><td><code>xact_commit</code>, <code>xact_rollback</code>. Many rollbacks usually mean an application that fails and retries.</td></tr>
-<tr><td><b>Tuples in</b></td><td>inserts · updates · deletes per second</td><td><code>tup_inserted</code>, <code>tup_updated</code>, <code>tup_deleted</code>.</td></tr>
-<tr><td><b>Tuples out</b></td><td>fetched · returned per second</td><td><code>tup_fetched</code>, <code>tup_returned</code>. <i>Returned</i> far above <i>fetched</i> points to sequential scans whose rows are filtered out.</td></tr>
-<tr><td><b>Block I/O</b></td><td>reads · hits per second</td><td><code>blks_hit</code>: found in <code>shared_buffers</code>; <code>blks_read</code>: requested from the operating system (page cache or disk).</td></tr>
+<tr><th>Box</th><th>Source</th></tr>
+<tr><td><b>Sessions</b>: total · active · idle</td><td><code>pg_stat_activity</code>, <code>backend_type = 'client backend'</code>, by <code>state</code>.</td></tr>
+<tr><td><b>Transactions per second</b></td><td><code>xact_commit</code>, <code>xact_rollback</code>.</td></tr>
+<tr><td><b>Tuples in</b></td><td><code>tup_inserted</code>, <code>tup_updated</code>, <code>tup_deleted</code>.</td></tr>
+<tr><td><b>Tuples out</b></td><td><code>tup_fetched</code>, <code>tup_returned</code>.</td></tr>
+<tr><td><b>Block I/O</b></td><td><code>blks_read</code>, <code>blks_hit</code>.</td></tr>
 </table></div>
-<p>The rates are the difference of two samples of the <code>pg_stat_database</code> counters (summed over all
-databases on a cluster dashboard), divided by the difference of the server's <code>clock_timestamp()</code>. On a wide window the five boxes are in one row, otherwise in two. On a
-low window the graphs are the first thing to go, to leave room for the list.</p>
+<p>Rates are the difference of two samples of <code>pg_stat_database</code> (summed on a cluster dashboard) divided
+by the difference of the server's <code>clock_timestamp()</code>. On a low window the graphs are dropped first.</p>
 
 <h2 id="summary">The summary</h2>
-<p>Four lines between the graphs and the lists.</p>
 <div class="tablewrap"><table>
-<tr><th>Line</th><th>Value</th><th>Meaning</th></tr>
-<tr><td rowspan="6"><b>Global</b></td><td><i>primary</i> / <i>standby</i></td><td><code>pg_is_in_recovery()</code>.</td></tr>
-<tr><td><i>up 14 d 00 h</i></td><td>Time since <code>pg_postmaster_start_time()</code>.</td></tr>
-<tr><td><i>size 1,250 MB (+4,096 bytes/s)</i></td><td>Sum of <code>pg_database_size()</code> over the databases shown, and its growth between two readings. Databases your role has no <code>CONNECT</code> privilege on are skipped. Read at most every 30 seconds (and on <kbd>F5</kbd>): the function stats every file of the database.</td></tr>
-<tr><td><i>cache hit 98.91 %</i></td><td><code>blks_hit / (blks_hit + blks_read)</code> between the last two samples — the current ratio, not the one since <code>stats_reset</code>.</td></tr>
-<tr><td><i>rollback</i> ratio</td><td><code>xact_rollback</code> as a share of all transactions.</td></tr>
-<tr><td>temporary files</td><td>Number and total size of the files in the temporary directories of all tablespaces right now (<code>pg_ls_tmpdir()</code>): sorts and hashes that exceeded <code>work_mem</code>. PostgreSQL 12+; needs <code>EXECUTE</code> on <code>pg_ls_tmpdir()</code> (superuser, <code>pg_monitor</code>).</td></tr>
-<tr><td rowspan="6"><b>Sessions</b></td><td><i>41 / 200</i></td><td>Client backends out of <code>max_connections</code>.</td></tr>
-<tr><td><i>active</i>, <i>idle</i></td><td><code>state</code> <i>active</i> / <i>idle</i>.</td></tr>
-<tr><td><i>idle in transaction</i>, <i>aborted</i></td><td><code>state</code> <i>idle in transaction</i> / <i>idle in transaction (aborted)</i>. Such a backend keeps its locks, and its snapshot can hold back the xmin horizon. A few, briefly, is normal; one that stays for minutes is a problem.</td></tr>
-<tr><td><i>waiting</i></td><td>Client backends with <code>wait_event_type = 'Lock'</code>. Look at <a href="#blocking">Blocking</a>.</td></tr>
-<tr><td>oldest transaction, longest query</td><td>Time since the smallest <code>xact_start</code>, and since the smallest <code>query_start</code> of an <i>active</i> backend. WAL senders are left out.</td></tr>
-<tr><td>oldest xmin and its PID</td><td>The largest <code>age(backend_xmin)</code> and the PID that has it: the backend whose snapshot keeps <code>VACUUM</code> from removing dead tuples.</td></tr>
-<tr><td rowspan="2"><b>Workers</b></td><td><i>autovacuum 1 / 3</i>, <i>parallel 2 / 8</i>, <i>logical replication 0 / 4</i></td><td>Backends by <code>backend_type</code>, out of <code>autovacuum_max_workers</code>, <code>max_parallel_workers</code> and <code>max_logical_replication_workers</code>.</td></tr>
-<tr><td><i>deadlocks</i>, conflicts, checksum failures</td><td>Increase of <code>deadlocks</code>, <code>conflicts</code> and <code>checksum_failures</code> (PostgreSQL 12+) in <code>pg_stat_database</code> since the previous refresh. A value above 0 is shown in the warning colour.</td></tr>
-<tr><td rowspan="3"><b>Replication</b></td><td><i>WAL senders 2 / 10</i>, <i>receivers</i>, <i>slots 2 / 10</i></td><td>Rows of <code>pg_stat_replication</code> out of <code>max_wal_senders</code>, rows of <code>pg_stat_wal_receiver</code>, rows of <code>pg_replication_slots</code> out of <code>max_replication_slots</code>.</td></tr>
-<tr><td><i>lag 16 kB</i></td><td>The largest <code>pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)</code> in <code>pg_stat_replication</code>: replay lag of the slowest standby, in bytes of WAL. On a primary only; needs monitoring privileges.</td></tr>
-<tr><td><i>slot WAL 48 MB</i></td><td>The largest distance from a slot's <code>restart_lsn</code> to the current WAL position (the replay position on a standby): the most WAL one slot retains. An inactive slot makes this grow until <code>pg_wal</code> fills the disk.</td></tr>
+<tr><th>Line</th><th>Value</th><th>Source</th></tr>
+<tr><td rowspan="5"><b>Global</b></td><td><i>primary</i> / <i>standby</i>, <i>up</i></td><td><code>pg_is_in_recovery()</code>, <code>pg_postmaster_start_time()</code>.</td></tr>
+<tr><td><i>size</i> (+ bytes/s)</td><td>Sum of <code>pg_database_size()</code>, read at most every 30 s and on <kbd>F5</kbd>. Databases without <code>CONNECT</code> for your role are skipped.</td></tr>
+<tr><td><i>cache hit</i></td><td><code>blks_hit / (blks_hit + blks_read)</code> between the last two samples, not since <code>stats_reset</code>.</td></tr>
+<tr><td><i>rollback</i></td><td><code>xact_rollback</code> as a share of all transactions.</td></tr>
+<tr><td>temporary files</td><td>Count and size from <code>pg_ls_tmpdir()</code> over all tablespaces, right now. PostgreSQL 12+; needs <code>EXECUTE</code> on the function (superuser, <code>pg_monitor</code>).</td></tr>
+<tr><td rowspan="4"><b>Sessions</b></td><td><i>41 / 200</i>, by state</td><td>Client backends out of <code>max_connections</code>, by <code>state</code>.</td></tr>
+<tr><td><i>waiting</i></td><td>Client backends with <code>wait_event_type = 'Lock'</code>.</td></tr>
+<tr><td>oldest transaction, longest query</td><td>Smallest <code>xact_start</code>; smallest <code>query_start</code> of an <i>active</i> backend. WAL senders are left out.</td></tr>
+<tr><td>oldest xmin and its PID</td><td>Largest <code>age(backend_xmin)</code>.</td></tr>
+<tr><td rowspan="2"><b>Workers</b></td><td>autovacuum, parallel, logical replication</td><td>Backends by <code>backend_type</code> out of <code>autovacuum_max_workers</code>, <code>max_parallel_workers</code>, <code>max_logical_replication_workers</code>.</td></tr>
+<tr><td>deadlocks, conflicts, checksum failures</td><td>Increase of <code>deadlocks</code>, <code>conflicts</code>, <code>checksum_failures</code> (12+) since the previous refresh; above 0 in the warning colour.</td></tr>
+<tr><td rowspan="3"><b>Replication</b></td><td>WAL senders, receivers, slots</td><td><code>pg_stat_replication</code> out of <code>max_wal_senders</code>, <code>pg_stat_wal_receiver</code>, <code>pg_replication_slots</code> out of <code>max_replication_slots</code>.</td></tr>
+<tr><td><i>lag</i></td><td>Largest <code>pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)</code>. Primary only; needs monitoring privileges.</td></tr>
+<tr><td><i>slot WAL</i></td><td>Largest distance from a slot's <code>restart_lsn</code> to the current WAL position (replay position on a standby).</td></tr>
 </table></div>
-<p>On a database dashboard the <i>Sessions</i> line and the <code>pg_stat_database</code> values are those of that
-database; workers, replication and temporary files are always cluster-wide.</p>
+<p>On a database dashboard the <i>Sessions</i> line and the <code>pg_stat_database</code> values are that database's;
+workers, replication and temporary files are always cluster-wide.</p>
 
 <h2 id="lists">The lists</h2>
-<p>Below the summary is a bar with six lists: <i>Sessions · Blocking · Progress · Locks · Prepared transactions ·
-Configuration</i>. The one shown is highlighted and has its number of rows.</p>
+<p><i>Sessions · Blocking · Progress · Locks · Prepared transactions · Configuration</i>. They are the grid of query
+results: see <a href="query.html#grid">The grid</a>.</p>
 <div class="tablewrap"><table>
-<tr><th>Key</th><th>What it does</th></tr>
-<tr><td class="k"><kbd>Alt+Right</kbd> / <kbd>Alt+Left</kbd></td><td>Next / previous list. Also <kbd>Ctrl+PgDn</kbd> / <kbd>Ctrl+PgUp</kbd> and <kbd>Alt+PgDn</kbd> / <kbd>Alt+PgUp</kbd>.</td></tr>
-<tr><td class="k">Arrows, <kbd>PgUp</kbd> / <kbd>PgDn</kbd>, <kbd>Home</kbd> / <kbd>End</kbd></td><td>Move in the list; it scrolls sideways — the lists are wide.</td></tr>
-<tr><td class="k"><kbd>Enter</kbd></td><td>Shows the whole row in a window — every column, the full query text.</td></tr>
-<tr><td class="k"><kbd>Ctrl+C</kbd></td><td>Copies the cell. <kbd>Ctrl+A</kbd>, then <kbd>Ctrl+C</kbd>: the whole list.</td></tr>
-<tr><td class="k"><kbd>F2</kbd></td><td>The context menu with all dashboard commands.</td></tr>
+<tr><th>Key</th><th></th></tr>
+<tr><td class="k"><kbd>Alt+Right</kbd> / <kbd>Alt+Left</kbd></td><td>Next / previous list (also <kbd>Ctrl+PgDn</kbd> / <kbd>Ctrl+PgUp</kbd>, <kbd>Alt+PgDn</kbd> / <kbd>Alt+PgUp</kbd>).</td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>The whole row in a window.</td></tr>
+<tr><td class="k"><kbd>Ctrl+C</kbd></td><td>Copy the cell; after <kbd>Ctrl+A</kbd>, the list.</td></tr>
+<tr><td class="k"><kbd>F2</kbd></td><td>Context menu.</td></tr>
 </table></div>
-<p>The lists are the same grid as query results: see <a href="query.html#grid">The grid</a>.</p>
 
 <h3 id="sessions">Sessions</h3>
-<p>One row per row of <code>pg_stat_activity</code>: client backends and the server's auxiliary processes.</p>
+<p>The rows of <code>pg_stat_activity</code>, auxiliary processes included, under the view's column names. What is
+not a plain column:</p>
 <div class="tablewrap"><table>
-<tr><th>Column</th><th>Meaning</th></tr>
-<tr><td>PID</td><td><code>pid</code> of the backend process — the argument of cancel and terminate.</td></tr>
-<tr><td>Database, User, Application, Client</td><td><code>datname</code>, <code>usename</code>, <code>application_name</code>, <code>client_addr</code>.</td></tr>
-<tr><td>State</td><td><code>state</code>: <i>active</i> — executing a statement; <i>idle</i> — waiting for a client command; <i>idle in transaction</i> — in a transaction block, waiting for a client command; <i>idle in transaction (aborted)</i> — the same, in a failed transaction.</td></tr>
-<tr><td>Wait event</td><td><code>wait_event_type: wait_event</code>, for example <i>Lock: transactionid</i>, <i>IO: DataFileRead</i>, <i>Client: ClientRead</i>.</td></tr>
-<tr><td>Blocked by</td><td><code>pg_blocking_pids(pid)</code>, computed only for backends with <code>wait_event_type = 'Lock'</code>.</td></tr>
-<tr><td>Duration</td><td>How long — see <a href="#duration">below</a>.</td></tr>
-<tr><td>Xmin age</td><td><code>age(backend_xmin)</code>. A large value: this backend's snapshot holds back the xmin horizon, so <code>VACUUM</code> cannot remove newer dead tuples.</td></tr>
-<tr><td>Transaction ID</td><td><code>backend_xid</code>. Assigned at the transaction's first write; empty for a transaction that has only read so far.</td></tr>
-<tr><td>Leader PID</td><td><code>leader_pid</code> of a parallel worker (PostgreSQL 13+). Workers are listed right after their leader.</td></tr>
-<tr><td>Query ID</td><td><code>query_id</code> (PostgreSQL 14+): the same identifier as <code>queryid</code> in <code>pg_stat_statements</code>. Empty unless the server computes query identifiers (<code>compute_query_id</code>).</td></tr>
-<tr><td>Backend start, Transaction start, Query start</td><td><code>backend_start</code>, <code>xact_start</code>, <code>query_start</code>.</td></tr>
-<tr><td>Backend type</td><td><code>backend_type</code>: <i>client backend</i>, <i>autovacuum worker</i>, <i>walsender</i>, <i>checkpointer</i>, …</td></tr>
-<tr><td>Query</td><td><code>query</code>: the running statement — or, for a backend that is not <i>active</i>, the last one it ran. The server truncates it at <code>track_activity_query_size</code> bytes.</td></tr>
+<tr><th>Column</th><th></th></tr>
+<tr><td>Wait event</td><td><code>wait_event_type: wait_event</code>.</td></tr>
+<tr><td>Blocked by</td><td><code>pg_blocking_pids(pid)</code>, computed only for <code>wait_event_type = 'Lock'</code>.</td></tr>
+<tr><td>Duration</td><td>See <a href="#duration">below</a>.</td></tr>
+<tr><td>Xmin age</td><td><code>age(backend_xmin)</code>.</td></tr>
+<tr><td>Leader PID</td><td><code>leader_pid</code> (13+); workers are listed after their leader.</td></tr>
+<tr><td>Query ID</td><td><code>query_id</code> (14+).</td></tr>
 </table></div>
 
 <h4>Row colours</h4>
 <div class="tablewrap"><table>
-<tr><th>Colour (theme role)</th><th>The session…</th></tr>
+<tr><th>Theme role</th><th>The session</th></tr>
 <tr><td><code>dashboard.idle_in_transaction</code></td><td>is <i>idle in transaction</i>.</td></tr>
-<tr><td><code>dashboard.blocking</code></td><td>holds a lock that others are waiting for.</td></tr>
-<tr><td><code>dashboard.blocked</code></td><td>is waiting for a lock.</td></tr>
-<tr><td><code>dashboard.slow</code> / <code>dashboard.very_slow</code> (the Duration cell)</td><td>has been running for 1 second or more / 10 seconds or more.</td></tr>
-<tr><td><code>dashboard.tagged</code></td><td>is tagged by you.</td></tr>
+<tr><td><code>dashboard.blocking</code> / <code>dashboard.blocked</code></td><td>holds a lock others wait for / waits for a lock.</td></tr>
+<tr><td><code>dashboard.slow</code> / <code>dashboard.very_slow</code> (Duration cell)</td><td>≥ 1 s / ≥ 10 s.</td></tr>
+<tr><td><code>dashboard.tagged</code></td><td>is tagged.</td></tr>
 </table></div>
-<p>In the picture at the top, the first row is the blocker: <i>idle in transaction</i> for over twelve minutes,
-and the second row — an <code>UPDATE</code> of the same table — is waiting for its lock (<i>Lock: transactionid</i>; the
-column <i>Blocked by</i>, further right, names PID 41377).</p>
 
 <h4 id="duration">Duration and order</h4>
-<p><kbd>Alt+T</kbd> changes what the <i>Duration</i> column measures; the column title names it:</p>
-<div class="tablewrap"><table>
-<tr><th>Mode</th><th>Measures</th><th>Use it to find</th></tr>
-<tr><td><b>Query</b> (default)</td><td>Time since <code>query_start</code>; empty for <i>idle</i> backends.</td><td>Slow queries.</td></tr>
-<tr><td><b>Transaction</b></td><td>Time since <code>xact_start</code>.</td><td>Long-running transactions.</td></tr>
-<tr><td><b>Backend</b></td><td>Time since <code>backend_start</code>.</td><td>Old connections.</td></tr>
-</table></div>
-<p>The sessions are sorted by this duration, longest first — the interesting ones are at the top.</p>
-<p><kbd>Alt+I</kbd> hides the backends in state <i>idle</i> (and shows them again): behind a connection pool with
-hundreds of idle backends, what is left is the actual activity.</p>
+<ul>
+  <li><kbd>Alt+T</kbd> switches <i>Duration</i>: time since <code>query_start</code> (default; empty for
+      <i>idle</i>), <code>xact_start</code> or <code>backend_start</code>. The list is sorted by it, longest
+      first.</li>
+  <li><kbd>Alt+I</kbd> hides / shows backends in state <i>idle</i>.</li>
+</ul>
 
 <h4 id="pane">The statement pane</h4>
 <figure>
   <img src="img/dashboard-pane.svg" alt="The dashboard with its statement pane" loading="lazy">
-  <figcaption>With the statement pane: the query of the session under the cursor, in full, with SQL colours.</figcaption>
+  <figcaption>The statement of the row under the cursor.</figcaption>
 </figure>
-<p>Below the <i>Sessions</i>, <i>Blocking</i> and <i>Progress</i> lists is a pane with the <b>whole statement</b> of the
-row under the cursor. It is a read-only SQL view: you can scroll, select, copy and search in it.</p>
+<p>Under <i>Sessions</i>, <i>Blocking</i> and <i>Progress</i>; a read-only SQL view.</p>
 <div class="tablewrap"><table>
-<tr><th>Key</th><th>What it does</th></tr>
-<tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Hides the pane — more rows for the list — or shows it.</td></tr>
-<tr><td class="k"><kbd>Alt+Down</kbd> / <kbd>Alt+Up</kbd></td><td>Into the pane / back to the list.</td></tr>
-<tr><td class="k"><kbd>Alt+Shift+Up</kbd> / <kbd>Alt+Shift+Down</kbd></td><td>Pane smaller / larger; or drag its upper line with the mouse.</td></tr>
-<tr><td class="k"><kbd>Ctrl+E</kbd></td><td>Opens the statement in a <b>new query tab</b> connected to the backend's database — to run it yourself, or to prefix it with <code>EXPLAIN</code>.</td></tr>
+<tr><th>Key</th><th></th></tr>
+<tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Hide / show the pane.</td></tr>
+<tr><td class="k"><kbd>Alt+Down</kbd> / <kbd>Alt+Up</kbd></td><td>Into the pane / back.</td></tr>
+<tr><td class="k"><kbd>Alt+Shift+Up</kbd> / <kbd>Alt+Shift+Down</kbd></td><td>Smaller / larger (or drag its upper line).</td></tr>
+<tr><td class="k"><kbd>Ctrl+E</kbd></td><td>The statement in a new query tab on the backend's database.</td></tr>
 </table></div>
 
 <h4>The whole row</h4>
 <figure>
   <img src="img/dashboard-row.svg" alt="A session shown in full" loading="lazy">
-  <figcaption><kbd>Enter</kbd> on a session: every column, readable without scrolling sideways.</figcaption>
+  <figcaption><kbd>Enter</kbd> on a session.</figcaption>
 </figure>
 
 <h3 id="blocking">Blocking</h3>
 <figure>
   <img src="img/dashboard-blocking.svg" alt="The Blocking list" loading="lazy">
-  <figcaption>PID 41377 blocks PID 41502. The pane shows what the <b>blocker</b> last ran.</figcaption>
+  <figcaption>PID 41377 blocks PID 41502; the pane shows the blocker's last statement.</figcaption>
 </figure>
-<p>One row per pair (blocker, blocked): every backend with <code>wait_event_type = 'Lock'</code>, joined to each
-PID in its <code>pg_blocking_pids()</code>.</p>
-<div class="tablewrap"><table>
-<tr><th>Columns</th><th>Meaning</th></tr>
-<tr><td>Blocker PID, Database, Blocker user, Blocker state, Transaction time</td><td>The backend <code>pg_blocking_pids()</code> names, and the time since its <code>xact_start</code>.</td></tr>
-<tr><td>Blocked PID, Blocked user</td><td>The waiting backend.</td></tr>
-<tr><td>Lock type, Mode, Relation</td><td><code>locktype</code>, <code>mode</code> and <code>relation</code> of the waiting backend's ungranted row in <code>pg_locks</code>.</td></tr>
-<tr><td>Waiting for</td><td>Time since the blocked statement's <code>query_start</code>. The longest is at the top.</td></tr>
-<tr><td>Blocker query, Blocked query</td><td><code>query</code> of each.</td></tr>
-</table></div>
-<p>The typical case is the one in the picture: the blocker is <i>idle in transaction</i> — it updated a row and has
-not committed. <code>pg_cancel_backend()</code> does not help there, because the blocker executes nothing; the fix is
-to commit or roll back in that application, or to <a href="#signals">terminate</a> the blocker's session. Cancel and
-terminate in this list act on the <b>blocker</b>.</p>
+<p>One row per pair: every backend with <code>wait_event_type = 'Lock'</code>, joined to each PID in its
+<code>pg_blocking_pids()</code>.</p>
+<ul>
+  <li><i>Lock type</i>, <i>Mode</i>, <i>Relation</i>: the waiter's ungranted row in <code>pg_locks</code>.</li>
+  <li><i>Transaction time</i>: since the blocker's <code>xact_start</code>.</li>
+  <li><i>Waiting for</i>: since the blocked statement's <code>query_start</code>, not the start of the wait; longest
+      first.</li>
+  <li>Cancel and terminate act on the <b>blocker</b>.</li>
+</ul>
 
 <h3 id="progress">Progress</h3>
 <figure>
   <img src="img/dashboard-progress.svg" alt="The Progress list" loading="lazy">
-  <figcaption>An autovacuum and a <code>CREATE INDEX CONCURRENTLY</code> at work.</figcaption>
 </figure>
-<p>The union of the <code>pg_stat_progress_*</code> views the server version has, joined to
-<code>pg_stat_activity</code> for role, start time and query:</p>
-<div class="tablewrap"><table>
-<tr><th>Command</th><th>View</th><th>Since PostgreSQL</th></tr>
-<tr><td><code>VACUUM</code>, including autovacuum</td><td><code>pg_stat_progress_vacuum</code></td><td>11</td></tr>
-<tr><td><code>CLUSTER</code>, <code>VACUUM FULL</code></td><td><code>pg_stat_progress_cluster</code></td><td>12</td></tr>
-<tr><td><code>CREATE INDEX</code>, <code>REINDEX</code></td><td><code>pg_stat_progress_create_index</code></td><td>12</td></tr>
-<tr><td><code>ANALYZE</code></td><td><code>pg_stat_progress_analyze</code></td><td>13</td></tr>
-<tr><td>Base backups</td><td><code>pg_stat_progress_basebackup</code> (cluster dashboard only)</td><td>13</td></tr>
-<tr><td><code>COPY</code></td><td><code>pg_stat_progress_copy</code></td><td>14</td></tr>
-</table></div>
-<p>Columns: PID, database, user, command, relation, <b>phase</b> (the view's <code>phase</code>),
-<b>Done %</b> and <b>Done</b> (<code>1,240 / 3,105 blocks</code> — heap, index or sample blocks; bytes for COPY and
-backups; the percentage is empty when the total is not known), <b>Running for</b> (since <code>query_start</code>),
-and the query. The longest-running is at the top. The percentage is
-that of the current phase — a command with several phases starts again from 0.</p>
+<p>The union of the <code>pg_stat_progress_*</code> views the server has (<code>vacuum</code> 11;
+<code>cluster</code>, <code>create_index</code> 12; <code>analyze</code>, <code>basebackup</code> 13 — cluster
+dashboard only; <code>copy</code> 14), joined to <code>pg_stat_activity</code>.</p>
+<ul>
+  <li><i>Done</i> counts heap, index or sample blocks; bytes for <code>COPY</code> and base backups.</li>
+  <li><i>Done %</i> is that of the current <code>phase</code>; empty when the total is not known.</li>
+  <li><i>Running for</i>: since <code>query_start</code>; longest first.</li>
+</ul>
 
 <h3 id="locks">Locks</h3>
 <figure>
   <img src="img/dashboard-locks.svg" alt="The Locks list" loading="lazy">
 </figure>
-<p>The rows of <code>pg_locks</code>, except the dashboard's own: <code>pid</code>, <code>locktype</code> and the lock
-target (database, <code>relation</code>, <code>page</code>, <code>tuple</code>, <code>virtualxid</code>,
-<code>transactionid</code>, <code>classid</code> / <code>objid</code> / <code>objsubid</code>),
-<code>virtualtransaction</code>, <b>mode</b>, <b>Granted</b> — <i>no</i> means the backend is still waiting for
-it — and <code>fastpath</code>. For “who blocks whom”, <i>Blocking</i> is easier; this list is for the details.</p>
+<p><code>pg_locks</code> without the dashboard's own rows. <i>Granted</i> is <i>yes</i> / <i>no</i>.</p>
 
 <h3 id="prepared">Prepared transactions</h3>
 <figure class="">
   <img src="img/dashboard-prepared.svg" alt="One prepared transaction that has not been committed yet." loading="lazy">
-  <figcaption>One prepared transaction that has not been committed yet.</figcaption>
 </figure>
-<p>The rows of <code>pg_prepared_xacts</code>: transactions prepared for two-phase commit (<code>PREPARE
-TRANSACTION</code>) and not yet resolved with <code>COMMIT PREPARED</code> / <code>ROLLBACK PREPARED</code>:
-<code>gid</code>, database, owner, transaction ID, prepare time. An orphaned one keeps its locks and holds back the
-xmin horizon indefinitely — the list should be empty unless an application or a transaction manager uses two-phase
-commit.</p>
+<p><code>pg_prepared_xacts</code>.</p>
 
 <h3 id="config">Configuration</h3>
 <figure>
   <img src="img/dashboard-configuration.svg" alt="The Configuration list" loading="lazy">
 </figure>
-<p><code>pg_settings</code>: <code>name</code>, <code>category</code>, <code>setting</code>, <code>unit</code>,
-<code>short_desc</code> — the value in the setting's base unit (<code>shared_buffers</code> <i>262144</i> in units of
-<i>8kB</i>). For the same settings with their source and file,
-select the <a href="connections.html#info">server row in the tree</a>.</p>
+<p><code>pg_settings</code>: <code>name</code>, <code>category</code>, <code>setting</code> (in the base
+<code>unit</code>), <code>unit</code>, <code>short_desc</code>. Source and file of each setting: the
+<a href="connections.html#info">server row in the tree</a>.</p>
 
 <h2 id="signals">Cancelling a query, terminating a session</h2>
-<p>In the <i>Sessions</i>, <i>Blocking</i> and <i>Progress</i> lists you can act on the row under the cursor:</p>
+<p>In <i>Sessions</i>, <i>Blocking</i> and <i>Progress</i>, on the row under the cursor:</p>
 <div class="tablewrap"><table>
-<tr><th>Key</th><th>Command</th><th>What it does</th><th>Use it when</th></tr>
-<tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td><b>Cancel query</b></td><td><code>pg_cancel_backend(pid)</code>. The backend's current statement fails with SQLSTATE <code>57014</code> (<code>query_canceled</code>); the session stays connected, and a transaction block is left aborted until the client rolls back.</td><td>A query runs too long or was started by mistake.</td></tr>
-<tr><td class="k"><kbd>F8</kbd></td><td><b>Terminate session</b></td><td><code>pg_terminate_backend(pid)</code>. The backend rolls back its transaction and exits; the client loses its connection.</td><td>A session is idle in a transaction and blocks others, or does not react to cancel.</td></tr>
+<tr><th>Key</th><th></th></tr>
+<tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td><code>pg_cancel_backend(pid)</code></td></tr>
+<tr><td class="k"><kbd>F8</kbd></td><td><code>pg_terminate_backend(pid)</code></td></tr>
 </table></div>
 <figure class="small">
   <img src="img/dashboard-terminate.svg" alt="Terminate session question" loading="lazy">
-  <figcaption>pgtc always asks first, naming the PID, the user and the database.</figcaption>
+  <figcaption>Always confirmed.</figcaption>
 </figure>
 <ul>
   <li>The signal is sent only if <code>pg_stat_activity</code> still has that PID with the
-      <code>backend_start</code> the list showed — so a backend that has exited, and whose PID another one has by
-      now, is not hit.</li>
-  <li>The result is shown in the status line; if the server refuses — a role may signal only its own backends unless
-      it is a superuser or a member of <code>pg_signal_backend</code> — you see its error.</li>
-  <li>Terminating an autovacuum worker is harmless (the launcher starts another later); terminating a
-      <i>walsender</i> interrupts replication until the standby reconnects. Read the <i>Backend type</i> first.</li>
+      <code>backend_start</code> the list showed, so a reused PID is not hit.</li>
+  <li>A role that is not a superuser or a member of <code>pg_signal_backend</code> may signal only its own
+      backends; the server's error is shown in the status line.</li>
 </ul>
 
 <h3 id="tags">Several sessions at once: tagging</h3>
 <figure>
   <img src="img/dashboard-tags.svg" alt="Tagged sessions" loading="lazy">
-  <figcaption>Two sessions tagged with <kbd>Insert</kbd>; the duration column switched to transaction time.</figcaption>
+  <figcaption>Two tagged sessions.</figcaption>
 </figure>
-<p>As with files in Midnight Commander:</p>
-<ol class="steps">
-  <li>In <i>Sessions</i>, press <kbd>Insert</kbd> on a session: it is tagged (shown in the tag colour) and the cursor
-      moves down. <kbd>Insert</kbd> on a tagged session removes the tag.</li>
-  <li>Tag all the sessions you mean.</li>
-  <li>Press <kbd>Alt+Shift+C</kbd> or <kbd>F8</kbd>. The command now acts on <b>all tagged sessions</b>, after one
-      question that says how many.</li>
-</ol>
-<p><kbd>Esc</kbd> removes all tags. The tag of a backend that has exited disappears with it.</p>
+<p>In <i>Sessions</i>, <kbd>Insert</kbd> tags / untags the row and moves down; <kbd>Esc</kbd> removes all tags. With
+tags set, <kbd>Alt+Shift+C</kbd> and <kbd>F8</kbd> act on all tagged sessions, after one question. The tag of an
+exited backend goes with it.</p>
 
 <h2 id="keys">All dashboard keys</h2>
 <figure class="mid">
   <img src="img/dashboard-menu.svg" alt="The dashboard's context menu" loading="lazy">
-  <figcaption><kbd>F2</kbd>: every command of the dashboard with its key.</figcaption>
+  <figcaption><kbd>F2</kbd>.</figcaption>
 </figure>
 <div class="tablewrap"><table>
-<tr><th>Key</th><th>What it does</th></tr>
-<tr><td class="k"><kbd>F5</kbd></td><td>Refresh now; connect again after a lost connection.</td></tr>
+<tr><th>Key</th><th></th></tr>
+<tr><td class="k"><kbd>F5</kbd></td><td>Refresh now; reconnect.</td></tr>
 <tr><td class="k"><kbd>Ctrl+P</kbd></td><td>Pause / resume.</td></tr>
 <tr><td class="k"><kbd>Ctrl+T</kbd></td><td>Refresh interval.</td></tr>
 <tr><td class="k"><kbd>Alt+Right</kbd> / <kbd>Alt+Left</kbd></td><td>Next / previous list.</td></tr>
 <tr><td class="k"><kbd>Alt+I</kbd></td><td>Hide / show idle sessions.</td></tr>
 <tr><td class="k"><kbd>Alt+T</kbd></td><td>Duration mode.</td></tr>
-<tr><td class="k"><kbd>Insert</kbd> / <kbd>Esc</kbd></td><td>Tag the session / remove all tags.</td></tr>
-<tr><td class="k"><kbd>Enter</kbd></td><td>Show the whole row.</td></tr>
+<tr><td class="k"><kbd>Insert</kbd> / <kbd>Esc</kbd></td><td>Tag / remove all tags.</td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>The whole row.</td></tr>
 <tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td>Cancel query.</td></tr>
 <tr><td class="k"><kbd>F8</kbd></td><td>Terminate session.</td></tr>
-<tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Show / hide the statement pane.</td></tr>
+<tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Statement pane.</td></tr>
 <tr><td class="k"><kbd>Ctrl+E</kbd></td><td>The statement in a new query tab.</td></tr>
 <tr><td class="k"><kbd>Ctrl+C</kbd></td><td>Copy.</td></tr>
 </table></div>
