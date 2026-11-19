@@ -57,6 +57,8 @@ pub struct Hits {
     pub profiler: crate::profiler::ProfHits,
     /// The database statistics tab (D-062).
     pub db_stats: crate::db_stats::StatsHits,
+    /// A template tab (D-074).
+    pub template_tab: crate::template_tab::TplHits,
 }
 
 /// Clickable items of the results bar.
@@ -347,6 +349,7 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
     hits.dashboard = crate::dashboard::DashHits::default();
     hits.profiler = crate::profiler::ProfHits::default();
     hits.db_stats = crate::db_stats::StatsHits::default();
+    hits.template_tab = crate::template_tab::TplHits::default();
     hits.tabs.clear();
     hits.tab_close.clear();
     hits.editor = Rect::default();
@@ -409,6 +412,37 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
             separator(f, app, r)
         });
         hits.grid = hits.db_stats.grid;
+        return;
+    }
+    // Template tab: header, body, preview (D-074)
+    if let Some(t) = tab.template() {
+        use crate::template_tab::Part;
+        let styles = editor_styles(&app.theme);
+        let ctx = crate::template_tab::RenderContext {
+            theme: &app.theme,
+            styles: &styles,
+            line_numbers: app.settings.editor.line_numbers,
+            focused: app.focus == Focus::Tabs,
+            separator: &|f, r| separator(f, app, r),
+        };
+        let (h, cursor) = crate::template_tab::render(frame, t, &tab.view.editor, inner, &ctx);
+        hits.editor = match t.part {
+            Part::Header if t.raw => h.header,
+            Part::Preview => h.preview,
+            _ => h.body,
+        };
+        hits.split = h.split;
+        hits.split_area = h.split_area;
+        hits.template_tab = h;
+        let editing = app.dialogs.is_empty()
+            && app.templates.form.is_none()
+            && app.menu.is_none()
+            && app.popup.is_none();
+        if editing && let Some(pos) = cursor {
+            hits.editor_cursor = Some(pos);
+            frame.set_cursor_position(pos);
+            crate::dialog::show_cursor_cell(frame, pos);
+        }
         return;
     }
     // Dashboard / profiler tab: the list on top, the statement pane (the tab's
@@ -546,6 +580,21 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
         hits.editor_cursor = Some(pos);
         frame.set_cursor_position(pos);
         crate::dialog::show_cursor_cell(frame, pos);
+    }
+}
+
+/// The editor colours of a colour scheme.
+pub(crate) fn editor_styles(t: &crate::theme::Theme) -> EditorStyles {
+    EditorStyles {
+        text: t.get(Role::EditorText),
+        keyword: t.get(Role::EditorKeyword),
+        string: t.get(Role::EditorString),
+        number: t.get(Role::EditorNumber),
+        comment: t.get(Role::EditorComment),
+        quoted_ident: t.get(Role::EditorQuotedIdent),
+        operator: t.get(Role::EditorOperator),
+        selection: t.get(Role::EditorSelection),
+        line_number: t.get(Role::EditorLineNumber),
     }
 }
 
@@ -711,6 +760,9 @@ fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: 
     if let Some((l, r)) = app.monitor_status(tab) {
         left.push_str(&l);
         right = format!(" {r} ");
+    } else if let Some(t) = tab.template() {
+        // what the checks found; the version the preview is made for (D-074)
+        left.push_str(&format!("{} · {}", t.status(), t.version_note()));
     } else {
         left.push_str(&app.tab_connection_label(tab));
     }
@@ -751,7 +803,13 @@ fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: 
         }
     }
     if tab.dashboard().is_none() && tab.profiler().is_none() {
-        let (line, col) = tab.view.editor.cursor_line_col();
+        use crate::template_tab::Part;
+        let editor = match tab.template() {
+            Some(t) if t.raw && t.part == Part::Header => &t.header,
+            Some(t) if t.part == Part::Preview => &t.preview,
+            _ => &tab.view.editor,
+        };
+        let (line, col) = editor.cursor_line_col();
         right.push_str(&format!("Ln {}, Col {} ", line + 1, col + 1));
     }
     if !right.starts_with(' ') {

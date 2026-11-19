@@ -31,6 +31,7 @@ mod results;
 mod settings_dialog;
 mod state;
 mod statement_pane;
+mod template_editor;
 mod templates;
 #[cfg(test)]
 mod tests;
@@ -228,6 +229,8 @@ pub enum TabBody {
     Profiler(Box<crate::profiler::Profiler>),
     /// Database statistics (D-062).
     DbStats(Box<crate::db_stats::DbStats>),
+    /// A developer template being edited (D-074); its body is the tab's editor.
+    Template(Box<crate::template_tab::TemplateTab>),
 }
 
 #[derive(Debug)]
@@ -306,6 +309,30 @@ impl Tab {
         }
     }
 
+    /// Template tabs (D-074).
+    pub fn template(&self) -> Option<&crate::template_tab::TemplateTab> {
+        match &self.body {
+            TabBody::Template(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    pub fn template_mut(&mut self) -> Option<&mut crate::template_tab::TemplateTab> {
+        match &mut self.body {
+            TabBody::Template(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    /// The text of the tab differs from its file (query and template tabs).
+    pub fn modified(&self) -> bool {
+        match &self.body {
+            TabBody::Query(..) => self.view.editor.modified(),
+            TabBody::Template(t) => t.modified(&self.view.editor),
+            _ => false,
+        }
+    }
+
     /// The dashboard, profiler or statistics of the tab, as what they share (D-057,
     /// D-058, D-062).
     pub(crate) fn monitor(&self) -> Option<&dyn crate::monitor::MonitorTab> {
@@ -313,7 +340,7 @@ impl Tab {
             TabBody::Dashboard(d) => Some(&**d),
             TabBody::Profiler(p) => Some(&**p),
             TabBody::DbStats(s) => Some(&**s),
-            TabBody::Default | TabBody::Object | TabBody::Query(..) => None,
+            TabBody::Default | TabBody::Object | TabBody::Query(..) | TabBody::Template(_) => None,
         }
     }
 
@@ -322,7 +349,7 @@ impl Tab {
             TabBody::Dashboard(d) => Some(&mut **d),
             TabBody::Profiler(p) => Some(&mut **p),
             TabBody::DbStats(s) => Some(&mut **s),
-            TabBody::Default | TabBody::Object | TabBody::Query(..) => None,
+            TabBody::Default | TabBody::Object | TabBody::Query(..) | TabBody::Template(_) => None,
         }
     }
 
@@ -334,6 +361,7 @@ impl Tab {
             TabBody::Dashboard(d) => d.label.clone(),
             TabBody::Profiler(p) => p.label.clone(),
             TabBody::DbStats(s) => s.label.clone(),
+            TabBody::Template(t) => t.label(),
             TabBody::Query(n, q) => {
                 let name = q
                     .file
@@ -616,6 +644,8 @@ impl App {
             Focus::Results if self.tabs[self.active_tab].db_stats().is_some() => {
                 Some(Context::DbStats)
             }
+            // the header list of a template tab (D-074)
+            Focus::Tabs if self.template_list_focused() => Some(Context::Template),
             Focus::Tabs => Some(Context::Editor),
             Focus::Results => Some(Context::Results),
         }
@@ -630,6 +660,32 @@ impl App {
                     .lookup_only(Context::Global, key)
                     .filter(|c| matches!(c, Command::Help | Command::Menu | Command::Quit))
             });
+        }
+        // a template tab (D-074): its own keys first — all of them in the header list,
+        // in the texts only those that are not editing keys
+        if self.focus == Focus::Tabs
+            && let Some(t) = self.tabs[self.active_tab].template()
+        {
+            use crate::template_tab::Part;
+            let list = self.template_list_focused();
+            if let Some(c) = self.keymap.lookup_only(Context::Template, key)
+                && (list
+                    || matches!(
+                        c,
+                        Command::TemplateTest
+                            | Command::TemplateHelpers
+                            | Command::TemplateRawHeader
+                    )
+                    || (t.part == Part::Preview
+                        && matches!(c, Command::NextField | Command::PrevField)))
+            {
+                return Some(c);
+            }
+            return if list {
+                self.keymap.lookup_only(Context::Global, key)
+            } else {
+                self.keymap.lookup(Context::Editor, key)
+            };
         }
         match self.context() {
             // the tab keys switch the tabs nearest to the focus; the tree has none, so
@@ -654,7 +710,13 @@ impl App {
             | Command::FocusUpper => true,
             // a database or an object below it, on a connected server (D-049)
             Command::NewQuery | Command::OpenFile => self.query_target().is_some(),
-            Command::SaveFile | Command::SaveFileAs => self.query().is_some(),
+            Command::SaveFile | Command::SaveFileAs => {
+                self.query().is_some() || self.template().is_some()
+            }
+            Command::TemplateManager => true,
+            c if self.template().is_some() && self.template_enabled(c).is_some() => {
+                self.template_enabled(c).unwrap_or(false)
+            }
             Command::NextTab | Command::PrevTab => self.tabs.len() > 1,
             Command::CloseTab => self.active_tab != 0,
             Command::Connect => server.is_some_and(|s| s.state == ConnState::Disconnected),
@@ -763,6 +825,7 @@ impl App {
             Command::ToggleAutoCommit => self.query().map(|q| q.auto_commit),
             Command::ToggleAutoRollback => self.query().map(|q| q.auto_rollback),
             Command::TogglePlpgsql => self.query().map(|q| q.plpgsql),
+            Command::TemplateRawHeader => self.template().map(|t| t.raw),
             _ => None,
         }
     }
@@ -779,6 +842,7 @@ impl App {
                     Context::Dashboard,
                     Context::Profiler,
                     Context::DbStats,
+                    Context::Template,
                 ],
                 cmd,
             )
@@ -800,7 +864,8 @@ impl App {
         self.frame.grid_area = hits.grid;
         // The active editor learns its size from the last frame.
         self.frame.editor_area = hits.editor;
-        if hits.editor.width > 0 {
+        self.set_template_views(hits);
+        if hits.editor.width > 0 && self.template().is_none() {
             let line_numbers = self.settings.editor.line_numbers;
             let editor = &mut self.tabs[self.active_tab].view.editor;
             let gutter = pgc_editor::gutter_width(editor, line_numbers);
@@ -820,7 +885,10 @@ impl App {
                     d.paste(&text);
                 } else if let Some(form) = self.templates.form.as_mut() {
                     form.paste(&text);
-                } else if self.focus == Focus::Tabs && !self.modal() {
+                } else if self.focus == Focus::Tabs
+                    && !self.modal()
+                    && !self.template_list_focused()
+                {
                     self.edit(Action::Insert(text));
                 }
                 Vec::new()
@@ -904,6 +972,10 @@ impl App {
         self.sync_ai_settings();
         self.refresh_psql_completion();
         self.sync_find_dialog();
+        self.sync_template_manager();
+        self.sync_param_dialog();
+        self.sync_insert_dialog();
+        self.sync_template_tab();
         if let Some(form) = self.templates.form.as_mut() {
             form.set_screen(hits.screen);
         }
@@ -1176,6 +1248,7 @@ impl App {
             self.run(cmd);
         } else if let KeyCode::Char(c) = ev.code
             && self.focus == Focus::Tabs
+            && !self.template_list_focused()
             && !ev
                 .modifiers
                 .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
@@ -1195,7 +1268,7 @@ impl App {
             && !self.is_enabled(cmd)
         {
             self.status = if matches!(cmd, Command::SaveFile | Command::SaveFileAs) {
-                "Only a query tab can be saved".to_owned()
+                "Only a query tab or a template tab can be saved".to_owned()
             } else {
                 "Select a database (or an object in it) of a connected server first".to_owned()
             };
@@ -1210,6 +1283,11 @@ impl App {
         match cmd {
             Command::Quit => self.request_quit(),
             Command::Menu => self.open_menu(0),
+            Command::TemplateManager => self.open_template_manager(),
+            // a template tab has its own parts and keys (D-074)
+            c if !self.modal()
+                && self.template().is_some()
+                && self.template_command(c, in_view) => {}
             // direct keys for the frames (D-060)
             Command::FocusTree => self.focus = Focus::Tree,
             Command::FocusRight => self.focus_right(),
@@ -1509,6 +1587,9 @@ impl App {
                     DialogKind::AskAi { .. } => self.keep_ai_draft(&d),
                     DialogKind::AiModelOther => self.ai_rebuild_models(),
                     DialogKind::ConfirmProfilerSettings { tab } => self.profiler_answer(tab, false),
+                    DialogKind::TemplateManager => self.templates.manager = None,
+                    DialogKind::TemplateParam { field, .. } => self.param_dialog_cancelled(field),
+                    DialogKind::TemplateInsert { .. } => self.templates.insert.clear(),
                     // the next file dialog starts in the folder again (D-070)
                     DialogKind::OpenFile
                     | DialogKind::SaveFile
@@ -1625,6 +1706,38 @@ impl App {
                         },
                         Button::Yes,
                     ) => self.start_job(JobKind::Export(path), (server, database)),
+                    (DialogKind::TemplateManager, button) => self.manager_button(dialog, button),
+                    (DialogKind::TemplateName { what, target }, Button::Ok) => {
+                        self.template_name_done(dialog, what, &target);
+                    }
+                    (DialogKind::ConfirmTemplateDelete { op }, Button::Yes) => {
+                        self.start_library_op(op);
+                    }
+                    (DialogKind::TemplateProps { tab }, Button::Ok) => {
+                        self.template_props_done(&dialog, tab);
+                    }
+                    (DialogKind::TemplateParam { tab, field }, button) => {
+                        self.param_dialog_button(dialog, tab, field, button);
+                    }
+                    (DialogKind::TemplateInsert { tab }, Button::Ok) => {
+                        self.insert_chosen(&dialog, tab);
+                    }
+                    (DialogKind::TemplateInsert { .. }, _) => self.templates.insert.clear(),
+                    (DialogKind::TemplateSave { tab }, Button::Ok) => {
+                        self.template_save_chosen(dialog, tab);
+                    }
+                    (DialogKind::ConfirmTemplateOverwrite { tab, path }, Button::Yes) => {
+                        self.write_template(tab, path, true);
+                    }
+                    (DialogKind::ConfirmBuiltinSave { tab }, button) => {
+                        self.builtin_save_answer(tab, button);
+                    }
+                    (DialogKind::ConfirmTemplateParamDelete { tab, index }, Button::Yes) => {
+                        self.delete_param(tab, index);
+                    }
+                    (DialogKind::TemplateVariant { tab }, Button::Ok) => {
+                        self.template_variant_chosen(dialog, tab);
+                    }
                     (DialogKind::TemplatePicker, Button::Ok) => self.template_chosen(dialog),
                     (DialogKind::TemplateRow, Button::Ok) => self.row_done(dialog),
                     (DialogKind::ConfirmExportOverwrite { path, options }, Button::Yes) => {
@@ -1646,7 +1759,11 @@ impl App {
             || self.dialogs.iter().any(|d| {
                 matches!(
                     d.kind,
-                    DialogKind::SaveFile | DialogKind::ConfirmOverwrite { .. }
+                    DialogKind::SaveFile
+                        | DialogKind::ConfirmOverwrite { .. }
+                        | DialogKind::TemplateSave { .. }
+                        | DialogKind::ConfirmTemplateOverwrite { .. }
+                        | DialogKind::ConfirmBuiltinSave { .. }
                 )
             });
         if !saving {

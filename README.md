@@ -31,7 +31,8 @@ right, function keys, menus and dialogs.
   parameters and errors, read from the server log.
 - **Export** results to CSV, JSON or XML — the whole result, streamed to the file.
 - **Developer templates** — fill in a short form, get ready-to-run SQL (CREATE
-  TABLE, FUNCTION, INDEX, …); add your own templates as files.
+  TABLE, FUNCTION, INDEX, …); make your own in the **template editor** (parameters
+  from dialogs, helpers for the Jinja body, live preview, test in the real form).
 - **Database definition** export to a file and **sync** of another database to it
   (only the needed CREATE / ALTER statements, for review before running).
 - **Colour schemes** (Classic, Dark, Light, Terminal default, Tokyo Night, Dracula and
@@ -44,6 +45,10 @@ right, function keys, menus and dialogs.
 | Developer template: Create table | Developer templates (`F7`) |
 |---|---|
 | ![Developer template: Create table](docs/screenshots/template.svg) | ![Developer templates](docs/screenshots/templates.svg) |
+
+| Developer template editor (Tools → Developer templates…) |
+|---|
+| ![Developer template editor](docs/screenshots/template-editor.svg) |
 
 | Autocomplete | psql commands (`F4`) |
 |---|---|

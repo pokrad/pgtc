@@ -36,15 +36,17 @@ impl App {
             return;
         };
         let tab = &self.tabs[i];
-        let Some(q) = tab.query() else {
-            self.close_tab(id);
-            return;
-        };
-        if ask_save && self.settings.query.ask_save && tab.view.editor.modified() {
+        let asks = tab.query().is_some() || tab.template().is_some();
+        if asks && ask_save && self.settings.query.ask_save && tab.modified() {
             let text = format!("{} has unsaved changes. Save them?", tab.label());
+            let title = if tab.template().is_some() {
+                "Close template tab"
+            } else {
+                "Close query tab"
+            };
             self.dialogs.push(Dialog::confirm_buttons(
                 DialogKind::SaveChanges { tab: id },
-                "Close query tab",
+                title,
                 &text,
                 &[
                     (Button::Yes, "&Yes"),
@@ -52,7 +54,10 @@ impl App {
                     (Button::Cancel, "&Cancel"),
                 ],
             ));
-        } else if q.tx != TxStatus::Idle && q.connected() {
+        } else if tab
+            .query()
+            .is_some_and(|q| q.tx != TxStatus::Idle && q.connected())
+        {
             self.dialogs.push(Dialog::confirm_buttons(
                 DialogKind::CloseTransaction { tab: id },
                 "Close query tab",
@@ -75,8 +80,13 @@ impl App {
             return;
         };
         self.active_tab = i;
-        let file = self.tabs[i].query().and_then(|q| q.file.clone());
         self.closing.after_save = Some(then);
+        // a template tab has its own way of saving (D-074)
+        if self.tabs[i].template().is_some() {
+            self.save_template(id, false);
+            return;
+        }
+        let file = self.tabs[i].query().and_then(|q| q.file.clone());
         match file {
             Some(path) => self.save_to(path),
             None => self.open_file_dialog(true),
@@ -94,7 +104,7 @@ impl App {
         self.pending_defs.retain(|_, t| *t != tab.id);
         self.template_lookups.retain(|_, t| t.tab() != Some(tab.id));
         let conn = match tab.body {
-            TabBody::Default | TabBody::Object => None,
+            TabBody::Default | TabBody::Object | TabBody::Template(_) => None,
             // closing the connection rolls back an open transaction (D-019)
             TabBody::Query(_, q) => {
                 let busy = q.busy();
@@ -163,12 +173,10 @@ impl App {
             Bulk::Reconnect(_) => "Edit connection",
         };
         if self.settings.query.ask_save
-            && let Some(i) = self.tabs.iter().position(|t| {
-                t.query().is_some()
-                    && Self::in_bulk(b, t)
-                    && t.view.editor.modified()
-                    && !skip.contains(&t.id)
-            })
+            && let Some(i) = self
+                .tabs
+                .iter()
+                .position(|t| Self::in_bulk(b, t) && t.modified() && !skip.contains(&t.id))
         {
             self.active_tab = i;
             let tab = &self.tabs[i];
@@ -263,7 +271,7 @@ impl App {
         }
         for tab in &mut self.tabs {
             let handle = match &mut tab.body {
-                TabBody::Default | TabBody::Object => None,
+                TabBody::Default | TabBody::Object | TabBody::Template(_) => None,
                 TabBody::Query(_, q) => {
                     let busy = q.busy();
                     q.conn.take().map(|c| end_query_conn(busy, c))

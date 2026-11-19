@@ -369,9 +369,9 @@ desktop dependency.
       templates) are never touched. Users who change a template that comes with pgtc
       save it under another name, so installing does not overwrite it.
 - **Custom templates:**
-  - The application has **no UI for creating or editing templates**.
-  - Users who want their own templates write the files by hand and place them in the
-    templates directory.
+  - Templates are created and changed in the **developer template editor** (*Tools →
+    Developer templates…*, D-074) or written by hand and placed in the templates
+    directory — the file format is the same.
   - pgtc **always scans the templates directory at runtime** and offers every
     template it finds; it must not assume that only the templates installed by default
     are present.
@@ -494,6 +494,7 @@ desktop dependency.
   - Next tab / Previous tab / Close tab
 - **Tools**
   - Generate SQL from developer template… (D-013)
+  - Developer templates… — create and edit templates (D-074)
   - psql command… (D-054)
   - Server dashboard (D-057)
   - SQL profiler (D-058)
@@ -645,9 +646,9 @@ desktop dependency.
   | `F2` | User menu | Context menu for the selected object |
   | `F3` | View | Show definition in a new tab |
   | `F4` | Edit | psql-style command line in a query tab (D-054) |
-  | `F5` | Copy | **Execute** (in a query tab; as in pgAdmin / SSMS) |
+  | `F5` | Copy | **Execute** (in a query tab; as in pgAdmin / SSMS) · Template tab: test the template in its form (D-074) |
   | `Alt+Shift+C` | — | **Cancel running query** (as in pgAdmin, D-019) |
-  | `F7` | Make dir | Query tab: insert SQL from a developer template (D-013, D-046) |
+  | `F7` | Make dir | Query tab: insert SQL from a developer template (D-013, D-046) · Template tab: helper menu of the body editor (D-074) |
   | `F8` | Delete | Object tree: delete the selected saved connection (with confirmation, D-035). Database objects are dropped with the DROP developer templates (D-050) · Query tab: ask AI for SQL, inserted into the editor, not run (D-073) |
   | `F9` | Menu | Menu (D-014) |
   | `F10` | Quit | Quit; closes a dialog when one is open |
@@ -684,7 +685,8 @@ desktop dependency.
 - **Configurable keymap:** built-in mc-style defaults; users can override keys in a
   `keymap.toml` file in their user directory (same pattern as templates and colour
   schemes: no editor in the app, file scanned at startup). The file has one section per
-  context: `[global]`, `[tree]`, `[editor]`, `[results]`, `[dialog]`.
+  context: `[global]`, `[tree]`, `[editor]`, `[results]`, `[dialog]`, `[template]`
+  (D-074).
 
 ### D-017 — pgtc licence: PostgreSQL Licence
 - **Status:** Accepted
@@ -2619,6 +2621,128 @@ pgtc (binary)
 - **Later:** follow-up questions in one conversation, the model
   reading catalog details itself through tool use (read-only), Azure OpenAI.
 
+### D-074 — Developer template editor
+- **Status:** Accepted (refines D-013, D-014, D-016, D-046; withdraws D-013's "no UI
+  for creating or editing templates")
+- **Purpose:** create and change developer templates inside pgtc, with as many helpers
+  as possible, so the author does not have to know TOML and needs little Jinja.
+- **The file format does not change** (D-013): the editor reads and writes the same
+  `.pgtemplate` files; hand-written templates stay valid and can be edited.
+- **Entry point:** *Tools → Developer templates…* — only from the menu (no default
+  key), separate from the `F7` form (D-046), and it needs no connection. It opens the
+  **template manager**, a dialog with the folder tree of the templates folder and a
+  search box (as the `F7` picker), and the buttons *Edit* (default), *New* (template),
+  *Section* (new section), *Copy*, *Rename*, *Delete* (with confirmation), *Close* —
+  short labels, so the row fits an 80-column terminal.
+  - *Section* creates a folder (`A/B`: inside another). Empty sections are shown only
+    in the manager; the `F7` picker hides them. Only an empty section can be deleted.
+  - *New* and *Edit* open a **template tab** and close the manager. A template that is
+    already open is not opened twice — its tab is shown.
+  - A template with files in several version folders has a row per file (`[12_plus]`
+    after the name). *Copy* and *Rename* ask for a file name and act on all its files;
+    *Delete* removes the file of the selected row. Open tabs follow a renamed file.
+  - The changes are made in the background (`FileJob`, D-072).
+- **Template tab:** a tab of its own kind; the label is the template name. Layout:
+  - **File bar** above (as D-064): the full path, ` *` while there are unsaved changes.
+    A template without a file shows the section and the version folder it was made
+    for: *New template — section: Tables · version folder: default · not saved yet*.
+  - **Left (header list):** name, description, and the list of parameters with *Add*,
+    *Edit*, *Delete*, *Up*, *Down* (buttons for the mouse; keys `Insert`, `Enter`,
+    `Delete` — asks first —, `Ctrl+Up` / `Ctrl+Down` or `Shift+Up` / `Shift+Down`;
+    `F2` context menu). `Enter` on name or description: a dialog with both.
+  - **Right:** the body editor (Jinja) above, the **preview** below — resizable split
+    and show / hide as editor and results of a query tab (D-019).
+  - **Status row:** cursor position, the Jinja error, or the result of the checks.
+  - Narrow screens: the left pane is above the body.
+- **Parameters through a dialog:** *Add* / *Edit* open a dialog with name, label, type
+  (combo), required, default and help, plus the fields of the chosen type — `options`
+  (list), `source` (combo of all sources, D-050), `query`, `fill`, and the `fields` of
+  a `list`. pgtc writes the header itself, keys in a stable order.
+- **Raw header (`Ctrl+T`, `template_raw_header`):** replaces the left pane by a text
+  editor with the header as TOML. Switching back parses it; with a TOML error the raw
+  editor stays and the status row shows the error. A file whose header cannot be read
+  opens with the raw header.
+- **A hand-written header is kept:** the header text of the file (or the text typed as
+  raw header) is written back unchanged until something is changed in the header
+  list; only then pgtc writes the header in its own fixed form.
+- **Helpers in the body editor** — helper menu on `F7`:
+  - *Insert parameter:* the declared parameters; inserts `{{ name }}`, `{{ name|ident }}`
+    for `identifier` and qualified choices, and for a `list` the whole `{% for %}`
+    loop with its fields and the `loop.last` comma.
+  - *Insert construct:* `if`, `if / else`, `for`, `{% if has("…") %}` with the features
+    of the feature table (D-011) to pick from, `server_version`, `database`. A
+    selection is wrapped by the construct.
+  - *Insert filter:* `ident`, `qtLiteral`, `indent`, `default`, `upper`, … each with a
+    one-line description. The filter goes behind the value of the `{{ }}` the cursor
+    is in; a selected name becomes `{{ name|filter }}`; elsewhere a new `{{ |filter }}`.
+  - The three *Insert* items open a list to choose from, with a note about the
+    selected entry. The helper menu also has *Raw header*, *Test…* and *Save as…*.
+  - *Make parameter from selection:* the selected text becomes `{{ name }}`; the
+    parameter dialog opens with the selection as the default.
+  - *Add variant for version…* (also in the manager): copies the template into another
+    version folder and opens the copy.
+- **Checks while typing:** Jinja syntax errors (line; `Enter` in the preview, and a
+  refused save or test, put the body's cursor on it), a variable used in the body that
+  is not declared, a declared parameter that is never used. The last two are hints
+  and do not prevent saving.
+- **Preview:** the body rendered live with every parameter's default; a required
+  parameter without a default gets its own name as the value (a number `1`, a
+  database object `schema.name`); a list gets one row. Errors are shown in the
+  preview as in the `F7` form. The preview is a read-only text (select, copy).
+- **Server version of the preview and the checks** (`has("…")`, `server_version`): the
+  version of the server selected in the object tree when it is connected; otherwise
+  the lower bound of the template's version folder (`12_plus` → 12); for `default/`
+  with nothing connected the newest version of the feature table. The status row says
+  which version the preview assumes.
+- **Test (`F5`):** opens the real template form (D-046) for the text as it is in the
+  tab, saved or not. *OK* only closes it — nothing is inserted anywhere. Live choice
+  lists (`source`, `query`) are read through the connection of the database selected
+  in the **object tree**; there is no connection picker in the tab. Nothing connected
+  selected: the combos are empty and say so.
+- **Version folders:** a new template goes to `default/`; another version folder
+  (`12_plus/`, …, D-013) can be chosen when saving, or added later with *Add variant
+  for version…*.
+- **Saving** (`Ctrl+S`, `save_file`; a `FileJob`, D-072):
+  - First save of a new template, and *Save as…*: a *Save template* dialog with the
+    section (combo of the existing folders, or a typed new one), the version folder
+    and the file name (suggested from the template name).
+  - **A template that does not parse is not saved** (TOML header or Jinja body): the
+    error is shown and the file is left as it was.
+  - A template that came with pgtc: *Installing templates overwrites this file* —
+    *Save as copy* / *Save anyway* / *Cancel* (D-013).
+  - After a save the template library is read again, so `F7` offers the new text.
+- **Closing** a template tab with unsaved changes asks as a query tab does, also on
+  quit.
+- **Keys:** a keymap context `[template]`: `F5`, `F7`, `Ctrl+T` (every part of the
+  tab) and the keys of the header list. The body, the raw header and the preview are
+  texts with the `[editor]` keys.
+  - **Parts:** `Alt+Down` / `Alt+Up` (`focus_lower` / `focus_upper`) go to the next /
+    previous part (header → body → preview) from everywhere; `Tab` / `Shift+Tab` do
+    the same from the header list and the preview. In the body and the raw header
+    `Tab` indents, as in every editor (D-016) — *changed from the first plan, which
+    had `Tab` everywhere*.
+  - `Ctrl+R` hides / shows the preview, `Alt+Shift+Up` / `Down` resize it.
+  - `F1` in a text of the tab also lists the tab's own keys.
+- **Autocomplete in the body** (the list and keys of D-052; no connection, no
+  database names):
+  - **Outside the marks:** the parameters, written as their whole mark (what *Insert
+    parameter* writes: `{{ name|ident }}`, the block of a checkbox, the loop of a
+    list), then the SQL keywords.
+  - **Inside `{{ }}` / `{% %}`:** the parameters (name only), the row variables of
+    the open `for` loops and `loop`, `{% set %}` variables, `server_version`,
+    `database`, `has("`, and the words `not and or in is true false none`.
+  - **After `row.`** (variable of `{% for row in list %}`): the fields of that list;
+    after `loop.`: `last`, `first`, `index`, `index0`, `length`; after a choice from
+    database objects: `schema`, `name` (`args` / `table` where the source has them).
+  - **After `|`:** the filters with a short note; **right after `{%`:** `if`, `elif`,
+    `else`, `endif`, `for`, `endfor`, `set`; **in `has("`:** the feature names with
+    their PostgreSQL version.
+  - Opens by `Ctrl+Space` / `Alt+/`, and by typing: in a mark with the first letter,
+    after `.`, `|` and `has("`; outside the marks after the 3rd letter. Nothing in
+    `{# #}` comments and in other texts in quotes. Not in the raw header.
+- **Later:** Jinja highlighting on top of the SQL highlighting (touches the lexer of
+  `pgc-editor`); autocomplete in the raw header.
+
 ---
 
 ## 3. Change log
@@ -2784,3 +2908,8 @@ pgtc (binary)
 | 2026-11-18 | D-073 updated: model and effort — defaults in Settings → AI… (effort combo; Models… reads the provider's model list), both changeable per request in the `F8` dialog; `output_config.effort` / `reasoning_effort`; Anthropic answer limit 16,000 tokens. |
 | 2026-11-18 | D-073 updated: the model is chosen from a combo in Settings → AI…, filled from the provider's model list (read by the dialog, names for people, newest first, *Other…* for a typed name) and saved; the `F8` dialog offers only the saved list. The Models… button is gone. |
 | 2026-11-18 | D-073 updated: progress of an AI request in the tab's Messages — the answer is streamed; lines for the request, thinking (with the model's thinking summaries), writing, token counts and the end; the status line unchanged; the SQL goes into the editor when complete. |
+| 2026-11-18 | D-074 accepted: developer template editor — *Tools → Developer templates…* (menu only) opens the template manager (new template / section, edit, copy, rename, delete); a template tab with parameter list and dialogs, raw TOML header, Jinja body editor with helper menu (`F7`), live preview, checks, test in the real form (`F5`, connection of the tree selection); version folders; a template that does not parse is not saved; saving a built-in template warns; empty sections hidden in `F7`. D-013 (no-UI rule withdrawn), D-014, D-016 updated. |
+| 2026-11-18 | D-074 updated: server version of the template tab's preview — the connected server selected in the tree, else the lower bound of the version folder, else the newest version of the feature table; shown in the status row. |
+| 2026-11-19 | D-074 implemented and detailed: manager buttons (*Edit*, *New*, *Section*, *Copy*, *Rename*, *Delete*, *Close*), a row per version file; header list keys (`Insert`, `Enter`, `Delete`, `Ctrl+Up` / `Down`, `F2`), raw header on `Ctrl+T`; `Alt+Down` / `Alt+Up` between the parts, `Tab` only from the list and the preview (it indents in the body); a hand-written header is kept until the list changes; insert lists with notes, filter placement; `Enter` in the preview jumps to the error; preview sample values. |
+| 2026-11-19 | D-074 updated: autocomplete in the template body — parameters (as whole marks in the SQL, by name inside marks), fields of a list's rows, parts of database objects, filters, statements, feature names; no connection and no database names; not in the raw header. |
+| 2026-11-19 | D-074 updated: the file bar of a template that is not saved yet names its section and version folder. |

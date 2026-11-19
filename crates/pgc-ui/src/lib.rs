@@ -24,7 +24,9 @@ mod profiler_restore;
 mod psql;
 mod query_tab;
 pub mod setup;
+mod template_complete;
 mod template_dialog;
+mod template_tab;
 mod terminal;
 mod theme;
 #[cfg(test)]

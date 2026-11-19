@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="666" height="399" viewBox="0 0 666 399" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15" shape-rendering="crispEdges" xml:space="preserve">
+<rect width="666" height="399" fill="#0037da"/>
+<rect x="0" y="0" width="648.5" height="19.5" fill="#cccccc"/>
+<text x="648 657" y="14.25" fill="#cccccc">oo</text>
+<rect x="0" y="19" width="648.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="19" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243" y="33.25" fill="#0c0c0c">┌──────────────────────────</text>
+<text x="261 270 279 288 297 306" y="33.25" fill="#0037da">Insert</text>
+<text x="324 333 342 351 360 369" y="33.25" fill="#0037da">filter</text>
+<text x="387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630" y="33.25" fill="#0c0c0c">───────────────────────────┐</text>
+<text x="648 657" y="33.25" fill="#767676">|i</text>
+<rect x="0" y="38" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="621" y="38" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="38" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="52.25" fill="#0c0c0c">│</text>
+<text x="36 45 54 63 72" y="52.25" fill="#f2f2f2">ident</text>
+<text x="630" y="52.25" fill="#0c0c0c">│</text>
+<text x="648 657" y="52.25" fill="#767676">de</text>
+<rect x="0" y="57" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="27" y="57" width="594.5" height="19.5" fill="#3a96dd"/>
+<rect x="621" y="57" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="57" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="71.25" fill="#0c0c0c">│</text>
+<text x="36 45 54 63 72 81 90 99 108" y="71.25" fill="#0c0c0c">qtLiteral</text>
+<text x="630" y="71.25" fill="#0c0c0c">│</text>
+<text x="648" y="71.25" fill="#767676">,</text>
+<rect x="0" y="76" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="27" y="76" width="594.5" height="19.5" fill="#3a96dd"/>
+<rect x="621" y="76" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="76" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="90.25" fill="#0c0c0c">│</text>
+<text x="36 45 54 63 72 81 90 99 108 117 126" y="90.25" fill="#0c0c0c">qtTypeIdent</text>
+<text x="630" y="90.25" fill="#0c0c0c">│</text>
+<rect x="0" y="95" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="27" y="95" width="594.5" height="19.5" fill="#3a96dd"/>
+<rect x="621" y="95" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="95" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="109.25" fill="#0c0c0c">│</text>
+<text x="36 45 54 63 72 81" y="109.25" fill="#0c0c0c">indent</text>
+<text x="630" y="109.25" fill="#0c0c0c">│</text>
+<text x="648" y="109.25" fill="#767676">T</text>
+<rect x="0" y="114" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="27" y="114" width="594.5" height="19.5" fill="#3a96dd"/>
+<rect x="621" y="114" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="114" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="128.25" fill="#0c0c0c">│</text>
+<text x="36 45 54 63 72 81 90" y="128.25" fill="#0c0c0c">default</text>
+<text x="630" y="128.25" fill="#0c0c0c">│</text>
+<text x="648 657" y="128.25" fill="#767676">ta</text>
+<rect x="0" y="133" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="27" y="133" width="594.5" height="19.5" fill="#3a96dd"/>
+<rect x="621" y="133" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="133" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="147.25" fill="#0c0c0c">│</text>
+<text x="36 45 54 63 72" y="147.25" fill="#0c0c0c">upper</text>
+<text x="630" y="147.25" fill="#0c0c0c">│</text>
+<rect x="0" y="152" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="27" y="152" width="594.5" height="19.5" fill="#3a96dd"/>
+<rect x="621" y="152" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="152" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="166.25" fill="#0c0c0c">│</text>
+<text x="36 45 54 63 72" y="166.25" fill="#0c0c0c">lower</text>
+<text x="630" y="166.25" fill="#0c0c0c">│</text>
+<text x="648" y="166.25" fill="#767676">e</text>
+<rect x="0" y="171" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="27" y="171" width="594.5" height="19.5" fill="#3a96dd"/>
+<rect x="621" y="171" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="171" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="185.25" fill="#0c0c0c">│</text>
+<text x="36 45 54 63" y="185.25" fill="#0c0c0c">trim</text>
+<text x="630" y="185.25" fill="#0c0c0c">│</text>
+<rect x="0" y="190" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="27" y="190" width="594.5" height="19.5" fill="#3a96dd"/>
+<rect x="621" y="190" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="190" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="204.25" fill="#0c0c0c">│</text>
+<text x="36 45 54 63 72 81 90" y="204.25" fill="#0c0c0c">replace</text>
+<text x="630" y="204.25" fill="#0c0c0c">│</text>
+<rect x="0" y="209" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="27" y="209" width="594.5" height="19.5" fill="#3a96dd"/>
+<rect x="621" y="209" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="209" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="223.25" fill="#0c0c0c">│</text>
+<text x="36 45 54 63" y="223.25" fill="#0c0c0c">join</text>
+<text x="630" y="223.25" fill="#0c0c0c">│</text>
+<text x="648 657" y="223.25" fill="#767676">he</text>
+<rect x="0" y="228" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="27" y="228" width="594.5" height="19.5" fill="#3a96dd"/>
+<rect x="621" y="228" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="228" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="242.25" fill="#0c0c0c">│</text>
+<text x="36 45 54 63 72 81" y="242.25" fill="#0c0c0c">length</text>
+<text x="630" y="242.25" fill="#0c0c0c">│</text>
+<rect x="0" y="247" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="27" y="247" width="594.5" height="19.5" fill="#3a96dd"/>
+<rect x="621" y="247" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="247" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="261.25" fill="#0c0c0c">│</text>
+<text x="630" y="261.25" fill="#0c0c0c">│</text>
+<rect x="0" y="266" width="648.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="266" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="280.25" fill="#0c0c0c">│</text>
+<text x="27 36 45 54 63" y="280.25" fill="#0c0c0c">quote</text>
+<text x="81 90" y="280.25" fill="#0c0c0c">as</text>
+<text x="108 117" y="280.25" fill="#0c0c0c">an</text>
+<text x="135 144 153 162 171 180 189 198 207 216" y="280.25" fill="#0c0c0c">identifier</text>
+<text x="234 243 252 261 270 279 288 297 306" y="280.25" fill="#0c0c0c">("Order";</text>
+<text x="324 333 342 351 360 369 378 387 396 405 414" y="280.25" fill="#0c0c0c">schema.name</text>
+<text x="432 441" y="280.25" fill="#0c0c0c">of</text>
+<text x="459" y="280.25" fill="#0c0c0c">a</text>
+<text x="477 486 495 504 513 522" y="280.25" fill="#0c0c0c">chosen</text>
+<text x="540 549 558 567 576 585 594" y="280.25" fill="#0c0c0c">object)</text>
+<text x="630" y="280.25" fill="#0c0c0c">│</text>
+<rect x="0" y="285" width="648.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="285" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="299.25" fill="#0c0c0c">│</text>
+<text x="630" y="299.25" fill="#0c0c0c">│</text>
+<rect x="0" y="304" width="648.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="304" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="318.25" fill="#0c0c0c">│</text>
+<text x="630" y="318.25" fill="#0c0c0c">│</text>
+<text x="648 657" y="318.25" fill="#767676">──</text>
+<rect x="0" y="323" width="648.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="323" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="337.25" fill="#0c0c0c">│</text>
+<text x="234 243" y="337.25" fill="#0c0c0c">[&lt;</text>
+<text x="261" y="337.25" fill="#0037da" text-decoration="underline">O</text>
+<text x="270" y="337.25" fill="#0c0c0c">K</text>
+<text x="288 297" y="337.25" fill="#0c0c0c">&gt;]</text>
+<text x="315" y="337.25" fill="#0c0c0c">[</text>
+<text x="333" y="337.25" fill="#0037da" text-decoration="underline">C</text>
+<text x="342 351 360 369 378" y="337.25" fill="#0c0c0c">ancel</text>
+<text x="396" y="337.25" fill="#0c0c0c">]</text>
+<text x="630" y="337.25" fill="#0c0c0c">│</text>
+<rect x="0" y="342" width="648.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="342" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630" y="356.25" fill="#0c0c0c">└────────────────────────────────────────────────────────────────────┘</text>
+<text x="648 657" y="356.25" fill="#767676">UL</text>
+<rect x="0" y="361" width="648.5" height="19.5" fill="#cccccc"/>
+<rect x="648" y="361" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="18" y="380" width="648.5" height="19.5" fill="#0c0c0c"/>
+<text x="63 72" y="394.25" fill="#767676">║║</text>
+<text x="405" y="394.25" fill="#767676">│</text>
+<text x="450 459 468 477 486 495 504 513 522 531" y="394.25" fill="#767676">CONSTRAINT</text>
+<text x="549 558 567 576 585 594 603 612 621" y="394.25" fill="#767676">name_pkey</text>
+<text x="639 648 657" y="394.25" fill="#767676">PRI</text>
+</svg>

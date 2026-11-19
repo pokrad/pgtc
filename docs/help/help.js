@@ -14,6 +14,7 @@
     ['files.html', 'SQL files and result export'],
     ['psql.html', 'psql-style and generate commands'],
     ['templates.html', 'Developer templates'],
+    ['template-editor.html', 'Developer template editor'],
     ['ai.html', 'AI assistant'],
     ['pgdef.html', 'Database definition: export and load'],
     ['dashboard.html', 'Server dashboard'],

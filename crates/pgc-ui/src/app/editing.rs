@@ -12,8 +12,28 @@ impl App {
         self.settings.editor.tab_width.max(1) as usize
     }
 
+    /// The editor of the active tab that has the keys: in a template tab its raw
+    /// header or its preview while they are focused (D-074).
     pub(super) fn editor(&mut self) -> &mut Editor {
-        &mut self.tabs[self.active_tab].view.editor
+        use crate::template_tab::Part;
+        let tab = &mut self.tabs[self.active_tab];
+        let part = tab.template().map(|t| (t.part, t.raw));
+        match (part, &mut tab.body) {
+            (Some((Part::Header, true)), super::TabBody::Template(t)) => &mut t.header,
+            (Some((Part::Preview, _)), super::TabBody::Template(t)) => &mut t.preview,
+            _ => &mut tab.view.editor,
+        }
+    }
+
+    /// [`Self::editor`], to look at.
+    pub(super) fn focused_editor(&self) -> &Editor {
+        use crate::template_tab::Part;
+        let tab = &self.tabs[self.active_tab];
+        match tab.template() {
+            Some(t) if t.raw && t.part == Part::Header => &t.header,
+            Some(t) if t.part == Part::Preview => &t.preview,
+            _ => &tab.view.editor,
+        }
     }
 
     /// Applies an editing action to the active tab's editor.

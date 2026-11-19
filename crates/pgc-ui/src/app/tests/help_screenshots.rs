@@ -930,6 +930,95 @@ fn set_text_field(a: &mut App, name: &str, text: &str) {
     };
 }
 
+/// The templates folder as the screenshots show it (the scene's own is a temporary
+/// folder with a new name in every run).
+fn shown_templates_dir() -> std::path::PathBuf {
+    std::path::PathBuf::from(if cfg!(windows) {
+        "C:\\Users\\dev\\AppData\\Roaming\\pgtc\\developer_templates"
+    } else {
+        "/home/dev/.local/share/pgtc/developer_templates"
+    })
+}
+
+/// The scene with pgtc's templates installed and the example template of the help
+/// page in the section *Our team*; returns the example's file.
+fn templates_scene() -> (App, tempfile::TempDir, Ids, std::path::PathBuf) {
+    let (mut a, d, ids) = scene();
+    short_tree(&mut a, ids);
+    a.run(Command::InstallTemplates);
+    a.dialogs.clear();
+    a.status.clear();
+    let own = a
+        .paths
+        .user_templates_dir()
+        .join("default")
+        .join("Our team");
+    std::fs::create_dir_all(&own).unwrap();
+    let file = own.join("lookup_table.pgtemplate");
+    std::fs::write(&file, OWN_TEMPLATE).unwrap();
+    (a, d, ids, file)
+}
+
+/// [`templates_scene`] with the example template open in a template tab (D-074), the
+/// cursor in its body.
+fn template_tab_scene() -> (App, tempfile::TempDir, Ids) {
+    let (mut a, d, ids, file) = templates_scene();
+    a.open_template_file(file, OWN_TEMPLATE);
+    show_template_path(&mut a, &["default", "Our team", "lookup_table.pgtemplate"]);
+    (a, d, ids)
+}
+
+/// The file bar of the active template tab shows a path in the user's folder.
+fn show_template_path(a: &mut App, parts: &[&str]) {
+    let mut path = shown_templates_dir();
+    path.extend(parts);
+    a.template_mut().unwrap().path = Some(path);
+    a.focus = Focus::Tabs;
+    a.status.clear();
+    a.sync_template_tab();
+    template_layout(a);
+}
+
+/// The active template tab learns where its parts are on the screenshot's screen (the
+/// sizes of its texts, the places of its menus), as it does from every frame.
+fn template_layout(a: &mut App) {
+    let mut terminal = ratatui::Terminal::new(ratatui::backend::TestBackend::new(W, H)).unwrap();
+    let mut hits = Hits::default();
+    terminal
+        .draw(|f| crate::view::render(f, a, &mut hits))
+        .unwrap();
+    a.set_template_views(&hits);
+}
+
+/// Moves the list `id` of the dialog on top to the row whose text (trimmed) is `label`.
+fn select_row(a: &mut App, id: &str, label: &str) {
+    let d = a.dialogs.last_mut().expect("a dialog");
+    let at = match d.widgets.iter().find(|w| w.id == id).map(|w| &w.kind) {
+        Some(crate::dialog::WidgetKind::List { items, .. }) => items
+            .iter()
+            .position(|i| i.trim() == label)
+            .unwrap_or_else(|| panic!("no row {label}")),
+        _ => panic!("no list {id}"),
+    };
+    d.list_select(id, at);
+    // what follows the selection (a description, a note)
+    a.sync_template_manager();
+    a.sync_insert_dialog();
+}
+
+/// Puts the cursor of the header list of the active template tab on parameter `name`.
+fn select_param(a: &mut App, name: &str) {
+    use crate::template_tab::{FIXED_ROWS, Part};
+    let t = a.template_mut().unwrap();
+    let at = t
+        .params
+        .iter()
+        .position(|p| p.name == name)
+        .unwrap_or_else(|| panic!("no parameter {name}"));
+    t.part = Part::Header;
+    t.cursor = FIXED_ROWS + at;
+}
+
 /// Opens the dashboard of the selected row with a detached connection.
 fn dashboard(a: &mut App) {
     a.settings.ui.tree_width = Some(26);
@@ -2481,6 +2570,303 @@ async fn help_screenshots() {
         );
     }
     out.shot("tpl-own", &a, Crop::Full);
+
+    // ---- developer template editor (D-074) ---------------------------------------
+    // the manager
+    {
+        let (mut a, _d, _, _) = templates_scene();
+        a.run(Command::TemplateManager);
+        select_row(&mut a, "items", "Create lookup table");
+        out.shot("tpe-manager", &a, Crop::Full);
+        // searching
+        key(&mut a, "Alt+S");
+        typing(&mut a, "trigger");
+        out.shot("tpe-manager-search", &a, Crop::Dialog);
+        // a new section
+        let (mut a, _d, _, _) = templates_scene();
+        a.run(Command::TemplateManager);
+        key(&mut a, "t");
+        typing(&mut a, "Reports");
+        out.shot("tpe-section", &a, Crop::Dialog);
+        // copy and delete
+        let (mut a, _d, _, _) = templates_scene();
+        a.run(Command::TemplateManager);
+        select_row(&mut a, "items", "Create table");
+        key(&mut a, "c");
+        out.shot("tpe-copy", &a, Crop::Dialog);
+        let (mut a, _d, _, _) = templates_scene();
+        a.run(Command::TemplateManager);
+        select_row(&mut a, "items", "Create lookup table");
+        key(&mut a, "d");
+        out.shot("tpe-delete", &a, Crop::Dialog);
+    }
+
+    // a new template: the empty tab, then its name
+    {
+        let (mut a, _d, _, _) = templates_scene();
+        a.new_template_tab("Our team".into());
+        a.sync_template_tab();
+        out.shot("tpe-new", &a, Crop::Full);
+        key(&mut a, "Enter");
+        typing(&mut a, "Create lookup table");
+        key(&mut a, "Tab");
+        typing(&mut a, "A code / name table with our standard columns");
+        out.shot("tpe-props", &a, Crop::Dialog);
+    }
+
+    // the template tab
+    let (a, _d, _) = template_tab_scene();
+    out.shot("tpe-tab", &a, Crop::Full);
+
+    // the header list and its menu
+    {
+        let (mut a, _d, _) = template_tab_scene();
+        select_param(&mut a, "name");
+        out.shot("tpe-list", &a, Crop::Area(32, 1, 88, 16));
+        template_layout(&mut a);
+        a.run(Command::ContextMenu);
+        out.shot("tpe-list-menu", &a, Crop::Area(32, 1, 88, 20));
+    }
+
+    // the parameter dialog: a name, a choice from the database, fixed options, a list
+    {
+        let (mut a, _d, _) = template_tab_scene();
+        select_param(&mut a, "name");
+        key(&mut a, "Enter");
+        out.shot("tpe-param", &a, Crop::Dialog);
+        let (mut a, _d, _) = template_tab_scene();
+        select_param(&mut a, "schema");
+        key(&mut a, "Enter");
+        out.shot("tpe-param-source", &a, Crop::Dialog);
+        // fixed options: a new parameter
+        let (mut a, _d, _) = template_tab_scene();
+        select_param(&mut a, "with_audit");
+        key(&mut a, "Insert");
+        typing(&mut a, "key_type");
+        key(&mut a, "Tab");
+        typing(&mut a, "Type of the code");
+        let choice = pgc_sql::devtemplate::ParamType::ALL
+            .iter()
+            .position(|t| *t == pgc_sql::devtemplate::ParamType::Choice)
+            .unwrap();
+        a.dialogs
+            .last_mut()
+            .unwrap()
+            .set_combo_selected("type", choice);
+        a.sync_param_dialog();
+        let d = a.dialogs.last_mut().unwrap();
+        d.set_text("default", "varchar");
+        d.set_memo_text("options", "varchar\nchar\ninteger");
+        d.focus_on("options");
+        out.shot("tpe-param-options", &a, Crop::Dialog);
+        // a query of its own
+        a.dialogs
+            .last_mut()
+            .unwrap()
+            .set_combo_selected("values", 2);
+        a.sync_param_dialog();
+        let d = a.dialogs.last_mut().unwrap();
+        d.set_text("name", "owner");
+        d.set_text("label", "Owner");
+        d.set_text("default", "");
+        d.set_memo_text(
+            "query",
+            "SELECT rolname FROM pg_roles\nWHERE rolcanlogin ORDER BY 1",
+        );
+        d.focus_on("query");
+        out.shot("tpe-param-query", &a, Crop::Dialog);
+    }
+    {
+        // the list parameter of Create table, and one of its fields
+        let (mut a, _d, _, file) = templates_scene();
+        let table = file
+            .parent()
+            .and_then(|p| p.parent())
+            .unwrap()
+            .join("Tables")
+            .join("table.pgtemplate");
+        let text = std::fs::read_to_string(&table).unwrap();
+        a.open_template_file(table, &text);
+        show_template_path(&mut a, &["default", "Tables", "table.pgtemplate"]);
+        select_param(&mut a, "columns");
+        key(&mut a, "Enter");
+        a.dialogs.last_mut().unwrap().focus_on("fields");
+        key(&mut a, "Down");
+        out.shot("tpe-param-list", &a, Crop::Dialog);
+        key(&mut a, "Alt+E");
+        out.shot("tpe-field", &a, Crop::Dialog);
+    }
+
+    // the helper menu and what it inserts
+    {
+        let (mut a, _d, _) = template_tab_scene();
+        template_layout(&mut a);
+        a.run(Command::TemplateHelpers);
+        out.shot("tpe-helpers", &a, Crop::Full);
+        esc(&mut a);
+        a.run(Command::TemplateInsertParam);
+        out.shot("tpe-insert-param", &a, Crop::Dialog);
+        esc(&mut a);
+        a.run(Command::TemplateInsertConstruct);
+        select_row(&mut a, "items", "for … endfor");
+        out.shot("tpe-insert-construct", &a, Crop::Dialog);
+        esc(&mut a);
+        a.run(Command::TemplateInsertFilter);
+        out.shot("tpe-insert-filter", &a, Crop::Dialog);
+        esc(&mut a);
+        // a construct around the selected line
+        let text = a.editor().text();
+        let from = text.find("    name text NOT NULL,").unwrap();
+        let from = text[..from].chars().count();
+        let to = from + "    name text NOT NULL,".chars().count();
+        a.editor().set_cursor(from, false);
+        a.editor().set_cursor(to, true);
+        a.run(Command::TemplateInsertConstruct);
+        select_row(&mut a, "items", "if … endif");
+        key(&mut a, "Enter");
+        typing(&mut a, "code_length > 0");
+        a.sync_template_tab();
+        out.shot("tpe-wrapped", &a, Crop::Area(32, 1, 88, 31));
+    }
+    {
+        // Make parameter from selection
+        let (mut a, _d, _) = template_tab_scene();
+        let text = a.editor().text();
+        let at = text.find("Lookup table").unwrap();
+        let from = text[..at].chars().count();
+        a.editor().set_cursor(from, false);
+        a.editor()
+            .set_cursor(from + "Lookup table".chars().count(), true);
+        a.editor().scroll_to_cursor();
+        out.shot("tpe-make-select", &a, Crop::Area(32, 1, 88, 22));
+        a.run(Command::TemplateMakeParam);
+        typing(&mut a, "comment");
+        key(&mut a, "Tab");
+        typing(&mut a, "Comment");
+        out.shot("tpe-make", &a, Crop::Dialog);
+        key(&mut a, "Ctrl+Enter");
+        a.sync_template_tab();
+        a.editor().scroll_to_cursor();
+        out.shot("tpe-made", &a, Crop::Full);
+    }
+
+    // autocomplete in the body: a parameter in the SQL, the fields of a list's
+    // rows, the filters
+    {
+        let (mut a, _d, _) = template_tab_scene();
+        a.editor().set_text("CREATE TABLE ");
+        key(&mut a, "Ctrl+End");
+        typing(&mut a, "sch");
+        out.shot("tpe-ac-sql", &a, Crop::Area(32, 1, 88, 14));
+        key(&mut a, "Enter");
+        typing(&mut a, ".{{ name|");
+        out.shot("tpe-ac-filter", &a, Crop::Area(32, 1, 88, 18));
+
+        let (mut a, _d, _, file) = templates_scene();
+        let table = file
+            .parent()
+            .and_then(|p| p.parent())
+            .unwrap()
+            .join("Tables")
+            .join("table.pgtemplate");
+        let text = std::fs::read_to_string(&table).unwrap();
+        a.open_template_file(table, &text);
+        show_template_path(&mut a, &["default", "Tables", "table.pgtemplate"]);
+        a.editor().set_text(
+            "CREATE TABLE {{ schema|ident }}.{{ name|ident }} (\n{% for c in columns %}\n    ",
+        );
+        key(&mut a, "Ctrl+End");
+        typing(&mut a, "{{ c.");
+        out.shot("tpe-ac-fields", &a, Crop::Area(32, 1, 88, 16));
+    }
+
+    // the raw header
+    {
+        let (mut a, _d, _) = template_tab_scene();
+        key(&mut a, "Ctrl+T");
+        out.shot("tpe-raw", &a, Crop::Full);
+    }
+
+    // the checks: a Jinja error, an unknown name
+    {
+        let (mut a, _d, _) = template_tab_scene();
+        let text = a.editor().text();
+        a.editor()
+            .set_text(&text.replace("{% endif %}", "{% endfi %}"));
+        a.sync_template_tab();
+        key(&mut a, "Ctrl+S");
+        out.shot("tpe-not-saved", &a, Crop::Dialog);
+        key(&mut a, "Enter");
+        out.shot("tpe-error", &a, Crop::Full);
+        let (mut a, _d, _) = template_tab_scene();
+        let text = a.editor().text();
+        a.editor()
+            .set_text(&text.replace("{{ code_length }}", "{{ length }}"));
+        a.sync_template_tab();
+        out.shot("tpe-checks", &a, Crop::Area(32, 1, 88, 32));
+    }
+
+    // saving: a new template, a template of pgtc, closing with changes
+    {
+        let (mut a, _d, _, _) = templates_scene();
+        a.new_template_tab("Our team".into());
+        let t = a.template_mut().unwrap();
+        t.name = "Create lookup table".into();
+        t.touch();
+        key(&mut a, "Ctrl+S");
+        out.shot("tpe-save", &a, Crop::Dialog);
+
+        let (mut a, _d, _, file) = templates_scene();
+        let table = file
+            .parent()
+            .and_then(|p| p.parent())
+            .unwrap()
+            .join("Tables")
+            .join("table.pgtemplate");
+        let text = std::fs::read_to_string(&table).unwrap();
+        a.open_template_file(table, &text);
+        typing(&mut a, "-- our rules\n");
+        key(&mut a, "Ctrl+S");
+        out.shot("tpe-builtin", &a, Crop::Dialog);
+
+        let (mut a, _d, _) = template_tab_scene();
+        typing(&mut a, "-- ");
+        key(&mut a, "Ctrl+W");
+        out.shot("tpe-close", &a, Crop::Dialog);
+    }
+
+    // a variant for a server version
+    {
+        let (mut a, _d, _) = template_tab_scene();
+        a.run(Command::TemplateAddVariant);
+        let d = a.dialogs.last_mut().unwrap();
+        d.set_text("version", "16");
+        out.shot("tpe-variant", &a, Crop::Dialog);
+    }
+
+    // Test: the template in its real form
+    {
+        use crate::template_dialog::{FieldValue, Stop};
+        let (mut a, _d, _) = template_tab_scene();
+        key(&mut a, "F5");
+        let (name, audit) = (field_index(&a, "name"), field_index(&a, "with_audit"));
+        set_text_field(&mut a, "name", "orderstatus");
+        let form = a.templates.form.as_mut().unwrap();
+        form.want("schema", "sales".into());
+        form.set_choices("schema", Ok(text_choices(SCHEMAS)));
+        form.fields[audit].value = FieldValue::Bool(true);
+        form.focus = Stop::Field(name);
+        form.refresh();
+        out.shot("tpe-test", &a, Crop::Full);
+    }
+
+    // the keys that work now
+    {
+        let (mut a, _d, _) = template_tab_scene();
+        select_param(&mut a, "name");
+        key(&mut a, "F1");
+        out.shot("tpe-f1", &a, Crop::Dialog);
+    }
 
     // ---- database definition ----------------------------------------------------
     let (mut a, _d, ids2) = scene();

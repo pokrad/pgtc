@@ -1,0 +1,252 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="792" height="608" viewBox="0 0 792 608" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15" shape-rendering="crispEdges" xml:space="preserve">
+<rect width="792" height="608" fill="#0037da"/>
+<text x="0 9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783" y="14.25" fill="#cccccc">╔══════════════════════════════════════════════════════════════════════════════════════╗</text>
+<rect x="99" y="19" width="297.5" height="19.5" fill="#3a96dd"/>
+<text x="0" y="33.25" fill="#cccccc">║</text>
+<text x="18 27 36 45 54 63 72" y="33.25" fill="#cccccc">Default</text>
+<text x="108 117 126 135 144 153 162 171 180" y="33.25" fill="#0c0c0c">Template:</text>
+<text x="198 207 216 225 234 243" y="33.25" fill="#0c0c0c">Create</text>
+<text x="261 270 279 288 297 306" y="33.25" fill="#0c0c0c">lookup</text>
+<text x="324 333 342 351 360" y="33.25" fill="#0c0c0c">table</text>
+<text x="378" y="33.25" fill="#0c0c0c">×</text>
+<text x="783" y="33.25" fill="#cccccc">║</text>
+<text x="0 9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783" y="52.25" fill="#cccccc">╟──────────────────────────────────────────────────────────────────────────────────────╢</text>
+<text x="0" y="71.25" fill="#cccccc">║</text>
+<text x="18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504" y="71.25" fill="#cccccc">…v\AppData\Roaming\pgtc\developer_templates\default\Our</text>
+<text x="522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765" y="71.25" fill="#cccccc">team\lookup_table.pgtemplate</text>
+<text x="783" y="71.25" fill="#cccccc">║</text>
+<rect x="9" y="76" width="324.5" height="19.5" fill="#cccccc"/>
+<rect x="378" y="76" width="9.5" height="19.5" fill="#f9f1a5"/>
+<text x="0" y="90.25" fill="#cccccc">║</text>
+<text x="18 27 36 45 54" y="90.25" fill="#0c0c0c">Name:</text>
+<text x="135 144 153 162 171 180" y="90.25" fill="#0c0c0c">Create</text>
+<text x="198 207 216 225 234 243" y="90.25" fill="#0c0c0c">lookup</text>
+<text x="261 270 279 288 297" y="90.25" fill="#0c0c0c">table</text>
+<text x="333" y="90.25" fill="#cccccc">│</text>
+<text x="360" y="90.25" fill="#3a96dd">1</text>
+<text x="378" y="90.25" fill="#0037da">C</text>
+<text x="387 396 405 414 423" y="90.25" fill="#f9f1a5">REATE</text>
+<text x="441 450 459 468 477" y="90.25" fill="#f9f1a5">TABLE</text>
+<text x="495 504" y="90.25" fill="#f2f2f2">{{</text>
+<text x="522 531 540 549 558 567" y="90.25" fill="#f9f1a5">schema</text>
+<text x="576" y="90.25" fill="#f2f2f2">|</text>
+<text x="585 594 603 612 621" y="90.25" fill="#cccccc">ident</text>
+<text x="639 648 657 666 675" y="90.25" fill="#f2f2f2">}}.{{</text>
+<text x="693 702 711 720" y="90.25" fill="#f9f1a5">name</text>
+<text x="729" y="90.25" fill="#f2f2f2">|</text>
+<text x="738 747 756 765 774 783" y="90.25" fill="#cccccc">ident║</text>
+<text x="0" y="109.25" fill="#cccccc">║</text>
+<text x="18 27 36 45 54 63 72 81 90 99 108 117" y="109.25" fill="#cccccc">Description:</text>
+<text x="135" y="109.25" fill="#cccccc">A</text>
+<text x="153 162 171 180" y="109.25" fill="#cccccc">code</text>
+<text x="198" y="109.25" fill="#cccccc">/</text>
+<text x="216 225 234 243" y="109.25" fill="#cccccc">name</text>
+<text x="261 270 279 288 297" y="109.25" fill="#cccccc">table</text>
+<text x="315 324 333" y="109.25" fill="#cccccc">wi│</text>
+<text x="360" y="109.25" fill="#3a96dd">2</text>
+<text x="414 423 432 441" y="109.25" fill="#cccccc">code</text>
+<text x="459 468 477 486 495 504 513" y="109.25" fill="#f9f1a5">varchar</text>
+<text x="522 531 540" y="109.25" fill="#f2f2f2">({{</text>
+<text x="558 567 576 585 594 603" y="109.25" fill="#cccccc">length</text>
+<text x="621 630 639" y="109.25" fill="#f2f2f2">}})</text>
+<text x="657 666 675" y="109.25" fill="#f9f1a5">NOT</text>
+<text x="693 702 711 720" y="109.25" fill="#f9f1a5">NULL</text>
+<text x="729" y="109.25" fill="#f2f2f2">,</text>
+<text x="783" y="109.25" fill="#cccccc">║</text>
+<text x="0" y="128.25" fill="#cccccc">║</text>
+<text x="18" y="128.25" fill="#cccccc">─</text>
+<text x="36 45 54 63 72 81 90 99 108 117" y="128.25" fill="#cccccc">Parameters</text>
+<text x="135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315" y="128.25" fill="#cccccc">─────────────────────</text>
+<text x="333" y="128.25" fill="#cccccc">│</text>
+<text x="360" y="128.25" fill="#3a96dd">3</text>
+<text x="414 423 432 441" y="128.25" fill="#f9f1a5">name</text>
+<text x="459 468 477 486" y="128.25" fill="#f9f1a5">text</text>
+<text x="504 513 522" y="128.25" fill="#f9f1a5">NOT</text>
+<text x="540 549 558 567" y="128.25" fill="#f9f1a5">NULL</text>
+<text x="576" y="128.25" fill="#f2f2f2">,</text>
+<text x="783" y="128.25" fill="#cccccc">║</text>
+<text x="0" y="147.25" fill="#cccccc">║</text>
+<text x="18 27 36 45 54 63" y="147.25" fill="#cccccc">schema</text>
+<text x="135 144 153 162 171 180 189" y="147.25" fill="#cccccc">schemas</text>
+<text x="207" y="147.25" fill="#cccccc">*</text>
+<text x="333" y="147.25" fill="#cccccc">│</text>
+<text x="360" y="147.25" fill="#3a96dd">4</text>
+<text x="378 387" y="147.25" fill="#f2f2f2">{%</text>
+<text x="405 414" y="147.25" fill="#f9f1a5">if</text>
+<text x="432 441 450 459 468 477 486 495 504 513" y="147.25" fill="#cccccc">with_audit</text>
+<text x="531 540" y="147.25" fill="#f2f2f2">%}</text>
+<text x="783" y="147.25" fill="#cccccc">║</text>
+<text x="0" y="166.25" fill="#cccccc">║</text>
+<text x="18 27 36 45" y="166.25" fill="#cccccc">name</text>
+<text x="135 144 153 162 171 180 189 198 207 216" y="166.25" fill="#cccccc">identifier</text>
+<text x="234" y="166.25" fill="#cccccc">*</text>
+<text x="333" y="166.25" fill="#cccccc">│</text>
+<text x="360" y="166.25" fill="#3a96dd">5</text>
+<text x="414 423 432 441 450 459 468 477 486 495" y="166.25" fill="#cccccc">modifiedby</text>
+<text x="513 522 531 540" y="166.25" fill="#f9f1a5">text</text>
+<text x="558 567 576" y="166.25" fill="#f9f1a5">NOT</text>
+<text x="594 603 612 621" y="166.25" fill="#f9f1a5">NULL</text>
+<text x="639 648 657 666 675 684 693" y="166.25" fill="#f9f1a5">DEFAULT</text>
+<text x="711 720 729 738 747 756 765 774" y="166.25" fill="#f9f1a5">CURRENT_</text>
+<text x="783" y="166.25" fill="#cccccc">║</text>
+<text x="0" y="185.25" fill="#cccccc">║</text>
+<text x="18 27 36 45 54 63 72 81 90 99 108" y="185.25" fill="#cccccc">code_length</text>
+<text x="135 144 153 162 171 180" y="185.25" fill="#cccccc">number</text>
+<text x="333" y="185.25" fill="#cccccc">│</text>
+<text x="360" y="185.25" fill="#3a96dd">6</text>
+<text x="414 423 432 441 450 459 468 477 486 495 504 513" y="185.25" fill="#cccccc">modifieddate</text>
+<text x="531 540 549 558 567 576 585 594 603" y="185.25" fill="#f9f1a5">timestamp</text>
+<text x="621 630 639" y="185.25" fill="#f9f1a5">NOT</text>
+<text x="657 666 675 684" y="185.25" fill="#f9f1a5">NULL</text>
+<text x="702 711 720 729 738 747 756" y="185.25" fill="#f9f1a5">DEFAULT</text>
+<text x="774 783" y="185.25" fill="#cccccc">n║</text>
+<text x="0" y="204.25" fill="#cccccc">║</text>
+<text x="18 27 36 45 54 63 72 81 90 99" y="204.25" fill="#cccccc">with_audit</text>
+<text x="135 144 153 162" y="204.25" fill="#cccccc">bool</text>
+<text x="333" y="204.25" fill="#cccccc">│</text>
+<text x="360" y="204.25" fill="#3a96dd">7</text>
+<text x="378 387" y="204.25" fill="#f2f2f2">{%</text>
+<text x="405 414 423 432 441" y="204.25" fill="#cccccc">endif</text>
+<text x="459 468" y="204.25" fill="#f2f2f2">%}</text>
+<text x="783" y="204.25" fill="#cccccc">║</text>
+<text x="0" y="223.25" fill="#cccccc">║</text>
+<text x="333" y="223.25" fill="#cccccc">│</text>
+<text x="360" y="223.25" fill="#3a96dd">8</text>
+<text x="414 423 432 441 450 459 468 477 486 495" y="223.25" fill="#f9f1a5">CONSTRAINT</text>
+<text x="513 522" y="223.25" fill="#f2f2f2">{{</text>
+<text x="540" y="223.25" fill="#f2f2f2">(</text>
+<text x="549 558 567 576" y="223.25" fill="#f9f1a5">name</text>
+<text x="594" y="223.25" fill="#f2f2f2">~</text>
+<text x="612 621 630 639 648 657 666 675 684" y="223.25" fill="#f2f2f2">"_pkey")|</text>
+<text x="693 702 711 720 729" y="223.25" fill="#cccccc">ident</text>
+<text x="747 756" y="223.25" fill="#f2f2f2">}}</text>
+<text x="774" y="223.25" fill="#f9f1a5">P</text>
+<text x="783" y="223.25" fill="#cccccc">║</text>
+<text x="0" y="242.25" fill="#cccccc">║</text>
+<text x="333" y="242.25" fill="#cccccc">│</text>
+<text x="360" y="242.25" fill="#3a96dd">9</text>
+<text x="378 387" y="242.25" fill="#f2f2f2">);</text>
+<text x="783" y="242.25" fill="#cccccc">║</text>
+<text x="0" y="261.25" fill="#cccccc">║</text>
+<text x="333" y="261.25" fill="#cccccc">│</text>
+<text x="351 360" y="261.25" fill="#3a96dd">10</text>
+<text x="783" y="261.25" fill="#cccccc">║</text>
+<text x="0" y="280.25" fill="#cccccc">║</text>
+<text x="333" y="280.25" fill="#cccccc">│</text>
+<text x="351 360" y="280.25" fill="#3a96dd">11</text>
+<text x="378 387 396 405 414 423 432" y="280.25" fill="#f9f1a5">COMMENT</text>
+<text x="450 459" y="280.25" fill="#f9f1a5">ON</text>
+<text x="477 486 495 504 513" y="280.25" fill="#f9f1a5">TABLE</text>
+<text x="531 540" y="280.25" fill="#f2f2f2">{{</text>
+<text x="558 567 576 585 594 603" y="280.25" fill="#f9f1a5">schema</text>
+<text x="612" y="280.25" fill="#f2f2f2">|</text>
+<text x="621 630 639 648 657" y="280.25" fill="#cccccc">ident</text>
+<text x="675 684 693 702 711" y="280.25" fill="#f2f2f2">}}.{{</text>
+<text x="729 738 747 756" y="280.25" fill="#f9f1a5">name</text>
+<text x="765" y="280.25" fill="#f2f2f2">|</text>
+<text x="774 783" y="280.25" fill="#cccccc">i║</text>
+<text x="0" y="299.25" fill="#cccccc">║</text>
+<text x="333" y="299.25" fill="#cccccc">│</text>
+<text x="351 360" y="299.25" fill="#3a96dd">12</text>
+<text x="783" y="299.25" fill="#cccccc">║</text>
+<text x="0" y="318.25" fill="#cccccc">║</text>
+<text x="333" y="318.25" fill="#cccccc">│</text>
+<text x="783" y="318.25" fill="#cccccc">║</text>
+<text x="0" y="337.25" fill="#cccccc">║</text>
+<text x="333" y="337.25" fill="#cccccc">│</text>
+<text x="783" y="337.25" fill="#cccccc">║</text>
+<text x="0" y="356.25" fill="#cccccc">║</text>
+<text x="333" y="356.25" fill="#cccccc">│</text>
+<text x="783" y="356.25" fill="#cccccc">║</text>
+<text x="0" y="375.25" fill="#cccccc">║</text>
+<text x="333 342 351" y="375.25" fill="#cccccc">├──</text>
+<text x="369 378 387 396 405 414 423" y="375.25" fill="#cccccc">Preview</text>
+<text x="441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783" y="375.25" fill="#cccccc">──────────────────────────────────────╢</text>
+<text x="0" y="394.25" fill="#cccccc">║</text>
+<text x="333" y="394.25" fill="#cccccc">│</text>
+<text x="342 351 360 369 378 387" y="394.25" fill="#f9f1a5">CREATE</text>
+<text x="405 414 423 432 441" y="394.25" fill="#f9f1a5">TABLE</text>
+<text x="459 468 477 486 495 504" y="394.25" fill="#cccccc">public</text>
+<text x="513" y="394.25" fill="#f2f2f2">.</text>
+<text x="522 531 540 549" y="394.25" fill="#f9f1a5">name</text>
+<text x="567" y="394.25" fill="#f2f2f2">(</text>
+<text x="783" y="394.25" fill="#cccccc">║</text>
+<text x="0" y="413.25" fill="#cccccc">║</text>
+<text x="333" y="413.25" fill="#cccccc">│</text>
+<text x="378 387 396 405" y="413.25" fill="#cccccc">code</text>
+<text x="423 432 441 450 459 468 477" y="413.25" fill="#f9f1a5">varchar</text>
+<text x="486 495" y="413.25" fill="#f2f2f2">()</text>
+<text x="513 522 531" y="413.25" fill="#f9f1a5">NOT</text>
+<text x="549 558 567 576" y="413.25" fill="#f9f1a5">NULL</text>
+<text x="585" y="413.25" fill="#f2f2f2">,</text>
+<text x="783" y="413.25" fill="#cccccc">║</text>
+<text x="0" y="432.25" fill="#cccccc">║</text>
+<text x="333" y="432.25" fill="#cccccc">│</text>
+<text x="378 387 396 405" y="432.25" fill="#f9f1a5">name</text>
+<text x="423 432 441 450" y="432.25" fill="#f9f1a5">text</text>
+<text x="468 477 486" y="432.25" fill="#f9f1a5">NOT</text>
+<text x="504 513 522 531" y="432.25" fill="#f9f1a5">NULL</text>
+<text x="540" y="432.25" fill="#f2f2f2">,</text>
+<text x="783" y="432.25" fill="#cccccc">║</text>
+<text x="0" y="451.25" fill="#cccccc">║</text>
+<text x="333" y="451.25" fill="#cccccc">│</text>
+<text x="378 387 396 405 414 423 432 441 450 459" y="451.25" fill="#f9f1a5">CONSTRAINT</text>
+<text x="477 486 495 504 513 522 531 540 549" y="451.25" fill="#cccccc">name_pkey</text>
+<text x="567 576 585 594 603 612 621" y="451.25" fill="#f9f1a5">PRIMARY</text>
+<text x="639 648 657" y="451.25" fill="#f9f1a5">KEY</text>
+<text x="675" y="451.25" fill="#f2f2f2">(</text>
+<text x="684 693 702 711" y="451.25" fill="#cccccc">code</text>
+<text x="720" y="451.25" fill="#f2f2f2">)</text>
+<text x="783" y="451.25" fill="#cccccc">║</text>
+<text x="0" y="470.25" fill="#cccccc">║</text>
+<text x="333" y="470.25" fill="#cccccc">│</text>
+<text x="342 351" y="470.25" fill="#f2f2f2">);</text>
+<text x="783" y="470.25" fill="#cccccc">║</text>
+<text x="0" y="489.25" fill="#cccccc">║</text>
+<text x="333" y="489.25" fill="#cccccc">│</text>
+<text x="783" y="489.25" fill="#cccccc">║</text>
+<text x="0" y="508.25" fill="#cccccc">║</text>
+<text x="333" y="508.25" fill="#cccccc">│</text>
+<text x="342 351 360 369 378 387 396" y="508.25" fill="#f9f1a5">COMMENT</text>
+<text x="414 423" y="508.25" fill="#f9f1a5">ON</text>
+<text x="441 450 459 468 477" y="508.25" fill="#f9f1a5">TABLE</text>
+<text x="495 504 513 522 531 540" y="508.25" fill="#cccccc">public</text>
+<text x="549" y="508.25" fill="#f2f2f2">.</text>
+<text x="558 567 576 585" y="508.25" fill="#f9f1a5">name</text>
+<text x="603 612" y="508.25" fill="#f9f1a5">IS</text>
+<text x="630 639 648 657 666 675 684" y="508.25" fill="#16c60c">'Lookup</text>
+<text x="702 711 720 729 738 747" y="508.25" fill="#16c60c">table'</text>
+<text x="756" y="508.25" fill="#f2f2f2">;</text>
+<text x="783" y="508.25" fill="#cccccc">║</text>
+<text x="0" y="527.25" fill="#cccccc">║</text>
+<text x="333" y="527.25" fill="#cccccc">│</text>
+<text x="783" y="527.25" fill="#cccccc">║</text>
+<text x="0" y="546.25" fill="#cccccc">║</text>
+<text x="27 36 45" y="546.25" fill="#cccccc">Add</text>
+<text x="81 90 99 108" y="546.25" fill="#cccccc">Edit</text>
+<text x="144 153 162 171 180 189" y="546.25" fill="#cccccc">Delete</text>
+<text x="225 234" y="546.25" fill="#cccccc">Up</text>
+<text x="270 279 288 297" y="546.25" fill="#cccccc">Down</text>
+<text x="333" y="546.25" fill="#cccccc">│</text>
+<text x="783" y="546.25" fill="#cccccc">║</text>
+<text x="0 9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783" y="565.25" fill="#cccccc">╟────────────────────────────────────┴─────────────────────────────────────────────────╢</text>
+<rect x="9" y="570" width="774.5" height="19.5" fill="#3a96dd"/>
+<text x="0" y="584.25" fill="#cccccc">║</text>
+<text x="18 27 36" y="584.25" fill="#0c0c0c">Not</text>
+<text x="54 63 72 81 90 99 108 117 126" y="584.25" fill="#0c0c0c">declared:</text>
+<text x="144 153 162 171 180 189" y="584.25" fill="#0c0c0c">length</text>
+<text x="207" y="584.25" fill="#0c0c0c">·</text>
+<text x="225 234 243" y="584.25" fill="#0c0c0c">Not</text>
+<text x="261 270 279 288 297" y="584.25" fill="#0c0c0c">used:</text>
+<text x="315 324 333 342 351 360 369 378 387 396 405" y="584.25" fill="#0c0c0c">code_length</text>
+<text x="423" y="584.25" fill="#0c0c0c">·</text>
+<text x="441 450 459 468 477 486 495 504" y="584.25" fill="#0c0c0c">Preview:</text>
+<text x="522 531 540 549 558 567 576 585 594 603" y="584.25" fill="#0c0c0c">PostgreSQL</text>
+<text x="621 630" y="584.25" fill="#0c0c0c">17</text>
+<text x="675 684" y="584.25" fill="#0c0c0c">Ln</text>
+<text x="702 711" y="584.25" fill="#0c0c0c">1,</text>
+<text x="729 738 747" y="584.25" fill="#0c0c0c">Col</text>
+<text x="765" y="584.25" fill="#0c0c0c">1</text>
+<text x="783" y="584.25" fill="#cccccc">║</text>
+<text x="0 9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783" y="603.25" fill="#cccccc">╚══════════════════════════════════════════════════════════════════════════════════════╝</text>
+</svg>

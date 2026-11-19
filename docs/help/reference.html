@@ -230,6 +230,28 @@ one with the same host, port, database, user and SSL mode is already saved) and 
 <tr><td class="k">Arrows, <kbd>PgUp</kbd>, <kbd>PgDn</kbd>, <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>Ctrl+Home</kbd>, <kbd>Ctrl+End</kbd></td><td>Move in the list</td><td><code>up</code> … <code>doc_end</code></td></tr>
 </table></div>
 
+<h3>Template tab <code>[template]</code></h3>
+<p>The tab of the <a href="template-editor.html">developer template editor</a>. <kbd>F5</kbd>, <kbd>F7</kbd> and
+<kbd>Ctrl+T</kbd> work in every part of the tab; the other keys in its header list (in the body, the raw header and
+the preview the <code>[editor]</code> keys apply).</p>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>What it does</th><th>Command</th></tr>
+<tr><td class="k"><kbd>F5</kbd></td><td>Test the template in its form (nothing is inserted)</td><td><code>template_test</code></td></tr>
+<tr><td class="k"><kbd>F7</kbd></td><td>Helper menu of the template body</td><td><code>template_helpers</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+T</kbd></td><td>Parameter list / raw header (TOML)</td><td><code>template_raw_header</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+S</kbd></td><td>Save the template</td><td><code>save_file</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Show / hide the preview</td><td><code>toggle_results</code></td></tr>
+<tr><td class="k"><kbd>Alt+Shift+Up</kbd> / <kbd>Alt+Shift+Down</kbd></td><td>Preview smaller / larger</td><td><code>results_smaller</code>, <code>results_larger</code></td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>Edit the name, the description or the parameter</td><td><code>template_edit_param</code></td></tr>
+<tr><td class="k"><kbd>Insert</kbd></td><td>Add a parameter</td><td><code>template_add_param</code></td></tr>
+<tr><td class="k"><kbd>Delete</kbd></td><td>Delete the parameter</td><td><code>template_delete_param</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+Up</kbd>, <kbd>Shift+Up</kbd></td><td>Move the parameter up</td><td><code>template_param_up</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+Down</kbd>, <kbd>Shift+Down</kbd></td><td>Move the parameter down</td><td><code>template_param_down</code></td></tr>
+<tr><td class="k"><kbd>F2</kbd></td><td>Context menu</td><td><code>context_menu</code></td></tr>
+<tr><td class="k"><kbd>Tab</kbd>, <kbd>Shift+Tab</kbd></td><td>Next / previous part of the tab (header list and preview; <kbd>Alt+Down</kbd> / <kbd>Alt+Up</kbd> everywhere)</td><td><code>next_field</code>, <code>prev_field</code></td></tr>
+<tr><td class="k"><kbd>Up</kbd>, <kbd>Down</kbd>, <kbd>PgUp</kbd>, <kbd>PgDn</kbd>, <kbd>Home</kbd>, <kbd>End</kbd></td><td>Move in the list</td><td><code>up</code> … <code>end</code></td></tr>
+</table></div>
+
 <h3>Dialogs, menus and lists <code>[dialog]</code></h3>
 <div class="tablewrap"><table>
 <tr><th>Key</th><th>What it does</th><th>Command</th></tr>
@@ -257,7 +279,9 @@ one with the same host, port, database, user and SSL mode is already saved) and 
 <code>toggle_system_objects</code>, <code>new_connection</code>, <code>edit_connection</code>, <code>delete_connection</code>,
 <code>connect</code>, <code>disconnect</code>, <code>export_definition</code>, <code>load_definition</code>, <code>settings</code>,
 <code>run_setup</code>, <code>install_templates</code>, <code>show_templates_folder</code>, <code>keyboard_shortcuts</code>,
-<code>third_party_licences</code>, <code>about</code>.</p>
+<code>third_party_licences</code>, <code>about</code>, <code>template_manager</code>, <code>template_insert_param</code>,
+<code>template_insert_construct</code>, <code>template_insert_filter</code>, <code>template_make_param</code>,
+<code>template_add_variant</code>.</p>
 
 <h2 id="menus">Menu reference</h2>
 <p>Open the menu bar with <kbd>F9</kbd>. The key column shows the built-in key of the command, and in brackets the part
@@ -296,8 +320,9 @@ of the window where that key works.</p>
 <tr><td>Results / Messages</td><td class="k"><kbd>Alt+M</kbd></td></tr>
 <tr><td>Next result set</td><td class="k"><kbd>Ctrl+PgDn</kbd></td></tr>
 <tr><td>Previous result set</td><td class="k"><kbd>Ctrl+PgUp</kbd></td></tr>
-<tr><td rowspan="5">Tools</td><td>Generate SQL from developer template…</td><td class="k"><kbd>F7</kbd></td><td rowspan="2">In a connected query tab</td></tr>
-<tr><td>psql command…</td><td class="k"><kbd>F4</kbd></td></tr>
+<tr><td rowspan="6">Tools</td><td>Generate SQL from developer template…</td><td class="k"><kbd>F7</kbd></td><td>In a connected query tab</td></tr>
+<tr><td>Developer templates…</td><td class="k"></td><td>Always: the <a href="template-editor.html">template editor</a></td></tr>
+<tr><td>psql command…</td><td class="k"><kbd>F4</kbd></td><td>In a connected query tab</td></tr>
 <tr><td>Ask AI…</td><td class="k"><kbd>F8</kbd> (query tab)</td><td>A connected query tab, AI set up (<a href="ai.html">AI assistant</a>)</td></tr>
 <tr><td>Server dashboard</td><td class="k"><kbd>Alt+D</kbd> (tree)</td><td rowspan="2">Needs a connected server</td></tr>
 <tr><td>SQL profiler</td><td class="k"><kbd>Alt+P</kbd> (tree)</td></tr>

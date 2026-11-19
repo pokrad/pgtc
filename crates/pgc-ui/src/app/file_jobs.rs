@@ -51,6 +51,20 @@ pub(super) enum FileJob {
     Places { seq: u64, current: Option<PathBuf> },
     /// File dialogs: what the chosen `path` is.
     Probe { seq: u64, path: PathBuf },
+    /// Write the template of tab `tab` (D-074); `marks`: the state of the tab that
+    /// `text` was made from. Without `overwrite` an existing file is left alone.
+    SaveTemplate {
+        tab: u64,
+        path: PathBuf,
+        text: String,
+        marks: crate::template_tab::SaveMarks,
+        overwrite: bool,
+    },
+    /// A change of the template manager in the templates folder `dir` (D-074).
+    TemplateOp {
+        dir: PathBuf,
+        op: pgc_sql::devtemplate::LibraryOp,
+    },
 }
 
 /// A listing for a file dialog.
@@ -108,6 +122,20 @@ pub enum FileEvent {
         path: PathBuf,
         state: PathState,
     },
+    /// The template of tab `tab` was written to `path`, or could not be; `exists`:
+    /// nothing was written because the file is there already.
+    TemplateSaved {
+        tab: u64,
+        path: PathBuf,
+        marks: crate::template_tab::SaveMarks,
+        exists: bool,
+        result: Result<(), String>,
+    },
+    /// A change of the template manager was made, or could not be.
+    TemplateOp {
+        op: pgc_sql::devtemplate::LibraryOp,
+        result: Result<(), String>,
+    },
 }
 
 impl std::fmt::Debug for FileEvent {
@@ -121,6 +149,8 @@ impl std::fmt::Debug for FileEvent {
             FileEvent::SyncScript { .. } => "SyncScript",
             FileEvent::Listed { .. } => "Listed",
             FileEvent::Probed { .. } => "Probed",
+            FileEvent::TemplateSaved { .. } => "TemplateSaved",
+            FileEvent::TemplateOp { .. } => "TemplateOp",
         })
     }
 }
@@ -242,6 +272,46 @@ impl FileJob {
                 };
                 FileEvent::Probed { seq, path, state }
             }
+            FileJob::SaveTemplate {
+                tab,
+                path,
+                text,
+                marks,
+                overwrite,
+            } => {
+                let exists = !overwrite && path.exists();
+                let result = if exists {
+                    Ok(())
+                } else {
+                    path.parent()
+                        .map_or(Ok(()), std::fs::create_dir_all)
+                        .and_then(|()| {
+                            pgc_core::fsutil::atomic_write(
+                                &path,
+                                text.as_bytes(),
+                                pgc_core::fsutil::Access::Default,
+                            )
+                        })
+                        .map_err(|e| {
+                            format!(
+                                "Cannot save {}:
+{e}",
+                                path.display()
+                            )
+                        })
+                };
+                FileEvent::TemplateSaved {
+                    tab,
+                    path,
+                    marks,
+                    exists,
+                    result,
+                }
+            }
+            FileJob::TemplateOp { dir, op } => {
+                let result = op.run(&dir);
+                FileEvent::TemplateOp { op, result }
+            }
         }
     }
 }
@@ -308,7 +378,7 @@ impl App {
     pub(super) fn saving(&self) -> bool {
         self.tabs
             .iter()
-            .any(|t| t.query().is_some_and(|q| q.saving))
+            .any(|t| t.query().is_some_and(|q| q.saving) || t.template().is_some_and(|t| t.saving))
     }
 
     pub(super) fn on_file_event(&mut self, event: FileEvent) {
@@ -362,6 +432,14 @@ impl App {
             },
             FileEvent::Listed { seq, listing } => self.file_listing_loaded(seq, listing),
             FileEvent::Probed { seq, path, state } => self.path_probed(seq, path, state),
+            FileEvent::TemplateSaved {
+                tab,
+                path,
+                marks,
+                exists,
+                result,
+            } => self.template_saved(tab, path, marks, exists, result),
+            FileEvent::TemplateOp { op, result } => self.library_op_done(&op, result),
             FileEvent::SyncScript {
                 uid,
                 database,
@@ -433,6 +511,11 @@ impl App {
             self.save_tab(tab, path);
             return;
         }
+        self.after_save(tab);
+    }
+
+    /// Tab `tab` was saved: closing it, or quitting, that waited for the save goes on.
+    pub(super) fn after_save(&mut self, tab: u64) {
         match self.closing.after_save.take() {
             Some(AfterSave::Close(closing)) if closing == tab => {
                 self.request_close_tab(tab, false);

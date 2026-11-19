@@ -152,10 +152,10 @@ impl App {
 
     /// Choice defaults from the tree selection when it is in the tab's server and
     /// database (D-046).
-    fn template_defaults(&self, form: &mut TemplateForm) {
+    pub(super) fn template_defaults(&self, form: &mut TemplateForm) {
         use crate::objects::ObjType as T;
         use devtemplate::Source as S;
-        let Some((uid, db)) = self.query().and_then(|q| q.binding.clone()) else {
+        let Some((uid, db)) = self.form_binding() else {
             return;
         };
         let Some(RowKind::Node(nid)) = self.tree.selected().map(|r| r.kind) else {
@@ -231,8 +231,19 @@ impl App {
         }
     }
 
+    /// Server and database the form's choices come from: those of the query tab; for
+    /// a template being tested (D-074) the database selected in the tree.
+    fn form_binding(&self) -> Option<(u64, String)> {
+        if let Some(q) = self.query() {
+            return q.binding.clone();
+        }
+        self.template()?;
+        let (si, db) = self.query_target()?;
+        Some((self.tree.servers[si].uid, db))
+    }
+
     /// Asks the tab's connection for every live choice list of the form.
-    fn start_lookups(&mut self) {
+    pub(super) fn start_lookups(&mut self) {
         let Some(form) = &self.templates.form else {
             return;
         };
@@ -264,12 +275,32 @@ impl App {
                 _ => {}
             }
         }
-        let Some(handle) = self
-            .query()
-            .and_then(|q| q.conn.as_ref())
-            .map(|c| c.handle.clone())
-        else {
-            return;
+        let handle = if self.template().is_some() {
+            // a template being tested: the tree's connection to the selected database
+            let Some(handle) = self.tree_database_handle() else {
+                for (target, _, _) in wanted {
+                    self.next_key += 1;
+                    let key = self.next_key;
+                    self.template_lookups.insert(key, target);
+                    self.lookup_loaded(
+                        key,
+                        Err(pgc_db::DbError::Other(
+                            "select a connected database in the object tree".to_owned(),
+                        )),
+                    );
+                }
+                return;
+            };
+            handle
+        } else {
+            let Some(handle) = self
+                .query()
+                .and_then(|q| q.conn.as_ref())
+                .map(|c| c.handle.clone())
+            else {
+                return;
+            };
+            handle
         };
         let mut refused = Vec::new();
         for (target, sql, custom) in wanted {
@@ -307,6 +338,14 @@ impl App {
                         let tab = form.tab;
                         self.templates.form = None;
                         self.drop_form_lookups();
+                        // a test of a template tab (D-074): nothing is inserted
+                        if self
+                            .tab_index(tab)
+                            .is_some_and(|i| self.tabs[i].template().is_some())
+                        {
+                            self.status = "Test closed — nothing was inserted".to_owned();
+                            return;
+                        }
                         if let Some(i) = self.tab_index(tab) {
                             self.active_tab = i;
                             self.focus = Focus::Tabs;

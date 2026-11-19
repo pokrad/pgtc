@@ -11,7 +11,7 @@
 <h1>Developer templates (F7)</h1>
 <p class="lead">Pick a template, fill in a short form, and get complete, ready-to-run SQL in your editor:
 <code>CREATE TABLE</code>, <code>CREATE FUNCTION</code>, <code>DROP INDEX</code> and more. The templates are plain text
-files — you can add your own.</p>
+files — you can add your own, with the <a href="template-editor.html">template editor</a> or by hand.</p>
 
 <h2 id="install">Installing the templates</h2>
 <p>pgtc reads templates from <b>one folder in your user directory</b>. The templates that come with pgtc are built
@@ -206,9 +206,13 @@ DROP ROLE old_role;</code></pre>
 owns objects in several databases needs them run in each.</p>
 
 <h2 id="own">Writing your own templates</h2>
-<p>A template is a text file with the extension <code>.pgtemplate</code>. There is no template editor in pgtc: write
-the file with any text editor and put it into the templates folder. pgtc looks into the folder while it runs and
-offers every template it finds.</p>
+<p>A template is a text file with the extension <code>.pgtemplate</code>. The comfortable way to make one is the
+<a href="template-editor.html"><b>developer template editor</b></a>
+(<span class="menu">Tools → Developer templates…</span>): it writes the file for you, checks it and shows its result
+while you type.</p>
+<p>The rest of this page describes the file itself — what the editor writes, and what you can also write with any
+text editor and put into the templates folder. pgtc looks into the folder while it runs and offers every template it
+finds.</p>
 
 <h3 id="where">Where the files go</h3>
 <div class="tablewrap"><table>
@@ -242,7 +246,8 @@ folder has the file, the one in <code>default</code>. (For small differences you
 <a href="#body">server checks</a> in the body.)</p>
 <div class="warn"><p>If you change a template that comes with pgtc, <b>save it under another file name</b> (and give it
 another <code>name</code>). Installing the templates again overwrites the files that come with pgtc, but never
-touches files with other names.</p></div>
+touches files with other names. (The template editor <a href="template-editor.html#builtin">reminds you</a> when you
+save such a file.)</p></div>
 
 <h3 id="format">The file</h3>
 <p>A template has two parts, each started by a line <code>+++</code>:</p>
@@ -407,8 +412,10 @@ CREATE TABLE {% if if_not_exists %}IF NOT EXISTS {% endif %}{{ schema|ident }}.{
 <h3>Tips</h3>
 <ul>
   <li><b>Start from a copy.</b> The installed files in <code>default/</code> show every field type in use. Copy one
-      to a new name and change it.</li>
-  <li><b>Test in the form.</b> Save the file, press <kbd>F7</kbd>, open the template: the preview shows the result at
+      to a new name and change it — <span class="ui">Copy</span> in the
+      <a href="template-editor.html#manager">template manager</a> does it.</li>
+  <li><b>Test in the form.</b> In the template editor press <kbd>F5</kbd>. For a file written by hand: save it, press
+      <kbd>F7</kbd> in a query tab, open the template — the preview shows the result at
       once. A mistake in the file — a missing quote in the header, an unknown field in the body — is reported
       instead of the SQL.</li>
   <li><b>Keep the form short.</b> Ask for what differs each time; write the rest into the body.</li>

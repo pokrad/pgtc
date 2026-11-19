@@ -26,6 +26,8 @@ pub(crate) struct LastFrame {
     /// (rows incl. header, columns).
     pub(super) grid_area: Rect,
     pub(super) grid_size: (usize, usize),
+    /// The parts of the active template tab (D-074).
+    pub(super) template: crate::template_tab::TplHits,
 }
 
 /// Mouse actions that span several events.
@@ -97,6 +99,12 @@ pub struct TemplateState {
     pub(super) row_choices: HashMap<(String, String), Vec<Choice>>,
     /// The row being edited: (list field, row; `None` = a new row).
     pub(super) row_edit: Option<(usize, Option<usize>)>,
+    /// The template manager's state while its dialog is open (D-074).
+    pub(super) manager: Option<super::template_editor::Manager>,
+    /// The parameter being edited in a template tab's parameter dialog.
+    pub(super) param_edit: Option<super::template_editor::ParamEdit>,
+    /// What the rows of the open insert dialog put into the body: (text, note).
+    pub(super) insert: Vec<(String, String)>,
 }
 
 /// A request on its way.

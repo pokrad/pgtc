@@ -90,6 +90,7 @@ pub fn menu_bar() -> Vec<MenuDef> {
             title: HotText::new("&Tools"),
             entries: vec![
                 item("&Generate SQL from developer template…", C::NewFromTemplate),
+                item("Developer &templates…", C::TemplateManager),
                 item("ps&ql command…", C::Psql),
                 item("Ask &AI…", C::AskAi),
                 Separator,

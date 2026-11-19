@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="666" height="152" viewBox="0 0 666 152" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15" shape-rendering="crispEdges" xml:space="preserve">
+<rect width="666" height="152" fill="#0037da"/>
+<rect x="0" y="0" width="648.5" height="19.5" fill="#c50f1f"/>
+<rect x="648" y="0" width="18.5" height="19.5" fill="#cccccc"/>
+<text x="657" y="14.25" fill="#0c0c0c">│</text>
+<rect x="0" y="19" width="648.5" height="19.5" fill="#c50f1f"/>
+<rect x="648" y="19" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234" y="33.25" fill="#f2f2f2">┌─────────────────────────</text>
+<text x="252 261 270 279 288 297" y="33.25" fill="#f2f2f2" font-weight="700">Delete</text>
+<text x="315 324 333 342 351 360 369 378" y="33.25" fill="#f2f2f2" font-weight="700">template</text>
+<text x="396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630" y="33.25" fill="#f2f2f2">──────────────────────────┐</text>
+<text x="657" y="33.25" fill="#767676">│</text>
+<rect x="0" y="38" width="648.5" height="19.5" fill="#c50f1f"/>
+<rect x="648" y="38" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="52.25" fill="#f2f2f2">│</text>
+<text x="27 36 45 54 63 72" y="52.25" fill="#f2f2f2">Delete</text>
+<text x="90 99 108" y="52.25" fill="#f2f2f2">the</text>
+<text x="126 135 144 153 162 171 180 189" y="52.25" fill="#f2f2f2">template</text>
+<text x="207 216 225 234" y="52.25" fill="#f2f2f2">file</text>
+<text x="252 261 270 279 288 297 306 315 324 333 342" y="52.25" fill="#f2f2f2">default/Our</text>
+<text x="360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612" y="52.25" fill="#f2f2f2">team/lookup_table.pgtemplate?</text>
+<text x="630" y="52.25" fill="#f2f2f2">│</text>
+<text x="657" y="52.25" fill="#767676">│</text>
+<rect x="0" y="57" width="648.5" height="19.5" fill="#c50f1f"/>
+<rect x="648" y="57" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="71.25" fill="#f2f2f2">│</text>
+<text x="630" y="71.25" fill="#f2f2f2">│</text>
+<text x="657" y="71.25" fill="#767676">│</text>
+<rect x="0" y="76" width="252.5" height="19.5" fill="#c50f1f"/>
+<rect x="333" y="76" width="27.5" height="19.5" fill="#c50f1f"/>
+<rect x="360" y="76" width="9.5" height="19.5" fill="#cccccc"/>
+<rect x="369" y="76" width="279.5" height="19.5" fill="#c50f1f"/>
+<rect x="648" y="76" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="90.25" fill="#f2f2f2">│</text>
+<text x="252 261" y="90.25" fill="#f2f2f2">[&lt;</text>
+<text x="279" y="90.25" fill="#f9f1a5" text-decoration="underline">Y</text>
+<text x="288 297" y="90.25" fill="#f2f2f2">es</text>
+<text x="315 324" y="90.25" fill="#f2f2f2">&gt;]</text>
+<text x="342" y="90.25" fill="#f2f2f2">[</text>
+<text x="360" y="90.25" fill="#0037da" text-decoration="underline">N</text>
+<text x="369" y="90.25" fill="#f2f2f2">o</text>
+<text x="387" y="90.25" fill="#f2f2f2">]</text>
+<text x="630" y="90.25" fill="#f2f2f2">│</text>
+<text x="657" y="90.25" fill="#767676">│</text>
+<rect x="0" y="95" width="648.5" height="19.5" fill="#c50f1f"/>
+<rect x="648" y="95" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630" y="109.25" fill="#f2f2f2">└────────────────────────────────────────────────────────────────────┘</text>
+<text x="657" y="109.25" fill="#767676">│</text>
+<rect x="0" y="114" width="648.5" height="19.5" fill="#c50f1f"/>
+<rect x="648" y="114" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="657" y="128.25" fill="#767676">│</text>
+<rect x="0" y="133" width="18.5" height="19.5" fill="#cccccc"/>
+<rect x="18" y="133" width="648.5" height="19.5" fill="#0c0c0c"/>
+<text x="45 54 63 72 81 90" y="147.25" fill="#767676">Create</text>
+<text x="108 117 126 135 144 153" y="147.25" fill="#767676">lookup</text>
+<text x="171 180 189 198 207" y="147.25" fill="#767676">table</text>
+<text x="657" y="147.25" fill="#767676">│</text>
+</svg>

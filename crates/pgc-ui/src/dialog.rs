@@ -126,6 +126,56 @@ pub enum DialogKind {
     ConfirmProfilerRestore {
         server: u64,
     },
+    /// Tools → Developer templates… (D-074).
+    TemplateManager,
+    /// A name the template manager asks for: of the section or template `target`
+    /// (its path below the version folders).
+    TemplateName {
+        what: TemplateNameFor,
+        target: String,
+    },
+    ConfirmTemplateDelete {
+        op: pgc_sql::devtemplate::LibraryOp,
+    },
+    /// Template tab `tab` (D-074): name and description; a parameter (`field`: a
+    /// field of a list parameter, over the parameter's dialog); what to insert into
+    /// the body; where to save; the questions of saving; the version of a variant.
+    TemplateProps {
+        tab: u64,
+    },
+    TemplateParam {
+        tab: u64,
+        field: bool,
+    },
+    TemplateInsert {
+        tab: u64,
+    },
+    TemplateSave {
+        tab: u64,
+    },
+    ConfirmTemplateOverwrite {
+        tab: u64,
+        path: PathBuf,
+    },
+    ConfirmBuiltinSave {
+        tab: u64,
+    },
+    TemplateVariant {
+        tab: u64,
+    },
+    ConfirmTemplateParamDelete {
+        tab: u64,
+        index: usize,
+    },
+}
+
+/// What a [`DialogKind::TemplateName`] dialog names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TemplateNameFor {
+    NewSection,
+    RenameSection,
+    Rename,
+    Copy,
 }
 
 /// A `&'static str` for a dynamic widget id (template parameter names). Each distinct
@@ -467,6 +517,15 @@ pub enum Button {
     Skip,
     /// Settings the profiler left changed (D-058): drop the note about them.
     Forget,
+    /// The template manager and the parameter dialog (D-074).
+    New,
+    NewSection,
+    Edit,
+    Copy,
+    Rename,
+    Delete,
+    Up,
+    Down,
 }
 
 impl Button {
@@ -487,6 +546,14 @@ impl Button {
             Button::ReplaceAll => "all",
             Button::Skip => "skip",
             Button::Forget => "forget",
+            Button::New => "new",
+            Button::NewSection => "new_section",
+            Button::Edit => "edit",
+            Button::Copy => "copy",
+            Button::Rename => "rename",
+            Button::Delete => "delete",
+            Button::Up => "up",
+            Button::Down => "down",
         }
     }
 }
@@ -813,7 +880,6 @@ impl Dialog {
     }
 
     /// Text of the selected item of combo `id`.
-    #[cfg(test)]
     pub fn selected_combo_item(&self, id: &str) -> Option<&str> {
         match self.find(id).map(|w| &w.kind) {
             Some(WidgetKind::Combo {

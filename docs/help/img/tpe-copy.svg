@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="522" height="152" viewBox="0 0 522 152" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15" shape-rendering="crispEdges" xml:space="preserve">
+<rect width="522" height="152" fill="#0037da"/>
+<rect x="0" y="0" width="504.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="0" width="18.5" height="19.5" fill="#3a96dd"/>
+<rect x="0" y="19" width="504.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="19" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171" y="33.25" fill="#0c0c0c">┌──────────────────</text>
+<text x="189 198 207 216" y="33.25" fill="#0037da">Copy</text>
+<text x="234 243 252 261 270 279 288 297" y="33.25" fill="#0037da">template</text>
+<text x="315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486" y="33.25" fill="#0c0c0c">───────────────────┐</text>
+<rect x="0" y="38" width="162.5" height="19.5" fill="#cccccc"/>
+<rect x="162" y="38" width="90.5" height="19.5" fill="#3a96dd"/>
+<rect x="252" y="38" width="9.5" height="19.5" fill="#0c0c0c"/>
+<rect x="261" y="38" width="216.5" height="19.5" fill="#3a96dd"/>
+<rect x="477" y="38" width="27.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="38" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="52.25" fill="#0c0c0c">│</text>
+<text x="27" y="52.25" fill="#0037da" text-decoration="underline">F</text>
+<text x="36 45 54" y="52.25" fill="#0c0c0c">ile</text>
+<text x="72 81 90 99 108" y="52.25" fill="#0c0c0c">name:</text>
+<text x="162 171 180 189 198 207 216 225 234 243" y="52.25" fill="#0c0c0c" font-weight="700">table_copy</text>
+<text x="486" y="52.25" fill="#0c0c0c">│</text>
+<rect x="0" y="57" width="504.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="57" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="71.25" fill="#0c0c0c">│</text>
+<text x="486" y="71.25" fill="#0c0c0c">│</text>
+<rect x="0" y="76" width="504.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="76" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="90.25" fill="#0c0c0c">│</text>
+<text x="162 171" y="90.25" fill="#0c0c0c">[&lt;</text>
+<text x="189" y="90.25" fill="#0037da" text-decoration="underline">O</text>
+<text x="198" y="90.25" fill="#0c0c0c">K</text>
+<text x="216 225" y="90.25" fill="#0c0c0c">&gt;]</text>
+<text x="243" y="90.25" fill="#0c0c0c">[</text>
+<text x="261" y="90.25" fill="#0037da" text-decoration="underline">C</text>
+<text x="270 279 288 297 306" y="90.25" fill="#0c0c0c">ancel</text>
+<text x="324" y="90.25" fill="#0c0c0c">]</text>
+<text x="486" y="90.25" fill="#0c0c0c">│</text>
+<rect x="0" y="95" width="504.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="95" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486" y="109.25" fill="#0c0c0c">└────────────────────────────────────────────────────┘</text>
+<rect x="0" y="114" width="504.5" height="19.5" fill="#cccccc"/>
+<rect x="504" y="114" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="0" y="133" width="18.5" height="19.5" fill="#3a96dd"/>
+<rect x="18" y="133" width="504.5" height="19.5" fill="#0c0c0c"/>
+<text x="0" y="147.25" fill="#0c0c0c">p</text>
+<text x="18 27 36 45 54 63 72 81" y="147.25" fill="#767676">sequence</text>
+</svg>

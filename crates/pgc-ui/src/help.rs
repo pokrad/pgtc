@@ -42,7 +42,7 @@ pub(crate) fn wrap(line: &str, width: usize) -> Vec<String> {
 }
 
 /// Sections of the shortcuts window, in order.
-pub(crate) const SECTIONS: [(Context, &str); 8] = [
+pub(crate) const SECTIONS: [(Context, &str); 9] = [
     (Context::Global, "Everywhere"),
     (Context::Tree, "Object tree"),
     (Context::Editor, "Editor and object view"),
@@ -50,6 +50,7 @@ pub(crate) const SECTIONS: [(Context, &str); 8] = [
     (Context::Dashboard, "Server dashboard"),
     (Context::Profiler, "SQL profiler"),
     (Context::DbStats, "Database statistics"),
+    (Context::Template, "Template tab"),
     (Context::Dialog, "Dialogs and lists"),
 ];
 
@@ -293,14 +294,14 @@ mod tests {
         assert!(text.contains("Ctrl+C, Ctrl+Insert"));
         let tree = l.lines.iter().position(|x| x == "Object tree").unwrap();
         assert!(l.headers[tree]);
-        // 8 contexts, Other keys, If a key does not work, Keys are changed in
+        // 9 contexts, Other keys, If a key does not work, Keys are changed in
         let top = l
             .lines
             .iter()
             .zip(&l.headers)
             .filter(|(t, h)| **h && !t.starts_with(' '))
             .count();
-        assert_eq!(top, 11, "{text}");
+        assert_eq!(top, 12, "{text}");
         // larger sections in groups with subheadings, in the groups' order (D-065)
         let at = |s: &str| l.lines.iter().skip(tree).position(|x| x == s).unwrap();
         assert!(at("  Actions") < at("  Moving"), "{text}");

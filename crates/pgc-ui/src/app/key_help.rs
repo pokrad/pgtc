@@ -57,8 +57,15 @@ impl App {
             .iter()
             .map(|&(k, d)| (k.to_owned(), d, crate::keymap::Group::General))
             .collect();
+        // the keys of a template tab that work in its texts too (D-074)
+        let tab_keys = if !dialog && ctx == Context::Editor && self.template().is_some() {
+            rows(Context::Template)
+        } else {
+            KeyRows::new()
+        };
         let mut lines = help::key_sections(&[
             (self.frame_name(ctx), rows(ctx)),
+            ("Template tab", tab_keys),
             ("Everywhere", global),
             ("Other keys", other),
         ]);
@@ -71,6 +78,12 @@ impl App {
     fn frame_name(&self, ctx: Context) -> &'static str {
         match ctx {
             Context::Editor if self.query().is_some() => "Query editor",
+            Context::Template => "Template header",
+            Context::Editor if self.template().is_some() => match self.template().map(|t| t.part) {
+                Some(crate::template_tab::Part::Preview) => "Template preview",
+                Some(crate::template_tab::Part::Header) => "Template header (TOML)",
+                _ => "Template body",
+            },
             Context::Editor if self.list_tab() => "Statement pane",
             Context::Editor => "Object view",
             Context::Results if self.query().is_some_and(|q| q.on_messages()) => "Messages",
@@ -91,7 +104,7 @@ impl App {
         }
         let in_tree = self.focus == Focus::Tree;
         let in_view = self.focus == Focus::Tabs;
-        let editable = in_view && !self.tabs[self.active_tab].view.editor.read_only();
+        let editable = in_view && !self.focused_editor().read_only();
         let tree_rows = !self.tree.servers.is_empty();
         match cmd {
             C::Help | C::Menu | C::SwitchPanel => true,
@@ -153,7 +166,15 @@ impl App {
             | C::DeleteWordLeft
             | C::DeleteWordRight
             | C::DeleteLine => editable,
-            C::Complete => in_view && self.query().is_some(),
+            C::Complete => {
+                in_view
+                    && (self.query().is_some()
+                        || self
+                            .template()
+                            .is_some_and(|t| t.part == crate::template_tab::Part::Body))
+            }
+            // the header list of a template tab (D-074)
+            C::NextField | C::PrevField => self.template().is_some(),
             C::ResultsSmaller | C::ResultsLarger if !self.list_tab() => {
                 self.query().is_some_and(|q| q.results_visible)
             }

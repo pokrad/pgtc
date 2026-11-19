@@ -491,6 +491,30 @@ async fn readme_screenshots() {
         form.refresh();
     }
     std::fs::write(dir.join("template.svg"), svg(&a)).unwrap();
+    // 6b. the developer template editor (D-074): Create function in a template tab
+    {
+        let (mut a, _d) = scene();
+        a.run(Command::InstallTemplates);
+        a.dialogs.clear();
+        let file = a
+            .paths
+            .user_templates_dir()
+            .join("default")
+            .join("Functions")
+            .join("function.pgtemplate");
+        let text = std::fs::read_to_string(&file).unwrap();
+        a.open_template_file(file, &text);
+        // a path in the user's folder (the scene's own is a temporary one)
+        let shown = if cfg!(windows) {
+            "C:\\Users\\dev\\AppData\\Roaming\\pgtc\\developer_templates\\default\\Functions\\function.pgtemplate"
+        } else {
+            "/home/dev/.local/share/pgtc/developer_templates/default/Functions/function.pgtemplate"
+        };
+        a.template_mut().unwrap().path = Some(shown.into());
+        a.status.clear();
+        a.sync_template_tab();
+        std::fs::write(dir.join("template-editor.svg"), svg(&a)).unwrap();
+    }
     // 7. Find object (Ctrl+F) on the database "shop", columns included
     let (mut a, _d) = scene();
     {

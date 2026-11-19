@@ -250,6 +250,12 @@ impl App {
                 if self.settings_loaded(uid, key, &result) => {}
             (Target::Server(uid), DbEvent::Lookup { key, result, .. })
                 if self.profiler_restore_loaded(uid, key, &result) => {}
+            // the choice lists of a template being tested (D-074)
+            (_, DbEvent::Lookup { key, result, .. })
+                if self.template_lookups.contains_key(&key) =>
+            {
+                self.lookup_loaded(key, result);
+            }
             // Find object searches run on tree connections (D-055)
             (_, DbEvent::Lookup { key, result, .. }) => self.find_loaded(key, result),
             (_, DbEvent::Query { .. } | DbEvent::Notice { .. } | DbEvent::Model { .. }) => {}

@@ -86,6 +86,10 @@ impl App {
             MouseEventKind::Up(_) => self.mouse.split_drag = false,
             _ => {}
         }
+        // a template tab's header list and its texts (D-074)
+        if !self.modal() && self.template_mouse(m.kind, p, hits) {
+            return;
+        }
         // the dashboard tab's lists and grid (D-057)
         if !self.modal() && self.dashboard_mouse(m.kind, p, hits) {
             return;
@@ -177,6 +181,11 @@ impl App {
         let results_h = area.bottom().saturating_sub(y).clamp(4, area.height - 3);
         // rounded up: the view rounds down, so the bar lands exactly on `y`
         let percent = (results_h as u32 * 100).div_ceil(area.height as u32) as u16;
+        // template tab: the preview is the lower part (D-074)
+        if let Some(t) = self.template_mut() {
+            t.preview_percent = percent.clamp(15, 85);
+            return;
+        }
         // dashboard / profiler: the statement pane is the lower part (D-059)
         if self.list_tab() {
             self.set_pane_percent(percent);
@@ -218,7 +227,7 @@ impl App {
 
     /// A second left click at the same place within [`DOUBLE_CLICK`] (D-067); the
     /// terminal reports only single clicks.
-    fn double_click(&mut self, p: Position) -> bool {
+    pub(super) fn double_click(&mut self, p: Position) -> bool {
         let now = std::time::Instant::now();
         let double = self
             .mouse

@@ -1,6 +1,7 @@
 mod help_screenshots;
 mod real_server;
 mod screenshots;
+mod template_editor;
 
 use std::sync::Arc;
 

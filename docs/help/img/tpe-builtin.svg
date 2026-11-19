@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="540" height="171" viewBox="0 0 540 171" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15" shape-rendering="crispEdges" xml:space="preserve">
+<rect width="540" height="171" fill="#0037da"/>
+<rect x="0" y="0" width="522.5" height="19.5" fill="#cccccc"/>
+<text x="522 531" y="14.25" fill="#f9f1a5">um</text>
+<rect x="0" y="19" width="522.5" height="19.5" fill="#cccccc"/>
+<rect x="522" y="19" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180" y="33.25" fill="#0c0c0c">┌───────────────────</text>
+<text x="198 207 216 225" y="33.25" fill="#0037da">Save</text>
+<text x="243 252 261 270 279 288 297 306" y="33.25" fill="#0037da">template</text>
+<text x="324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504" y="33.25" fill="#0c0c0c">────────────────────┐</text>
+<text x="522 531" y="33.25" fill="#767676">me</text>
+<rect x="0" y="38" width="522.5" height="19.5" fill="#cccccc"/>
+<rect x="522" y="38" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="52.25" fill="#0c0c0c">│</text>
+<text x="27 36 45 54" y="52.25" fill="#0c0c0c">This</text>
+<text x="72 81 90 99 108 117 126 135" y="52.25" fill="#0c0c0c">template</text>
+<text x="153 162 171 180" y="52.25" fill="#0c0c0c">came</text>
+<text x="198 207 216 225" y="52.25" fill="#0c0c0c">with</text>
+<text x="243 252 261 270 279" y="52.25" fill="#0c0c0c">pgtc.</text>
+<text x="297 306 315 324 333 342 351 360 369 378" y="52.25" fill="#0c0c0c">Installing</text>
+<text x="396 405 414 423 432 441 450 459 468" y="52.25" fill="#0c0c0c">templates</text>
+<text x="504" y="52.25" fill="#0c0c0c">│</text>
+<rect x="0" y="57" width="522.5" height="19.5" fill="#cccccc"/>
+<rect x="522" y="57" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="71.25" fill="#0c0c0c">│</text>
+<text x="27 36 45 54 63 72 81 90 99" y="71.25" fill="#0c0c0c">(Settings</text>
+<text x="117" y="71.25" fill="#0c0c0c">→</text>
+<text x="135 144 153 162 171 180 189" y="71.25" fill="#0c0c0c">Install</text>
+<text x="207 216 225 234 243 252 261 270 279 288" y="71.25" fill="#0c0c0c">templates)</text>
+<text x="306 315 324 333 342 351 360 369 378 387" y="71.25" fill="#0c0c0c">overwrites</text>
+<text x="405 414 423 432" y="71.25" fill="#0c0c0c">this</text>
+<text x="450 459 468 477 486" y="71.25" fill="#0c0c0c">file.</text>
+<text x="504" y="71.25" fill="#0c0c0c">│</text>
+<rect x="0" y="76" width="522.5" height="19.5" fill="#cccccc"/>
+<rect x="522" y="76" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="90.25" fill="#0c0c0c">│</text>
+<text x="504" y="90.25" fill="#0c0c0c">│</text>
+<rect x="0" y="95" width="54.5" height="19.5" fill="#cccccc"/>
+<rect x="216" y="95" width="306.5" height="19.5" fill="#cccccc"/>
+<rect x="522" y="95" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9" y="109.25" fill="#0c0c0c">│</text>
+<text x="54 63" y="109.25" fill="#f2f2f2">[&lt;</text>
+<text x="81 90 99 108" y="109.25" fill="#f2f2f2">Save</text>
+<text x="126 135" y="109.25" fill="#f2f2f2">as</text>
+<text x="153" y="109.25" fill="#f9f1a5" text-decoration="underline">c</text>
+<text x="162 171 180" y="109.25" fill="#f2f2f2">opy</text>
+<text x="198 207" y="109.25" fill="#f2f2f2">&gt;]</text>
+<text x="225" y="109.25" fill="#0c0c0c">[</text>
+<text x="243" y="109.25" fill="#0037da" text-decoration="underline">S</text>
+<text x="252 261 270" y="109.25" fill="#0c0c0c">ave</text>
+<text x="288 297 306 315 324 333" y="109.25" fill="#0c0c0c">anyway</text>
+<text x="351" y="109.25" fill="#0c0c0c">]</text>
+<text x="369" y="109.25" fill="#0c0c0c">[</text>
+<text x="387" y="109.25" fill="#0c0c0c">C</text>
+<text x="396" y="109.25" fill="#0037da" text-decoration="underline">a</text>
+<text x="405 414 423 432" y="109.25" fill="#0c0c0c">ncel</text>
+<text x="450" y="109.25" fill="#0c0c0c">]</text>
+<text x="504" y="109.25" fill="#0c0c0c">│</text>
+<text x="522 531" y="109.25" fill="#767676">{{</text>
+<rect x="0" y="114" width="522.5" height="19.5" fill="#cccccc"/>
+<rect x="522" y="114" width="18.5" height="19.5" fill="#0c0c0c"/>
+<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504" y="128.25" fill="#0c0c0c">└──────────────────────────────────────────────────────┘</text>
+<rect x="0" y="133" width="522.5" height="19.5" fill="#cccccc"/>
+<rect x="522" y="133" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="18" y="152" width="522.5" height="19.5" fill="#0c0c0c"/>
+<text x="0 9" y="166.25" fill="#cccccc">║║</text>
+<text x="342" y="166.25" fill="#767676">│</text>
+<text x="360 369" y="166.25" fill="#767676">12</text>
+</svg>

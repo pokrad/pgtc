@@ -27,11 +27,13 @@ pub enum Context {
     Profiler,
     /// The database statistics tab (D-062).
     DbStats,
+    /// The header list and the keys of a template tab (D-074).
+    Template,
     Dialog,
 }
 
 impl Context {
-    pub const ALL: [Context; 8] = [
+    pub const ALL: [Context; 9] = [
         Context::Global,
         Context::Tree,
         Context::Editor,
@@ -39,6 +41,7 @@ impl Context {
         Context::Dashboard,
         Context::Profiler,
         Context::DbStats,
+        Context::Template,
         Context::Dialog,
     ];
 
@@ -51,6 +54,7 @@ impl Context {
             Context::Dashboard => "dashboard",
             Context::Profiler => "profiler",
             Context::DbStats => "db_stats",
+            Context::Template => "template",
             Context::Dialog => "dialog",
         }
     }
@@ -232,6 +236,21 @@ commands! {
     // database statistics (D-062)
     DbStats = "db_stats", "Statistics of the selected database", Actions;
     DbStatsRefresh = "db_stats_refresh", "Read the database statistics again (connects again when needed)", Actions;
+    // developer template editor (D-074)
+    TemplateManager = "template_manager", "Developer templates: create and edit", Actions;
+    TemplateTest = "template_test", "Test the template in its form (nothing is inserted)", Actions;
+    TemplateHelpers = "template_helpers", "Helper menu of the template body (insert parameter, construct, filter)", Actions;
+    TemplateRawHeader = "template_raw_header", "Parameter list / raw header (TOML)", Actions;
+    TemplateAddParam = "template_add_param", "Add a parameter", Actions;
+    TemplateEditParam = "template_edit_param", "Edit the name, the description or the parameter", Actions;
+    TemplateDeleteParam = "template_delete_param", "Delete the parameter", Actions;
+    TemplateParamUp = "template_param_up", "Move the parameter up", Actions;
+    TemplateParamDown = "template_param_down", "Move the parameter down", Actions;
+    TemplateInsertParam = "template_insert_param", "Insert a parameter into the template body", Actions;
+    TemplateInsertConstruct = "template_insert_construct", "Insert a Jinja construct into the template body", Actions;
+    TemplateInsertFilter = "template_insert_filter", "Insert a filter into the template body", Actions;
+    TemplateMakeParam = "template_make_param", "Make a parameter from the selected text", Actions;
+    TemplateAddVariant = "template_add_variant", "Add a variant of the template for a server version", Actions;
     // dialogs and menus
     NextField = "next_field", "Next field", Moving;
     PrevField = "prev_field", "Previous field", Moving;
@@ -550,6 +569,45 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::DbStats, Command::End, &["End"]),
     (Context::DbStats, Command::DocStart, &["Ctrl+Home"]),
     (Context::DbStats, Command::DocEnd, &["Ctrl+End"]),
+    // template tab (D-074): F5 / F7 / Ctrl+T in every part, the rest in the header list
+    (Context::Template, Command::TemplateTest, &["F5"]),
+    (Context::Template, Command::TemplateHelpers, &["F7"]),
+    (Context::Template, Command::TemplateRawHeader, &["Ctrl+T"]),
+    (Context::Template, Command::TemplateAddParam, &["Insert"]),
+    (Context::Template, Command::TemplateEditParam, &["Enter"]),
+    (Context::Template, Command::TemplateDeleteParam, &["Delete"]),
+    (
+        Context::Template,
+        Command::TemplateParamUp,
+        &["Ctrl+Up", "Shift+Up"],
+    ),
+    (
+        Context::Template,
+        Command::TemplateParamDown,
+        &["Ctrl+Down", "Shift+Down"],
+    ),
+    (Context::Template, Command::ContextMenu, &["F2"]),
+    // as in the editor, so they also work from the header list
+    (Context::Template, Command::SaveFile, &["Ctrl+S"]),
+    (Context::Template, Command::ToggleResults, &["Ctrl+R"]),
+    (
+        Context::Template,
+        Command::ResultsSmaller,
+        &["Alt+Shift+Up"],
+    ),
+    (
+        Context::Template,
+        Command::ResultsLarger,
+        &["Alt+Shift+Down"],
+    ),
+    (Context::Template, Command::NextField, &["Tab"]),
+    (Context::Template, Command::PrevField, &["Shift+Tab"]),
+    (Context::Template, Command::Up, &["Up"]),
+    (Context::Template, Command::Down, &["Down"]),
+    (Context::Template, Command::PageUp, &["PageUp"]),
+    (Context::Template, Command::PageDown, &["PageDown"]),
+    (Context::Template, Command::Home, &["Home"]),
+    (Context::Template, Command::End, &["End"]),
     (Context::Dialog, Command::NextField, &["Tab"]),
     (Context::Dialog, Command::PrevField, &["Shift+Tab"]),
     (Context::Dialog, Command::Up, &["Up"]),

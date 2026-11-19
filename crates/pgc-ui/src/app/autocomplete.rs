@@ -122,6 +122,9 @@ impl App {
             self.refresh_completion();
         } else if c == '.' || c == '_' || c.is_alphanumeric() {
             self.open_completion(false);
+        } else if (c == '|' || c == '"') && self.template().is_some() {
+            // filters after `|`, features after `has("` (D-074)
+            self.open_completion(false);
         }
     }
 
@@ -134,6 +137,11 @@ impl App {
             return;
         };
         let tab = self.tabs[i].id;
+        // the body of a template tab has its own names (D-074)
+        if !in_form && self.tabs[i].template().is_some() {
+            self.open_template_completion(manual);
+            return;
+        }
         let Some(q) = self.tabs[i].query() else {
             return;
         };
@@ -196,6 +204,10 @@ impl App {
             self.completion = None;
             return;
         };
+        if !popup.in_form && self.tabs[i].template().is_some() {
+            self.refresh_template_completion();
+            return;
+        }
         let Some(q) = self.tabs[i].query() else {
             self.completion = None;
             return;
@@ -235,6 +247,18 @@ impl App {
         let Some(item) = popup.items.get(popup.selected).cloned() else {
             return;
         };
+        // in a template body the word is found by the template's own rules (D-074)
+        if !popup.in_form && self.template().is_some() {
+            let Some((found, _)) = self.template_completion() else {
+                return;
+            };
+            let editor = &mut self.tabs[self.active_tab].view.editor;
+            let cursor = editor.cursor();
+            editor.set_cursor(found.start, false);
+            editor.set_cursor(cursor, true);
+            editor.apply(Action::Insert(item.insert));
+            return;
+        }
         let Some(editor) = self.completion_editor_mut(popup.in_form) else {
             return;
         };

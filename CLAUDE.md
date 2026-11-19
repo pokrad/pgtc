@@ -269,5 +269,13 @@ phase, small steps with a working state after each.
   tests) inserted at the cursor.
 - **Result:** psql's everyday commands inside query tabs.
 
+### Phase 13 — Developer template editor (D-074)
+- `pgc-sql` (`devtemplate.rs`): writing a template back (`header_toml`, `write`),
+  `check_body`, `sample_values`, snippets, `LibraryOp` — pure logic with unit tests.
+- `pgc-ui`: `template_tab.rs` (state and drawing of a template tab; its body is the
+  tab's editor), `app/template_editor.rs` (manager, parameter dialogs, helper menu,
+  saving, test); tests in `app/tests/template_editor.rs`.
+- **Result:** Tools → Developer templates… creates and edits templates end to end.
+
 Testing tools are deferred (D-024); still write ordinary `cargo test` unit tests for
 pure logic (quoting, `.pgpass`, resolver, lexer, diff) as the code is written.
