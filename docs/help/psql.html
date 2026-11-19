@@ -50,6 +50,12 @@ for <code>dm</code>, sequences for <code>ds</code> (combined letters add up); ta
 foreign tables and sequences for <code>d</code> and <code>dp</code>; the kinds in the <i>Works on</i> column for the
 generate commands; schemas for <code>gp</code> and <code>gf</code>. The commands whose argument has no schema part
 (<code>l</code>, <code>dn</code>, <code>du</code>, <code>dx</code>, <code>db</code>) offer nothing.</p>
+<figure>
+  <img src="img/psql-complete.svg" alt="The list of schemas and tables under the F4 input" loading="lazy">
+  <figcaption><kbd>Ctrl+Space</kbd> after <code>dt</code> and a space: the schemas first, then the tables. The
+  tables of <code>sales</code> are not on the <code>search_path</code> here, so they are offered
+  schema-qualified.</figcaption>
+</figure>
 <ul>
   <li>Wherever a name can be schema-qualified, the list starts with the <b>schemas</b>, before the relations.
       <kbd>Enter</kbd> on a schema inserts it with its dot (<code>sales.</code>) and the list goes on with the

@@ -2073,6 +2073,16 @@ async fn help_screenshots() {
     typing(&mut a, "dt sales.*");
     out.shot("psql", &a, Crop::Full);
 
+    // completing the argument: the schemas first, then the tables
+    let (mut a, _d, _) = query_scene();
+    names(&mut a);
+    let d = a.psql_dialog("");
+    a.dialogs.push(d);
+    typing(&mut a, "dt ");
+    key(&mut a, "Ctrl+Space");
+    assert!(a.psql_completion.is_some());
+    out.shot("psql-complete", &a, Crop::Full);
+
     // dt sales.*
     let (mut a, _d, ids2) = scene();
     short_tree(&mut a, ids2);
