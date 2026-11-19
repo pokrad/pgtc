@@ -284,7 +284,7 @@ impl QueryState {
                 || (e.set == last && self.results.get(e.set).is_some_and(|rs| rs.more));
             e.awaiting_rows = false;
             if from_stream && e.abort_reason.is_none() {
-                e.abort_reason = Some("The connection was lost during the export".to_owned());
+                e.abort_reason = Some("The session was lost during the export".to_owned());
                 let _ = e.writer.send(crate::export::ToWriter::Abort);
             }
         }

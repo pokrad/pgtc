@@ -243,7 +243,7 @@ for data retention.</p>
 <tr><td><i>HTTP 429</i></td><td>Too many requests, or the account has no credit left.</td><td>Wait, or check your plan.</td></tr>
 <tr><td><i>Could not connect to …</i></td><td>The host of the base URL is not reachable: no network, a proxy, or a local model server that is not running.</td><td>Start the local server; check the base URL.</td></tr>
 <tr><td>The answer ends with <i>-- (the answer was cut off here: it reached the model's length limit)</i></td><td>Very long answers stop at the model's limit; pgtc marks it, because a half statement must not be run as it is.</td><td>Ask for less at once — one function per request.</td></tr>
-<tr><td><i>The structure of the database could not be read</i></td><td>The catalog query failed on the tab's session — usually because the session is in an aborted transaction (<i>current transaction is aborted</i>, SQLSTATE <code>25P02</code>).</td><td><span class="menu">Query → Rollback</span>, then <kbd>F8</kbd> again.</td></tr>
+<tr><td><i>The schema of the database could not be read</i></td><td>The catalog query failed on the tab's session — usually because the session is in an aborted transaction (<i>current transaction is aborted</i>, SQLSTATE <code>25P02</code>).</td><td><span class="menu">Query → Rollback</span>, then <kbd>F8</kbd> again.</td></tr>
 </table></div>
 </main>
 <script src="help.js"></script>

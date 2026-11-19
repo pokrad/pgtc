@@ -116,7 +116,7 @@ error position points to and run the script again.</p>
 <h3>Every statement answers “current transaction is aborted”</h3>
 <p>SQLSTATE <code>25P02</code>: a statement failed inside a transaction block — <i>Auto commit</i> is off, or the
 script issued <code>BEGIN</code> — and the session is in the aborted-transaction state (the status row says
-<i>Transaction failed – rollback</i>). The server rejects everything except <code>ROLLBACK</code> /
+<i>Transaction aborted – ROLLBACK needed</i>). The server rejects everything except <code>ROLLBACK</code> /
 <code>ROLLBACK TO SAVEPOINT</code>. Choose <span class="menu">Query → Rollback</span>. To have pgtc send the
 <code>ROLLBACK</code> itself after an error, turn on <span class="menu">Query → Auto rollback on error</span>.</p>
 

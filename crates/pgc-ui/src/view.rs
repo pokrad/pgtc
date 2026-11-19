@@ -770,7 +770,7 @@ fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: 
         match q.tx {
             pgc_db::TxStatus::Idle => {}
             pgc_db::TxStatus::InTransaction => left.push_str(" · Transaction open"),
-            pgc_db::TxStatus::Failed => left.push_str(" · Transaction failed – rollback"),
+            pgc_db::TxStatus::Failed => left.push_str(" · Transaction aborted – ROLLBACK needed"),
         }
         if q.plpgsql {
             left.push_str(" · PL/pgSQL");

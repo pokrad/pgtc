@@ -203,8 +203,8 @@ impl App {
             DbEvent::Closed { error, .. } => {
                 *c.conn = None;
                 *c.problem = Some(match error {
-                    Some(e) => format!("Connection lost: {e}"),
-                    None => "Connection closed".to_owned(),
+                    Some(e) => format!("Session lost: {e}"),
+                    None => "Session closed".to_owned(),
                 });
                 self.connections.remove(&conn);
                 MonitorEvent::Closed
@@ -294,7 +294,7 @@ impl App {
                         self.connections.remove(&handle.id);
                     }
                     self.status = match error {
-                        Some(e) => format!("Connection to {name} lost: {e}"),
+                        Some(e) => format!("Session on {name} lost: {e}"),
                         None => format!("Disconnected from {name}"),
                     };
                 }
@@ -328,7 +328,7 @@ impl App {
                         self.connections.remove(&id);
                         self.database_reset(nid);
                         if let Some(e) = error {
-                            self.status = format!("Connection to database {name} lost: {e}");
+                            self.status = format!("Session on database {name} lost: {e}");
                         }
                     }
                     DbEvent::Nodes { .. }

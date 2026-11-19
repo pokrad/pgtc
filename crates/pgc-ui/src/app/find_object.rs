@@ -506,7 +506,7 @@ impl App {
         }
         let reason = match error {
             DbError::PasswordRequired => "password needed".to_owned(),
-            DbError::AuthFailed(_) => "login failed".to_owned(),
+            DbError::AuthFailed(_) => "authentication failed".to_owned(),
             DbError::Other(e) => e.lines().next().unwrap_or("").chars().take(40).collect(),
         };
         f.failed.push((nid, reason));

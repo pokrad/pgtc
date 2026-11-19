@@ -242,8 +242,8 @@ tab's backend, over a separate connection, as <kbd>Ctrl+C</kbd> in psql does. Th
   <li>The same key ends a <b>paused</b> result and stops a running <b>export</b>.</li>
   <li>A backend does not always react to a cancel request — for example while it is blocked on the network. If
       the run has not ended after <b>5 seconds</b> (a <a href="settings.html">setting</a>), pgtc asks: <i>The server
-      did not react to the cancel request. Close this query tab's connection?</i> —
-      <span class="ui">Close connection</span> drops the session (an open transaction is lost);
+      did not react to the cancel request. Close this query tab's session?</i> —
+      <span class="ui">Close session</span> drops the session (an open transaction is lost);
       <span class="ui">Keep waiting</span> waits on. Only this tab's session is affected. The tab keeps its text,
       and the next <kbd>F5</kbd> opens a new session.</li>
 </ul>
@@ -276,7 +276,7 @@ is on):</p>
 <tr><th>Tab label</th><th>Status row</th><th>Transaction status</th></tr>
 <tr><td></td><td></td><td>Idle: not in a transaction block.</td></tr>
 <tr><td class="k"><code>(tx)</code></td><td><i>Transaction open</i></td><td>In a transaction block. Changes are uncommitted; the row and table locks taken so far are held.</td></tr>
-<tr><td></td><td><i>Transaction failed – rollback</i></td><td>In a failed transaction block. Choose <span class="menu">Query → Rollback</span>.</td></tr>
+<tr><td></td><td><i>Transaction aborted – ROLLBACK needed</i></td><td>In a failed transaction block. Choose <span class="menu">Query → Rollback</span>.</td></tr>
 </table></div>
 <p>The status is the session's, however the block was opened: a <code>BEGIN</code> typed in the editor marks the tab
 <code>(tx)</code> in the same way. <i>Commit</i>, <i>Rollback</i> and the two switches have no default key; they are
@@ -342,7 +342,7 @@ tab and ends its session. Two things can be lost, so pgtc asks about each:</p>
 
 <h2 id="limits">Good to know</h2>
 <ul>
-  <li><b>Lost session.</b> If a tab's connection is lost, the tab keeps its text and says <i>not connected</i>;
+  <li><b>Lost session.</b> If a tab's session is lost, the tab keeps its text and says <i>not connected</i>;
       the next <kbd>F5</kbd> opens a new session — without the transaction, session settings and temporary objects
       of the old one. If the tab no longer knows its database, it asks you to select one in the tree.</li>
   <li><b><code>COPY … FROM STDIN</code> / <code>TO STDOUT</code></b> — the client side of the COPY protocol — is not

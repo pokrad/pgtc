@@ -212,7 +212,7 @@ impl DbStats {
         let xid = self.shown("xid_age").unwrap_or_else(dash);
         vec![
             ("Size", size),
-            ("Connections", connections),
+            ("Backends", connections),
             ("Cache hit ratio", cache),
             ("Transactions", transactions),
             ("XID age", xid),

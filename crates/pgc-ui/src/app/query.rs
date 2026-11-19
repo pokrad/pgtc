@@ -126,8 +126,8 @@ impl App {
                 self.connections.remove(&conn);
                 q.connection_gone();
                 q.info(match error {
-                    Some(e) => format!("Connection lost: {e}"),
-                    None => "Connection closed".to_owned(),
+                    Some(e) => format!("Session lost: {e}"),
+                    None => "Session closed".to_owned(),
                 });
                 // a COMMIT sent for quitting / disconnecting will not be answered
                 if q.after_run.take() == Some(AfterRun::Bulk) {
@@ -352,14 +352,15 @@ impl App {
             }
         }
         for id in ask {
-            self.dialogs.push(
-                Dialog::confirm_buttons(
-                    DialogKind::CancelWait { tab: id },
-                    "Cancel",
-                    "The server did not react to the cancel request.\nClose this query tab's connection?",
-                    &[(Button::Close, "&Close connection"), (Button::Wait, "&Keep waiting")],
-                ),
-            );
+            self.dialogs.push(Dialog::confirm_buttons(
+                DialogKind::CancelWait { tab: id },
+                "Cancel",
+                "The server did not react to the cancel request.\nClose this query tab's session?",
+                &[
+                    (Button::Close, "&Close session"),
+                    (Button::Wait, "&Keep waiting"),
+                ],
+            ));
         }
     }
 
@@ -373,7 +374,7 @@ impl App {
             conn.handle.abort();
             self.connections.remove(&conn.id);
             q.connection_gone();
-            q.info("Connection closed (the server did not react to the cancel request)");
+            q.info("Session closed (the server did not react to the cancel request)");
         }
         self.drop_tab_lookups(tab);
     }

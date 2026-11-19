@@ -72,7 +72,7 @@ impl App {
         };
         let handle = self.open_connection(si, &database, Target::Structure);
         let id = handle.id;
-        self.status = format!("Reading the structure of {database}…");
+        self.status = format!("Reading the schema of {database}…");
         self.jobs.insert(
             id,
             StructureJob {
@@ -101,7 +101,7 @@ impl App {
                     Ok(q) => job.handle.read_model(0, q),
                     Err(e) => {
                         self.end_job(id);
-                        self.error(&format!("Cannot read the structure:\n{e}"));
+                        self.error(&format!("Cannot read the schema:\n{e}"));
                     }
                 }
             }
@@ -114,10 +114,9 @@ impl App {
             DbEvent::Closed { error, .. } => {
                 if let Some(job) = self.end_job(id) {
                     self.status.clear();
-                    let why =
-                        error.map_or("the connection was closed".to_owned(), |e| e.to_string());
+                    let why = error.map_or("the session was closed".to_owned(), |e| e.to_string());
                     self.error(&format!(
-                        "Reading the structure of {} failed:\n{why}",
+                        "Reading the schema of {} failed:\n{why}",
                         job.database
                     ));
                 }
@@ -129,10 +128,9 @@ impl App {
                 self.status.clear();
                 match result {
                     Ok(live) => self.job_done(job, *live),
-                    Err(e) => self.error(&format!(
-                        "Cannot read the structure of {}:\n{e}",
-                        job.database
-                    )),
+                    Err(e) => {
+                        self.error(&format!("Cannot read the schema of {}:\n{e}", job.database))
+                    }
                 }
             }
             _ => {}

@@ -34,7 +34,7 @@
 <text x="225 234" y="90.25" fill="#cccccc">║║</text>
 <text x="252 261 270 279" y="90.25" fill="#cccccc">Size</text>
 <text x="513" y="90.25" fill="#cccccc">│</text>
-<text x="531 540 549 558 567 576 585 594 603 612 621" y="90.25" fill="#cccccc">Connections</text>
+<text x="531 540 549 558 567 576 585 594" y="90.25" fill="#cccccc">Backends</text>
 <text x="792" y="90.25" fill="#cccccc">│</text>
 <text x="810 819 828 837 846" y="90.25" fill="#cccccc">Cache</text>
 <text x="864 873 882" y="90.25" fill="#cccccc">hit</text>

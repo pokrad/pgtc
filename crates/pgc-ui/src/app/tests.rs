@@ -3673,7 +3673,7 @@ async fn export_ends_when_the_connection_is_lost() {
     assert!(
         q.messages
             .iter()
-            .any(|m| m.text.contains("The connection was lost during the export")),
+            .any(|m| m.text.contains("The session was lost during the export")),
         "{:?}",
         q.messages
     );
@@ -4457,7 +4457,7 @@ async fn ask_ai_puts_the_answer_into_the_editor() {
     typing(&mut a, "count");
     key(&mut a, "Alt+S");
     assert_eq!(a.dialogs.len(), 1);
-    assert_eq!(a.status, "Still reading the structure…");
+    assert_eq!(a.status, "Still reading the schema…");
     a.lookup_loaded(ai_lookup(&a), Ok(ai_structure_rows()));
     a.update(Msg::Tick, &Hits::default());
     let screen = screen_text(&a);

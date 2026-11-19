@@ -157,7 +157,7 @@ impl App {
                 Widget::combo("model", "&Model:", models, model, 8),
                 Widget::combo("effort", "&Effort:", efforts, effort, 8),
                 Widget::label(""),
-                Widget::label_id("info", "Reading the structure…"),
+                Widget::label_id("info", "Reading the schema…"),
                 Widget::label_id("note", ""),
                 Widget::button(Button::Ok, "&Send", true),
                 Widget::button(Button::Cancel, "&Cancel", false),
@@ -189,7 +189,7 @@ impl App {
                 self.ai.structure = Some((tab, Ok(s)));
             }
             Err(e) => {
-                d.set_label("info", "The structure could not be read (Send shows why).");
+                d.set_label("info", "The schema could not be read (Send shows why).");
                 self.ai.structure = Some((tab, Err(e)));
             }
         }
@@ -251,7 +251,7 @@ impl App {
                 return;
             };
             let note = match &ask.editor {
-                None => "The editor is empty: only the structure and the prompt are sent.",
+                None => "The editor is empty: only the schema and the prompt are sent.",
                 Some(e) if e.cut => {
                     "The editor text is long: only the part around the cursor is sent."
                 }
@@ -327,11 +327,11 @@ impl App {
                 let mut dialog = dialog;
                 dialog.focus_on("prompt");
                 self.dialogs.push(dialog);
-                self.status = "Still reading the structure…".to_owned();
+                self.status = "Still reading the schema…".to_owned();
                 return;
             }
             Some(Err(e)) => {
-                let e = format!("The structure of the database could not be read:\n{e}");
+                let e = format!("The schema of the database could not be read:\n{e}");
                 let mut dialog = dialog;
                 dialog.focus_on("prompt");
                 self.dialogs.push(dialog);

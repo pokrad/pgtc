@@ -1784,7 +1784,7 @@ impl App {
 
 /// A request on the query tab's connection would end its result (D-019, D-046, D-054).
 const CONNECTION_BUSY: &str =
-    "The query tab's connection is busy.\nWait for the query (or close its result) first.";
+    "The query tab's session is busy.\nWait for the query (or close its result) first.";
 
 fn on_off(on: bool) -> &'static str {
     if on { "on" } else { "off" }

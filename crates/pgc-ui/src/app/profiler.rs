@@ -105,7 +105,7 @@ impl App {
                 p.phase = Phase::Stopped;
                 let lost: Vec<String> = p.applied.drain(..).map(|c| c.restore_sql()).collect();
                 if !lost.is_empty() {
-                    self.restore_failed(&lost, "the connection was lost");
+                    self.restore_failed(&lost, "the session was lost");
                 }
                 if quitting {
                     self.maybe_quit_after_restore();

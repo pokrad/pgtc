@@ -449,9 +449,7 @@ impl App {
                     self.status.clear();
                     self.dialogs.push(Dialog::message(
                         "Load database definition",
-                        &format!(
-                            "The structure of {database} already matches the definition file."
-                        ),
+                        &format!("The schema of {database} already matches the definition file."),
                         false,
                     ));
                 }

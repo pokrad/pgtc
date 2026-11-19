@@ -224,8 +224,8 @@ commands! {
     ClearTags = "clear_tags", "Untag all sessions", Actions;
     NextList = "next_list", "Next dashboard list", Moving;
     PrevList = "prev_list", "Previous dashboard list", Moving;
-    CancelBackend = "cancel_backend", "Cancel the query of the selected session", Actions;
-    TerminateBackend = "terminate_backend", "Terminate the selected session", Actions;
+    CancelBackend = "cancel_backend", "Cancel the query of the selected session (pg_cancel_backend)", Actions;
+    TerminateBackend = "terminate_backend", "Terminate the selected session (pg_terminate_backend)", Actions;
     ShowRow = "show_row", "Show the whole row (full query text)", Actions;
     // SQL profiler (D-058)
     SqlProfiler = "sql_profiler", "SQL profiler: every statement on the server", Actions;
