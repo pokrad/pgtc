@@ -198,7 +198,7 @@ protected only by its file permissions.</p></div>
   <li>Client certificates (logging in with a certificate) are not supported yet.</li>
 </ul>
 
-<h2 id="many">How many connections pgtc opens</h2>
+<h2 id="many">The sessions pgtc opens on the server</h2>
 <p>A PostgreSQL connection belongs to one database, and a connection that runs a long statement cannot do anything
 else. So pgtc opens connections as they are needed:</p>
 <div class="tablewrap"><table>
