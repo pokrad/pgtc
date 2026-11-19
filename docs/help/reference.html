@@ -9,31 +9,32 @@
 <body>
 <main>
 <h1>Reference</h1>
-<p class="lead">Everything in one place: the command line, every key, every menu item, and every file and folder
-pgtc uses.</p>
+<p class="lead">The command-line options and environment variables, the default key bindings by keymap context,
+the menus, and the files pgtc reads and writes.</p>
 
 <h2 id="cli">Command line</h2>
 <pre><code>pgtc [OPTION]... [DBNAME [USERNAME]]</code></pre>
-<p>The connection options are those of <code>psql</code>, so what you know from there works here.</p>
+<p>The connection options are psql's. Each one sets a connection parameter of the session pgtc opens at
+start.</p>
 <div class="tablewrap"><table>
 <tr><th>Option</th><th>Meaning</th></tr>
-<tr><td class="k"><code>-h</code>, <code>--host HOSTNAME</code></td><td>Host name of the server, or the directory of its Unix socket.</td></tr>
-<tr><td class="k"><code>-p</code>, <code>--port PORT</code></td><td>Port of the server.</td></tr>
-<tr><td class="k"><code>-U</code>, <code>--username USERNAME</code></td><td>User to connect as.</td></tr>
-<tr><td class="k"><code>-d</code>, <code>--dbname DBNAME</code></td><td>Database to connect to — or a connection URI.</td></tr>
-<tr><td class="k"><code>-w</code>, <code>--no-password</code></td><td>Never ask for a password. If one is needed and not known, connecting fails.</td></tr>
-<tr><td class="k"><code>-W</code>, <code>--password</code></td><td>Always ask for a password.</td></tr>
+<tr><td class="k"><code>-h</code>, <code>--host HOSTNAME</code></td><td><code>host</code>: host name or IP address, or the directory of the server's Unix-domain socket.</td></tr>
+<tr><td class="k"><code>-p</code>, <code>--port PORT</code></td><td><code>port</code>.</td></tr>
+<tr><td class="k"><code>-U</code>, <code>--username USERNAME</code></td><td><code>user</code>: the role to connect as.</td></tr>
+<tr><td class="k"><code>-d</code>, <code>--dbname DBNAME</code></td><td><code>dbname</code> — or a connection URI.</td></tr>
+<tr><td class="k"><code>-w</code>, <code>--no-password</code></td><td>Never prompt for a password. If the server requests one and none is available, the connection attempt fails.</td></tr>
+<tr><td class="k"><code>-W</code>, <code>--password</code></td><td>Always prompt for a password.</td></tr>
 <tr><td class="k"><code>--setup</code></td><td>Run every installation step (today: install the developer templates), print one line per step, and exit. The exit code is not zero if a step failed.</td></tr>
 <tr><td class="k"><code>--install-templates</code></td><td>Copy the developer templates that come with pgtc into your templates folder, and exit. If the folder exists, pgtc asks <code>[y/N]</code> before overwriting its own templates.</td></tr>
-<tr><td class="k"><code>-?</code>, <code>--help</code></td><td>Show the options and exit. (<code>-h</code> is the host, as in psql.)</td></tr>
+<tr><td class="k"><code>-?</code>, <code>--help</code></td><td>Show the options and exit. (<code>-h</code> is <code>host</code>, as in psql.)</td></tr>
 <tr><td class="k"><code>-V</code>, <code>--version</code></td><td>Show the version and exit.</td></tr>
 </table></div>
-<p><code>DBNAME</code> and <code>USERNAME</code> without an option letter are used when <code>-d</code> / <code>-U</code> are
-not given: <code>pgtc adventureworks postgres</code>.</p>
+<p>Positional arguments work as in psql: the first fills <code>dbname</code> unless <code>-d</code> is given, the
+next fills <code>user</code> unless <code>-U</code> is given: <code>pgtc adventureworks postgres</code>.</p>
 
 <h3>Examples</h3>
 <pre><code>pgtc                                         start with the saved connections
-pgtc adventureworks                          database adventureworks on localhost, as your OS user
+pgtc adventureworks                          dbname adventureworks on localhost, role = your OS user name
 pgtc -h db.example.com -U app adventureworks
 pgtc -h db.example.com -p 5433 -U app -W adventureworks
 pgtc postgresql://app@db.example.com/adventureworks
@@ -42,32 +43,42 @@ pgtc --setup</code></pre>
 
 <h3>Connection URIs</h3>
 <pre><code>postgresql://[user[:password]@][host][:port][/dbname][?sslmode=...&amp;sslrootcert=...]</code></pre>
-<p>Also with <code>postgres://</code>. Put a URI that contains <code>?</code> or <code>&amp;</code> in quotes, or the shell
-will misread it.</p>
+<p>Also with <code>postgres://</code>. Quote a URI that contains <code>?</code> or <code>&amp;</code>, or the shell will
+interpret it.</p>
+<ul>
+  <li>Percent-encoding is decoded; an IPv6 address goes in brackets (<code>[::1]</code>).</li>
+  <li>The query part accepts <code>sslmode</code>, <code>sslrootcert</code>, <code>host</code>, <code>port</code>,
+      <code>user</code>, <code>password</code> and <code>dbname</code>. Any other parameter is ignored, with a warning
+      in the <a href="#log">log</a>.</li>
+  <li>A URI with several hosts is rejected.</li>
+</ul>
 
 <h3>Environment variables</h3>
 <div class="tablewrap"><table>
 <tr><th>Variable</th><th>Meaning</th></tr>
-<tr><td class="k"><code>PGHOST</code>, <code>PGPORT</code>, <code>PGUSER</code>, <code>PGDATABASE</code></td><td>Defaults for host, port, user and database.</td></tr>
-<tr><td class="k"><code>PGSSLMODE</code>, <code>PGSSLROOTCERT</code></td><td>Defaults for the SSL mode and the root certificate file.</td></tr>
+<tr><td class="k"><code>PGHOST</code>, <code>PGPORT</code>, <code>PGUSER</code>, <code>PGDATABASE</code></td><td>Defaults for <code>host</code>, <code>port</code>, <code>user</code> and <code>dbname</code>.</td></tr>
+<tr><td class="k"><code>PGSSLMODE</code>, <code>PGSSLROOTCERT</code></td><td>Defaults for <code>sslmode</code> and <code>sslrootcert</code>. There is no command-line option for them; give them here or in a URI.</td></tr>
 <tr><td class="k"><code>PGPASSWORD</code></td><td>The password (used for this run only; not saved).</td></tr>
 <tr><td class="k"><code>PGPASSFILE</code></td><td>Another location of the <a href="connections.html#passwords">password file</a>.</td></tr>
-<tr><td class="k"><code>PGTC_LOG</code></td><td>The detail of pgtc's own <a href="#log">log</a>.</td></tr>
+<tr><td class="k"><code>PGTC_LOG</code></td><td>Level filter of pgtc's own <a href="#log">log</a>.</td></tr>
 </table></div>
-<p><b>What wins:</b> a URI, then the options, then the environment variables, then the built-in defaults — host
-<code>localhost</code>, port <code>5432</code>, user = your operating-system user, database = the user name, SSL mode
-<code>prefer</code>.</p>
-<p><b>What happens with the connection:</b> when you give any connection argument, pgtc saves the connection (unless
-one with the same host, port, database, user and SSL mode is already saved) and connects it at start.</p>
+<p>Other libpq variables (<code>PGSERVICE</code>, <code>PGOPTIONS</code>, <code>PGAPPNAME</code>, …) are not read. An
+invalid <code>PGPORT</code> or <code>PGSSLMODE</code> is an error at start.</p>
+<p><b>Precedence:</b> a URI, then the options, then the environment variables, then the built-in defaults —
+<code>host</code> <code>localhost</code>, <code>port</code> <code>5432</code>, <code>user</code> = your operating-system
+user name, <code>dbname</code> = the user name, <code>sslmode</code> <code>prefer</code>.</p>
+<p><b>Effect:</b> when any connection argument is given, pgtc saves the connection (unless one with the same host,
+port, database, user and <code>sslmode</code> is already saved) and connects it at start.</p>
 
 <h2 id="keys">Keyboard reference</h2>
-<p>The built-in keys, by the part of the window they work in. The last column is the name of the command in
-<a href="settings.html#keymap"><code>keymap.toml</code></a>. Inside pgtc, <kbd>F1</kbd> shows the keys that work now and
-<span class="menu">Help → Keyboard shortcuts</span> shows all keys <i>as you have set them</i>.</p>
+<p>The default bindings, by keymap context — the part of the window that has the focus. The last column is the
+command name used in <a href="settings.html#keymap"><code>keymap.toml</code></a>. Inside pgtc, <kbd>F1</kbd> shows the
+keys that work in the current context and <span class="menu">Help → Keyboard shortcuts</span> shows the
+<i>effective</i> keymap, your overrides applied.</p>
 <figure>
   <img src="img/shortcuts.svg" alt="Help → Keyboard shortcuts" loading="lazy">
-  <figcaption><span class="menu">Help → Keyboard shortcuts</span>: every key of your keymap, in a scrolling window. At
-  its end it shows where your <code>keymap.toml</code> is.</figcaption>
+  <figcaption><span class="menu">Help → Keyboard shortcuts</span>: the effective keymap, in a scrolling window. Its
+  last lines give the path of your <code>keymap.toml</code>.</figcaption>
 </figure>
 
 <h3>Everywhere <code>[global]</code></h3>
@@ -97,10 +108,10 @@ one with the same host, port, database, user and SSL mode is already saved) and 
 <tr><td class="k"><kbd>Enter</kbd></td><td>Expand or collapse the row</td><td><code>accept</code></td></tr>
 <tr><td class="k"><kbd>F2</kbd></td><td>Context menu</td><td><code>context_menu</code></td></tr>
 <tr><td class="k"><kbd>F3</kbd></td><td>Show the object in a new tab</td><td><code>show_in_new_tab</code></td></tr>
-<tr><td class="k"><kbd>F8</kbd></td><td>Delete the saved connection</td><td><code>drop_object</code></td></tr>
+<tr><td class="k"><kbd>F8</kbd></td><td>Delete the saved connection (nothing is dropped on the server)</td><td><code>drop_object</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Refresh the object tree</td><td><code>refresh_tree</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+E</kbd></td><td>Edit the shown definition in a new query tab</td><td><code>edit_in_query_tab</code></td></tr>
-<tr><td class="k"><kbd>Ctrl+B</kbd></td><td>Select the top 100 rows of the table or view in a new query tab</td><td><code>select_top_rows</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+B</kbd></td><td><code>SELECT * FROM … LIMIT 100</code> for the table or view, in a new query tab</td><td><code>select_top_rows</code></td></tr>
 <tr><td class="k"><kbd>Alt+S</kbd>, <kbd>Ctrl+S</kbd></td><td>Quick search</td><td><code>quick_search</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+F</kbd></td><td>Find an object below the selected tree row</td><td><code>find_object</code></td></tr>
 <tr><td class="k"><kbd>Alt+D</kbd>, <kbd>Ctrl+D</kbd></td><td>Server dashboard of the selected server or database</td><td><code>dashboard</code></td></tr>
@@ -114,11 +125,11 @@ one with the same host, port, database, user and SSL mode is already saved) and 
 <div class="tablewrap"><table>
 <tr><th>Key</th><th>What it does</th><th>Command</th></tr>
 <tr><td class="k"><kbd>F5</kbd></td><td>Execute the selection or the whole script</td><td><code>execute</code></td></tr>
-<tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td>Cancel the running query</td><td><code>cancel_query</code></td></tr>
+<tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td>Send a cancel request for the running statement</td><td><code>cancel_query</code></td></tr>
 <tr><td class="k"><kbd>F7</kbd></td><td>Generate SQL from developer template</td><td><code>new_from_template</code></td></tr>
 <tr><td class="k"><kbd>F4</kbd></td><td>psql-style command line</td><td><code>psql_command</code></td></tr>
 <tr><td class="k"><kbd>F8</kbd></td><td>Ask AI for SQL — into the editor, never run (<a href="ai.html">AI assistant</a>)</td><td><code>ask_ai</code></td></tr>
-<tr><td class="k"><kbd>Ctrl+Space</kbd>, <kbd>Alt+/</kbd></td><td>Autocomplete: names and keywords</td><td><code>complete</code></td></tr>
+<tr><td class="k"><kbd>Ctrl+Space</kbd>, <kbd>Alt+/</kbd></td><td>Autocomplete: object names, columns and keywords</td><td><code>complete</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+P</kbd></td><td>PL/pgSQL mode on / off</td><td><code>toggle_plpgsql</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+E</kbd></td><td>Edit the shown definition (or statement) in a new query tab</td><td><code>edit_in_query_tab</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+S</kbd></td><td>Save SQL file</td><td><code>save_file</code></td></tr>
@@ -160,7 +171,7 @@ one with the same host, port, database, user and SSL mode is already saved) and 
 <tr><th>Key</th><th>What it does</th><th>Command</th></tr>
 <tr><td class="k">Arrows, <kbd>PgUp</kbd>, <kbd>PgDn</kbd>, <kbd>Home</kbd>, <kbd>End</kbd></td><td>Move the cell cursor</td><td><code>up</code> … <code>end</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+Home</kbd>, <kbd>Ctrl+End</kbd></td><td>First / last row</td><td><code>doc_start</code>, <code>doc_end</code></td></tr>
-<tr><td class="k"><kbd>Enter</kbd></td><td>Messages: jump to the line of the error</td><td><code>accept</code></td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>Messages: jump to the editor line of the error</td><td><code>accept</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+C</kbd>, <kbd>Ctrl+Insert</kbd></td><td>Copy the cell / the message</td><td><code>copy</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+A</kbd></td><td>Select all</td><td><code>select_all</code></td></tr>
 <tr><td class="k"><kbd>F2</kbd></td><td>Context menu</td><td><code>context_menu</code></td></tr>
@@ -173,7 +184,7 @@ one with the same host, port, database, user and SSL mode is already saved) and 
 <tr><td class="k"><kbd>Alt+Shift+Up</kbd>, <kbd>Alt+Shift+Down</kbd></td><td>Results smaller / larger</td><td><code>results_smaller</code>, <code>results_larger</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Show / hide the results</td><td><code>toggle_results</code></td></tr>
 <tr><td class="k"><kbd>F5</kbd></td><td>Execute</td><td><code>execute</code></td></tr>
-<tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td>Cancel the running query</td><td><code>cancel_query</code></td></tr>
+<tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td>Send a cancel request for the running statement</td><td><code>cancel_query</code></td></tr>
 <tr><td class="k"><kbd>F4</kbd></td><td>psql-style command line</td><td><code>psql_command</code></td></tr>
 <tr><td class="k"><kbd>F8</kbd></td><td>Ask AI for SQL — into the editor, never run (<a href="ai.html">AI assistant</a>)</td><td><code>ask_ai</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+P</kbd></td><td>PL/pgSQL mode on / off</td><td><code>toggle_plpgsql</code></td></tr>
@@ -185,7 +196,7 @@ one with the same host, port, database, user and SSL mode is already saved) and 
 <h3>Server dashboard <code>[dashboard]</code></h3>
 <div class="tablewrap"><table>
 <tr><th>Key</th><th>What it does</th><th>Command</th></tr>
-<tr><td class="k"><kbd>F5</kbd></td><td>Refresh now (connects again when needed)</td><td><code>dashboard_refresh</code></td></tr>
+<tr><td class="k"><kbd>F5</kbd></td><td>Refresh now (reconnects when needed)</td><td><code>dashboard_refresh</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+P</kbd></td><td>Pause / resume the refresh</td><td><code>dashboard_pause</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+T</kbd></td><td>Refresh interval (0.5, 1, 2, 5, 10, 30 s)</td><td><code>dashboard_interval</code></td></tr>
 <tr><td class="k"><kbd>Alt+I</kbd></td><td>Hide / show idle sessions</td><td><code>hide_idle_sessions</code></td></tr>
@@ -194,8 +205,8 @@ one with the same host, port, database, user and SSL mode is already saved) and 
 <tr><td class="k"><kbd>Esc</kbd></td><td>Untag all sessions</td><td><code>clear_tags</code></td></tr>
 <tr><td class="k"><kbd>Alt+Right</kbd>, <kbd>Ctrl+PgDn</kbd>, <kbd>Alt+PgDn</kbd></td><td>Next dashboard list</td><td><code>next_list</code></td></tr>
 <tr><td class="k"><kbd>Alt+Left</kbd>, <kbd>Ctrl+PgUp</kbd>, <kbd>Alt+PgUp</kbd></td><td>Previous dashboard list</td><td><code>prev_list</code></td></tr>
-<tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td>Cancel the query of the selected session</td><td><code>cancel_backend</code></td></tr>
-<tr><td class="k"><kbd>F8</kbd></td><td>Terminate the selected session</td><td><code>terminate_backend</code></td></tr>
+<tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td><code>pg_cancel_backend()</code> on the selected session</td><td><code>cancel_backend</code></td></tr>
+<tr><td class="k"><kbd>F8</kbd></td><td><code>pg_terminate_backend()</code> on the selected session</td><td><code>terminate_backend</code></td></tr>
 <tr><td class="k"><kbd>Enter</kbd></td><td>Show the whole row (full query text)</td><td><code>show_row</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+E</kbd></td><td>The statement in a new query tab</td><td><code>edit_in_query_tab</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Show / hide the statement pane</td><td><code>toggle_results</code></td></tr>
@@ -224,7 +235,7 @@ one with the same host, port, database, user and SSL mode is already saved) and 
 <h3>Database statistics <code>[db_stats]</code></h3>
 <div class="tablewrap"><table>
 <tr><th>Key</th><th>What it does</th><th>Command</th></tr>
-<tr><td class="k"><kbd>F5</kbd></td><td>Read the statistics again (connects again when needed)</td><td><code>db_stats_refresh</code></td></tr>
+<tr><td class="k"><kbd>F5</kbd></td><td>Read the statistics again (reconnects when needed)</td><td><code>db_stats_refresh</code></td></tr>
 <tr><td class="k"><kbd>F2</kbd></td><td>Context menu</td><td><code>context_menu</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+C</kbd>, <kbd>Ctrl+Insert</kbd>; <kbd>Ctrl+A</kbd></td><td>Copy; select all</td><td><code>copy</code>, <code>select_all</code></td></tr>
 <tr><td class="k">Arrows, <kbd>PgUp</kbd>, <kbd>PgDn</kbd>, <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>Ctrl+Home</kbd>, <kbd>Ctrl+End</kbd></td><td>Move in the list</td><td><code>up</code> … <code>doc_end</code></td></tr>
@@ -273,7 +284,7 @@ the preview the <code>[editor]</code> keys apply).</p>
 </table></div>
 
 <h3>Commands without a default key</h3>
-<p>They are in the menus and can be given a key in <code>keymap.toml</code>:</p>
+<p>Reachable from the menus; bind them in <code>keymap.toml</code>:</p>
 <p><code>commit</code>, <code>rollback</code>, <code>toggle_auto_commit</code>, <code>toggle_auto_rollback</code>,
 <code>export_result</code>, <code>copy_all_messages</code>, <code>save_file_as</code>, <code>open_file</code>,
 <code>toggle_system_objects</code>, <code>new_connection</code>, <code>edit_connection</code>, <code>delete_connection</code>,
@@ -284,13 +295,13 @@ the preview the <code>[editor]</code> keys apply).</p>
 <code>template_add_variant</code>.</p>
 
 <h2 id="menus">Menu reference</h2>
-<p>Open the menu bar with <kbd>F9</kbd>. The key column shows the built-in key of the command, and in brackets the part
-of the window where that key works.</p>
+<p>Open the menu bar with <kbd>F9</kbd>. The key column shows the default binding of the command, and in brackets
+the context in which it applies.</p>
 <div class="tablewrap"><table>
 <tr><th>Menu</th><th>Item</th><th>Key</th><th>Notes</th></tr>
-<tr><td rowspan="12">File</td><td>New connection…</td><td></td><td>Save a new server connection</td></tr>
-<tr><td>Edit connection…</td><td></td><td>The server of the selected tree row; a changed connection is made again (<a href="connections.html#edit-connected">details</a>)</td></tr>
-<tr><td>Delete connection…</td><td></td><td>The server of the selected tree row, after a question</td></tr>
+<tr><td rowspan="12">File</td><td>New connection…</td><td></td><td>Save a new set of connection parameters</td></tr>
+<tr><td>Edit connection…</td><td></td><td>The server of the selected tree row; changed connection parameters disconnect and reconnect the server (its tabs are closed) (<a href="connections.html#edit-connected">details</a>)</td></tr>
+<tr><td>Delete connection…</td><td></td><td>The server of the selected tree row, after confirmation</td></tr>
 <tr><td>Connect</td><td></td><td rowspan="2">The server selected in the tree</td></tr>
 <tr><td>Disconnect</td><td></td></tr>
 <tr><td>New query</td><td class="k"><kbd>Ctrl+N</kbd></td><td rowspan="2">Needs a database (or an object below it) selected in the tree</td></tr>
@@ -302,7 +313,7 @@ of the window where that key works.</p>
 <tr><td>Quit</td><td class="k"><kbd>F10</kbd></td><td></td></tr>
 <tr><td rowspan="7">View</td><td>Refresh object tree</td><td class="k"><kbd>Ctrl+R</kbd> (tree)</td><td></td></tr>
 <tr><td>Edit in new query tab</td><td class="k"><kbd>Ctrl+E</kbd></td><td>The shown definition or statement</td></tr>
-<tr><td>Select top 100 rows</td><td class="k"><kbd>Ctrl+B</kbd> (tree)</td><td>Tables and views</td></tr>
+<tr><td>Select top 100 rows</td><td class="k"><kbd>Ctrl+B</kbd> (tree)</td><td>Tables and views: <code>SELECT * … LIMIT 100</code></td></tr>
 <tr><td>Find object…</td><td class="k"><kbd>Ctrl+F</kbd> (tree)</td><td></td></tr>
 <tr><td>Next tab</td><td class="k"><kbd>Alt+Right</kbd></td><td></td></tr>
 <tr><td>Previous tab</td><td class="k"><kbd>Alt+Left</kbd></td><td></td></tr>
@@ -346,19 +357,20 @@ of the window where that key works.</p>
 <div class="tablewrap"><table>
 <tr><th>File or folder</th><th>In</th><th>What</th></tr>
 <tr><td class="k"><code>settings.toml</code></td><td>config</td><td>Settings and saved connections (no passwords)</td></tr>
-<tr><td class="k"><code>keymap.toml</code></td><td>config</td><td>Your key changes (you create it)</td></tr>
+<tr><td class="k"><code>keymap.toml</code></td><td>config</td><td>Your key-binding overrides (you create it)</td></tr>
 <tr><td class="k"><code>ai_key</code></td><td>config</td><td>The AI provider's API key, when it is kept in a file (<a href="ai.html#setup">AI assistant</a>); readable only by you</td></tr>
 <tr><td class="k"><code>developer_templates/</code></td><td>data</td><td>Developer templates</td></tr>
 <tr><td class="k"><code>themes/</code></td><td>data</td><td>Your own colour schemes</td></tr>
 <tr><td class="k"><code>logs/</code></td><td>data</td><td>Log files <code>pgtc.YYYY-MM-DD.log</code>, one per day; the last 7 are kept</td></tr>
-<tr><td class="k"><code>profiler_restore.toml</code></td><td>data</td><td>Logging settings the profiler changed and has not put back yet (no passwords)</td></tr>
+<tr><td class="k"><code>profiler_restore.toml</code></td><td>data</td><td>Logging parameters the profiler changed and has not restored yet (no passwords)</td></tr>
 <tr><td class="k"><code>window.toml</code></td><td>data</td><td>Windows only: position of pgtc's own console window</td></tr>
-<tr><td class="k"><code>.pgpass</code> / <code>pgpass.conf</code></td><td>PostgreSQL's place</td><td>Passwords — <code>~/.pgpass</code>, <code>%APPDATA%\postgresql\pgpass.conf</code>, or <code>PGPASSFILE</code></td></tr>
+<tr><td class="k"><code>.pgpass</code> / <code>pgpass.conf</code></td><td>libpq's location</td><td>The password file, shared with psql and other libpq clients — <code>~/.pgpass</code>, <code>%APPDATA%\postgresql\pgpass.conf</code>, or <code>PGPASSFILE</code></td></tr>
 </table></div>
 
 <h3 id="log">Log</h3>
-<p>pgtc never prints to the terminal while it runs; it writes a log file. The level is <code>info</code>; set the
-environment variable <code>PGTC_LOG</code> for more, e.g. <code>PGTC_LOG=debug</code> or <code>PGTC_LOG=pgc_db=trace</code>.</p>
+<p>pgtc never writes to stdout or stderr while the TUI is active; it logs to a file. The default level is
+<code>info</code>. <code>PGTC_LOG</code> takes a level or a per-module filter: <code>PGTC_LOG=debug</code>,
+<code>PGTC_LOG=pgc_db=trace</code>.</p>
 
 <h3>Window position (Windows)</h3>
 <p>Started from Explorer, a shortcut or Win+R, pgtc gets its own classic console window; its position and maximized

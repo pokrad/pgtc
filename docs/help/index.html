@@ -20,19 +20,19 @@ on Linux, Windows and macOS. It looks and is used like Midnight Commander and wo
 
 <h2 id="what">What you can do with pgtc</h2>
 <div class="cards">
-  <a href="tree.html"><b>Browse a server</b><span>Databases, schemas, tables, columns, indexes, views, functions, triggers, roles — and find any object by name.</span></a>
-  <a href="objects.html"><b>Read definitions</b><span>The complete SQL definition of the selected object, as in pgAdmin's SQL tab.</span></a>
-  <a href="query.html"><b>Run SQL</b><span>Query tabs with streamed results, several result sets, messages, cancel, transactions and PL/pgSQL mode.</span></a>
+  <a href="tree.html"><b>Browse a server</b><span>Databases, schemas, relations, columns, indexes, functions, triggers, roles, tablespaces — read from the system catalogs; find any object by name.</span></a>
+  <a href="objects.html"><b>Read definitions</b><span>The DDL of the selected object, reconstructed from the catalogs, as in pgAdmin's SQL tab.</span></a>
+  <a href="query.html"><b>Run SQL</b><span>Query tabs, each with its own session: streamed result sets, messages, cancel, transaction control and PL/pgSQL mode.</span></a>
   <a href="editor.html"><b>Edit comfortably</b><span>A fast editor with highlighting, find / replace, undo and autocomplete from the live database.</span></a>
   <a href="files.html"><b>Work with files</b><span>Open and save SQL files; export any result to CSV, JSON or XML.</span></a>
   <a href="psql.html"><b>Use psql's commands</b><span><code>dt</code>, <code>d table</code>, <code>df</code>… and commands that generate SELECT, INSERT, UPDATE, MERGE, triggers and views for a table.</span></a>
   <a href="templates.html"><b>Generate SQL from templates</b><span>Fill in a short form, get ready-to-run CREATE and DROP statements. Add your own templates.</span></a>
   <a href="template-editor.html"><b>Make your own templates</b><span>The template editor: parameters from dialogs, helpers for the body, a live preview, a test in the real form.</span></a>
   <a href="ai.html"><b>Ask AI for SQL</b><span>Describe what you need in your words; a model that knows your database structure writes the SQL into the editor. Nothing runs by itself.</span></a>
-  <a href="pgdef.html"><b>Move a structure</b><span>Export a database's structure to a file and bring another database to it.</span></a>
+  <a href="pgdef.html"><b>Synchronise a schema</b><span>Export a database's schema definition to a <code>.pgdef</code> file and generate the DDL that brings another database to it.</span></a>
   <a href="dashboard.html"><b>Watch a server</b><span>Live graphs, sessions, blocking, progress of VACUUM and CREATE INDEX, locks; cancel or terminate sessions.</span></a>
   <a href="profiler.html"><b>Profile SQL</b><span>Every statement the server runs, with duration, parameters and errors.</span></a>
-  <a href="dbstats.html"><b>Read statistics</b><span>Size, cache hit ratio, transactions, tuples and more for one database.</span></a>
+  <a href="dbstats.html"><b>Read statistics</b><span>Size, cache hit ratio, transactions, tuples and more for one database, from the cumulative statistics views.</span></a>
   <a href="settings.html"><b>Make it yours</b><span>Settings, six colour schemes (or your own), every key changeable.</span></a>
 </div>
 
@@ -70,9 +70,9 @@ tables <code>sales.customer</code>, <code>sales.salesorderheader</code>, <code>s
 
 <h2 id="servers">Supported servers and terminals</h2>
 <ul>
-  <li><b>PostgreSQL 11 and newer.</b> An older server is refused with a message after connecting. Versions up to 18
-      are verified; a newer server connects with the warning <i>“PostgreSQL N – not yet verified with pgtc”</i> and
-      normally works.</li>
+  <li><b>PostgreSQL 11 and newer.</b> pgtc reads <code>server_version_num</code> after connecting and refuses an
+      older server. Major versions up to 18 are verified; a newer one connects with the warning <i>“PostgreSQL N –
+      not yet verified with pgtc”</i> and is handled with the catalog queries of the newest known version.</li>
   <li><b>Any terminal</b> on Linux, Windows and macOS, also over SSH. The default colours need only the 16 basic
       colours. No special font is needed.</li>
   <li>Everything can be done from the <b>keyboard</b>; the mouse is optional.</li>

@@ -9,55 +9,54 @@
 <body>
 <main>
 <h1>Settings, colours and keys</h1>
-<p class="lead">The Settings dialog, the colour schemes — the six that come with pgtc and your own — and how to give
-any command another key.</p>
+<p class="lead">The Settings dialog, the built-in and user-defined colour schemes, key bindings
+(<code>keymap.toml</code>) and the settings file (<code>settings.toml</code>).</p>
 
 <h2 id="dialog">The Settings dialog</h2>
 <figure class="small">
   <img src="img/settings.svg" alt="The Settings dialog" loading="lazy">
   <figcaption><span class="menu">Settings → Settings…</span></figcaption>
 </figure>
-<p>Open it with <span class="menu">Settings → Settings…</span> (<kbd>F9</kbd>, then <kbd>Alt+S</kbd> for the <i>Settings</i> menu, <kbd>Enter</kbd>). Change what
-you like and press <kbd>Enter</kbd> on <span class="ui">OK</span>; <kbd>Esc</kbd> leaves everything as it was. The
-settings are saved at once and are there the next time you start pgtc.</p>
+<p>Open it with <span class="menu">Settings → Settings…</span> (<kbd>F9</kbd>, then <kbd>Alt+S</kbd> for the <i>Settings</i> menu, <kbd>Enter</kbd>). <span class="ui">OK</span> (<kbd>Enter</kbd>) applies the values and writes them to <code>settings.toml</code>;
+<kbd>Esc</kbd> discards the changes.</p>
 
 <h3>Appearance</h3>
 <div class="tablewrap"><table>
 <tr><th>Setting</th><th>Default</th><th>Meaning</th></tr>
-<tr><td class="k"><span class="ui">Colour scheme</span></td><td>Classic</td><td>The colours of the whole program. See <a href="#schemes">Colour schemes</a>. The screen changes as soon as you pick a scheme in the list, so you can try them.</td></tr>
+<tr><td class="k"><span class="ui">Colour scheme</span></td><td>Classic</td><td>The colour scheme of the whole UI. See <a href="#schemes">Colour schemes</a>. A scheme picked in the list is previewed immediately.</td></tr>
 <tr><td class="k"><span class="ui">ASCII frames (+ - |)</span></td><td>off</td><td>Draw all frames and lines with the plain characters <code>+ - = |</code> instead of line-drawing characters. See <a href="#ascii">below</a>.</td></tr>
 </table></div>
 
 <h3>Tree and connections</h3>
 <div class="tablewrap"><table>
 <tr><th>Setting</th><th>Default</th><th>Meaning</th></tr>
-<tr><td class="k"><span class="ui">Connect timeout (s)</span></td><td>10</td><td>How long pgtc waits for a server to answer when connecting, in seconds (1 – 3,600). Raise it for servers behind a slow VPN.</td></tr>
-<tr><td class="k"><span class="ui">Show system objects in the tree</span></td><td>off</td><td>Also show <code>pg_toast</code> and temporary schemas, template databases, <code>pg_*</code> roles and the objects of extensions. Applies to the tree and to <a href="tree.html#find">Find object</a>.</td></tr>
+<tr><td class="k"><span class="ui">Connect timeout (s)</span></td><td>10</td><td>The <code>connect_timeout</code> of every session pgtc opens, in seconds (1 – 3,600): a connection attempt that has not succeeded by then is abandoned. Raise it for servers behind a slow link.</td></tr>
+<tr><td class="k"><span class="ui">Show system objects in the tree</span></td><td>off</td><td>Also show the <code>pg_toast</code> and temporary schemas, template databases, the predefined <code>pg_*</code> roles and objects that belong to an extension. Applies to the tree and to <a href="tree.html#find">Find object</a>.</td></tr>
 </table></div>
 
 <h3>Query tabs</h3>
 <div class="tablewrap"><table>
 <tr><th>Setting</th><th>Default</th><th>Meaning</th></tr>
-<tr><td class="k"><span class="ui">Rows per batch</span></td><td>1000</td><td>How many rows of a result are fetched at a time (1 – 1,000,000). See <a href="query.html#batches">Large results</a>. A larger batch means fewer pauses when scrolling, a smaller one a quicker first screen.</td></tr>
-<tr><td class="k"><span class="ui">Cancel wait (s)</span></td><td>5</td><td>After a cancel request, how long pgtc waits before it offers to close the connection (1 – 3,600). See <a href="query.html#cancel">Cancelling</a>.</td></tr>
-<tr><td class="k"><span class="ui">Auto commit in new query tabs</span></td><td>on</td><td>The <a href="query.html#tx">Auto commit</a> switch a new query tab starts with.</td></tr>
-<tr><td class="k"><span class="ui">Auto rollback on error in new tabs</span></td><td>off</td><td>The <i>Auto rollback on error</i> switch a new query tab starts with.</td></tr>
+<tr><td class="k"><span class="ui">Rows per batch</span></td><td>1000</td><td>Number of rows of a result set read per batch (1 – 1,000,000); after each batch the result is paused until more rows are needed. See <a href="query.html#batches">Large results</a>. A larger batch means fewer pauses when scrolling, a smaller one a quicker first screen.</td></tr>
+<tr><td class="k"><span class="ui">Cancel wait (s)</span></td><td>5</td><td>Seconds (1 – 3,600) pgtc waits after sending a cancel request; if the backend has not ended the statement by then, pgtc offers to close the session. See <a href="query.html#cancel">Cancelling</a>.</td></tr>
+<tr><td class="k"><span class="ui">Auto commit in new query tabs</span></td><td>on</td><td>Initial state of <a href="query.html#tx">Auto commit</a> in a new query tab.</td></tr>
+<tr><td class="k"><span class="ui">Auto rollback on error in new tabs</span></td><td>off</td><td>Initial state of <i>Auto rollback on error</i> in a new query tab.</td></tr>
 <tr><td class="k"><span class="ui">Ask to save query tabs when closing</span></td><td>on</td><td>Off: a query tab with unsaved text closes without the <i>Save them?</i> question — the text is discarded. Also when quitting and disconnecting.</td></tr>
 </table></div>
-<p>The two <i>Auto…</i> settings are only the starting values for tabs you open from now on. Tabs that are already open
-keep their own switches (<span class="menu">Query</span> menu).</p>
+<p>The two <i>Auto…</i> settings are only the initial values for tabs opened from now on. Open tabs keep their
+own state (<span class="menu">Query</span> menu).</p>
 
 <h3>Clipboard</h3>
 <div class="tablewrap"><table>
 <tr><th>Setting</th><th>Default</th><th>Meaning</th></tr>
-<tr><td class="k"><span class="ui">System clipboard</span></td><td>on</td><td>Use the clipboard of the machine pgtc runs on, for copy and paste with other programs.</td></tr>
-<tr><td class="k"><span class="ui">OSC 52 clipboard (terminal, SSH)</span></td><td>on</td><td>When copying over SSH, also send the text to your terminal, which puts it into the clipboard of the machine you sit at.</td></tr>
+<tr><td class="k"><span class="ui">System clipboard</span></td><td>on</td><td>Use the clipboard of the host pgtc runs on.</td></tr>
+<tr><td class="k"><span class="ui">OSC 52 clipboard (terminal, SSH)</span></td><td>on</td><td>On copy, also send the text to the terminal as an OSC 52 escape sequence; the terminal puts it into the clipboard of the machine it runs on. This is what makes copy work over SSH.</td></tr>
 </table></div>
 <p>Both are explained in <a href="editor.html#clipboard">Copy and paste</a>. Turn OSC 52 off if your terminal prints
 strange characters when you copy; turn the system clipboard off if you do not want pgtc to touch it.</p>
 
-<p>A number outside its range, or a text where a number belongs, gives an error on <span class="ui">OK</span>; the
-dialog stays open so you can correct it.</p>
+<p>A value outside its range, or a non-numeric value in a numeric field, is reported on <span class="ui">OK</span>;
+the dialog stays open.</p>
 
 <h2 id="ascii">ASCII frames</h2>
 <figure>
@@ -103,16 +102,16 @@ the frames of dialogs and menus with <code>+ - |</code>. Everything else stays t
 </ul>
 
 <h3 id="own-scheme">Your own colour scheme</h3>
-<p>A colour scheme is a small text file. Put a file ending in <code>.toml</code> into the <code>themes</code> folder
-and it appears in the list of the Settings dialog (restart pgtc if it does not show up):</p>
+<p>A colour scheme is a TOML file. A <code>.toml</code> file in the <code>themes</code> folder appears in the list
+of the Settings dialog (restart pgtc if it does not show up):</p>
 <div class="tablewrap"><table>
 <tr><th>Platform</th><th>Themes folder</th></tr>
 <tr><td>Linux</td><td><code>~/.local/share/pgtc/themes</code></td></tr>
 <tr><td>macOS</td><td><code>~/Library/Application Support/pgtc/themes</code></td></tr>
 <tr><td>Windows</td><td><code>%APPDATA%\pgtc\themes</code></td></tr>
 </table></div>
-<p>A scheme only has to say what it changes. Everything it does not mention is taken from <i>Classic</i>. This
-complete file makes “Classic with a green editor”:</p>
+<p>A scheme lists only what it overrides; every role it does not mention is inherited from <i>Classic</i>. This
+complete file is “Classic with a green editor”:</p>
 <pre><code>name = "Green editor"
 
 [editor]
@@ -172,16 +171,16 @@ code. Copy <code>dracula.toml</code>, give it a new <code>name</code>, and chang
 focused button must stand out from their surroundings.</p>
 
 <h2 id="keymap">Changing keys: keymap.toml</h2>
-<p>Every command of pgtc has a name and can be given any key. Key changes are written into a file,
-<code>keymap.toml</code>, in pgtc's configuration folder:</p>
+<p>Every command has a name and can be bound to any key. Overrides of the built-in bindings go into
+<code>keymap.toml</code> in pgtc's configuration folder:</p>
 <div class="tablewrap"><table>
 <tr><th>Platform</th><th>File</th></tr>
 <tr><td>Linux</td><td><code>~/.config/pgtc/keymap.toml</code></td></tr>
 <tr><td>macOS</td><td><code>~/Library/Application Support/pgtc/keymap.toml</code></td></tr>
 <tr><td>Windows</td><td><code>%APPDATA%\pgtc\keymap.toml</code></td></tr>
 </table></div>
-<p>The exact path on your machine is shown at the end of <span class="menu">Help → Keyboard shortcuts</span>. The file
-does not exist until you create it; it is read when pgtc starts.</p>
+<p>The actual path is shown at the end of <span class="menu">Help → Keyboard shortcuts</span>. pgtc does not
+create the file; it is read once, at start.</p>
 
 <h3>The file</h3>
 <pre><code># keymap.toml — only what differs from the built-in keys
@@ -251,11 +250,11 @@ see <a href="trouble.html#keys">If a key does not work</a>. Keys with <kbd>Alt</
 safest choice.</p></div>
 
 <h2 id="file">The settings file</h2>
-<p>Everything the Settings dialog saves — and your saved connections — is in <code>settings.toml</code>, next to
-<code>keymap.toml</code>. You normally never touch it. A few settings exist <b>only</b> there:</p>
+<p>Everything the Settings dialog saves, and the saved connections, is in <code>settings.toml</code>, next to
+<code>keymap.toml</code>. A few settings exist <b>only</b> in the file:</p>
 <div class="tablewrap"><table>
 <tr><th>Section and key</th><th>Default</th><th>Meaning</th></tr>
-<tr><td class="k"><code>[editor]</code> <code>tab_width</code></td><td><code>4</code></td><td>How many columns wide a tab character is shown.</td></tr>
+<tr><td class="k"><code>[editor]</code> <code>tab_width</code></td><td><code>4</code></td><td>Display width of a tab character, in columns.</td></tr>
 <tr><td class="k"><code>[editor]</code> <code>line_numbers</code></td><td><code>true</code></td><td>Show line numbers in the editor.</td></tr>
 <tr><td class="k"><code>[ui]</code> <code>tree_width</code></td><td>a third of the window</td><td>The width of the object tree in columns. Written when you drag the tree's border.</td></tr>
 <tr><td class="k"><code>[export]</code> <code>format</code>, <code>csv_separator</code>, <code>csv_bom</code></td><td><code>csv</code>, <code>comma</code>, <code>false</code></td><td>The last choices of the export dialog.</td></tr>
@@ -316,8 +315,10 @@ ssl_root_cert = "/etc/ssl/our-ca.pem"
 ai_not_allowed = true</code></pre>
 <ul>
   <li>Edit the file only while pgtc is <b>not running</b> — pgtc writes it when you change a setting or a connection.</li>
-  <li>A key that is missing has its default. A key pgtc does not know is ignored.</li>
-  <li>Each <code>[[servers]]</code> block is one saved connection. <b>Passwords are never in this file</b>; they are
+  <li>A missing key takes its default. An unknown key is ignored.</li>
+  <li>Each <code>[[servers]]</code> block is one <a href="connections.html#saved">saved connection</a>;
+      <code>database</code> is its maintenance database, <code>ssl_mode</code> its <code>sslmode</code>,
+      <code>ssl_root_cert</code> its <code>sslrootcert</code>. <b>Passwords are never in this file</b>; they are
       in <a href="connections.html#passwords"><code>.pgpass</code></a>.</li>
   <li>To move your setup to another machine, copy <code>settings.toml</code>, <code>keymap.toml</code>, and the
       <code>themes</code> and <code>developer_templates</code> folders. All locations are listed in

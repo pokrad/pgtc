@@ -9,8 +9,9 @@
 <body>
 <main>
 <h1>Database statistics</h1>
-<p class="lead">The numbers PostgreSQL keeps about one database — size, connections, transactions, cache use, rows
-read and written, temporary files — on one page, in readable form.</p>
+<p class="lead">The cumulative statistics of one database — its rows in <code>pg_stat_database</code> and
+<code>pg_stat_database_conflicts</code>, plus size, connection limit and <code>datfrozenxid</code> age from
+<code>pg_database</code> — formatted, on one page.</p>
 
 <figure>
   <img src="img/dbstats.svg" alt="The database statistics tab" loading="lazy">
@@ -24,41 +25,42 @@ read and written, temporary files — on one page, in readable form.</p>
   <li>The tab is named <i>Stats: local · adventureworks</i>. Opening the statistics of the same database again
       switches to that tab.</li>
   <li>It works only on the database row itself, not on rows inside the database.</li>
-  <li>The tab has its own connection to that database; close it like any tab (<kbd>Ctrl+W</kbd>).</li>
+  <li>The tab holds its own session on that database (the values are those of
+      <code>current_database()</code>); close it like any tab (<kbd>Ctrl+W</kbd>).</li>
 </ul>
 
 <h2 id="refresh">The values are read when you ask</h2>
-<p>Unlike the <a href="dashboard.html">dashboard</a>, this tab has <b>no timer</b>. The values are read once when the
-tab opens, and again each time you press <kbd>F5</kbd>. The tab status row tells you how old they are:
-<i>Read at 2026-11-16 10:48:12+01 (F5 refreshes)</i> — the time is the server's clock.</p>
-<p>That makes the page easy to use for comparisons: read the numbers, run your test, press <kbd>F5</kbd>, and see
-what changed.</p>
+<p>Unlike the <a href="dashboard.html">dashboard</a>, this tab has <b>no timer</b>. One query reads all values when
+the tab opens, and again on each <kbd>F5</kbd>. The tab status row shows the <code>statement_timestamp()</code> of
+that query: <i>Read at 2026-11-16 10:48:12+01 (F5 refreshes)</i> — server clock.</p>
+<p>All counters are cumulative since <i>Statistics reset</i> (<code>stats_reset</code>). To measure a workload: read
+the values, run the test, press <kbd>F5</kbd>, and compare.</p>
 
 <h2 id="summary">The summary boxes</h2>
 <div class="tablewrap"><table>
 <tr><th>Box</th><th>Shows</th><th>How to read it</th></tr>
-<tr><td><b>Size</b></td><td>The size of the database on disk.</td><td>Tables, indexes and everything else together.</td></tr>
-<tr><td><b>Connections</b></td><td>Sessions connected to this database, and its connection limit: <i>41 (no limit)</i> or <i>41 / 100</i>.</td><td>Near the limit, new connections to this database are refused.</td></tr>
-<tr><td><b>Cache hit ratio</b></td><td>Share of all block requests that were answered from PostgreSQL's cache.</td><td>Since the statistics were last reset. For a database that fits its memory well it is above 99 %. A low value on a busy database means the server reads a lot from disk.</td></tr>
-<tr><td><b>Transactions</b></td><td>Committed and rolled back.</td><td>A high share of rollbacks deserves a look at the application.</td></tr>
-<tr><td><b>XID age</b></td><td>The age of the oldest transaction ID the database still needs, in transactions.</td><td>Autovacuum keeps this low. A value that keeps growing towards 200 million and beyond means vacuum cannot finish its work — often because of a session that keeps an old transaction open (the <a href="dashboard.html#summary">dashboard</a> names it).</td></tr>
+<tr><td><b>Size</b></td><td><code>pg_database_size()</code> of the database.</td><td>All relations of the database, in all tablespaces.</td></tr>
+<tr><td><b>Connections</b></td><td><code>numbackends</code> and the database's <code>CONNECTION LIMIT</code> (<code>datconnlimit</code>): <i>41 (no limit)</i> or <i>41 / 100</i>.</td><td>At the limit, new sessions on this database are refused. The statistics tab's own backend is counted.</td></tr>
+<tr><td><b>Cache hit ratio</b></td><td><code>blks_hit / (blks_hit + blks_read)</code>.</td><td>Share of block requests served from <code>shared_buffers</code>, since the last statistics reset. A <i>read</i> may still come from the operating system's page cache.</td></tr>
+<tr><td><b>Transactions</b></td><td><code>xact_commit</code> and <code>xact_rollback</code>.</td><td>A high share of rollbacks deserves a look at the application.</td></tr>
+<tr><td><b>XID age</b></td><td><code>age(datfrozenxid)</code>.</td><td>Autovacuum forces an anti-wraparound <code>VACUUM</code> on tables older than <code>autovacuum_freeze_max_age</code> (default 200 million). A value that keeps growing beyond that means vacuum cannot advance the freeze horizon — often because of a session with an old <code>backend_xmin</code> (the <a href="dashboard.html#summary">dashboard</a> names it), a forgotten prepared transaction or a stale replication slot.</td></tr>
 </table></div>
 
 <h2 id="list">The list</h2>
 <p>Every statistic as one row: <i>Group</i>, <i>Statistic</i>, <i>Value</i>.</p>
 <div class="tablewrap"><table>
-<tr><th>Group</th><th>Statistics</th><th>Notes</th></tr>
-<tr><td><b>Database</b></td><td>Size · Backends · Connection limit · Transaction ID age · Multixact ID age · Statistics reset</td><td><i>Statistics reset</i> is when the counters below were last set to zero — all counts are “since then”.</td></tr>
-<tr><td><b>Transactions</b></td><td>Committed · Rolled back · Deadlocks</td><td>Deadlocks: how often PostgreSQL had to break a deadlock by cancelling one of the transactions.</td></tr>
-<tr><td><b>Block I/O</b></td><td>Blocks read · Blocks hit · Cache hit ratio · Read time · Write time</td><td>The times are filled only when the server runs with <code>track_io_timing = on</code>.</td></tr>
-<tr><td><b>Tuples</b></td><td>Returned · Fetched · Inserted · Updated · Deleted</td><td>Rows read by scans / rows actually fetched / rows written.</td></tr>
-<tr><td><b>Temporary files</b></td><td>Files · Size</td><td>Files written because a sort or hash did not fit into <code>work_mem</code>. Many large ones: a query needs more memory, or a better plan.</td></tr>
-<tr><td><b>Sessions</b> (PostgreSQL 14+)</td><td>Sessions · Abandoned · Ended by fatal errors · Terminated · Session time · Active time · Idle in transaction time</td><td>How many sessions there were and how they ended; how much of their time was spent working.</td></tr>
-<tr><td><b>Checksums</b> (PostgreSQL 12+)</td><td>Failures · Last failure</td><td><i>checksums off</i> when the cluster has no data checksums. Any failure is serious: it means a damaged page.</td></tr>
-<tr><td><b>Parallel workers</b> (PostgreSQL 18+)</td><td>Planned · Launched</td><td>Launched far below planned: the server runs out of worker processes.</td></tr>
-<tr><td><b>Recovery conflicts</b></td><td>Total · Tablespace · Lock · Snapshot · Buffer pin · Deadlock · Logical slot (16+)</td><td>Only on a standby: queries cancelled because they got in the way of replaying changes.</td></tr>
+<tr><th>Group</th><th>Statistics</th><th>Source and notes</th></tr>
+<tr><td><b>Database</b></td><td>Size · Backends · Connection limit · Transaction ID age · Multixact ID age · Statistics reset</td><td><code>pg_database_size()</code>, <code>numbackends</code>, <code>datconnlimit</code>, <code>age(datfrozenxid)</code>, <code>mxid_age(datminmxid)</code>, <code>stats_reset</code>.</td></tr>
+<tr><td><b>Transactions</b></td><td>Committed · Rolled back · Deadlocks</td><td><code>xact_commit</code>, <code>xact_rollback</code>, <code>deadlocks</code> (deadlocks detected).</td></tr>
+<tr><td><b>Block I/O</b></td><td>Blocks read · Blocks hit · Cache hit ratio · Read time · Write time</td><td><code>blks_read</code>, <code>blks_hit</code>, <code>blk_read_time</code>, <code>blk_write_time</code>. The times stay 0 unless <code>track_io_timing = on</code>.</td></tr>
+<tr><td><b>Tuples</b></td><td>Returned · Fetched · Inserted · Updated · Deleted</td><td><code>tup_returned</code>, <code>tup_fetched</code>, <code>tup_inserted</code>, <code>tup_updated</code>, <code>tup_deleted</code>.</td></tr>
+<tr><td><b>Temporary files</b></td><td>Files · Size</td><td><code>temp_files</code>, <code>temp_bytes</code>: files written by sorts, hashes and other nodes that exceeded <code>work_mem</code>.</td></tr>
+<tr><td><b>Sessions</b> (PostgreSQL 14+)</td><td>Sessions · Abandoned · Ended by fatal errors · Terminated · Session time · Active time · Idle in transaction time</td><td><code>sessions</code>, <code>sessions_abandoned</code>, <code>sessions_fatal</code>, <code>sessions_killed</code>, <code>session_time</code>, <code>active_time</code>, <code>idle_in_transaction_time</code>.</td></tr>
+<tr><td><b>Checksums</b> (PostgreSQL 12+)</td><td>Failures · Last failure</td><td><code>checksum_failures</code>, <code>checksum_last_failure</code>. <i>checksums off</i> when the cluster has no data checksums. Any failure means a corrupted page.</td></tr>
+<tr><td><b>Parallel workers</b> (PostgreSQL 18+)</td><td>Planned · Launched</td><td><code>parallel_workers_to_launch</code>, <code>parallel_workers_launched</code>. Launched far below planned: the worker pool (<code>max_parallel_workers</code>, <code>max_worker_processes</code>) is exhausted.</td></tr>
+<tr><td><b>Recovery conflicts</b></td><td>Total · Tablespace · Lock · Snapshot · Buffer pin · Deadlock · Logical slot (16+)</td><td><code>conflicts</code> and the <code>confl_*</code> columns of <code>pg_stat_database_conflicts</code>. Non-zero only on a standby: queries cancelled because they conflicted with WAL replay.</td></tr>
 </table></div>
-<p>Groups that the server's version does not have are simply not there.</p>
+<p>Groups whose columns the server's version does not have are left out.</p>
 
 <h3>How values are written</h3>
 <div class="tablewrap"><table>
@@ -67,13 +69,13 @@ what changed.</p>
 <tr><td>Sizes</td><td>Readable, with the exact number of bytes: <code>1250 MB (1,310,368,640 bytes)</code>.</td></tr>
 <tr><td>Times</td><td>In the fitting unit: <code>850 ms</code>, <code>12.3 s</code>, <code>6 min 53 s</code>, <code>2 h 03 min</code>.</td></tr>
 <tr><td>Ratios</td><td>In percent, two decimals.</td></tr>
-<tr><td>No value</td><td><code>[null]</code>.</td></tr>
+<tr><td>SQL <code>NULL</code></td><td><code>[null]</code>.</td></tr>
 </table></div>
 
 <h2 id="keys">Keys</h2>
 <div class="tablewrap"><table>
 <tr><th>Key</th><th>What it does</th></tr>
-<tr><td class="k"><kbd>F5</kbd></td><td>Read the statistics again (and connect again after a lost connection).</td></tr>
+<tr><td class="k"><kbd>F5</kbd></td><td>Read the statistics again (and reconnect after a lost session).</td></tr>
 <tr><td class="k">Arrows, <kbd>PgUp</kbd> / <kbd>PgDn</kbd>, <kbd>Home</kbd> / <kbd>End</kbd></td><td>Move in the list.</td></tr>
 <tr><td class="k"><kbd>Ctrl+C</kbd></td><td>Copy the cell.</td></tr>
 <tr><td class="k"><kbd>Ctrl+A</kbd>, then <kbd>Ctrl+C</kbd></td><td>Copy the whole list, tab-separated — to keep a “before” next to an “after”.</td></tr>
@@ -82,10 +84,10 @@ what changed.</p>
 
 <h2 id="more">Where to look for more</h2>
 <ul>
-  <li><b>What is happening right now</b> — sessions, locks, running maintenance: the
+  <li><b>Current activity</b> — <code>pg_stat_activity</code>, lock waits, progress of maintenance commands: the
       <a href="dashboard.html">server dashboard</a> of the database (<kbd>Alt+D</kbd>).</li>
-  <li><b>Which statements run</b>: the <a href="profiler.html">SQL profiler</a>.</li>
-  <li><b>Statistics of single tables and indexes</b> are in PostgreSQL's views — run them in a query tab:
+  <li><b>Statement trace</b>: the <a href="profiler.html">SQL profiler</a>.</li>
+  <li><b>Per-relation statistics</b> have no tab; query the views in a query tab:
 <pre><code>SELECT relname, seq_scan, idx_scan, n_live_tup, n_dead_tup, last_autovacuum
 FROM pg_stat_user_tables
 ORDER BY n_dead_tup DESC;</code></pre></li>

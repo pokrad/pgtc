@@ -9,8 +9,9 @@
 <body>
 <main>
 <h1>Object tree</h1>
-<p class="lead">The left frame: your servers and everything in them. How to move in it, what it contains, how to
-find an object, and what you can start from a row.</p>
+<p class="lead">The left frame: the saved connections and, below each connected server, its cluster-wide objects,
+databases and the objects in them, read from the system catalogs. This chapter covers navigation, the node
+hierarchy, system objects, refresh, the two searches and the commands of a row.</p>
 
 <figure>
   <img src="img/window.svg" alt="The object tree" loading="lazy">
@@ -18,26 +19,28 @@ find an object, and what you can start from a row.</p>
 </figure>
 
 <h2 id="moving">Moving in the tree</h2>
-<p>A row with <code>►</code> can be opened; a row with <code>▼</code> is open. Rows without a mark have nothing
-below them.</p>
+<p>A row with <code>►</code> can be expanded; a row with <code>▼</code> is expanded. Rows without a mark have no
+children.</p>
 <div class="tablewrap"><table>
 <tr><th>Key</th><th>What it does</th></tr>
 <tr><td class="k"><kbd>Up</kbd> / <kbd>Down</kbd></td><td>Previous / next row.</td></tr>
-<tr><td class="k"><kbd>Right</kbd></td><td>Opens the row.</td></tr>
-<tr><td class="k"><kbd>Left</kbd></td><td>Closes the row.</td></tr>
-<tr><td class="k"><kbd>Enter</kbd></td><td>Opens a closed row, closes an open one.</td></tr>
+<tr><td class="k"><kbd>Right</kbd></td><td>Expands the row.</td></tr>
+<tr><td class="k"><kbd>Left</kbd></td><td>Collapses the row.</td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>Expands a collapsed row, collapses an expanded one.</td></tr>
 <tr><td class="k"><kbd>PgUp</kbd> / <kbd>PgDn</kbd></td><td>A page up / down.</td></tr>
 <tr><td class="k"><kbd>Home</kbd> / <kbd>End</kbd></td><td>First / last row.</td></tr>
-<tr><td class="k"><kbd>Alt+S</kbd> or <kbd>Ctrl+S</kbd></td><td><a href="#quick">Quick search</a> among the rows you see.</td></tr>
-<tr><td class="k"><kbd>Ctrl+F</kbd></td><td><a href="#find">Find object</a> — searches the database.</td></tr>
+<tr><td class="k"><kbd>Alt+S</kbd> or <kbd>Ctrl+S</kbd></td><td><a href="#quick">Quick search</a> among the loaded, visible rows.</td></tr>
+<tr><td class="k"><kbd>Ctrl+F</kbd></td><td><a href="#find">Find object</a> — queries the catalogs.</td></tr>
 </table></div>
-<p>The tree is <b>loaded as you open it</b>: opening <i>Tables</i> asks the database for the tables of that schema, and
-shows <i>loading…</i> for the moment that takes. Once loaded, a group shows how many objects it has:
-<code>Tables (19)</code>, <code>Schemas (6)</code>.</p>
-<p>Opening a database row connects to that database (the row then says <i>(connected)</i>); the first time this can
-take a moment.</p>
-<p>The mouse works too: click a row to select it, click with the right button for its context menu, and drag the
-border between the tree and the tabs to make the tree wider or narrower.</p>
+<p>The tree is <b>loaded lazily</b>: expanding a group runs one catalog query for that group — <i>Tables</i> of a
+schema reads <code>pg_class</code> for that <code>relnamespace</code> — and shows <i>loading…</i> until the rows
+arrive. Parent OIDs are passed as bind parameters. A loaded group shows its object count: <code>Tables (19)</code>,
+<code>Schemas (6)</code>.</p>
+<p>The cluster-wide groups are read through the server session on the maintenance database. Expanding a database row
+opens a session on that database (the row then says <i>(connected)</i>); everything below the row is read through
+it. See <a href="connections.html#many">The sessions pgtc opens on the server</a>.</p>
+<p>Mouse: a click selects a row, a right click opens its context menu, and dragging the border between the tree
+and the tabs resizes the tree.</p>
 
 <h2 id="contents">What the tree contains</h2>
 <div class="tablewrap"><table>
@@ -51,31 +54,45 @@ border between the tree and the tabs to make the tree wider or narrower.</p>
 <tr><td><b>Foreign table</b></td><td>Columns</td></tr>
 </table></div>
 <ul>
-  <li><b>Functions</b> are split as in pgAdmin: <i>Functions</i>, <i>Procedures</i> and <i>Trigger Functions</i> (functions
-      that return <code>trigger</code>).</li>
+  <li><b>Routines</b> (<code>pg_proc</code>) are split as in pgAdmin: <i>Functions</i> (<code>prokind = 'f'</code>),
+      <i>Procedures</i> (<code>prokind = 'p'</code>), <i>Aggregates</i> (<code>prokind = 'a'</code>) and <i>Trigger
+      Functions</i> — functions whose result type is <code>trigger</code> or <code>event_trigger</code>. A routine is
+      shown with its identity arguments, so overloads can be told apart.</li>
+  <li><b>Relations</b> (<code>pg_class</code>) are grouped by <code>relkind</code>: <i>Tables</i> (ordinary and
+      partitioned tables that are not partitions themselves), <i>Views</i>, <i>Materialized Views</i>,
+      <i>Sequences</i>, <i>Foreign Tables</i>.</li>
+  <li><b>Partitions</b> are the children of a partitioned table in <code>pg_inherits</code>. A partition in another
+      schema than its parent is shown schema-qualified; a sub-partitioned partition has a <i>Partitions</i> group of
+      its own.</li>
+  <li><b>Columns</b> are the rows of <code>pg_attribute</code> with <code>attnum &gt; 0</code> that are not dropped,
+      in <code>attnum</code> order, shown as <i>name (type)</i>.</li>
+  <li><b>Login/Group Roles</b> lists <code>pg_roles</code>; a role without <code>LOGIN</code> is marked
+      <i>(group)</i>.</li>
   <li><b>Catalogs</b> holds the two system schemas — <i>PostgreSQL Catalog (pg_catalog)</i> and
       <i>ANSI (information_schema)</i>. They are always shown there, and never under <i>Schemas</i>. Each has the same
       groups as a schema.</li>
 </ul>
 
 <h3 id="system">System objects</h3>
-<p>To keep the tree short, these are <b>hidden</b> unless you ask for them:</p>
+<p>By default the catalog queries of the tree filter out:</p>
 <ul>
-  <li>the schemas <code>pg_toast</code> and the temporary schemas;</li>
-  <li>template databases (<code>template0</code>, <code>template1</code>);</li>
-  <li>the built-in roles whose names start with <code>pg_</code>;</li>
-  <li>objects that belong to an extension (they are covered by the extension's row).</li>
+  <li>schemas whose name starts with <code>pg_</code>: <code>pg_toast</code> and the per-session
+      <code>pg_temp_<i>N</i></code> / <code>pg_toast_temp_<i>N</i></code> schemas;</li>
+  <li>template databases (<code>datistemplate</code>: <code>template0</code>, <code>template1</code>);</li>
+  <li>the predefined roles, whose names start with <code>pg_</code>;</li>
+  <li>member objects of an extension (a <code>pg_depend</code> entry with <code>deptype = 'e'</code>); they are
+      represented by the extension's row.</li>
 </ul>
-<p>To see them, open <span class="menu">Settings → Settings…</span> and check
-<span class="ui">Show system objects in the tree</span>. The setting applies to all servers and is remembered.</p>
+<p>To include them, open <span class="menu">Settings → Settings…</span> and check
+<span class="ui">Show system objects in the tree</span>. The setting applies to all servers and is saved.</p>
 
 <h2 id="default">The tree and the Default tab</h2>
-<p>The <i>Default</i> tab on the right always shows the row the tree cursor is on:</p>
+<p>The <i>Default</i> tab on the right always shows the row under the tree cursor:</p>
 <div class="tablewrap"><table>
 <tr><th>Row</th><th>The Default tab shows</th></tr>
-<tr><td>An object (table, view, function, index, column, role, …)</td><td>Its SQL definition — see <a href="objects.html">Object view</a>. It is asked from the database when the cursor has rested on the row for a moment, so you can run through the tree without waiting.</td></tr>
+<tr><td>An object (table, view, function, index, column, role, …)</td><td>Its DDL — see <a href="objects.html">Object view</a>. The definition query is sent when the cursor has rested on the row for 200 ms, so moving through the tree sends no queries for the rows passed.</td></tr>
 <tr><td>A group (<i>Tables</i>, <i>Columns</i>, …)</td><td>The list of the objects in it.</td></tr>
-<tr><td>A server</td><td>Its connection data, state, version and configuration — see <a href="connections.html#info">Connections</a>.</td></tr>
+<tr><td>A server</td><td>Its connection parameters, state, server version and <code>pg_settings</code> — see <a href="connections.html#info">Connections</a>.</td></tr>
 </table></div>
 <figure>
   <img src="img/tree-group.svg" alt="A group row" loading="lazy">
@@ -83,7 +100,7 @@ border between the tree and the tabs to make the tree wider or narrower.</p>
 </figure>
 
 <h2 id="menu">The context menu of a row</h2>
-<p><kbd>F2</kbd> or a right click opens the menu of the selected row. What is in it depends on the row:</p>
+<p><kbd>F2</kbd> or a right click opens the menu of the selected row. Its items depend on the kind of row:</p>
 <figure>
   <img src="img/tree-menu-table.svg" alt="Context menu of a table" loading="lazy">
   <figcaption><kbd>F2</kbd> on the table <code>customer</code>.</figcaption>
@@ -97,32 +114,33 @@ border between the tree and the tabs to make the tree wider or narrower.</p>
 </table></div>
 <div class="tablewrap"><table>
 <tr><th>Item</th><th>Key</th><th>What it does</th></tr>
-<tr><td>New query</td><td class="k"><kbd>Ctrl+N</kbd></td><td>Opens a <a href="query.html">query tab</a> connected to the database of the row.</td></tr>
-<tr><td>Edit in new query tab</td><td class="k"><kbd>Ctrl+E</kbd></td><td>Puts the definition shown on the right into a new query tab, so you can change and run it. See <a href="objects.html#edit">Object view</a>.</td></tr>
+<tr><td>New query</td><td class="k"><kbd>Ctrl+N</kbd></td><td>Opens a <a href="query.html">query tab</a> with a new session on the database of the row.</td></tr>
+<tr><td>Edit in new query tab</td><td class="k"><kbd>Ctrl+E</kbd></td><td>Copies the DDL shown on the right into a new query tab, to be changed and executed. See <a href="objects.html#edit">Object view</a>.</td></tr>
 <tr><td>Select top 100 rows</td><td class="k"><kbd>Ctrl+B</kbd></td><td>See <a href="#top">below</a>.</td></tr>
-<tr><td>Open SQL file…</td><td></td><td>Opens a <a href="files.html">SQL file</a> in a query tab connected to the database of the row.</td></tr>
+<tr><td>Open SQL file…</td><td></td><td>Opens a <a href="files.html">SQL file</a> in a query tab on the database of the row.</td></tr>
 <tr><td>Refresh</td><td class="k"><kbd>Ctrl+R</kbd></td><td>See <a href="#refresh">below</a>.</td></tr>
 <tr><td>Server dashboard</td><td class="k"><kbd>Alt+D</kbd></td><td>The <a href="dashboard.html">dashboard</a> of the server (on a server row) or of the database (on a database row or below).</td></tr>
 <tr><td>SQL profiler</td><td class="k"><kbd>Alt+P</kbd></td><td>The <a href="profiler.html">profiler</a> of the server.</td></tr>
 <tr><td>Database statistics</td><td class="k"><kbd>Alt+I</kbd></td><td>The <a href="dbstats.html">statistics</a> of the database.</td></tr>
 <tr><td>Export / Load database definition…</td><td></td><td>See <a href="pgdef.html">Database definition</a>.</td></tr>
 </table></div>
-<p>There is one more key that is not in any menu: <kbd>F3</kbd> opens the selected object in a <b>new tab</b> that stays
-open while you move on in the tree.</p>
-<div class="note"><p>Commands that need a database — <i>New query</i>, <i>Open SQL file</i> — work only when the cursor is
-on a database or inside one, on a connected server. Elsewhere the menu item is disabled and the key only shows a hint
-in the status line.</p></div>
+<p>One more key is in no menu: <kbd>F3</kbd> opens the selected object in a <b>new tab</b> that stays open while
+the tree cursor moves on.</p>
+<div class="note"><p>Commands that need a database session — <i>New query</i>, <i>Open SQL file</i> — work only with the
+cursor on a database or below one, on a connected server. Elsewhere the menu item is disabled and the key only shows
+a hint in the status line.</p></div>
 
 <h2 id="refresh">Refresh</h2>
-<p>The tree does not watch the database: an object created in a query tab, or by somebody else, appears after a
-refresh.</p>
+<p>The tree is a cache of catalog rows and is not updated by DDL: an object created in a query tab, or by another
+session, appears after a refresh.</p>
 <ul>
-  <li><kbd>Ctrl+R</kbd> in the tree reloads <b>everything below the selected row</b> that was already loaded. Rows
-      that still exist stay open as they were.</li>
+  <li><kbd>Ctrl+R</kbd> in the tree re-runs the catalog queries of <b>everything below the selected row</b> that was
+      already loaded. Rows that still exist stay expanded.</li>
   <li>From another part of the window use <span class="menu">View → Refresh object tree</span>.</li>
-  <li>On a server row, <kbd>Ctrl+R</kbd> also reads the server's configuration again.</li>
+  <li>On a server row, <kbd>Ctrl+R</kbd> also re-reads <code>pg_settings</code>.</li>
 </ul>
-<p>Refreshing also makes the autocomplete of your query tabs read its names again.</p>
+<p>A refresh also drops the name cache of the autocomplete in the query tabs, so completion reads the
+names again.</p>
 
 <h2 id="quick">Quick search (Alt+S)</h2>
 <figure>
@@ -130,21 +148,21 @@ refresh.</p>
   <figcaption><kbd>Alt+S</kbd>, then <code>salesp</code>: the cursor is on <code>salesperson</code>, and the bottom line
   shows the search text.</figcaption>
 </figure>
-<p>Quick search moves the cursor among the rows that are <b>visible</b> in the tree right now — as in Midnight
-Commander.</p>
+<p>Quick search moves the cursor among the rows that are <b>visible</b> in the tree — as in Midnight Commander. It
+is a client-side prefix match; no query is sent.</p>
 <ol class="steps">
   <li>Press <kbd>Alt+S</kbd> (or <kbd>Ctrl+S</kbd>).</li>
-  <li>Type the first letters of a name. The cursor jumps to the next row whose name <b>starts with</b> what you typed;
-      upper and lower case do not matter. The status line shows <i>Quick search: …</i>.</li>
+  <li>Type the first letters of a name. The cursor jumps to the next row whose name <b>starts with</b> the typed
+      text, case-insensitively. The status line shows <i>Quick search: …</i>.</li>
   <li>Press <kbd>Alt+S</kbd> again to jump to the next match.</li>
   <li><kbd>Enter</kbd>, <kbd>Esc</kbd> or an arrow key ends the search; the cursor stays where it is.</li>
 </ol>
-<p>Quick search asks nothing from the database, so it is instant — but it cannot find a table in a schema you have
-not opened. For that, use <i>Find object</i>.</p>
+<p>It therefore cannot find an object in a group that has not been loaded. For that, use <i>Find object</i>.</p>
 
 <h2 id="find">Find object (Ctrl+F)</h2>
-<p><i>Find object</i> searches the <b>database</b>, so it also finds objects in parts of the tree you never opened.
-It searches <b>everything below the selected row</b>.</p>
+<p><i>Find object</i> queries the <b>system catalogs</b>, so it also finds objects in parts of the tree that were
+never loaded. The scope is <b>everything below the selected row</b>. The typed text is sent as the bind parameter of
+an <code>ILIKE</code> match on the object names.</p>
 <figure>
   <img src="img/find-object.svg" alt="Find object dialog with results" loading="lazy">
   <figcaption>Everything in <code>adventureworks</code> with <code>territory</code> in its name, columns included.</figcaption>
@@ -159,24 +177,25 @@ It searches <b>everything below the selected row</b>.</p>
   <figcaption>The Find object dialog before you type.</figcaption>
 </figure>
   </li>
-  <li>Type a part of the name in <span class="ui">Name</span>. A moment after you stop typing, the list fills.</li>
-  <li>Move in the list with <kbd>Up</kbd> / <kbd>Down</kbd> / <kbd>PgUp</kbd> / <kbd>PgDn</kbd> — you do not have to
-      leave the input.</li>
-  <li>Press <kbd>Enter</kbd>. The dialog closes and the tree <b>opens down to exactly that object</b>: every level on
-      the way is opened and loaded, the cursor lands on the object, and the right side shows its definition.</li>
+  <li>Type a part of the name in <span class="ui">Name</span>. The query is sent 200 ms after the last key
+      press.</li>
+  <li>Move in the list with <kbd>Up</kbd> / <kbd>Down</kbd> / <kbd>PgUp</kbd> / <kbd>PgDn</kbd> — the focus stays in
+      the input.</li>
+  <li>Press <kbd>Enter</kbd>. The dialog closes and the tree <b>expands down to that object</b>: every level on the
+      path is loaded and expanded, the cursor lands on the object, and the right side shows its definition.</li>
 </ol>
 
 <h3>The options</h3>
 <div class="tablewrap"><table>
 <tr><th>Field</th><th>Meaning</th></tr>
-<tr><td class="k"><span class="ui">Name</span></td><td>The text to look for. Upper and lower case do not matter. <code>%</code> and <code>_</code> are ordinary characters here, not wildcards.</td></tr>
+<tr><td class="k"><span class="ui">Name</span></td><td>The text to match, case-insensitively (<code>ILIKE</code>). <code>%</code> and <code>_</code> are escaped: they match themselves, not as wildcards.</td></tr>
 <tr><td class="k"><span class="ui">Match</span></td><td><i>Contains</i> (default), <i>Starts with</i> or <i>Ends with</i>.</td></tr>
 <tr><td class="k"><span class="ui">Show columns</span></td><td>Off by default: columns are <b>not</b> searched. Check it to find columns too — they are listed last, as <code>table.column</code>.</td></tr>
 </table></div>
 <h3>The result list</h3>
 <ul>
-  <li>Columns: <i>Database</i>, <i>Schema</i>, <i>Name</i>, <i>Type</i>. Sub-objects are shown with their table
-      (<code>customer.territoryid</code>), functions with their argument types.</li>
+  <li>Columns: <i>Database</i>, <i>Schema</i>, <i>Name</i>, <i>Type</i>. Sub-objects are shown with their relation
+      (<code>customer.territoryid</code>), routines with their argument types.</li>
   <li>Order: by type in the order of the tree — schemas, tables, views, sequences, functions, …, indexes,
       constraints, triggers, …, columns last — then by name.</li>
   <li>At most <b>200</b> rows are shown; with more, the count line says <i>200+ objects — type more to narrow the
@@ -194,32 +213,35 @@ It searches <b>everything below the selected row</b>.</p>
 <tr><td>A row with nothing below it (a column, a role, …)</td><td>Nothing — the status line says so.</td></tr>
 </table></div>
 <ul>
-  <li><b>Searching a whole server:</b> each database is searched through its own connection, all at the same time;
-      results appear as each database answers (<i>1 of 20 databases</i>). pgtc opens at most 8 connections of its own
-      for this and closes them when the dialog closes. A database that cannot be opened — a password is needed, you
-      may not connect — is skipped and named in the count line (<i>not searched: db3 (password needed)</i>).</li>
-  <li><b>System objects</b> are searched only when <i>Show system objects</i> is on; otherwise the catalogs
-      (<code>pg_catalog</code>, <code>information_schema</code>) are left out.</li>
+  <li><b>Searching a whole server:</b> the catalogs are per database, so each database is searched through a
+      session on it, concurrently; results appear as each database answers (<i>1 of 20 databases</i>). pgtc opens at
+      most 8 sessions of its own for this and closes them when the dialog closes. A database that cannot be connected
+      to — a password is needed, the role lacks <code>CONNECT</code> — is skipped and named in the count line
+      (<i>not searched: db3 (password needed)</i>).</li>
+  <li><b>System objects</b> are searched only when <i>Show system objects</i> is on; otherwise the same filters as in
+      the tree apply and the system schemas (<code>pg_catalog</code>, <code>information_schema</code>) are left
+      out.</li>
   <li><b>Found kinds:</b> schemas, tables, partitions, views, materialized views, foreign tables, sequences,
       functions, procedures, trigger functions, aggregates, types, domains, collations, indexes, constraints,
       triggers, rules, policies, columns, extensions, event triggers, publications, languages, foreign data wrappers.
       <b>Not found:</b> casts, operators, full-text search objects, subscriptions.</li>
 </ul>
 <div class="note"><p>In the editor and in a definition, <kbd>Ctrl+F</kbd> is <i>Find / replace</i> in the text. <i>Find
-object</i> is <kbd>Ctrl+F</kbd> only while the tree has the focus.</p></div>
+object</i> is bound to <kbd>Ctrl+F</kbd> only while the tree has the focus.</p></div>
 
 <h2 id="top">Select top 100 rows (Ctrl+B)</h2>
 <figure>
   <img src="img/top100.svg" alt="Select top 100 rows" loading="lazy">
   <figcaption><kbd>Ctrl+B</kbd> on <code>sales.customer</code>.</figcaption>
 </figure>
-<p>The quickest way to look into a table. Put the cursor on a table, view, materialized view, foreign table or
+<p>A quick sample of a relation's rows. Put the cursor on a table, view, materialized view, foreign table or
 partition — or on <b>any row below it</b> (a column, the <i>Indexes</i> group, an index…) — and press <kbd>Ctrl+B</kbd>.</p>
-<p>pgtc opens a new query tab connected to that database with</p>
+<p>pgtc opens a new query tab on that database with</p>
 <pre><code>SELECT * FROM sales.customer LIMIT 100;</code></pre>
-<p>and runs it as soon as the tab is connected. The statement is ordinary text in an ordinary query tab: change it —
-add a <code>WHERE</code>, an <code>ORDER BY</code> — and press <kbd>F5</kbd> again. Names that need quotes are quoted
-for you.</p>
+<p>and executes it as soon as the tab's session is established. There is no <code>ORDER BY</code>: the rows come in
+whatever order the plan returns them. The statement is ordinary text in an ordinary query tab: change it — add a
+<code>WHERE</code>, an <code>ORDER BY</code> — and press <kbd>F5</kbd> again. The name is schema-qualified, and
+identifiers are quoted where needed.</p>
 <p>Also in <span class="menu">View → Select top 100 rows</span> and in the context menu. On rows that are not part of
 a table or view the command is not available.</p>
 
@@ -228,8 +250,8 @@ a table or view the command is not available.</p>
 <tr><th>Key</th><th>On</th><th>Opens</th></tr>
 <tr><td class="k"><kbd>F3</kbd></td><td>Any row</td><td>The row in its own object tab.</td></tr>
 <tr><td class="k"><kbd>Ctrl+N</kbd></td><td>A database or anything in it</td><td>A query tab.</td></tr>
-<tr><td class="k"><kbd>Ctrl+E</kbd></td><td>An object inside a database</td><td>Its definition in a query tab, ready to edit.</td></tr>
-<tr><td class="k"><kbd>Ctrl+B</kbd></td><td>A table, view, or a row below one</td><td>A query tab with its first 100 rows.</td></tr>
+<tr><td class="k"><kbd>Ctrl+E</kbd></td><td>An object inside a database</td><td>Its DDL in a query tab, ready to edit.</td></tr>
+<tr><td class="k"><kbd>Ctrl+B</kbd></td><td>A table, view, or a row below one</td><td>A query tab with <code>SELECT * … LIMIT 100</code>, executed.</td></tr>
 <tr><td class="k"><kbd>Alt+D</kbd> (<kbd>Ctrl+D</kbd>)</td><td>A server, a database, or anything in one</td><td>The server dashboard.</td></tr>
 <tr><td class="k"><kbd>Alt+P</kbd> (<kbd>Ctrl+P</kbd>)</td><td>A server or a database</td><td>The SQL profiler.</td></tr>
 <tr><td class="k"><kbd>Alt+I</kbd></td><td>A database</td><td>The database statistics.</td></tr>

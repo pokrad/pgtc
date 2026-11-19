@@ -9,47 +9,50 @@
 <body>
 <main>
 <h1>Developer template editor</h1>
-<p class="lead">Make your own <a href="templates.html">developer templates</a> — and change the ones you have — inside
-pgtc. The editor writes the header of the template for you, helps with the Jinja marks of the body, checks what you
-write, and shows the SQL the template gives while you type.</p>
+<p class="lead">An editor for <a href="templates.html">developer templates</a> (<code>.pgtemplate</code> files) inside
+pgtc. It generates the TOML header from a parameter list, assists with the Jinja syntax of the body, validates both
+continuously, and renders a live preview of the resulting SQL.</p>
 
-<p>A developer template is a small text file: a <b>header</b> that lists the fields of the form, and a <b>body</b>, the
-SQL with places for the values (the file format is described in
-<a href="templates.html#own">Writing your own templates</a>). You can still write such a file with any text editor.
-With the template editor you do not have to: you fill in dialogs, pick from lists, and look at the result.</p>
+<p>A developer template has a <b>header</b> — TOML: name, description and parameter declarations — and a
+<b>body</b>, a Jinja template that renders to SQL; the format is specified in
+<a href="templates.html#own">Writing your own templates</a>. Any text editor can write such a file. The template
+editor adds dialogs for the declarations, pick lists for parameters, constructs and filters, static checks and the
+preview.</p>
 
-<div class="note"><p>The editor needs <b>no connection</b>. A connected server helps in two places: the
-<a href="#checks">preview</a> is then made for that server's version, and <a href="#test">Test</a> can fill its
-drop-down lists from the selected database.</p></div>
+<div class="note"><p>The editor needs <b>no connection</b>: a template tab opens no session. A connected server is
+used in two places: the <a href="#checks">preview</a> is rendered for the version of the server selected in the
+object tree, and <a href="#test">Test</a> reads its choice lists over the tree's session on the selected
+database.</p></div>
 
 <h2 id="manager">The template manager</h2>
-<p><span class="menu">Tools → Developer templates…</span> opens the template manager. It is in the menu only — there
-is no key for it (you can <a href="settings.html#keymap">give it one</a>: the command is
+<p><span class="menu">Tools → Developer templates…</span> opens the template manager. It has a menu item only, no
+default key binding (one can be <a href="settings.html#keymap">assigned</a>: the command is
 <code>template_manager</code>).</p>
 <figure>
   <img src="img/tpe-manager.svg" alt="The template manager" loading="lazy">
   <figcaption>The template manager: the sections of the templates folder with their templates. The line under the
-  list is the description of the selected template.</figcaption>
+  list is the <code>description</code> of the selected template.</figcaption>
 </figure>
-<p>The list shows your templates folder as a tree: the <b>sections</b> (the folders — <i>Functions</i>,
-<i>Tables</i>, …) and, below each, its templates. It is the same tree as the <kbd>F7</kbd>
-<a href="templates.html#picker">picker</a> shows, with two differences:</p>
+<p>The list shows the templates folder as a tree: the <b>sections</b> (its directories — <i>Functions</i>,
+<i>Tables</i>, …) and, below each, its templates. It is the tree of the <kbd>F7</kbd>
+<a href="templates.html#picker">picker</a>, with two differences:</p>
 <ul>
-  <li><b>Empty sections</b> are listed too, so you can put a first template into one. (The picker hides them.)</li>
-  <li>A template that has a <a href="#variants">variant for newer servers</a> has <b>a row for each file</b>; the
-      variant's row ends with its version folder, for example <code>[12_plus]</code>.</li>
+  <li><b>Empty sections</b> are listed, so that a first template can be created in one. (The picker hides them.)</li>
+  <li>The picker resolves each template to one file for the tab's server version. The manager lists <b>every
+      file</b>: a template with a <a href="#variants">version variant</a> has one row per file; the variant's row
+      ends with its version folder, for example <code>[12_plus]</code>.</li>
 </ul>
 <div class="tablewrap"><table>
-<tr><th>Button</th><th>Key</th><th>What it does</th></tr>
-<tr><td class="k"><span class="ui">Edit</span></td><td class="k"><kbd>Enter</kbd>, <kbd>E</kbd>, double click</td><td>Opens the selected template in a <a href="#tab">template tab</a> and closes the manager. A template that is open already is not opened twice — its tab is shown.</td></tr>
+<tr><th>Button</th><th>Key</th><th>Action</th></tr>
+<tr><td class="k"><span class="ui">Edit</span></td><td class="k"><kbd>Enter</kbd>, <kbd>E</kbd>, double click</td><td>Opens the selected file in a <a href="#tab">template tab</a> and closes the manager. A file that is already open is not opened twice — its tab is activated.</td></tr>
 <tr><td class="k"><span class="ui">New</span></td><td class="k"><kbd>N</kbd></td><td>Opens a tab with a <a href="#new">new, empty template</a> for the section the cursor is in, and closes the manager.</td></tr>
-<tr><td class="k"><span class="ui">Section</span></td><td class="k"><kbd>T</kbd></td><td>Makes a new, empty section.</td></tr>
+<tr><td class="k"><span class="ui">Section</span></td><td class="k"><kbd>T</kbd></td><td>Creates a new, empty section.</td></tr>
 <tr><td class="k"><span class="ui">Copy</span></td><td class="k"><kbd>C</kbd></td><td>Copies the selected template to a new file name in the same section.</td></tr>
-<tr><td class="k"><span class="ui">Rename</span></td><td class="k"><kbd>R</kbd></td><td>Gives the selected template another file name, or the selected section another name.</td></tr>
-<tr><td class="k"><span class="ui">Delete</span></td><td class="k"><kbd>D</kbd></td><td>Deletes the selected template file, or the selected (empty) section. It asks first.</td></tr>
+<tr><td class="k"><span class="ui">Rename</span></td><td class="k"><kbd>R</kbd></td><td>Renames the file of the selected template, or the directory of the selected section.</td></tr>
+<tr><td class="k"><span class="ui">Delete</span></td><td class="k"><kbd>D</kbd></td><td>Deletes the selected template file, or the selected (empty) section, after confirmation.</td></tr>
 <tr><td class="k"><span class="ui">Close</span></td><td class="k"><kbd>Esc</kbd>, <kbd>L</kbd></td><td>Closes the manager.</td></tr>
 </table></div>
-<p>The letters work while the list has the focus. <kbd>Tab</kbd> moves between the search box, the list and the
+<p>The letter keys work while the list has the focus. <kbd>Tab</kbd> cycles between the search box, the list and the
 buttons; <kbd>Up</kbd> / <kbd>Down</kbd>, <kbd>PgUp</kbd> / <kbd>PgDn</kbd> move in the list.</p>
 
 <h3>Searching</h3>
@@ -58,22 +61,25 @@ buttons; <kbd>Up</kbd> / <kbd>Down</kbd>, <kbd>PgUp</kbd> / <kbd>PgDn</kbd> move
   <figcaption><code>trigger</code> typed into <span class="ui">Search</span>: the two trigger templates — one of them
   with its variant for PostgreSQL 12 and newer.</figcaption>
 </figure>
-<p>Go to <span class="ui">Search</span> (<kbd>Alt+S</kbd>, or <kbd>S</kbd> from the list) and type: the list keeps the
-templates whose name, description or file name contains the text.</p>
+<p>Focus <span class="ui">Search</span> (<kbd>Alt+S</kbd>, or <kbd>S</kbd> from the list) and type: the list is
+filtered to the templates whose name, description or file name contains the text.</p>
 
 <h3 id="sections">Sections</h3>
 <figure class="small">
   <img src="img/tpe-section.svg" alt="New section" loading="lazy">
   <figcaption><span class="ui">Section</span>: the name of the new section.</figcaption>
 </figure>
-<p>A section is a folder of the templates folder; its name is what the <kbd>F7</kbd> picker shows as the category.
-<span class="ui">Section</span> asks for a name and makes the folder. A section inside another one is written with a
-slash: <code>Tables/Partitions</code>.</p>
+<p>A section is a directory below a version folder; its name is the group heading in the <kbd>F7</kbd> picker.
+<span class="ui">Section</span> asks for a name and creates the directory under <code>default/</code>. A nested
+section is written with a slash: <code>Tables/Partitions</code>.</p>
 <ul>
-  <li>A name cannot contain <code>\ / : * ? " &lt; &gt; |</code>, and cannot start or end with a dot.</li>
-  <li>You do not have to make a section first: the <a href="#save">Save template</a> dialog can make one, too.</li>
-  <li><span class="ui">Delete</span> removes a section only when it is <b>empty</b>. Delete (or move) its templates
-      first.</li>
+  <li>A name must be a portable file name: no <code>\ / : * ? " &lt; &gt; |</code>, no control characters, no leading
+      or trailing dot. The names of version folders (<code>default</code>, <code>N_plus</code>) are reserved.</li>
+  <li>Creating a section first is optional: the <a href="#save">Save template</a> dialog can create one, too.</li>
+  <li><span class="ui">Rename</span> renames the section's directory in <b>every</b> version folder that has
+      it.</li>
+  <li><span class="ui">Delete</span> removes a section only if its directory is <b>empty</b> in every version
+      folder. Delete (or move) its templates first.</li>
 </ul>
 
 <h3>Copy, rename, delete</h3>
@@ -82,192 +88,201 @@ slash: <code>Tables/Partitions</code>.</p>
   <figcaption><span class="ui">Copy</span> on <i>Create table</i>: the file name of the copy, proposed as
   <code>table_copy</code>.</figcaption>
 </figure>
-<p><span class="ui">Copy</span> is the quickest way to a template of your own: copy one that comes with pgtc, then
-<span class="ui">Edit</span> the copy. The copy has the same <code>name</code> inside as the original — change it in
-the editor, so that you can tell the two apart in the picker.</p>
+<p><span class="ui">Copy</span> is the shortest way to a template of your own: copy a built-in one, then
+<span class="ui">Edit</span> the copy. The copy is byte-identical, so its header has the same <code>name</code> as the
+original — change it in the editor, or the picker shows two entries with the same label.</p>
 <p><span class="ui">Copy</span> and <span class="ui">Rename</span> ask for a <b>file name</b> (without
-<code>.pgtemplate</code>). The file name is not what the picker shows — that is the <span class="ui">Name</span> you
-give the template in its tab. A name that is taken already is refused.</p>
+<code>.pgtemplate</code>). The file name is not what the picker shows — that is the <code>name</code> key of the
+header, the <span class="ui">Name</span> of the template tab. A file name that already exists in the section, in any
+version folder, is refused.</p>
 <figure class="small">
   <img src="img/tpe-delete.svg" alt="Delete template" loading="lazy">
-  <figcaption><span class="ui">Delete</span> names the file and asks.</figcaption>
+  <figcaption><span class="ui">Delete</span> names the file and asks for confirmation.</figcaption>
 </figure>
 <div class="tablewrap"><table>
 <tr><th></th><th>A template with files in several version folders</th></tr>
-<tr><td class="k"><span class="ui">Copy</span>, <span class="ui">Rename</span></td><td>Act on <b>all</b> its files: the template stays one template with its variants.</td></tr>
-<tr><td class="k"><span class="ui">Delete</span></td><td>Deletes <b>the file of the selected row</b> only — the variant for PostgreSQL 16, say, and not the one for every version.</td></tr>
+<tr><td class="k"><span class="ui">Copy</span>, <span class="ui">Rename</span></td><td>Act on <b>all</b> its files: the template remains one template with its variants.</td></tr>
+<tr><td class="k"><span class="ui">Delete</span></td><td>Deletes <b>the file of the selected row</b> only — the variant in <code>16_plus</code>, say, and not the file in <code>default</code>.</td></tr>
 </table></div>
-<p>A deleted template that came with pgtc comes back with <span class="menu">Settings → Install templates</span>. One
-of your own is gone.</p>
-<p>If a template you rename is open in a tab, the tab follows: its next save goes to the new file.</p>
+<p>A deleted built-in template is restored by <span class="menu">Settings → Install templates</span>. A deleted
+template of your own is not recoverable from pgtc.</p>
+<p>If a renamed template is open in a tab, the tab follows: its next save goes to the new path.</p>
 
 <h2 id="new">A new template, step by step</h2>
-<p>As an example we make <i>Create lookup table</i>: a table with a code and a name, as a team might want all its
-lookup tables to look. It asks for a schema, a table name, the length of the code, and whether to add audit
+<p>The example is <i>Create lookup table</i>: a table with a code and a name column, the way a team might standardise
+its lookup tables. Its parameters: a schema, a table name, the length of the code column, and a flag for audit
 columns.</p>
 <ol class="steps">
-  <li>Open <span class="menu">Tools → Developer templates…</span>, put the cursor on the section the template belongs
-      to (or anywhere, and choose the section when saving), and press <kbd>N</kbd>.</li>
+  <li>Open <span class="menu">Tools → Developer templates…</span>, put the cursor on the target section (or anywhere,
+      and choose the section when saving), and press <kbd>N</kbd>.</li>
   <li>A template tab opens, empty, with the cursor on <span class="ui">Name</span>.
   <figure>
     <img src="img/tpe-new.svg" alt="A new template tab" loading="lazy">
-    <figcaption>A new template: no name, no parameters, an empty body. The bar on top names the section the
-    template was made for — the one the cursor was in, in the manager — and the version folder; the first save
-    proposes them. The bottom line of the window says how to go on.</figcaption>
+    <figcaption>A new template: no name, no parameters, an empty body. The file bar names the section the template
+    was created for — the one the cursor was in, in the manager — and the version folder; the first save proposes
+    both. The bottom line of the window shows the next steps.</figcaption>
   </figure></li>
   <li>Press <kbd>Enter</kbd> and type the name and the description.
   <figure class="small">
     <img src="img/tpe-props.svg" alt="Name and description" loading="lazy">
-    <figcaption>The name is the label in the <kbd>F7</kbd> picker; the description is shown under the picker's list
-    and is searched by its search box.</figcaption>
+    <figcaption>The header keys <code>name</code> — the label in the <kbd>F7</kbd> picker — and
+    <code>description</code>, shown under the picker's list and matched by its search box.</figcaption>
   </figure></li>
-  <li>Add the parameters — the fields of the form. For each: <kbd>Insert</kbd>, fill in the
-      <a href="#param">parameter dialog</a>, <kbd>Enter</kbd>. Here: <code>schema</code> (a choice from the database's
-      schemas), <code>name</code> (a name), <code>code_length</code> (a number, default 10), <code>with_audit</code>
-      (a checkbox).</li>
-  <li>Press <kbd>Tab</kbd> to go to the body, and write the SQL. Where a value of the form goes, press <kbd>F7</kbd>,
-      choose <span class="menu">Insert parameter…</span> and pick the parameter — or type the mark yourself:
-      <code>{{ name|ident }}</code>.</li>
-  <li>Watch the <a href="#checks">preview</a> below the body: it shows the SQL the template gives now. The status row
-      of the tab says <i>No problems found</i> — or what is wrong.</li>
-  <li>Press <kbd>Ctrl+S</kbd>. The first time, pgtc asks for the <a href="#save">section, the version folder and the
+  <li>Declare the parameters. For each: <kbd>Insert</kbd>, fill in the
+      <a href="#param">parameter dialog</a>, <kbd>Enter</kbd>. Here: <code>schema</code> (type <code>choice</code>,
+      source <code>schemas</code>), <code>name</code> (<code>identifier</code>), <code>code_length</code>
+      (<code>number</code>, default 10), <code>with_audit</code> (<code>bool</code>).</li>
+  <li>Press <kbd>Tab</kbd> to move to the body, and write the SQL. Where a parameter value belongs, press
+      <kbd>F7</kbd>, choose <span class="menu">Insert parameter…</span> and pick the parameter — or type the
+      expression yourself: <code>{{ name|ident }}</code>.</li>
+  <li>Watch the <a href="#checks">preview</a> below the body: it is the SQL the template renders to now. The status
+      row of the tab reads <i>No problems found</i> — or names the problem.</li>
+  <li>Press <kbd>Ctrl+S</kbd>. The first save asks for the <a href="#save">section, the version folder and the
       file name</a>.</li>
-  <li>Press <kbd>F5</kbd> to <a href="#test">try the form</a> as its users will see it.</li>
+  <li>Press <kbd>F5</kbd> to <a href="#test">test the form</a> as <kbd>F7</kbd> will present it.</li>
 </ol>
-<p>From now on the template is in the <kbd>F7</kbd> picker of every query tab.</p>
+<p>Once saved, the template is in the <kbd>F7</kbd> picker of every query tab: the picker scans the folder each time
+it opens.</p>
 
 <h2 id="tab">The template tab</h2>
 <figure>
   <img src="img/tpe-tab.svg" alt="A template tab" loading="lazy">
   <figcaption>The finished example in its tab. Left: name, description and the four parameters. Right: the body
-  above, the preview of the SQL below. Bottom: the status row.</figcaption>
+  above, the preview of the rendered SQL below. Bottom: the status row.</figcaption>
 </figure>
 <div class="tablewrap"><table>
-<tr><th>Part</th><th>What it is</th></tr>
-<tr><td class="k">File bar</td><td>The full path of the template file, with <code>*</code> while something is not saved. A template that has no file yet shows where it will go instead: <i>New template — section: Our team · version folder: default · not saved yet</i>.</td></tr>
-<tr><td class="k">Header</td><td>On the left: <span class="ui">Name</span>, <span class="ui">Description</span> and the list of <a href="#list">parameters</a>, with the buttons <span class="ui">Add</span>, <span class="ui">Edit</span>, <span class="ui">Delete</span>, <span class="ui">Up</span>, <span class="ui">Down</span>. It can be switched to <a href="#raw">raw text</a>.</td></tr>
-<tr><td class="k">Body</td><td>The SQL with its Jinja marks, in a <a href="editor.html">SQL editor</a> with all its keys: selecting, copy and paste, undo, find and replace.</td></tr>
-<tr><td class="k">Preview</td><td>The SQL the template gives with its default values — or the error that prevents it. Read only; you can select and copy from it.</td></tr>
-<tr><td class="k">Status row</td><td>What the <a href="#checks">checks</a> found, the server version the preview is made for, and the cursor position.</td></tr>
+<tr><th>Part</th><th>Content</th></tr>
+<tr><td class="k">File bar</td><td>The full path of the template file, with <code>*</code> while there are unsaved changes. A template without a file shows its destination instead: <i>New template — section: Our team · version folder: default · not saved yet</i>.</td></tr>
+<tr><td class="k">Header</td><td>On the left: <span class="ui">Name</span>, <span class="ui">Description</span> and the list of <a href="#list">parameters</a>, with the buttons <span class="ui">Add</span>, <span class="ui">Edit</span>, <span class="ui">Delete</span>, <span class="ui">Up</span>, <span class="ui">Down</span>. It can be switched to the <a href="#raw">raw TOML text</a>.</td></tr>
+<tr><td class="k">Body</td><td>The Jinja template, in a <a href="editor.html">SQL editor</a> with all its keys: selection, clipboard, undo, find and replace.</td></tr>
+<tr><td class="k">Preview</td><td>The SQL the body renders to with <a href="#checks">sample values</a> — or the error that prevents rendering. Read-only; text can be selected and copied.</td></tr>
+<tr><td class="k">Status row</td><td>The result of the <a href="#checks">checks</a>, the server version the preview is rendered for, and the cursor position.</td></tr>
 </table></div>
-<p>The tab's label is <i>Template:</i> and the name. On a narrow terminal (fewer than about 70 columns for the tab)
-the header is above the body instead of beside it.</p>
+<p>The tab's label is <i>Template:</i> followed by the name. On a narrow terminal (fewer than about 70 columns for
+the tab) the header is placed above the body instead of beside it.</p>
 
 <h3 id="parts">Moving between the parts</h3>
 <div class="tablewrap"><table>
-<tr><th>Key</th><th>What it does</th></tr>
+<tr><th>Key</th><th>Action</th></tr>
 <tr><td class="k"><kbd>Alt+Down</kbd></td><td>The next part: header → body → preview → header.</td></tr>
 <tr><td class="k"><kbd>Alt+Up</kbd></td><td>The previous part.</td></tr>
 <tr><td class="k"><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd></td><td>The same, from the header list and from the preview. <b>In the body</b> (and in the raw header) <kbd>Tab</kbd> indents, as in every editor — use <kbd>Alt+Down</kbd> / <kbd>Alt+Up</kbd> there.</td></tr>
 <tr><td class="k"><kbd>Ctrl+Tab</kbd>, <kbd>F6</kbd></td><td>The object tree ↔ the tab, as everywhere.</td></tr>
 <tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Hides / shows the preview.</td></tr>
-<tr><td class="k"><kbd>Alt+Shift+Up</kbd> / <kbd>Alt+Shift+Down</kbd></td><td>Makes the preview smaller / larger. With the mouse: drag the line <i>Preview</i>.</td></tr>
+<tr><td class="k"><kbd>Alt+Shift+Up</kbd> / <kbd>Alt+Shift+Down</kbd></td><td>Shrinks / enlarges the preview. With the mouse: drag the line <i>Preview</i>.</td></tr>
 </table></div>
-<p>With the mouse, click into a part to work in it; the wheel scrolls the part under the pointer.</p>
+<p>With the mouse, a click focuses a part; the wheel scrolls the part under the pointer.</p>
 
 <h3>The keys of the tab</h3>
 <p>These work in every part of a template tab:</p>
 <div class="tablewrap"><table>
-<tr><th>Key</th><th>What it does</th></tr>
+<tr><th>Key</th><th>Action</th></tr>
 <tr><td class="k"><kbd>Ctrl+S</kbd></td><td><a href="#save">Save</a>.</td></tr>
-<tr><td class="k"><kbd>F5</kbd></td><td><a href="#test">Test</a>: the template in its real form.</td></tr>
+<tr><td class="k"><kbd>F5</kbd></td><td><a href="#test">Test</a>: the template in the <kbd>F7</kbd> form.</td></tr>
 <tr><td class="k"><kbd>F7</kbd></td><td>The <a href="#helpers">helper menu</a>.</td></tr>
-<tr><td class="k"><kbd>Ctrl+T</kbd></td><td>The header as a list ↔ as <a href="#raw">raw text</a>.</td></tr>
+<tr><td class="k"><kbd>Ctrl+T</kbd></td><td>The header as a list ↔ as <a href="#raw">raw TOML</a>.</td></tr>
 <tr><td class="k"><kbd>Ctrl+W</kbd></td><td>Closes the tab (asks about unsaved changes).</td></tr>
-<tr><td class="k"><kbd>F1</kbd></td><td>The keys that work where you are.</td></tr>
+<tr><td class="k"><kbd>F1</kbd></td><td>The key bindings active in the current context.</td></tr>
 </table></div>
 <figure class="mid">
   <img src="img/tpe-f1.svg" alt="F1 in the header list" loading="lazy">
   <figcaption><kbd>F1</kbd> in the header list.</figcaption>
 </figure>
-<p><kbd>F5</kbd> and <kbd>F7</kbd> mean something else in a query tab (execute, insert from a template). In a
-template tab there is nothing to execute: <kbd>F5</kbd> tries the template out, <kbd>F7</kbd> helps writing it.</p>
+<p><kbd>F5</kbd> and <kbd>F7</kbd> are bound differently in a query tab (execute, generate SQL from a template). A
+template tab has no session and nothing to execute: there <kbd>F5</kbd> tests the template and <kbd>F7</kbd> opens
+the helpers.</p>
 
 <h2 id="list">The header list</h2>
 <figure>
   <img src="img/tpe-list.svg" alt="The header list" loading="lazy">
   <figcaption>The header list with the cursor on the parameter <code>name</code>. Each parameter row shows the name,
-  the type (for a choice from the database: what it lists) and <code>*</code> if the field must be filled in.</figcaption>
+  the type (for a choice with a <code>source</code>: the source) and <code>*</code> if the parameter is
+  <code>required</code>.</figcaption>
 </figure>
 <div class="tablewrap"><table>
-<tr><th>Key</th><th>Button</th><th>What it does</th></tr>
+<tr><th>Key</th><th>Button</th><th>Action</th></tr>
 <tr><td class="k"><kbd>Up</kbd> / <kbd>Down</kbd>, <kbd>PgUp</kbd> / <kbd>PgDn</kbd>, <kbd>Home</kbd> / <kbd>End</kbd></td><td></td><td>Move the cursor.</td></tr>
 <tr><td class="k"><kbd>Enter</kbd></td><td class="k"><span class="ui">Edit</span></td><td>On <span class="ui">Name</span> or <span class="ui">Description</span>: a dialog with both. On a parameter: its <a href="#param">dialog</a>. A double click does the same.</td></tr>
-<tr><td class="k"><kbd>Insert</kbd></td><td class="k"><span class="ui">Add</span></td><td>A new parameter, added at the end.</td></tr>
-<tr><td class="k"><kbd>Delete</kbd></td><td class="k"><span class="ui">Delete</span></td><td>Deletes the parameter. It asks first — there is no undo for the list.</td></tr>
-<tr><td class="k"><kbd>Ctrl+Up</kbd> / <kbd>Ctrl+Down</kbd><br>(or <kbd>Shift+Up</kbd> / <kbd>Shift+Down</kbd>)</td><td class="k"><span class="ui">Up</span> / <span class="ui">Down</span></td><td>Move the parameter. The order of the list is the order of the fields in the form.</td></tr>
+<tr><td class="k"><kbd>Insert</kbd></td><td class="k"><span class="ui">Add</span></td><td>A new parameter, appended to the list.</td></tr>
+<tr><td class="k"><kbd>Delete</kbd></td><td class="k"><span class="ui">Delete</span></td><td>Deletes the parameter, after confirmation — the list has no undo.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Up</kbd> / <kbd>Ctrl+Down</kbd><br>(or <kbd>Shift+Up</kbd> / <kbd>Shift+Down</kbd>)</td><td class="k"><span class="ui">Up</span> / <span class="ui">Down</span></td><td>Move the parameter. The order of the list is the order of the <code>[[param]]</code> tables in the header, and of the fields in the form.</td></tr>
 <tr><td class="k"><kbd>F2</kbd></td><td></td><td>The context menu with the same actions.</td></tr>
 </table></div>
 <figure>
   <img src="img/tpe-list-menu.svg" alt="The context menu of the header list" loading="lazy">
   <figcaption><kbd>F2</kbd> in the header list.</figcaption>
 </figure>
-<p>Typing does nothing in the list — it is not a text. To write the header as text, switch to the
-<a href="#raw">raw header</a>.</p>
-<p>If you <b>rename</b> a parameter, the body still uses the old name. The status row tells you at once:
-<i>Not declared: old_name · Not used: new_name</i>. Change the name in the body too (find and replace:
-<kbd>Ctrl+F</kbd>).</p>
+<p>The list takes no text input. To edit the header as text, switch to the <a href="#raw">raw header</a>.</p>
+<p><b>Renaming</b> a parameter does not rewrite the body: its expressions still reference the old variable. The
+status row reports it immediately: <i>Not declared: old_name · Not used: new_name</i>. Rename the variable in the
+body as well (find and replace: <kbd>Ctrl+F</kbd>).</p>
 
 <h2 id="param">The parameter dialog</h2>
 <figure class="mid">
   <img src="img/tpe-param.svg" alt="The parameter dialog" loading="lazy">
-  <figcaption>The parameter <code>name</code>: a PostgreSQL name that must be filled in, with a hint for the user.</figcaption>
+  <figcaption>The parameter <code>name</code>: a required <code>identifier</code> with a help text.</figcaption>
 </figure>
+<p>The dialog edits one <code>[[param]]</code> table of the header:</p>
 <div class="tablewrap"><table>
-<tr><th>Field</th><th>Meaning</th></tr>
-<tr><td class="k"><span class="ui">Name</span></td><td>The name of the value in the body: <code>{{ name }}</code>. Letters, digits and <code>_</code>; every parameter needs its own.</td></tr>
-<tr><td class="k"><span class="ui">Label</span></td><td>The text in front of the field in the form. Empty: the name is shown.</td></tr>
-<tr><td class="k"><span class="ui">Type</span></td><td>The kind of field — see below. The dialog shows the inputs that belong to the chosen type; what you typed already stays.</td></tr>
-<tr><td class="k"><span class="ui">Required</span></td><td>The field must be filled in; the form marks it with <code>*</code> and gives no SQL without it.</td></tr>
-<tr><td class="k"><span class="ui">Default</span></td><td>The value the field starts with. For a checkbox: <span class="ui">Checked by default</span>.</td></tr>
-<tr><td class="k"><span class="ui">Help</span></td><td>A hint shown at the bottom of the form while the field has the focus.</td></tr>
+<tr><th>Field</th><th>Header key</th><th>Meaning</th></tr>
+<tr><td class="k"><span class="ui">Name</span></td><td class="k"><code>name</code></td><td>The variable name in the body: <code>{{ name }}</code>. Letters, digits and <code>_</code>; unique among the parameters.</td></tr>
+<tr><td class="k"><span class="ui">Label</span></td><td class="k"><code>label</code></td><td>The field's label in the form. Empty: the name is shown.</td></tr>
+<tr><td class="k"><span class="ui">Type</span></td><td class="k"><code>type</code></td><td>The parameter type — see below. The dialog shows the inputs of the chosen type; values already entered are kept when the type changes.</td></tr>
+<tr><td class="k"><span class="ui">Required</span></td><td class="k"><code>required</code></td><td>An empty value fails validation: the form marks the field with <code>*</code> and renders no SQL without it.</td></tr>
+<tr><td class="k"><span class="ui">Default</span></td><td class="k"><code>default</code></td><td>The initial value of the field. For a <code>bool</code>: <span class="ui">Checked by default</span>.</td></tr>
+<tr><td class="k"><span class="ui">Help</span></td><td class="k"><code>help</code></td><td>A hint shown at the bottom of the form while the field has the focus.</td></tr>
 </table></div>
-<p><span class="ui">OK</span> checks the parameter: it needs a name that no other parameter has, a choice needs its
-values, a list needs fields. What is wrong is said in a message, and the dialog stays open.</p>
+<p><span class="ui">OK</span> validates the declaration with the rules the file parser applies: a valid, unique
+name; a <code>choice</code> with exactly one origin of values; a <code>list</code> with at least one field. A
+violation is reported in a message, and the dialog stays open.</p>
 
 <h3 id="types">The types</h3>
 <div class="tablewrap"><table>
-<tr><th>Type</th><th>The form shows</th><th>The dialog also asks for</th></tr>
-<tr><td class="k"><code>text</code></td><td>An input line</td><td></td></tr>
-<tr><td class="k"><code>identifier</code></td><td>An input line for a PostgreSQL name; the name is checked</td><td></td></tr>
-<tr><td class="k"><code>number</code></td><td>An input line for a number</td><td></td></tr>
+<tr><th><code>type</code></th><th>Form widget</th><th>Additional inputs of the dialog</th></tr>
+<tr><td class="k"><code>text</code></td><td>An input line; free text</td><td></td></tr>
+<tr><td class="k"><code>identifier</code></td><td>An input line for an identifier; validated (at most 63 bytes)</td><td></td></tr>
+<tr><td class="k"><code>number</code></td><td>An input line; must parse as a number</td><td></td></tr>
 <tr><td class="k"><code>bool</code></td><td>A checkbox</td><td></td></tr>
 <tr><td class="k"><code>choice</code></td><td>A drop-down list</td><td><span class="ui">Values from</span>: fixed options, database objects, or a query — see <a href="#choice">below</a></td></tr>
-<tr><td class="k"><code>sql</code></td><td>A SQL box of 5 rows</td><td><span class="ui">Takes the free rows of the form</span>: the box grows to all the rows the form has left (for a function body, a view's query)</td></tr>
+<tr><td class="k"><code>sql</code></td><td>A SQL box of 5 rows</td><td><span class="ui">Takes the free rows of the form</span> (<code>fill = true</code>): the box grows to all the rows the form has left — for a function body, a view's query</td></tr>
 <tr><td class="k"><code>list</code></td><td>A list of rows with Add / Edit / Delete / Up / Down</td><td>The <a href="#fields">fields of a row</a></td></tr>
 </table></div>
 
 <h3 id="choice">A choice and its values</h3>
-<p>A choice takes its values from one of three places. Choose it in <span class="ui">Values from</span>:</p>
+<p>A <code>choice</code> parameter takes its values from exactly one of three origins, selected in
+<span class="ui">Values from</span>:</p>
 <figure class="mid">
   <img src="img/tpe-param-source.svg" alt="A choice from database objects" loading="lazy">
-  <figcaption><b>Database objects</b>: the parameter <code>schema</code> lists the schemas of the database.
-  <span class="ui">Source</span> offers every list pgtc can read: schemas, tables, views, materialized views,
-  sequences, functions, procedures, types, user types, domains, indexes, triggers, roles
-  (<a href="templates.html#sources">what each lists</a>).</figcaption>
+  <figcaption><b>Database objects</b> (<code>source</code>): the parameter <code>schema</code> lists the schemas of
+  the database. <span class="ui">Source</span> offers every built-in catalog query: schemas, tables, views,
+  materialized views, sequences, functions, procedures, types, user types, domains, indexes, triggers, roles
+  (<a href="templates.html#sources">the catalog and filter of each</a>).</figcaption>
 </figure>
 <figure class="mid">
   <img src="img/tpe-param-options.svg" alt="A choice with fixed options" loading="lazy">
-  <figcaption><b>Fixed options</b>: write the values into the box, one per line. <kbd>Tab</kbd> leaves the box.</figcaption>
+  <figcaption><b>Fixed options</b> (<code>options</code>): one value per line. <kbd>Tab</kbd> leaves the box.</figcaption>
 </figure>
 <figure class="mid">
   <img src="img/tpe-param-query.svg" alt="A choice from a query" loading="lazy">
-  <figcaption><b>Query</b>: your own list. The query must be one statement that reads (<code>SELECT</code>,
-  <code>WITH</code>, <code>VALUES</code>, <code>TABLE</code>); its first column gives the values.</figcaption>
+  <figcaption><b>Query</b> (<code>query</code>): a custom list. The query must be a single statement starting with
+  <code>SELECT</code>, <code>WITH</code>, <code>VALUES</code> or <code>TABLE</code>; its first column supplies the
+  values. The form runs it <a href="templates.html#sources">read-only</a>.</figcaption>
 </figure>
-<p>A choice from <b>database objects</b> has two advantages over a query of your own: the form pre-fills it from the
-<a href="templates.html#prefill">object selected in the tree</a>, and its values know their schema — in the body
-<code>{{ table|ident }}</code> writes <code>sales."Order Items"</code>, correctly quoted.</p>
+<p>A <code>source</code> has two advantages over a custom <code>query</code>: the form presets it from the
+<a href="templates.html#prefill">object selected in the tree</a>, and its values are schema-qualified objects rather
+than strings — in the body <code>{{ table|ident }}</code> renders <code>sales."Order Items"</code>, each part quoted
+separately, and <code>{{ table.schema }}</code> / <code>{{ table.name }}</code> are available.</p>
 
 <h3 id="fields">A list and its fields</h3>
 <figure class="mid">
   <img src="img/tpe-param-list.svg" alt="A list parameter" loading="lazy">
   <figcaption>The list parameter <code>columns</code> of <i>Create table</i>: five fields make one row.</figcaption>
 </figure>
-<p>A list is a field with any number of rows — the columns of a table, the arguments of a function. The dialog of a
-list parameter has the list <span class="ui">Fields of a row</span> and five more buttons:</p>
+<p>A <code>list</code> parameter is a sequence of rows — the columns of a table, the arguments of a function. Its
+fields are the <code>[[param.fields]]</code> tables of the header. The dialog of a list parameter has the list
+<span class="ui">Fields of a row</span> and five more buttons:</p>
 <div class="tablewrap"><table>
-<tr><th>Button</th><th>Key</th><th>What it does</th></tr>
+<tr><th>Button</th><th>Key</th><th>Action</th></tr>
 <tr><td class="k"><span class="ui">Add</span></td><td class="k"><kbd>Alt+A</kbd></td><td>A new field, in a dialog of its own.</td></tr>
 <tr><td class="k"><span class="ui">Edit</span></td><td class="k"><kbd>Alt+E</kbd></td><td>The dialog of the selected field.</td></tr>
 <tr><td class="k"><span class="ui">Delete</span></td><td class="k"><kbd>Alt+D</kbd></td><td>Removes the selected field.</td></tr>
@@ -275,115 +290,119 @@ list parameter has the list <span class="ui">Fields of a row</span> and five mor
 </table></div>
 <figure class="mid">
   <img src="img/tpe-field.svg" alt="The dialog of a field" loading="lazy">
-  <figcaption>The field <code>col_type</code>, opened over the dialog of its list. A field is a parameter like the
-  others — only a list inside a list is not possible.</figcaption>
+  <figcaption>The field <code>col_type</code>, opened over the dialog of its list. A field is declared like a
+  parameter; only <code>list</code> (no nesting) and <code>fill</code> are not allowed in it.</figcaption>
 </figure>
-<p><kbd>Esc</kbd> in a field's dialog goes back to the list's dialog; nothing is changed until you press
-<span class="ui">OK</span> there too.</p>
+<p><kbd>Esc</kbd> in a field's dialog returns to the list's dialog; nothing is applied until that dialog is confirmed
+with <span class="ui">OK</span> as well.</p>
 
 <h2 id="helpers">The body and its helper menu</h2>
-<p>The body is SQL with <a href="templates.html#body">Jinja marks</a>: <code>{{ … }}</code> writes a value,
-<code>{% … %}</code> decides and repeats. You can type them — with <a href="#autocomplete">autocomplete</a> for the
-names — or press <kbd>F7</kbd>.</p>
+<p>The body is a <a href="templates.html#body">Jinja template</a>: an expression <code>{{ … }}</code> emits a value,
+a statement tag <code>{% … %}</code> controls flow (<code>if</code>, <code>for</code>, <code>set</code>),
+<code>{# … #}</code> is a comment. Type them — with <a href="#autocomplete">autocomplete</a> for the variable names
+— or press <kbd>F7</kbd>.</p>
 <figure>
   <img src="img/tpe-helpers.svg" alt="The helper menu" loading="lazy">
   <figcaption><kbd>F7</kbd>: the helper menu.</figcaption>
 </figure>
 <div class="tablewrap"><table>
-<tr><th>Item</th><th>What it does</th></tr>
-<tr><td class="k"><span class="menu">Insert parameter…</span></td><td>A list of the declared parameters; the chosen one is written at the cursor <a href="#insert-param">as its type needs it</a>.</td></tr>
-<tr><td class="k"><span class="menu">Insert construct…</span></td><td>A list of <a href="#constructs">Jinja constructs</a> — <code>if</code>, <code>for</code>, server checks — written at the cursor or around the selection.</td></tr>
-<tr><td class="k"><span class="menu">Insert filter…</span></td><td>A list of <a href="#filters">filters</a> — <code>|ident</code>, <code>|upper</code>, … — put behind the value the cursor is in.</td></tr>
-<tr><td class="k"><span class="menu">Make parameter from selection…</span></td><td>The selected text becomes the default of <a href="#make">a new parameter</a> that takes its place.</td></tr>
-<tr><td class="k"><span class="menu">Add variant for version…</span></td><td>A <a href="#variants">copy of the template for newer servers</a>.</td></tr>
+<tr><th>Item</th><th>Action</th></tr>
+<tr><td class="k"><span class="menu">Insert parameter…</span></td><td>A list of the declared parameters; the chosen one is inserted at the cursor <a href="#insert-param">in the form its type calls for</a>.</td></tr>
+<tr><td class="k"><span class="menu">Insert construct…</span></td><td>A list of <a href="#constructs">Jinja constructs</a> — <code>if</code>, <code>for</code>, version and feature tests — inserted at the cursor or wrapped around the selection.</td></tr>
+<tr><td class="k"><span class="menu">Insert filter…</span></td><td>A list of <a href="#filters">filters</a> — <code>|ident</code>, <code>|upper</code>, … — appended to the expression the cursor is in.</td></tr>
+<tr><td class="k"><span class="menu">Make parameter from selection…</span></td><td>The selected text becomes the default of <a href="#make">a new parameter</a> whose expression replaces it.</td></tr>
+<tr><td class="k"><span class="menu">Add variant for version…</span></td><td>A <a href="#variants">copy of the template in a version folder</a>.</td></tr>
 <tr><td class="k"><span class="menu">Raw header (TOML)</span></td><td><kbd>Ctrl+T</kbd>: the header as <a href="#raw">text</a>.</td></tr>
 <tr><td class="k"><span class="menu">Test…</span></td><td><kbd>F5</kbd>: the template <a href="#test">in its form</a>.</td></tr>
 <tr><td class="k"><span class="menu">Save as…</span></td><td>Saves under <a href="#save">another section, version folder or file name</a>.</td></tr>
 </table></div>
-<p>Whatever a helper inserts is one step for <kbd>Ctrl+Z</kbd>.</p>
+<p>Each helper insertion is a single undo step (<kbd>Ctrl+Z</kbd>).</p>
 
 <h3 id="insert-param">Insert parameter</h3>
 <figure class="mid">
   <img src="img/tpe-insert-param.svg" alt="Insert parameter" loading="lazy">
-  <figcaption>The parameters of the template, then the two values every template has. The lines under the list show
-  the help (or the label) of the selected parameter.</figcaption>
+  <figcaption>The declared parameters, then the two context variables every template has. The lines under the list
+  show the help (or the label) of the selected parameter.</figcaption>
 </figure>
 <div class="tablewrap"><table>
-<tr><th>The parameter is</th><th>It is written as</th></tr>
-<tr><td>text, number, SQL, a choice from fixed options or a query</td><td><code>{{ comment }}</code></td></tr>
-<tr><td>a name (<code>identifier</code>), a choice from database objects</td><td><code>{{ name|ident }}</code> — quoted when PostgreSQL needs it</td></tr>
-<tr><td>a checkbox</td><td><code>{% if with_audit %}</code>, an empty line for what the checkbox adds, <code>{% endif %}</code></td></tr>
-<tr><td>a list</td><td>The whole loop: <code>{% for row in columns %}</code>, a line with every field of the row and the comma between rows, <code>{% endfor %}</code></td></tr>
+<tr><th>Parameter</th><th>Inserted text</th></tr>
+<tr><td><code>text</code>, <code>number</code>, <code>sql</code>, a <code>choice</code> with <code>options</code> or <code>query</code></td><td><code>{{ comment }}</code></td></tr>
+<tr><td><code>identifier</code>, a <code>choice</code> with a <code>source</code></td><td><code>{{ name|ident }}</code> — quoted as an identifier where PostgreSQL requires it</td></tr>
+<tr><td><code>bool</code></td><td><code>{% if with_audit %}</code>, an empty line for the conditional text, <code>{% endif %}</code></td></tr>
+<tr><td><code>list</code></td><td>The whole loop: <code>{% for row in columns %}</code>, a line with an expression per field and the separator between rows, <code>{% endfor %}</code></td></tr>
 </table></div>
-<p>The loop of a list is a starting point: it writes the fields one after another, and you arrange them into the SQL
-you need. For the <code>columns</code> of the picture above it writes</p>
+<p>The loop of a list is a scaffold: it emits the fields one after another, to be arranged into the intended SQL. For
+the <code>columns</code> of the picture above it inserts</p>
 <pre><code>{% for row in columns %}
     {{ row.col_name|ident }} {{ row.col_type }} {{ row.not_null }} {{ row.primary_key }} {{ row.col_default }}{% if not loop.last %},{% endif %}
 
 {% endfor %}</code></pre>
-<p>The empty line is wanted: a <code>{% … %}</code> mark at the end of a line takes the line break with it, and the
-empty line puts one back, so that every row gets its own line.</p>
-<p><code>server_version</code> (a number such as <code>170002</code>) and <code>database</code> (the name of the
-current database) are there in every template without being declared.</p>
+<p>The empty line is intentional: the environment uses <code>trim_blocks</code>, so a <code>{% … %}</code> tag at the
+end of a line consumes the line break; the empty line restores it, and every row is rendered on its own line.</p>
+<p>The context variables <code>server_version</code> (the server's <code>server_version_num</code> as an integer,
+such as <code>170002</code>) and <code>database</code> (the name of the current database) exist in every template
+without a declaration.</p>
 
 <h3 id="constructs">Insert construct</h3>
 <figure class="mid">
   <img src="img/tpe-insert-construct.svg" alt="Insert construct" loading="lazy">
-  <figcaption>The constructs; under the list, what the selected one is for.</figcaption>
+  <figcaption>The constructs; under the list, the purpose of the selected one.</figcaption>
 </figure>
 <div class="tablewrap"><table>
-<tr><th>Construct</th><th>It writes</th><th>Use it for</th></tr>
-<tr><td class="k">if … endif</td><td><code>{% if  %}</code> … <code>{% endif %}</code></td><td>A part of the SQL only when a checkbox is checked or a value is filled in.</td></tr>
-<tr><td class="k">if … else … endif</td><td><code>{% if  %}</code> … <code>{% else %}</code> … <code>{% endif %}</code></td><td>One part or another.</td></tr>
-<tr><td class="k">for … endfor</td><td><code>{% for row in  %}</code> … <code>{% endfor %}</code></td><td>Once for every row of a list; the fields are <code>row.name</code>.</td></tr>
-<tr><td class="k">comma between rows</td><td><code>{% if not loop.last %},{% endif %}</code></td><td>Inside a loop: a comma after every row but the last.</td></tr>
-<tr><td class="k">value {{ … }}</td><td><code>{{  }}</code></td><td>The value of a parameter or an expression.</td></tr>
-<tr><td class="k">comment {# … #}</td><td><code>{#  #}</code></td><td>A note for the author; it does not get into the SQL.</td></tr>
-<tr><td class="k">server_version check</td><td><code>{% if server_version &gt;= 170000 %}</code> … <code>{% endif %}</code></td><td>A part only from a server version on.</td></tr>
-<tr><td class="k">has("…")</td><td><code>{% if has("NullsNotDistinct") %}</code> … <code>{% endif %}</code></td><td>A part only on servers that have a feature. One entry per feature pgtc knows, with the PostgreSQL version it came in.</td></tr>
+<tr><th>Construct</th><th>Inserted text</th><th>Purpose</th></tr>
+<tr><td class="k">if … endif</td><td><code>{% if  %}</code> … <code>{% endif %}</code></td><td>Conditional text: emitted when a <code>bool</code> is true or a value is not empty.</td></tr>
+<tr><td class="k">if … else … endif</td><td><code>{% if  %}</code> … <code>{% else %}</code> … <code>{% endif %}</code></td><td>Two alternatives.</td></tr>
+<tr><td class="k">for … endfor</td><td><code>{% for row in  %}</code> … <code>{% endfor %}</code></td><td>Iteration over the rows of a list; the fields are <code>row.name</code>.</td></tr>
+<tr><td class="k">comma between rows</td><td><code>{% if not loop.last %},{% endif %}</code></td><td>Inside a loop: a separator after every row but the last.</td></tr>
+<tr><td class="k">value {{ … }}</td><td><code>{{  }}</code></td><td>An expression: a parameter, or any Jinja expression.</td></tr>
+<tr><td class="k">comment {# … #}</td><td><code>{#  #}</code></td><td>A comment for the template's author; it is not rendered.</td></tr>
+<tr><td class="k">server_version check</td><td><code>{% if server_version &gt;= 170000 %}</code> … <code>{% endif %}</code></td><td>Text for servers from a given <code>server_version_num</code> on.</td></tr>
+<tr><td class="k">has("…")</td><td><code>{% if has("NullsNotDistinct") %}</code> … <code>{% endif %}</code></td><td>A feature test against pgtc's feature table. One entry per feature, with the PostgreSQL version that introduced it.</td></tr>
 </table></div>
-<p>After inserting, the cursor is where you go on typing — in the condition of an <code>if</code>, behind
+<p>After the insertion the cursor is where typing continues — in the condition of an <code>if</code>, after
 <code>in</code> of a <code>for</code>.</p>
-<p><b>With a selection</b>, the construct is put around it. Select the lines that should depend on a condition, press
+<p><b>With a selection</b>, the construct is wrapped around it. Select the lines to make conditional, press
 <kbd>F7</kbd>, <span class="menu">Insert construct…</span>, <i>if … endif</i>, and type the condition:</p>
 <figure>
   <img src="img/tpe-wrapped.svg" alt="A construct around the selection" loading="lazy">
-  <figcaption>The line <code>name text NOT NULL,</code> was selected; <i>if … endif</i> went around it, and the
+  <figcaption>The line <code>name text NOT NULL,</code> was selected; <i>if … endif</i> was wrapped around it, and the
   condition was typed. The preview follows.</figcaption>
 </figure>
 
 <h3 id="filters">Insert filter</h3>
 <figure class="mid">
   <img src="img/tpe-insert-filter.svg" alt="Insert filter" loading="lazy">
-  <figcaption>The filters, with what the selected one does.</figcaption>
+  <figcaption>The filters, with a description of the selected one.</figcaption>
 </figure>
-<p>A filter changes a value on its way into the SQL: <code>{{ name|ident }}</code>. Where the filter goes depends on
-where the cursor is:</p>
+<p>A filter transforms a value inside an expression: <code>{{ name|ident }}</code>. Where it is inserted depends on
+the cursor:</p>
 <ul>
-  <li><b>inside a <code>{{ … }}</code></b>: behind its value — <code>{{ name }}</code> becomes
-      <code>{{ name|ident }}</code>, wherever in the mark the cursor is;</li>
-  <li><b>with a selected name</b>: the name becomes a mark — <code>owner</code> becomes <code>{{ owner|ident }}</code>;</li>
-  <li><b>anywhere else</b>: a new mark <code>{{ |ident }}</code>, with the cursor where the value goes.</li>
+  <li><b>inside a <code>{{ … }}</code></b>: appended to its expression — <code>{{ name }}</code> becomes
+      <code>{{ name|ident }}</code>, wherever in the expression the cursor is;</li>
+  <li><b>with a selected word</b>: the word becomes an expression — <code>owner</code> becomes
+      <code>{{ owner|ident }}</code>;</li>
+  <li><b>anywhere else</b>: a new expression <code>{{ |ident }}</code>, with the cursor at the place of the
+      value.</li>
 </ul>
 <div class="tablewrap"><table>
-<tr><th>Filter</th><th>What it does</th></tr>
-<tr><td class="k"><code>ident</code></td><td>Quotes as an identifier: <code>Order Items</code> → <code>"Order Items"</code>; an object chosen from the database → <code>schema.name</code>, both parts quoted when needed. <b>Use it for every name.</b></td></tr>
-<tr><td class="k"><code>qtLiteral</code></td><td>Quotes as a string literal: <code>O'Brien</code> → <code>'O''Brien'</code>. Use it for texts that go into the SQL as values, such as a comment.</td></tr>
-<tr><td class="k"><code>qtTypeIdent</code></td><td>Quotes a type name; <code>double precision</code> and <code>integer[]</code> stay as they are.</td></tr>
-<tr><td class="k"><code>indent(4, true)</code></td><td>Indents every line of a text by 4 spaces — for a function body typed into a SQL box.</td></tr>
-<tr><td class="k"><code>default("")</code></td><td>Another value when this one is not there.</td></tr>
-<tr><td class="k"><code>upper</code>, <code>lower</code>, <code>trim</code></td><td>Upper case, lower case, without the spaces at both ends.</td></tr>
-<tr><td class="k"><code>replace("a", "b")</code></td><td>Replaces a text by another.</td></tr>
-<tr><td class="k"><code>join(", ")</code></td><td>The items of a list in one line, separated.</td></tr>
-<tr><td class="k"><code>length</code></td><td>The number of characters, or of rows of a list.</td></tr>
+<tr><th>Filter</th><th>Result</th></tr>
+<tr><td class="k"><code>ident</code></td><td>The value as an identifier, double-quoted unless it is a lower-case name that is not a key word: <code>Order Items</code> → <code>"Order Items"</code>. A value of a <code>source</code> → <code>schema.name</code>, each part quoted separately; a function keeps its argument list, a trigger its <code>ON schema.table</code>. <b>Use it for every identifier.</b></td></tr>
+<tr><td class="k"><code>qtLiteral</code></td><td>The value as a string literal: <code>O'Brien</code> → <code>'O''Brien'</code>; a value containing a backslash becomes an <code>E'…'</code> literal with the backslashes doubled; numbers and booleans stay unquoted; an undefined value gives <code>NULL</code>. Use it for text that goes into the SQL as a value, such as the text of <code>COMMENT ON</code>.</td></tr>
+<tr><td class="k"><code>qtTypeIdent</code></td><td>Quotes a type name as an identifier; multi-word type names such as <code>double precision</code> and <code>timestamp with time zone</code> stay unquoted, and an array suffix <code>[]</code> is kept.</td></tr>
+<tr><td class="k"><code>indent(4, true)</code></td><td>Indents every line of a text by 4 spaces, the first included — for a function body entered in a SQL box.</td></tr>
+<tr><td class="k"><code>default("")</code></td><td>A substitute for an undefined value.</td></tr>
+<tr><td class="k"><code>upper</code>, <code>lower</code>, <code>trim</code></td><td>Upper case, lower case, without leading and trailing whitespace.</td></tr>
+<tr><td class="k"><code>replace("a", "b")</code></td><td>Replaces a substring.</td></tr>
+<tr><td class="k"><code>join(", ")</code></td><td>The items of a sequence as one string, with a separator.</td></tr>
+<tr><td class="k"><code>length</code></td><td>The number of characters of a string, or of rows of a list.</td></tr>
 </table></div>
-<p>These are the filters you will need most; every other
-<a href="https://docs.rs/minijinja/latest/minijinja/filters/index.html">filter of the template language</a> works,
-too — type it.</p>
+<p>The list holds the filters most templates need; every other
+<a href="https://docs.rs/minijinja/latest/minijinja/filters/index.html">built-in filter of minijinja</a> works as
+well — type it.</p>
 
 <h3 id="make">Make parameter from selection</h3>
-<p>The quickest way from a working statement to a template: paste the statement into the body, then turn the parts
-that differ each time into parameters.</p>
+<p>The shortest way from a working statement to a template: paste the statement into the body, then turn the parts
+that vary into parameters.</p>
 <ol class="steps">
   <li>Select the text in the body.
   <figure>
@@ -394,55 +413,57 @@ that differ each time into parameters.</p>
       selected text as the <span class="ui">Default</span>. Give the parameter a name (and a label, a type …).
   <figure class="mid">
     <img src="img/tpe-make.svg" alt="The new parameter" loading="lazy">
-    <figcaption>The new parameter: the selection is its default, so the template gives the same SQL as before.</figcaption>
+    <figcaption>The new parameter: the selection is its default, so the template renders the same SQL as
+    before.</figcaption>
   </figure></li>
-  <li><kbd>Enter</kbd>: the parameter is added to the list, and the selected text is replaced by its mark.
+  <li><kbd>Enter</kbd>: the parameter is appended to the list, and the selected text is replaced by its
+      expression.
   <figure>
     <img src="img/tpe-made.svg" alt="The parameter in place" loading="lazy">
-    <figcaption>The parameter <code>comment</code> is in the list; the body has <code>{{ comment }}</code> where the
-    text was; the preview still shows the same SQL.</figcaption>
+    <figcaption>The parameter <code>comment</code> is in the list; the body has <code>{{ comment }}</code> in place
+    of the text; the preview is unchanged.</figcaption>
   </figure></li>
 </ol>
-<p>A selection of several lines becomes a parameter of the type <code>sql</code>. The item is available while the
-header is shown as a list and something is selected in the body.</p>
+<p>A multi-line selection becomes a parameter of type <code>sql</code>. The item is enabled while the header is shown
+as a list and the body has a selection.</p>
 
 <h2 id="autocomplete">Autocomplete in the body</h2>
-<p>The body has an autocomplete list, with the same keys as the <a href="editor.html#autocomplete">list of the query
-tabs</a>. It knows the template: it offers the <b>parameters</b> you declared, the fields of a list's rows, the
-filters, the Jinja statements. It needs no connection.</p>
+<p>The body has a completion popup with the keys of the <a href="editor.html#autocomplete">popup of the query
+tabs</a>. Its candidates come from the template itself, not from a catalog: the declared <b>parameters</b>, the
+fields of a list's rows, the filters, the Jinja statements. It needs no connection.</p>
 <div class="tablewrap"><table>
-<tr><th>Key</th><th>What it does</th></tr>
-<tr><td class="k"><kbd>Ctrl+Space</kbd>, <kbd>Alt+/</kbd></td><td>Opens the list at the cursor.</td></tr>
-<tr><td class="k"><kbd>Up</kbd> / <kbd>Down</kbd>, <kbd>PgUp</kbd> / <kbd>PgDn</kbd></td><td>Choose an entry. Typing narrows the list.</td></tr>
-<tr><td class="k"><kbd>Enter</kbd>, <kbd>Tab</kbd></td><td>Take the entry: it replaces what you typed of it.</td></tr>
-<tr><td class="k"><kbd>Esc</kbd></td><td>Closes the list (only the list).</td></tr>
+<tr><th>Key</th><th>Action</th></tr>
+<tr><td class="k"><kbd>Ctrl+Space</kbd>, <kbd>Alt+/</kbd></td><td>Opens the popup at the cursor.</td></tr>
+<tr><td class="k"><kbd>Up</kbd> / <kbd>Down</kbd>, <kbd>PgUp</kbd> / <kbd>PgDn</kbd></td><td>Select a candidate. Typing narrows the list.</td></tr>
+<tr><td class="k"><kbd>Enter</kbd>, <kbd>Tab</kbd></td><td>Accept the candidate: it replaces the typed prefix.</td></tr>
+<tr><td class="k"><kbd>Esc</kbd></td><td>Closes the popup (only the popup).</td></tr>
 </table></div>
-<p>The list also <b>opens by itself</b> while you type: inside a mark with the first letter of a name, after a
-<code>.</code>, after a <code>|</code> and after <code>has("</code>; in the SQL outside the marks after the third
-letter, as in a query tab.</p>
+<p>The popup also <b>opens automatically</b> while typing: inside an expression or statement tag with the first
+letter of a name, after a <code>.</code>, after a <code>|</code> and after <code>has("</code>; in the SQL outside the
+tags after the third letter, as in a query tab.</p>
 
-<h3>In the SQL: a parameter as its whole mark</h3>
+<h3>In the SQL: a parameter as its whole expression</h3>
 <figure>
   <img src="img/tpe-ac-sql.svg" alt="Autocomplete in the SQL of the body" loading="lazy">
-  <figcaption><code>sch</code> typed in the SQL: the parameter <code>schema</code> first, then the SQL keywords that
-  start like this.</figcaption>
+  <figcaption><code>sch</code> typed in the SQL: the parameter <code>schema</code> first, then the SQL key words
+  with that prefix.</figcaption>
 </figure>
-<p>Outside the Jinja marks the list offers the parameters and the SQL keywords. Taking a <b>parameter</b> writes its
-complete mark, the same text <a href="#insert-param">Insert parameter</a> writes: type <code>sch</code>,
-<kbd>Enter</kbd>, and the body has <code>{{ schema|ident }}</code>. A checkbox gives its
-<code>{% if %}</code> … <code>{% endif %}</code> block, a list its whole loop. The parameters come first in the list,
-in the order of the header.</p>
+<p>Outside the Jinja tags the candidates are the parameters and the SQL key words. Accepting a <b>parameter</b>
+inserts its complete expression, the same text <a href="#insert-param">Insert parameter</a> inserts: type
+<code>sch</code>, <kbd>Enter</kbd>, and the body has <code>{{ schema|ident }}</code>. A <code>bool</code> gives its
+<code>{% if %}</code> … <code>{% endif %}</code> block, a <code>list</code> its whole loop. The parameters come first,
+in header order.</p>
 
-<h3>Inside a mark</h3>
+<h3>Inside a tag</h3>
 <div class="tablewrap"><table>
-<tr><th>Where the cursor is</th><th>The list offers</th></tr>
-<tr><td class="k"><code>{{ </code> … or <code>{% if </code> …</td><td>The parameters (with their type), the row variables of the loops the cursor is in and <code>loop</code>, variables made with <code>{% set %}</code>, <code>server_version</code>, <code>database</code>, <code>has("</code>, and the words <code>not</code>, <code>and</code>, <code>or</code>, <code>in</code>, <code>is</code>, <code>true</code>, <code>false</code>, <code>none</code>. Here a parameter is written as its name only.</td></tr>
-<tr><td class="k"><code>row.</code></td><td>After the variable of a <code>{% for row in list %}</code>: the <b>fields</b> of that list parameter.</td></tr>
+<tr><th>Cursor position</th><th>Candidates</th></tr>
+<tr><td class="k"><code>{{ </code> … or <code>{% if </code> …</td><td>The parameters (with their type), the loop variables of the enclosing <code>{% for %}</code> loops and <code>loop</code>, variables assigned with <code>{% set %}</code>, <code>server_version</code>, <code>database</code>, <code>has("</code>, and the operators and constants <code>not</code>, <code>and</code>, <code>or</code>, <code>in</code>, <code>is</code>, <code>true</code>, <code>false</code>, <code>none</code>. Here a parameter is inserted as its bare name.</td></tr>
+<tr><td class="k"><code>row.</code></td><td>After the loop variable of a <code>{% for row in list %}</code>: the <b>fields</b> of that list parameter.</td></tr>
 <tr><td class="k"><code>loop.</code></td><td><code>last</code>, <code>first</code>, <code>index</code>, <code>index0</code>, <code>length</code>.</td></tr>
-<tr><td class="k"><code>table.</code></td><td>After a choice from database objects: its parts — <code>schema</code>, <code>name</code>; for functions and procedures also <code>args</code>, for triggers <code>table</code>.</td></tr>
-<tr><td class="k"><code>|</code></td><td>The <a href="#filters">filters</a>, each with a few words about what it does; <code>indent</code>, <code>default</code>, <code>replace</code> and <code>join</code> come with their arguments.</td></tr>
+<tr><td class="k"><code>table.</code></td><td>After a choice with a <code>source</code>: the attributes of its value — <code>schema</code>, <code>name</code>; for functions and procedures also <code>args</code>, for triggers <code>table</code>.</td></tr>
+<tr><td class="k"><code>|</code></td><td>The <a href="#filters">filters</a>, each with a short description; <code>indent</code>, <code>default</code>, <code>replace</code> and <code>join</code> are inserted with their arguments.</td></tr>
 <tr><td class="k"><code>{% </code></td><td>The statements: <code>if</code>, <code>elif</code>, <code>else</code>, <code>endif</code>, <code>for</code>, <code>endfor</code>, <code>set</code>.</td></tr>
-<tr><td class="k"><code>has("</code></td><td>The names of the server features, with the PostgreSQL version each came in.</td></tr>
+<tr><td class="k"><code>has("</code></td><td>The feature names of pgtc's feature table, with the PostgreSQL version that introduced each.</td></tr>
 </table></div>
 <figure>
   <img src="img/tpe-ac-fields.svg" alt="The fields of a list's rows" loading="lazy">
@@ -453,59 +474,62 @@ in the order of the header.</p>
   <img src="img/tpe-ac-filter.svg" alt="The filters" loading="lazy">
   <figcaption>After <code>|</code>: the filters.</figcaption>
 </figure>
-<p>The list always shows the parameters as they are <b>now</b> — add one in the header list, and the body's list has
-it. With the <a href="#raw">raw header</a> shown, it reads the parameters from the text (none while the text has a
-mistake).</p>
-<p>Nothing is offered inside a comment <code>{# … #}</code> and inside a text in quotes (other than the feature name
-of <code>has("…")</code>). Names of the database — tables, columns — are not offered: the template tab has no
-connection, and a template seldom names real objects.</p>
+<p>The candidates reflect the <b>current</b> declarations — add a parameter in the header list, and the body's popup
+has it. With the <a href="#raw">raw header</a> shown, the parameters are parsed from its text (none while the TOML
+has an error).</p>
+<p>Nothing is offered inside a comment <code>{# … #}</code> or inside a string literal (other than the feature name
+of <code>has("…")</code>). Catalog objects — relations, columns — are not offered: a template tab has no session, and
+a template seldom references concrete objects.</p>
 
 <h2 id="checks">Preview and checks</h2>
-<p>The <b>preview</b> shows the SQL the template gives — made again after every change of the body or the header. It
-has no form to take values from, so it uses these:</p>
+<p>The <b>preview</b> is the body rendered to SQL — again after every change of the body or the header. With no
+form to supply values, it renders with <b>sample values</b>:</p>
 <div class="tablewrap"><table>
-<tr><th>Parameter</th><th>Value in the preview</th></tr>
-<tr><td>with a default</td><td>The default.</td></tr>
-<tr><td>required, without a default</td><td>Its own name (<code>name</code>); for a number <code>1</code>; for a choice from database objects <code>schema.name</code>.</td></tr>
-<tr><td>not required, without a default</td><td>Empty — so you see what the SQL looks like when the user leaves the field empty.</td></tr>
-<tr><td>a checkbox</td><td>Checked or not, as its default says.</td></tr>
-<tr><td>a list</td><td>One row; each field has its default, or else its own name.</td></tr>
+<tr><th>Parameter</th><th>Sample value</th></tr>
+<tr><td>with a <code>default</code></td><td>The default.</td></tr>
+<tr><td><code>required</code>, without a default</td><td>Its own name (<code>name</code>); for a <code>number</code> <code>1</code>; for a schema-qualified <code>source</code> the object <code>schema.name</code>.</td></tr>
+<tr><td>not required, without a default</td><td>Empty — the SQL as rendered when the user leaves the field empty.</td></tr>
+<tr><td><code>bool</code></td><td>Its default; false without one.</td></tr>
+<tr><td><code>list</code></td><td>One row; each field has its default, or else its own name.</td></tr>
 </table></div>
-<p>To see the template with other values, use <a href="#test">Test</a>.</p>
+<p>To render the template with other values, use <a href="#test">Test</a>.</p>
 
 <h3>What the status row says</h3>
 <figure>
   <img src="img/tpe-checks.svg" alt="The checks in the status row" loading="lazy">
-  <figcaption>The body uses <code>{{ length }}</code>, but the parameter is called <code>code_length</code>. The status
-  row: <i>Not declared: length · Not used: code_length</i>. The preview shows what this gives — an empty
-  <code>varchar()</code>.</figcaption>
+  <figcaption>The body uses <code>{{ length }}</code>, but the parameter is declared as <code>code_length</code>. The
+  status row: <i>Not declared: length · Not used: code_length</i>. The preview shows the consequence — the undefined
+  variable renders as an empty string: <code>varchar()</code>.</figcaption>
 </figure>
+<p>The checks are static: the header is validated as the file parser validates it, the body is compiled by
+minijinja, and the variables the compiled template references are compared with the declarations.</p>
 <div class="tablewrap"><table>
 <tr><th>Status row</th><th>Meaning</th></tr>
-<tr><td class="k"><i>No problems found</i></td><td>The header is complete, the body is correct Jinja, every name it uses is declared, every parameter is used.</td></tr>
-<tr><td class="k"><i>Not declared: …</i></td><td>The body uses names that are no parameters (and none of <code>server_version</code>, <code>database</code>). Mostly a typing mistake or a renamed parameter. In the SQL such a value is empty.</td></tr>
-<tr><td class="k"><i>Not used: …</i></td><td>Parameters the body never uses. The form would ask for something that changes nothing.</td></tr>
-<tr><td class="k"><i>Body, line N: …</i></td><td>A Jinja mistake — a mark that is not closed, an unknown statement. The preview shows the same message.</td></tr>
-<tr><td class="k"><i>Header: …</i></td><td>The header is not complete — a choice without values, a list without fields — or, in the raw header, the text is not correct TOML.</td></tr>
-<tr><td class="k"><i>Preview: …</i></td><td>The body is correct but cannot be rendered with the preview's values (an unknown filter, an unknown feature name in <code>has("…")</code>).</td></tr>
+<tr><td class="k"><i>No problems found</i></td><td>The header is valid, the body compiles, every variable it references is declared, every parameter is referenced.</td></tr>
+<tr><td class="k"><i>Not declared: …</i></td><td>Variables the body references that are neither parameters nor context variables (<code>server_version</code>, <code>database</code>). Usually a typing error or a renamed parameter. An undefined variable renders as an empty string.</td></tr>
+<tr><td class="k"><i>Not used: …</i></td><td>Parameters the body never references. The form would ask for a value that has no effect.</td></tr>
+<tr><td class="k"><i>Body, line N: …</i></td><td>A Jinja syntax error — an unclosed tag, an unknown statement. The preview shows the same message.</td></tr>
+<tr><td class="k"><i>Header: …</i></td><td>An invalid declaration — a <code>choice</code> without values, a <code>list</code> without fields — or, in the raw header, a TOML error or an unknown key.</td></tr>
+<tr><td class="k"><i>Preview: …</i></td><td>The body compiles but fails at rendering with the sample values: an unknown filter, an unknown feature name in <code>has("…")</code>.</td></tr>
 </table></div>
-<p><i>Not declared</i> and <i>Not used</i> are hints: such a template can be saved. The other three are errors: a
-template that has one <a href="#save">is not saved</a>.</p>
+<p><i>Not declared</i> and <i>Not used</i> are warnings. <i>Header</i> and <i>Body</i> are errors: such a template
+<a href="#save">is not saved</a> and not tested. A <i>Preview</i> (rendering) error does not block saving — the file
+still parses — but the <kbd>F7</kbd> form will show the same error instead of SQL until it is fixed.</p>
 <figure>
   <img src="img/tpe-error.svg" alt="A Jinja error" loading="lazy">
   <figcaption><code>{% endfi %}</code> instead of <code>{% endif %}</code>: the status row and the preview name the
   line; the cursor was put there by the refused save.</figcaption>
 </figure>
-<p>To get to a Jinja error: go to the preview and press <kbd>Enter</kbd> — the cursor jumps to the line of the error
-in the body. <kbd>Ctrl+S</kbd> and <kbd>F5</kbd> do the same when they refuse the template.</p>
+<p>To go to a Jinja syntax error: focus the preview and press <kbd>Enter</kbd> — the cursor jumps to the reported
+line of the body. <kbd>Ctrl+S</kbd> and <kbd>F5</kbd> do the same when they refuse the template.</p>
 
 <h3 id="version">The server version of the preview</h3>
-<p>A body can depend on the server: <code>{% if has("NullsNotDistinct") %}</code>,
-<code>{% if server_version &gt;= 170000 %}</code>. The status row says which version the preview is made for:</p>
+<p>A body can depend on the server version: <code>{% if has("NullsNotDistinct") %}</code>,
+<code>{% if server_version &gt;= 170000 %}</code>. The status row names the version the preview is rendered for:</p>
 <div class="tablewrap"><table>
 <tr><th>Status row</th><th>When</th></tr>
-<tr><td class="k"><i>Preview: PostgreSQL 17</i></td><td>A row of a <b>connected server</b> is selected in the object tree: the preview is made for that server. Select another server to see the template's SQL for it.</td></tr>
-<tr><td class="k"><i>Preview: PostgreSQL 16 (assumed)</i></td><td>No connected server is selected. For a template in a version folder such as <code>16_plus</code>: the first version of that folder. For a template in <code>default</code>: the newest version pgtc knows features of.</td></tr>
+<tr><td class="k"><i>Preview: PostgreSQL 17</i></td><td>The row selected in the object tree belongs to a <b>connected server</b>: the preview uses that server's <code>server_version_num</code>. Select a row of another server to render the template for it.</td></tr>
+<tr><td class="k"><i>Preview: PostgreSQL 16 (assumed)</i></td><td>No connected server is selected. For a file in a version folder such as <code>16_plus</code>: the first version of that folder (<code>160000</code>). For a file in <code>default</code>: the newest version in pgtc's feature table, so that every <code>has("…")</code> is true.</td></tr>
 </table></div>
 
 <h2 id="raw">The raw header</h2>
@@ -513,48 +537,53 @@ in the body. <kbd>Ctrl+S</kbd> and <kbd>F5</kbd> do the same when they refuse th
   <img src="img/tpe-raw.svg" alt="The raw header" loading="lazy">
   <figcaption><kbd>Ctrl+T</kbd>: the header as TOML text, in an editor of its own.</figcaption>
 </figure>
-<p><kbd>Ctrl+T</kbd> (also in the <kbd>F7</kbd> and <kbd>F2</kbd> menus) replaces the list by the header as text —
-<a href="templates.html#header">TOML</a>, exactly what is written into the file. All editor keys work in it. This is
-for those who are faster typing than filling dialogs: copy a parameter block and change it, rename with find and
-replace, paste a header from another template.</p>
-<p><kbd>Ctrl+T</kbd> again goes back to the list. For that the text must be correct: with a mistake in it the text
-stays, and the bottom line of the window and the status row say what is wrong (<i>Header: …</i>). The preview and
-the checks follow the text while you type.</p>
-<div class="note"><p>pgtc writes a header in its own, fixed way: one key per line, always in the same order, without
-comments. A header you wrote by hand — aligned, with comments — is kept as it is <b>while you stay in the raw
-header</b>, and also when you change only the body. Once you change something in the <b>list</b> and save, the header
-is written in pgtc's way.</p></div>
-<p>A template file whose header pgtc cannot read opens with the raw header shown, so that you can repair it.</p>
+<p><kbd>Ctrl+T</kbd> (also in the <kbd>F7</kbd> and <kbd>F2</kbd> menus) replaces the list by the header's text —
+the <a href="templates.html#header">TOML</a> between the two <code>+++</code> lines, exactly as written to the file.
+All editor keys work in it. It suits bulk edits: duplicating a <code>[[param]]</code> table, renaming with find and
+replace, pasting a header from another template.</p>
+<p><kbd>Ctrl+T</kbd> again returns to the list. That requires the text to parse: with an error the raw header stays,
+and the bottom line of the window and the status row report it (<i>Header: …</i>). The preview and the checks follow
+the text while you type.</p>
+<div class="note"><p>pgtc serialises a header canonically: one key per line, in a fixed order (<code>name</code>,
+<code>label</code>, <code>type</code>, <code>required</code>, <code>default</code>, <code>help</code>,
+<code>options</code>, <code>source</code>, <code>query</code>, <code>fill</code>, then the fields), without comments —
+the same declarations always give the same text. A hand-written header — aligned, with comments — is preserved
+verbatim <b>while you stay in the raw header</b>, and also when only the body changes. Once something is changed in
+the <b>list</b> and the template is saved, the header is written in the canonical form.</p></div>
+<p>A template file whose header does not parse opens with the raw header shown, so that it can be repaired.</p>
 
 <h2 id="test">Test: the template in its form</h2>
 <figure>
   <img src="img/tpe-test.svg" alt="Testing the template" loading="lazy">
-  <figcaption><kbd>F5</kbd>: the form of the example, as <kbd>F7</kbd> shows it in a query tab — its four fields, the
-  hint of <span class="ui">Table name</span> at the bottom, the SQL for the values typed in.</figcaption>
+  <figcaption><kbd>F5</kbd>: the form of the example, as <kbd>F7</kbd> presents it in a query tab — its four
+  parameters, the help text of <span class="ui">Table name</span> at the bottom, the SQL rendered from the entered
+  values.</figcaption>
 </figure>
-<p><kbd>F5</kbd> opens the template in its <a href="templates.html#form">real form</a> — the text as it is in the
-tab now, saved or not. Fill it in as its users will, and look at the preview. Everything works as described for the
-form: lists with their row dialogs, SQL boxes, the help line.</p>
+<p><kbd>F5</kbd> opens the template in the <a href="templates.html#form">form of <kbd>F7</kbd></a> — built from the
+tab's current text, saved or not. Everything behaves as described for the form: validation, lists with their row
+dialogs, SQL boxes, the help line, the live preview.</p>
 <ul>
   <li><span class="ui">OK</span> and <kbd>Esc</kbd> only close the form. <b>Nothing is inserted anywhere</b>, and
-      nothing is run.</li>
-  <li>A template with an <a href="#checks">error</a> is not tested; the message says what is wrong.</li>
+      the rendered SQL is not executed.</li>
+  <li>A template with a header or body <a href="#checks">error</a> is not tested; the message names the error.</li>
 </ul>
-<h3>The drop-down lists of the test</h3>
-<p>Choices from database objects and from queries need a database. A template tab has no connection of its own; the
-test uses the <b>database selected in the object tree</b>:</p>
+<h3>The choice lists of the test</h3>
+<p>A <code>source</code> or <code>query</code> needs a database to run against. A template tab has no session of its
+own; the test uses the session the <b>object tree</b> holds on the selected database:</p>
 <ul>
-  <li>Select a database of a connected server (or anything inside it) in the tree, then press <kbd>F5</kbd>: the lists
-      are read from that database, and the form picks up the tree's selection as
-      <a href="templates.html#prefill">it does in a query tab</a>.</li>
-  <li>The database must be open in the tree (expand it once). Otherwise — and when nothing is selected — the
-      drop-downs stay empty and say <i>select a connected database in the object tree</i>. Fixed options, and all
-      other fields, work without a database.</li>
+  <li>Select a database of a connected server (or any object inside it) in the tree, then press <kbd>F5</kbd>: the
+      catalog queries run on that database, a custom <code>query</code> runs
+      <a href="templates.html#sources">read-only</a> as it does from <kbd>F7</kbd>, and the form takes its defaults
+      from the tree's selection as <a href="templates.html#prefill">it does in a query tab</a>. The form is
+      rendered for the preview's <a href="#version">server version</a> — here that server's.</li>
+  <li>The tree must already have a session on the database (expand its row once). Otherwise — and with a server
+      row or nothing selected — the drop-downs stay empty and show <i>select a connected database in the object
+      tree</i>. Fixed <code>options</code>, and all other parameter types, work without a database.</li>
 </ul>
 
 <h2 id="save">Saving</h2>
 <p><kbd>Ctrl+S</kbd> (<span class="menu">File → Save SQL file</span>) saves the template. A template that has a file
-is written to it at once.</p>
+is written to it immediately; the file is replaced atomically, in the background.</p>
 <h3>The first save, and Save as</h3>
 <figure class="mid">
   <img src="img/tpe-save.svg" alt="Save template" loading="lazy">
@@ -562,36 +591,37 @@ is written to it at once.</p>
 </figure>
 <div class="tablewrap"><table>
 <tr><th>Field</th><th>Meaning</th></tr>
-<tr><td class="k"><span class="ui">Section</span></td><td>The sections you have, <i>(no section)</i> for a template outside every section, and <i>New section…</i>.</td></tr>
-<tr><td class="k"><span class="ui">New section</span></td><td>Used with <i>New section…</i>: the name of a section to make. <code>Tables/Partitions</code> makes a section inside another.</td></tr>
-<tr><td class="k"><span class="ui">Version folder</span></td><td><code>default</code>: the template is for every server version. <code>16_plus</code>: for PostgreSQL 16 and newer (see <a href="#variants">variants</a>).</td></tr>
-<tr><td class="k"><span class="ui">File name</span></td><td>Proposed from the template's name. Without <code>.pgtemplate</code> — pgtc adds it.</td></tr>
+<tr><td class="k"><span class="ui">Section</span></td><td>The existing sections, <i>(no section)</i> for a file directly in the version folder, and <i>New section…</i>.</td></tr>
+<tr><td class="k"><span class="ui">New section</span></td><td>Used with <i>New section…</i>: the name of a section to create. <code>Tables/Partitions</code> creates a nested section.</td></tr>
+<tr><td class="k"><span class="ui">Version folder</span></td><td><code>default</code>: the file applies to every server version. <code>16_plus</code>: to PostgreSQL 16 and newer (see <a href="#variants">variants</a>).</td></tr>
+<tr><td class="k"><span class="ui">File name</span></td><td>Proposed from the template's name: lower case, with <code>_</code> for everything that is not a letter or a digit. Without <code>.pgtemplate</code> — pgtc appends it.</td></tr>
 </table></div>
-<p>If a file of that name is there already, pgtc asks before it overwrites it. A file that is open in another tab is
-refused.</p>
+<p>The file is written to <i>templates folder</i><code>/</code><i>version folder</i><code>/</code><i>section</i><code>/</code><i>file name</i><code>.pgtemplate</code>.
+If that file exists, pgtc asks before overwriting it. A file that is open in another tab is refused.</p>
 <p><span class="menu">File → Save SQL file as…</span> (also in the <kbd>F7</kbd> menu) shows the same dialog for a
-template that has a file: the tab then belongs to the new file, and the old file stays as it was.</p>
+template that has a file: the tab is then bound to the new file, and the old file is left unchanged.</p>
 
 <h3>A template with an error is not saved</h3>
 <figure class="small">
   <img src="img/tpe-not-saved.svg" alt="The template is not saved" loading="lazy">
-  <figcaption>Saving is refused; the message says why.</figcaption>
+  <figcaption>Saving is refused; the message gives the reason.</figcaption>
 </figure>
-<p>pgtc saves only templates it can read back: a header that is complete and a body that is correct Jinja. Otherwise
-the file is left as it was, the message names the problem, and the cursor goes to the line of a mistake in the body.
-So a template in your templates folder never breaks the <kbd>F7</kbd> picker.</p>
+<p>pgtc writes only templates it can parse back: a valid header and a body that compiles as Jinja. Otherwise the
+file is left untouched, the message names the error, and the cursor is placed on the reported line of the body. A
+file written by the editor therefore never appears as <i>(error)</i> in the <kbd>F7</kbd> picker.</p>
 
-<h3 id="builtin">The templates that come with pgtc</h3>
+<h3 id="builtin">The built-in templates</h3>
 <figure class="small">
   <img src="img/tpe-builtin.svg" alt="Saving a template of pgtc" loading="lazy">
-  <figcaption>Saving a changed template that came with pgtc.</figcaption>
+  <figcaption>Saving a changed built-in template.</figcaption>
 </figure>
-<p><span class="menu">Settings → Install templates</span> overwrites the files that came with pgtc — after an update,
-to bring their new versions. A change you made in such a file would be lost then. So pgtc asks:</p>
+<p>A file is <b>built-in</b> if its path below the templates folder equals that of a template embedded in pgtc
+(<code>default/Tables/table.pgtemplate</code>). <span class="menu">Settings → Install templates</span> overwrites
+exactly those files, so a change saved into one is lost at the next install. pgtc therefore asks:</p>
 <div class="tablewrap"><table>
-<tr><th>Button</th><th>What it does</th></tr>
-<tr><td class="k"><span class="ui">Save as copy</span></td><td>Opens <span class="ui">Save template</span> with the file name <code>…_copy</code>. The tab belongs to the copy from then on; the original stays unchanged. Give the copy another <span class="ui">Name</span>, too. <b>Recommended.</b></td></tr>
-<tr><td class="k"><span class="ui">Save anyway</span></td><td>Writes the file. pgtc does not ask again while this tab is open.</td></tr>
+<tr><th>Button</th><th>Action</th></tr>
+<tr><td class="k"><span class="ui">Save as copy</span></td><td>Opens <span class="ui">Save template</span> with the file name <code>…_copy</code>. The tab is bound to the copy from then on; the original is left unchanged. Give the copy another <span class="ui">Name</span>, too. <b>Recommended.</b></td></tr>
+<tr><td class="k"><span class="ui">Save anyway</span></td><td>Writes the built-in file. pgtc does not ask again while this tab is open.</td></tr>
 <tr><td class="k"><span class="ui">Cancel</span></td><td>Does not save.</td></tr>
 </table></div>
 
@@ -600,39 +630,41 @@ to bring their new versions. A change you made in such a file would be lost then
   <img src="img/tpe-close.svg" alt="Closing a template tab with changes" loading="lazy">
   <figcaption><kbd>Ctrl+W</kbd> on a template with unsaved changes.</figcaption>
 </figure>
-<p>Closing a template tab with unsaved changes asks, as a <a href="files.html">query tab</a> does:
-<span class="ui">Yes</span> saves and closes, <span class="ui">No</span> closes without saving,
-<span class="ui">Cancel</span> keeps the tab. Quitting pgtc asks the same for every changed template. If the save is
+<p>Closing a template tab with unsaved changes prompts as a <a href="files.html">query tab</a> does:
+<span class="ui">Yes</span> saves and closes, <span class="ui">No</span> discards the changes,
+<span class="ui">Cancel</span> keeps the tab. Quitting pgtc prompts for every modified template. If the save is
 refused — the template has an error — the tab stays open.</p>
-<p>(The question can be turned off for query tabs and template tabs together:
+<p>(The prompt can be turned off for query tabs and template tabs together:
 <span class="menu">Settings → Settings…</span>, <span class="ui">Ask to save query tabs when closing</span>.)</p>
 
 <h2 id="variants">Variants for server versions</h2>
-<p>Most templates work on every server. Where the SQL differs a little between versions, a
-<a href="#constructs">server check</a> in the body is enough. Where it differs a lot, the template can have a second
-file for newer servers — a <b>variant</b>: a file of the same name in a
-<a href="templates.html#where">version folder</a>. On a server of PostgreSQL 16 or newer, <kbd>F7</kbd> uses the file
-from <code>16_plus</code>; on older servers the one from <code>default</code>.</p>
+<p>Most templates apply to every supported server. Where the SQL differs slightly between versions, a
+<a href="#constructs">version or feature test</a> in the body is sufficient. Where it differs substantially, the
+template can have a <b>variant</b>: a file with the same section and file name in a
+<a href="templates.html#where">version folder</a> <code>N_plus</code>. <kbd>F7</kbd> resolves the template by the
+major version of the tab's server: the <code>N_plus</code> folder with the highest <i>N</i> not above it, else
+<code>default</code>. With a variant in <code>16_plus</code>, servers of PostgreSQL 16 and newer get that file, older
+servers the one from <code>default</code>.</p>
 <figure class="small">
   <img src="img/tpe-variant.svg" alt="Add variant for version" loading="lazy">
   <figcaption><kbd>F7</kbd>, <span class="menu">Add variant for version…</span></figcaption>
 </figure>
 <ol class="steps">
   <li>Open the template (it must have a file — save a new one first).</li>
-  <li><kbd>F7</kbd>, <span class="menu">Add variant for version…</span>, type the first major version the variant is
-      for, <kbd>Enter</kbd>.</li>
+  <li><kbd>F7</kbd>, <span class="menu">Add variant for version…</span>, type the first major version the variant
+      applies to, <kbd>Enter</kbd>.</li>
   <li>A second tab opens with a copy of the template; its file bar shows the path in the new version folder, marked
-      <code>*</code>. Change what differs, and save with <kbd>Ctrl+S</kbd>. The file is written only then.</li>
+      <code>*</code>. Change what differs, and save with <kbd>Ctrl+S</kbd>. The file is created only then.</li>
 </ol>
-<p>If the template has a variant for that version already, its tab is opened instead. In the
+<p>If the template already has a variant for that version, its tab is opened instead. In the
 <a href="#manager">manager</a>, each variant has its own row, and <span class="ui">Delete</span> removes just that
 file.</p>
-<p>The preview of a variant is made for <a href="#version">the first version of its folder</a> (while no connected
-server is selected), so you see at once what the newer servers get.</p>
+<p>The preview of a variant is rendered for <a href="#version">the first version of its folder</a> (while no
+connected server is selected), so it shows what the newer servers get.</p>
 
 <h2 id="keys">Keys of the template tab</h2>
 <div class="tablewrap"><table>
-<tr><th>Key</th><th>Where</th><th>What it does</th><th>Command</th></tr>
+<tr><th>Key</th><th>Context</th><th>Action</th><th>Command</th></tr>
 <tr><td class="k"><kbd>Ctrl+S</kbd></td><td>Everywhere in the tab</td><td>Save</td><td><code>save_file</code></td></tr>
 <tr><td class="k"><kbd>F5</kbd></td><td>Everywhere in the tab</td><td>Test the template in its form</td><td><code>template_test</code></td></tr>
 <tr><td class="k"><kbd>F7</kbd></td><td>Everywhere in the tab</td><td>Helper menu</td><td><code>template_helpers</code></td></tr>
@@ -647,13 +679,13 @@ server is selected), so you see at once what the newer servers get.</p>
 <tr><td class="k"><kbd>Ctrl+Up</kbd>, <kbd>Shift+Up</kbd></td><td>Header list</td><td>Move the parameter up</td><td><code>template_param_up</code></td></tr>
 <tr><td class="k"><kbd>Ctrl+Down</kbd>, <kbd>Shift+Down</kbd></td><td>Header list</td><td>Move the parameter down</td><td><code>template_param_down</code></td></tr>
 <tr><td class="k"><kbd>F2</kbd></td><td>Header list</td><td>Context menu</td><td><code>context_menu</code></td></tr>
-<tr><td class="k"><kbd>Enter</kbd></td><td>Preview</td><td>To the line of the body's error</td><td></td></tr>
+<tr><td class="k"><kbd>Enter</kbd></td><td>Preview</td><td>Go to the line of the body's syntax error</td><td></td></tr>
 <tr><td class="k"><kbd>Ctrl+Space</kbd>, <kbd>Alt+/</kbd></td><td>Body</td><td><a href="#autocomplete">Autocomplete</a>: parameters, fields, filters, statements</td><td><code>complete</code></td></tr>
-<tr><td class="k">The <a href="editor.html">editor keys</a></td><td>Body, raw header, preview</td><td>Moving, selecting, copy and paste, undo, find</td><td></td></tr>
+<tr><td class="k">The <a href="editor.html">editor keys</a></td><td>Body, raw header, preview</td><td>Movement, selection, clipboard, undo, find</td><td></td></tr>
 </table></div>
-<p>The keys of the header list, and <kbd>F5</kbd>, <kbd>F7</kbd> and <kbd>Ctrl+T</kbd>, are in the section
-<code>[template]</code> of <a href="settings.html#keymap"><code>keymap.toml</code></a>. The helper menu's items have
-no keys of their own; you can give them some: <code>template_insert_param</code>,
+<p>The bindings of the header list, and <kbd>F5</kbd>, <kbd>F7</kbd> and <kbd>Ctrl+T</kbd>, are in the
+<code>[template]</code> table of <a href="settings.html#keymap"><code>keymap.toml</code></a>. The items of the helper
+menu have no default bindings; their commands can be bound: <code>template_insert_param</code>,
 <code>template_insert_construct</code>, <code>template_insert_filter</code>, <code>template_make_param</code>,
 <code>template_add_variant</code> — and <code>template_manager</code> for the manager.</p>
 </main>

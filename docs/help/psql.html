@@ -9,9 +9,10 @@
 <body>
 <main>
 <h1>psql-style and generate commands (F4)</h1>
-<p class="lead">A command line inside the query tab: psql's everyday commands for listing and describing objects,
-and pgtc's own commands that write SQL for a table — SELECT, INSERT, UPDATE, upsert, MERGE, cursor loops, triggers and
-views.</p>
+<p class="lead">A command line in the query tab. It takes psql's meta-commands for listing and describing catalog
+objects (<code>\d</code>, <code>\dt</code>, <code>\df</code>, …) and pgtc's own <b>generate commands</b>, which read
+the columns and constraints of a relation from the system catalogs and write DML, PL/pgSQL or DDL for it into the
+editor. Every catalog read goes through the tab's own session.</p>
 
 <h2 id="line">The command line</h2>
 <figure>
@@ -21,37 +22,43 @@ views.</p>
 </figure>
 <ol class="steps">
   <li>In a <b>connected query tab</b>, press <kbd>F4</kbd> (<kbd>Esc</kbd> <kbd>4</kbd>, or
-      <span class="menu">Tools → psql command…</span>). It works from the editor and from the results.</li>
+      <span class="menu">Tools → psql command…</span>). It works from the editor and from the results. The session
+      must be idle: <kbd>F4</kbd> is not available while a statement executes or an export runs.</li>
   <li>Type a command, for example <code>dt sales.*</code>.</li>
   <li>Press <kbd>Enter</kbd> (<span class="ui">Run</span>).</li>
 </ol>
-<p>The commands are the <b>backslash commands of psql, without the backslash</b>: psql's <code>\dt sales.*</code> is
-<code>dt sales.*</code> here — <kbd>F4</kbd> has already said “this is a command”. If you type the backslash out of
-habit, it is ignored.</p>
+<p>The commands are <b>psql's meta-commands without the backslash</b>: psql's <code>\dt sales.*</code> is
+<code>dt sales.*</code>. A leading backslash is accepted and ignored. The queries behind them are pgtc's own, not
+psql's, so the columns of a result can differ from psql's output.</p>
 
 <h3>The list under the input</h3>
-<p>You do not have to know the commands by heart. The list shows all of them, pgtc's own after a separator line.</p>
+<p>The list shows every command with its argument and description; pgtc's generate commands follow a separator
+line.</p>
 <ul>
   <li><kbd>Up</kbd> / <kbd>Down</kbd> / <kbd>PgUp</kbd> / <kbd>PgDn</kbd> move in the list — also while the cursor is in
       the input — and the mouse wheel scrolls it.</li>
-  <li>Choosing a row puts its command into the input (followed by a space when it takes an argument), ready for you
-      to add the name or pattern.</li>
-  <li>When you type a command, the list moves to it. The list is never shortened.</li>
+  <li>Selecting a row puts its command into the input, followed by a space when it takes an argument.</li>
+  <li>Typing a command moves the list to it. The list is never filtered.</li>
   <li><kbd>Enter</kbd> with an empty input runs the selected command.</li>
   <li><kbd>Esc</kbd> closes the window.</li>
 </ul>
 
 <h3>Completing names</h3>
 <p>In the input, <kbd>Ctrl+Space</kbd> or <kbd>Alt+/</kbd> completes the <b>argument</b> — the name after the command.
-It offers the kinds of objects that make sense for the command: tables for <code>dt</code>, views for <code>dv</code>,
-tables and views for <code>d</code> and the generate commands, nothing for commands like <code>df</code> or
-<code>du</code>.</p>
+Each command offers its own relation kinds: tables for <code>dt</code>, views for <code>dv</code>, materialized views
+for <code>dm</code>, sequences for <code>ds</code> (combined letters add up); tables, views, materialized views,
+foreign tables and sequences for <code>d</code> and <code>dp</code>; the kinds in the <i>Works on</i> column for the
+generate commands; schemas for <code>gp</code> and <code>gf</code>. The other commands (<code>df</code>,
+<code>du</code>, <code>di</code>, …) offer nothing.</p>
 <ul>
-  <li>Names you can use without a schema are offered plain (<code>orders</code>); others with their schema
-      (<code>sales.customer</code>). Typing <code>sales.c</code> narrows the list to that schema.</li>
-  <li><kbd>Enter</kbd> puts the name into the input — it does not run the command yet. <kbd>Esc</kbd> closes only
-      the list.</li>
-  <li>The names are the same ones the editor's <a href="editor.html#autocomplete">autocomplete</a> uses.</li>
+  <li>A relation that is visible on the <code>search_path</code> is offered unqualified (<code>orders</code>), any other
+      schema-qualified (<code>sales.customer</code>). Once the argument contains a dot, every entry is qualified:
+      <code>sales.c</code> narrows the list to that schema. Matching is case-insensitive, on the start of the name.</li>
+  <li><kbd>Enter</kbd> replaces the argument with the entry, quoted where the identifier needs it
+      (<code>sales."Order Items"</code>). It does not run the command. <kbd>Esc</kbd> closes only the list.</li>
+  <li>The names come from the tab's name cache, the one the editor's
+      <a href="editor.html#autocomplete">autocomplete</a> uses. Missing names are not read while a result runs or is
+      paused.</li>
 </ul>
 <p>There is no history of commands.</p>
 
@@ -60,58 +67,77 @@ tables and views for <code>d</code> and the generate commands, nothing for comma
 <tr><th>Command</th><th>Lists</th></tr>
 <tr><td class="k"><code>l</code></td><td>Databases</td></tr>
 <tr><td class="k"><code>dn</code></td><td>Schemas</td></tr>
-<tr><td class="k"><code>dt</code></td><td>Tables</td></tr>
+<tr><td class="k"><code>dt</code></td><td>Tables, partitioned tables included (<code>relkind</code> <code>r</code>, <code>p</code>)</td></tr>
 <tr><td class="k"><code>dv</code></td><td>Views</td></tr>
 <tr><td class="k"><code>dm</code></td><td>Materialized views</td></tr>
-<tr><td class="k"><code>di</code></td><td>Indexes</td></tr>
+<tr><td class="k"><code>di</code></td><td>Indexes, partitioned indexes included, with the table each belongs to</td></tr>
 <tr><td class="k"><code>ds</code></td><td>Sequences</td></tr>
-<tr><td class="k"><code>df</code></td><td>Functions</td></tr>
-<tr><td class="k"><code>dT</code></td><td>Data types</td></tr>
-<tr><td class="k"><code>dD</code></td><td>Domains</td></tr>
-<tr><td class="k"><code>du</code>, <code>dg</code></td><td>Roles</td></tr>
-<tr><td class="k"><code>dx</code></td><td>Extensions</td></tr>
+<tr><td class="k"><code>df</code></td><td>Routines in <code>pg_proc</code>: functions, procedures, aggregates and window functions, with result and argument types</td></tr>
+<tr><td class="k"><code>dT</code></td><td>Data types, without array types and the row types of relations</td></tr>
+<tr><td class="k"><code>dD</code></td><td>Domains, with base type, default and <code>CHECK</code> constraints</td></tr>
+<tr><td class="k"><code>du</code>, <code>dg</code></td><td>Roles, with their attributes and memberships</td></tr>
+<tr><td class="k"><code>dx</code></td><td>Installed extensions</td></tr>
 <tr><td class="k"><code>db</code></td><td>Tablespaces</td></tr>
-<tr><td class="k"><code>dp</code></td><td>Access privileges of tables, views and sequences</td></tr>
+<tr><td class="k"><code>dp</code></td><td>Access privileges (ACLs) of tables, views, materialized views, sequences and foreign tables, with column privileges</td></tr>
 <tr><td class="k"><code>d</code> (without a name)</td><td>Tables, views, materialized views, sequences and foreign tables together</td></tr>
 </table></div>
-<p>Upper and lower case matter in command names, as in psql: <code>dt</code> lists tables, <code>dT</code> lists types.</p>
+<p>Command names are case-sensitive, as in psql: <code>dt</code> lists tables, <code>dT</code> lists types.</p>
 
 <figure>
   <img src="img/psql-dt.svg" alt="The result of dt sales.*" loading="lazy">
   <figcaption><code>dt sales.*</code>: the tables of schema <code>sales</code>. The result set is labelled with the
   command.</figcaption>
 </figure>
-<p>A command runs like <kbd>F5</kbd>: the answer is a normal result set of the tab. You can move in it, copy from it
-and <a href="files.html#export">export</a> it. The editor text is not touched.</p>
+<p>A command is a run of the tab, like <kbd>F5</kbd>: a result set you can navigate, copy from and
+<a href="files.html#export">export</a>, a line in <i>Messages</i>, the elapsed time. The editor text is not touched.</p>
+<ul>
+  <li>pgtc sends a catalog query (<code>pg_class</code>, <code>pg_namespace</code>, <code>pg_proc</code>,
+      <code>pg_roles</code>, …) as a prepared statement over the tab's session. Patterns travel as <b>bind
+      parameters</b>, never as SQL text.</li>
+  <li>The query runs in the session's current transaction state: inside an open transaction it is part of it, and in
+      an aborted transaction the server rejects it like any other statement.</li>
+  <li>An error of such a query has no position in the editor, so there is no line to jump to.</li>
+</ul>
 
 <h3>Combining, system objects, more columns</h3>
 <div class="tablewrap"><table>
 <tr><th>Write</th><th>Meaning</th><th>Example</th></tr>
-<tr><td>Several letters after <code>d</code></td><td>The letters <code>t</code> <code>v</code> <code>m</code> <code>i</code> <code>s</code> (and <code>E</code> for foreign tables) combine.</td><td><code>dtv</code> — tables and views</td></tr>
-<tr><td class="k"><code>S</code></td><td>Include system objects. Without a pattern, a list leaves out the system schemas.</td><td><code>dtS</code>, <code>dfS pg_get*</code></td></tr>
-<tr><td class="k"><code>+</code></td><td>More columns: size, description, …</td><td><code>dt+</code>, <code>l+</code></td></tr>
+<tr><td>Several letters after <code>d</code></td><td>The relation kinds <code>t</code> <code>v</code> <code>m</code> <code>i</code> <code>s</code> (and <code>E</code> for foreign tables) combine.</td><td><code>dtv</code> — tables and views</td></tr>
+<tr><td class="k"><code>S</code></td><td>Include system objects. Without a pattern and without <code>S</code>, a list leaves out the schemas <code>pg_*</code> and <code>information_schema</code> (<code>du</code>: the roles <code>pg_*</code>). With a pattern, system schemas are always searched. The TOAST schemas never appear in a relation list.</td><td><code>dtS</code>, <code>dfS pg_get*</code></td></tr>
+<tr><td class="k"><code>+</code></td><td>More columns: size (<code>pg_table_size</code>, <code>pg_database_size</code>), description, owner, ACL, … depending on the command.</td><td><code>dt+</code>, <code>l+</code></td></tr>
 </table></div>
 
 <h3 id="patterns">Patterns</h3>
-<p>Every list command takes an optional pattern that says which names to list. The rules are psql's:</p>
+<p>Every list command takes an optional pattern. The syntax is psql's; each part becomes an anchored regular
+expression that the server matches with <code>~</code> against the schema name and the object name.</p>
 <div class="tablewrap"><table>
 <tr><th>Pattern</th><th>Matches</th></tr>
-<tr><td class="k"><code>customer</code></td><td>The name <code>customer</code>, in the schemas of your search path.</td></tr>
-<tr><td class="k"><code>sales*</code></td><td>Names that start with <code>sales</code>. <code>*</code> stands for any text.</td></tr>
+<tr><td class="k"><code>customer</code></td><td>The name <code>customer</code>, in <b>any</b> schema.</td></tr>
+<tr><td class="k"><code>sales*</code></td><td>Names that start with <code>sales</code>. <code>*</code> matches any sequence of characters.</td></tr>
 <tr><td class="k"><code>*territory*</code></td><td>Names that contain <code>territory</code>.</td></tr>
-<tr><td class="k"><code>sales?erson</code></td><td><code>?</code> stands for exactly one character.</td></tr>
+<tr><td class="k"><code>sales?erson</code></td><td><code>?</code> matches exactly one character.</td></tr>
 <tr><td class="k"><code>sales.*</code></td><td>Everything in schema <code>sales</code>.</td></tr>
 <tr><td class="k"><code>*.customer</code></td><td><code>customer</code> in any schema.</td></tr>
 <tr><td class="k"><code>s*.sales*</code></td><td>Both parts can have wildcards.</td></tr>
-<tr><td class="k"><code>"Order Items"</code></td><td>In double quotes: exactly this name, with its capitals and spaces. Without quotes, a pattern is compared in lower case.</td></tr>
+<tr><td class="k"><code>"Order Items"</code></td><td>Double-quoted: matched exactly, case preserved, <code>*</code> <code>?</code> <code>.</code> literal. Unquoted text is folded to lower case, as identifiers are.</td></tr>
 </table></div>
-<pre><code>dt                    tables on the search path
+<ul>
+  <li>Unlike psql, a pattern without a schema part is <b>not</b> limited to relations visible on the
+      <code>search_path</code>: it matches the name in every schema. Likewise, a list without a pattern covers all
+      non-system schemas. Qualify the pattern (<code>public.*</code>) to narrow it.</li>
+  <li>Other regular-expression characters in a pattern are escaped; only <code>*</code> and <code>?</code> are
+      wildcards.</li>
+  <li>The commands for cluster-wide objects and schemas (<code>l</code>, <code>dn</code>, <code>du</code>,
+      <code>dx</code>, <code>db</code>) take a name pattern only; a dot is part of the name there. For the other
+      commands, the database part of a three-part pattern (<code>db.schema.name</code>) is ignored.</li>
+</ul>
+<pre><code>dt                    tables in all non-system schemas
 dt sales.*            all tables of schema sales
 dtv+ *order*          tables and views with "order" in the name, with sizes
 df *price*            functions with "price" in the name
 dn                    schemas
 du                    roles
-dp sales.customer     who may do what with sales.customer</code></pre>
+dp sales.customer     the ACL of sales.customer</code></pre>
 
 <h2 id="describe">Describing one object: d name</h2>
 <figure>
@@ -119,48 +145,52 @@ dp sales.customer     who may do what with sales.customer</code></pre>
   <figcaption><code>d sales.customer</code>: four result sets. <i>Columns</i> is shown; <kbd>Ctrl+PgDn</kbd> goes to
   <i>Indexes</i> and <i>Constraints</i>.</figcaption>
 </figure>
-<p><code>d</code> with a name describes one table, view, materialized view, sequence or foreign table. The answer is
-several result sets, one for each part:</p>
+<p><code>d</code> with a name describes one relation: a table (plain or partitioned), view, materialized view,
+sequence or foreign table. The answer is one result set per section, each from its own catalog query:</p>
 <div class="tablewrap"><table>
 <tr><th>Result set</th><th>Columns</th></tr>
-<tr><td><i>Relation</i></td><td>Schema, name, type, owner, description.</td></tr>
-<tr><td><i>Columns</i></td><td>Column, type, collation, nullable (<code>not null</code>), default. With <code>d+</code> also storage and description.</td></tr>
-<tr><td><i>Indexes</i></td><td>Name, kind (<i>primary key</i>, <i>unique</i>, <i>index</i>), definition.</td></tr>
-<tr><td><i>Constraints</i></td><td>Name, type, definition — foreign keys, checks, …</td></tr>
-<tr><td><i>Triggers</i></td><td>The triggers of the table.</td></tr>
-<tr><td><i>Definition</i></td><td>For a view: its query.</td></tr>
+<tr><td><i>Relation</i></td><td>Schema, name, type (from <code>relkind</code>), owner, description.</td></tr>
+<tr><td><i>Columns</i></td><td>From <code>pg_attribute</code>: column, type (<code>format_type</code>), collation when it is not the type's default, nullable (<code>not null</code>), default — the default expression, or <i>generated always / by default as identity</i>. With <code>d+</code> also storage (<i>plain</i>, <i>main</i>, <i>external</i>, <i>extended</i>) and description.</td></tr>
+<tr><td><i>Indexes</i></td><td>Name, kind (<i>primary key</i>, <i>unique</i>, or empty), definition (<code>pg_get_indexdef</code>).</td></tr>
+<tr><td><i>Constraints</i></td><td>Name, type (<i>primary key</i>, <i>unique</i>, <i>foreign key</i>, <i>check</i>, <i>exclusion</i>, <i>trigger</i>), definition (<code>pg_get_constraintdef</code>).</td></tr>
+<tr><td><i>Triggers</i></td><td>Name and definition (<code>pg_get_triggerdef</code>) of the user triggers; internal triggers are not listed.</td></tr>
+<tr><td><i>Definition</i></td><td>For a view or materialized view: its query (<code>pg_get_viewdef</code>).</td></tr>
 </table></div>
 <ul>
-  <li>A part that has nothing — a table without triggers — is left out.</li>
-  <li>Switch between the parts with <kbd>Ctrl+PgDn</kbd> / <kbd>Ctrl+PgUp</kbd>, or in the results with
+  <li>A section without rows — a table without triggers — is left out.</li>
+  <li>Switch between the sections with <kbd>Ctrl+PgDn</kbd> / <kbd>Ctrl+PgUp</kbd>, or in the results with
       <kbd>Alt+Right</kbd> / <kbd>Alt+Left</kbd>.</li>
-  <li>Without a schema, the name is looked for on your search path. If nothing is found, <i>Messages</i> says
-      <i>Did not find any relation named "…"</i>.</li>
-  <li><code>d</code> describes <b>one</b> object: a pattern with <code>*</code> or <code>?</code> is refused, with the
-      hint to use <code>dt</code> and its relatives.</li>
+  <li><b>Name resolution:</b> a schema-qualified name is looked up in that schema. An unqualified name must be
+      visible on the session's <code>search_path</code> (<code>pg_table_is_visible</code>). Unquoted names are folded
+      to lower case; <code>"Order Items"</code> is taken as written. The name is a bind parameter. If nothing
+      matches, <i>Messages</i> says <i>Did not find any relation named "…"</i>.</li>
+  <li><code>d</code> describes <b>one</b> relation: an argument with <code>*</code> or <code>?</code> is refused, with
+      the hint to use <code>dt</code>, <code>dv</code>, ….</li>
 </ul>
 <div class="tip"><p>For the complete <code>CREATE TABLE</code> statement, select the table in the tree instead — see
-<a href="objects.html">Object view</a>. <code>d</code> is quicker when you are typing a query and want to see the
-columns without leaving the tab.</p></div>
+<a href="objects.html">Object view</a>. <code>d</code> shows the columns without leaving the query tab.</p></div>
 
 <h2 id="other">conninfo and ?</h2>
 <div class="tablewrap"><table>
 <tr><th>Command</th><th>What it does</th></tr>
-<tr><td class="k"><code>conninfo</code></td><td>Writes into <i>Messages</i> where the tab is connected: <i>You are connected to database "adventureworks" as user "postgres" on host "localhost" at port "5432" (SSL mode prefer).</i> and the server version.</td></tr>
-<tr><td class="k"><code>?</code></td><td>Lists all commands as a result set — the same list as in the window, but one you can copy or export.</td></tr>
+<tr><td class="k"><code>conninfo</code></td><td>Writes the tab's connection into <i>Messages</i>: <i>You are connected to database "adventureworks" as user "postgres" on host "localhost" at port "5432" (SSL mode prefer).</i> and the server's major version. Nothing is sent to the server: the values are the tab's database and the parameters of the saved connection. <i>SSL mode</i> is the configured <code>sslmode</code>, not a statement about whether the session is encrypted.</td></tr>
+<tr><td class="k"><code>?</code></td><td>Lists all commands as a result set (columns <i>Group</i>, <i>Command</i>, <i>Description</i>) — the list of the window in a form you can copy or export.</td></tr>
 </table></div>
 
 <h3>What is not there</h3>
-<p>pgtc is not psql. These psql commands have no counterpart: <code>\c</code> (a query tab belongs to one database —
-open another tab), <code>\i</code> and <code>\o</code> (use <a href="files.html">Open SQL file</a> and
+<p>These psql meta-commands have no counterpart: <code>\c</code> (a query tab is bound to one database — open another
+tab), <code>\i</code> and <code>\o</code> (use <a href="files.html">Open SQL file</a> and
 <a href="files.html#export">Export result</a>), <code>\copy</code>, <code>\x</code>, <code>\h</code>, <code>\set</code>,
-<code>\password</code>, <code>\g</code>, <code>\watch</code>, <code>\if</code>. A line starting with <code>\</code> inside a
-SQL script is not a command; the server will report a syntax error.</p>
+<code>\password</code>, <code>\g</code>, <code>\watch</code>, <code>\if</code>. Meta-commands are recognised only in the
+<kbd>F4</kbd> input: a line starting with <code>\</code> in a script is sent to the server as it is and fails with a
+syntax error.</p>
 
 <h2 id="generate">Generate commands: SQL for a table</h2>
-<p>The commands below the separator are pgtc's own. Each one reads the definition of a table from the database and
-<b>writes a statement for it into the editor, at the cursor</b>. Nothing is run. You get every column name and type
-right without typing them.</p>
+<p>The commands below the separator are pgtc's own. Each one reads the relation's columns from
+<code>pg_attribute</code> (type, <code>NOT NULL</code>, default, identity, generated) and its primary-key and unique
+constraints from <code>pg_constraint</code>, then <b>inserts a statement at the editor cursor</b>. Nothing is
+executed. Some commands also read the foreign keys (<code>gtg</code>, <code>gtj</code>, <code>gtr</code>,
+<code>gtv</code>).</p>
 <div class="tablewrap"><table>
 <tr><th>Command</th><th>Writes</th><th>Works on</th></tr>
 <tr><td class="k"><code>gts</code> <i>table</i></td><td><code>SELECT</code> with every column</td><td>tables, views, foreign tables</td></tr>
@@ -190,13 +220,16 @@ right without typing them.</p>
 <tr><td class="k"><code>gfe</code> <i>table</i></td><td>PL/pgSQL function: does a row with this key <b>e</b>xist</td><td>tables, views, foreign tables</td></tr>
 <tr><td class="k"><code>gfj</code> <i>table</i></td><td>PL/pgSQL function: one row by its key as <b>j</b>son (<code>jsonb</code>)</td><td>tables, views, foreign tables</td></tr>
 </table></div>
-<p>The names are easy to remember: <b>g</b>enerate <b>t</b>able + <b>s</b>elect, <b>i</b>nsert, <b>u</b>pdate,
+<p>In the <i>Works on</i> column, <i>tables</i> means plain and partitioned tables (<code>relkind</code>
+<code>r</code>, <code>p</code>). Materialized views and sequences are not accepted by any generate command.</p>
+<p>The names are mnemonic: <b>g</b>enerate <b>t</b>able + <b>s</b>elect, <b>i</b>nsert, <b>u</b>pdate,
 <b>d</b>elete, <b>o</b>n conflict, <b>m</b>erge, <b>c</b>ursor, <b>s</b>elect <b>i</b>nto, <b>v</b>iew,
 <b>g</b>enerate data, <b>j</b>oin, <b>r</b>eferencing rows, <b>au</b>dit; and for triggers
 <b>r</b>ow / <b>s</b>tatement, <b>b</b>efore / <b>a</b>fter. <b>g</b>enerate <b>p</b>rocedure and
 <b>g</b>enerate <b>f</b>unction work the same way: <code>gpi</code>, <code>gpu</code>, <code>gpd</code>,
 <code>gpo</code>; <code>gfr</code>, <code>gfs</code>, <code>gft</code>, <code>gfe</code>, <code>gfj</code>.</p>
-<p>(<code>gp</code> and <code>gf</code> need no table: they write an empty procedure or function.)</p>
+<p>(<code>gp</code> and <code>gf</code> take no table and read nothing from the server: they write an empty procedure
+or function.)</p>
 
 <h3>How to use one</h3>
 <ol class="steps">
@@ -207,19 +240,22 @@ right without typing them.</p>
       not need, and run it with <kbd>F5</kbd>.</li>
 </ol>
 <ul>
-  <li><b>The table name:</b> <code>customer</code>, <code>sales.customer</code> or <code>"Order Items"</code>. Without a
-      schema, the table is looked for on your search path. The generated statement always names the table with its
-      schema.</li>
-  <li><b>Placeholders:</b> every value you must supply is written as <code>[column]</code>. That is not valid SQL —
-      on purpose: a statement you forgot to fill in cannot run by accident.</li>
-  <li><b>Comments:</b> each column has a comment with its type, <code>NOT NULL</code> and its default, so you see what
-      is expected and which lines you may leave out.</li>
-  <li><b>The key:</b> where a statement needs to find one row, it uses the <b>primary key</b>. A table without one
-      uses a unique constraint whose columns are all <code>NOT NULL</code> (the comment says so). With neither, you
-      get <code>WHERE [condition]  -- no primary key: write a condition</code>.</li>
-  <li>If no such table exists: <i>Did not find a table named "…"</i>, and nothing is inserted.</li>
-  <li>While a result of the tab is paused (more rows available) or an export runs, the generate commands are
-      refused — finish or close the result first.</li>
+  <li><b>The table name:</b> <code>customer</code>, <code>sales.customer</code> or <code>"Order Items"</code>, resolved
+      as for <a href="#describe"><code>d</code></a>: an unqualified name must be visible on the
+      <code>search_path</code>. The generated statement always schema-qualifies the table and quotes identifiers
+      where needed.</li>
+  <li><b>Placeholders:</b> every value you must supply is written as <code>[column]</code>. That is deliberately
+      not valid SQL: a statement with an unfilled placeholder fails to parse instead of running.</li>
+  <li><b>Comments:</b> each column carries its type (as <code>format_type</code> prints it), <code>NOT NULL</code> and
+      its default expression, so you see which lines can be dropped.</li>
+  <li><b>The key:</b> where a statement must address one row, it uses the <b>primary key</b>. Without one, it uses
+      the first <code>UNIQUE</code> constraint (by name) whose columns are all <code>NOT NULL</code>; the comment
+      names it. Unique <i>indexes</i> without a constraint are not considered. With neither, you get
+      <code>WHERE [condition]  -- no primary key: write a condition</code>.</li>
+  <li>If the name does not resolve to a table, view or foreign table: <i>Did not find a table named "…"</i>, and
+      nothing is inserted. A tables-only command on a view or foreign table is refused with a message.</li>
+  <li>The catalog read uses the tab's session. While a result of the tab is paused (more rows available) or an
+      export runs, the generate commands are refused — finish or close the result first.</li>
 </ul>
 <p>All examples below are what pgtc writes for <code>sales.customer</code>: six columns, <code>customerid</code> is the
 primary key and gets its value from a sequence.</p>
@@ -257,10 +293,10 @@ FROM sales.customer;</code></pre>
     [rowguid],
     [modifieddate]
 );</code></pre>
-<p>Left out are only the columns the database fills <b>by itself</b>: generated columns, identity columns, and columns
-whose default takes the next value of a sequence (<code>serial</code>) — here <code>customerid</code>. Columns with any
-other default are listed with the default in the comment: delete <code>rowguid</code> and <code>modifieddate</code> (in
-both lists) if the defaults are what you want.</p>
+<p>Left out are only the columns the server fills: generated columns, identity columns, and columns whose default
+calls <code>nextval()</code> (<code>serial</code>) — here <code>customerid</code>. Columns with any other default are
+listed with the default in the comment: delete <code>rowguid</code> and <code>modifieddate</code> (in both lists) to
+get the defaults.</p>
 
 <h3 id="gtu">gtu — UPDATE, gtd — DELETE</h3>
 <figure>
@@ -307,10 +343,10 @@ ON CONFLICT (customerid) DO UPDATE SET  -- primary key
     territoryid = EXCLUDED.territoryid,
     rowguid = EXCLUDED.rowguid,
     modifieddate = EXCLUDED.modifieddate;</code></pre>
-<p>“Insert the row; if a row with this key exists, update it.” Unlike <code>gti</code>, the key column is listed even
-though a sequence could fill it — without a key value the row would never conflict. A table whose columns are all
-key columns gets <code>DO NOTHING</code>; a table without a key gets <code>ON CONFLICT DO NOTHING</code> and a comment
-asking you to write the conflict target.</p>
+<p>The conflict target is the key. Unlike <code>gti</code>, the key column is listed even when a sequence could fill
+it — without a key value the row would never conflict. A table whose columns are all key columns gets
+<code>DO NOTHING</code>; a table without a key gets <code>ON CONFLICT DO NOTHING</code> and a comment asking you to
+write the conflict target.</p>
 
 <h3 id="gtm">gtm — MERGE</h3>
 <pre><code>MERGE INTO sales.customer AS t
@@ -333,11 +369,12 @@ WHEN MATCHED THEN
 WHEN NOT MATCHED THEN
     INSERT (customerid, personid, storeid, territoryid, rowguid, modifieddate)
     VALUES (s.customerid, s.personid, s.storeid, s.territoryid, s.rowguid, s.modifieddate);</code></pre>
-<p>The standard-SQL form of the upsert. Every value is cast to the type of its column, because a bare
-<code>VALUES</code> row would otherwise be read as text. To merge several rows, repeat the parenthesised row in
-<code>VALUES</code>; to merge from a table, replace the whole <code>USING (…)</code> with it.</p>
+<p>The standard-SQL form of the upsert. Every value is cast to its column type, because the columns of a bare
+<code>VALUES</code> list would otherwise resolve to <code>text</code>. To merge several rows, repeat the parenthesised
+row in <code>VALUES</code>; to merge from a table, replace the whole <code>USING (…)</code> with it.</p>
 <ul>
-  <li>Needs <b>PostgreSQL 15</b>; on an older server the command answers <i>MERGE needs PostgreSQL 15 or later</i>.</li>
+  <li>Needs <b>PostgreSQL 15</b>; on an older server the command answers <i>MERGE needs PostgreSQL 15 or later</i>
+      and reads nothing.</li>
   <li>There is deliberately no <code>WHEN NOT MATCHED BY SOURCE</code> branch: it would delete every row of the table
       that is not in your <code>VALUES</code>.</li>
 </ul>
@@ -369,8 +406,8 @@ BEGIN
     END LOOP;
     CLOSE cur;
 END;</code></pre>
-<p>A block that goes through the table row by row. The comments list the fields of <code>rec</code>; write your code
-at <code>--PROCESS THE ROW HERE</code>. The block has no placeholders and runs as it is — in a tab in
+<p>A PL/pgSQL block with an explicit cursor over the table. The comments list the fields of <code>rec</code>; write
+your code at <code>--PROCESS THE ROW HERE</code>. The block has no placeholders and runs as it is — in a tab in
 <a href="query.html#plpgsql">PL/pgSQL mode</a> (<kbd>Ctrl+P</kbd>), or pasted into the body of a function.</p>
 
 <h3 id="gtsi">gtsi — read one row into variables (PL/pgSQL)</h3>
@@ -400,9 +437,10 @@ BEGIN
     WHERE customerid = [customerid];  -- primary key: integer
     --PROCESS THE ROW HERE
 END;</code></pre>
-<p>One variable per column, each declared with the type of its column (<code>%TYPE</code>), so the code stays correct
-when a column type changes. <code>INTO STRICT</code> raises an error unless exactly one row is found. A column name
-that is not a plain identifier becomes a usable variable name: <code>"Due Date"</code> gives <code>v_due_date</code>.</p>
+<p>One variable per column, declared with <code>%TYPE</code>, so it follows a change of the column type.
+<code>INTO STRICT</code> raises <code>NO_DATA_FOUND</code> or <code>TOO_MANY_ROWS</code> unless exactly one row is
+found. A column name that is not a plain identifier becomes a usable variable name: <code>"Due Date"</code> gives
+<code>v_due_date</code>.</p>
 
 <h3 id="triggers">gtrb, gtra, gtsb, gtsa — trigger function and trigger</h3>
 <pre><code>CREATE OR REPLACE FUNCTION sales.[function_name]()
@@ -433,8 +471,8 @@ $$;
 CREATE TRIGGER customer_rb_trg
     BEFORE INSERT OR UPDATE OR DELETE ON sales.customer
     FOR EACH ROW EXECUTE FUNCTION sales.[function_name]();</code></pre>
-<p>This is <code>gtrb sales.customer</code>: a <b>row</b> trigger that fires <b>before</b> each insert, update and
-delete. The four commands differ like this:</p>
+<p>This is <code>gtrb sales.customer</code>: a <b>row-level</b> <code>BEFORE</code> trigger on <code>INSERT</code>,
+<code>UPDATE</code> and <code>DELETE</code>. The four commands differ like this:</p>
 <div class="tablewrap"><table>
 <tr><th>Command</th><th>Fires</th><th>Trigger name</th><th>The function</th></tr>
 <tr><td class="k"><code>gtrb</code></td><td><code>BEFORE … FOR EACH ROW</code></td><td><code>customer_rb_trg</code></td><td>Lists the <code>NEW.</code> / <code>OLD.</code> fields; returns <code>NEW</code> or <code>OLD</code> in each branch — what it returns is what gets stored, and <code>NULL</code> skips the row.</td></tr>
@@ -445,8 +483,8 @@ delete. The four commands differ like this:</p>
 <ul>
   <li>The name of the function is the placeholder <code>[function_name]</code> — in two places. The script cannot run
       until you have named the function.</li>
-  <li>The function is created in the schema of the table. The different trigger names mean that several kinds of
-      trigger on one table do not collide.</li>
+  <li>The function is created in the schema of the table. Each of the four commands uses its own trigger name, so
+      their triggers can coexist on one table.</li>
   <li>Delete the events you do not need from the <code>CREATE TRIGGER</code> line (<code>INSERT OR UPDATE OR
       DELETE</code>) and the matching branches.</li>
   <li>Run the script in <b>SQL mode</b> — it is a <code>CREATE FUNCTION</code> statement, not a PL/pgSQL block.</li>
@@ -474,7 +512,8 @@ SELECT
 FROM sales.salesorderheader AS T1
 JOIN sales.customer AS T2 ON T2.customerid = T1.customerid                -- FK_SalesOrderHeader_Customer_CustomerID
 LEFT JOIN sales.salesterritory AS T3 ON T3.territoryid = T1.territoryid;  -- FK_SalesOrderHeader_SalesTerritory_TerritoryID</code></pre>
-<p>Give one or more tables, separated by spaces. pgtc finds out how they belong together:</p>
+<p>Give one or more tables, separated by spaces. pgtc reads the foreign-key constraints between them from
+<code>pg_constraint</code> and builds the join:</p>
 <ul>
   <li><b>Aliases.</b> The tables are called <code>T1</code>, <code>T2</code>, <code>T3</code>, … in the order you typed
       them.</li>
@@ -483,17 +522,16 @@ LEFT JOIN sales.salesterritory AS T3 ON T3.territoryid = T1.territoryid;  -- FK_
   <li><b>Joins.</b> Each table is joined to a table before it by a <b>foreign key</b> between them, in whichever
       direction it points; the comment names the constraint. If there are several foreign keys to choose from, the
       first by name is used and the comment lists the others (<code>also: …</code>).</li>
-  <li><b><code>JOIN</code> or <code>LEFT JOIN</code>.</b> <code>LEFT JOIN</code> is used when the earlier table holds the
-      foreign key and the column may be NULL — so its rows without a partner are kept (above: an order without a
-      territory). Otherwise it is a plain <code>JOIN</code>.</li>
+  <li><b><code>JOIN</code> or <code>LEFT JOIN</code>.</b> <code>LEFT JOIN</code> is used when the earlier table is the
+      referencing side and a referencing column is nullable — so its rows with a NULL key are kept (above: an order
+      without a territory). Otherwise it is an inner <code>JOIN</code>.</li>
   <li><b>No foreign key</b> between a table and the ones before it:
       <code>JOIN … ON 1=1  -- no foreign key: write the join condition</code>. Views and foreign tables have no
       foreign keys, so they always need your condition.</li>
   <li>The view is created in the schema of the first table; its name is the placeholder <code>[view_name]</code>.</li>
 </ul>
-<p>The order of the tables matters: start with the table that holds the foreign keys (the “many” side), then the
-tables it points to. To try the query before creating the view, select the text from <code>SELECT</code> to the end
-and press <kbd>F5</kbd>.</p>
+<p>The order of the tables matters: start with the referencing table, then the tables it references. To try the
+query before creating the view, select the text from <code>SELECT</code> to the end and press <kbd>F5</kbd>.</p>
 
 <h3 id="gtg">gtg — test data</h3>
 <pre><code>gtg sales.customer 500</code></pre>
@@ -511,25 +549,28 @@ FROM generate_series(1, 500) AS g
 LEFT JOIN LATERAL (SELECT businessentityid FROM person.person WHERE g IS NOT NULL ORDER BY random() LIMIT 1) AS p1 ON true
 LEFT JOIN LATERAL (SELECT businessentityid FROM sales.store WHERE g IS NOT NULL ORDER BY random() LIMIT 1) AS p2 ON true
 LEFT JOIN LATERAL (SELECT territoryid FROM sales.salesterritory WHERE g IS NOT NULL ORDER BY random() LIMIT 1) AS p3 ON true;</code></pre>
-<p>Fills a table with rows to try things out. The number after the table is how many rows; without it, 100. Unlike
-most other commands, the statement usually <b>runs as it is</b>: check it and press <kbd>F5</kbd>.</p>
+<p>An <code>INSERT … SELECT</code> over <code>generate_series</code>. The number after the table is the row count;
+without it, 100. Unlike most other commands, the statement usually <b>runs as it is</b>: check it and press
+<kbd>F5</kbd>.</p>
 <ul>
-  <li><b>Which columns:</b> all except those the database fills itself — generated and identity columns, and
+  <li><b>Which columns:</b> all except those the server fills — generated and identity columns, and
       columns with a default (here <code>customerid</code> from its sequence, <code>rowguid</code>,
-      <code>modifieddate</code>). A foreign key column is always filled.</li>
-  <li><b>Foreign keys:</b> each one takes a <b>random existing row</b> of the table it points to, a new one for every
-      row. So fill the parent tables first. If a parent table is empty the value is <code>NULL</code>, and a
-      <code>NOT NULL</code> column then reports an error instead of silently inserting nothing.</li>
+      <code>modifieddate</code>). A foreign-key column is always filled.</li>
+  <li><b>Foreign keys:</b> each one takes a <b>random existing row</b> of the referenced table, a new one for every
+      generated row. So fill the referenced tables first. If a referenced table is empty the value is
+      <code>NULL</code>, and a <code>NOT NULL</code> column then raises an error instead of silently inserting
+      nothing.</li>
   <li><b>Other columns</b> get a value that fits their type, built from <code>g</code>, the row number:
       <code>'name ' || g</code> for text (cut to the length of a <code>varchar(n)</code>), a random number, a random
       date, time or timestamp up to a year back, <code>random() &lt; 0.5</code> for <code>boolean</code>, a random
       <code>uuid</code>, small <code>json</code> / <code>jsonb</code> objects, and so on.</li>
   <li><b>Key columns</b> (primary key, unique key) get values not yet in the table: numbers continue after the
       current maximum, text gets a random suffix.</li>
-  <li><b>Types pgtc does not know</b> (enums, domains, …): <code>[column]</code> for a <code>NOT NULL</code> column
-      — write a value, e.g. <code>'happy'::mood</code> — and <code>NULL</code> otherwise.</li>
-  <li>A random row is found with <code>ORDER BY random()</code>, which reads the whole parent table for every row:
-      fine for test databases, slow for a large parent and many rows.</li>
+  <li><b>Types pgtc has no generator for</b> (enums, domains, …): <code>[column]</code> for a <code>NOT NULL</code>
+      column — write a value, e.g. <code>'happy'::mood</code> — and <code>NULL</code> otherwise.</li>
+  <li>A random row is picked with <code>ORDER BY random() LIMIT 1</code> in a <code>LATERAL</code> subquery, which
+      scans and sorts the whole referenced table once per generated row: fine for test databases, slow for a large
+      referenced table and many rows.</li>
 </ul>
 
 <h3 id="gtj">gtj — join the parent tables</h3>
@@ -552,10 +593,11 @@ FROM sales.customer AS T1
 LEFT JOIN person.person AS T2 ON T2.businessentityid = T1.personid       -- FK_Customer_Person_PersonID
 LEFT JOIN sales.salesterritory AS T3 ON T3.territoryid = T1.territoryid  -- FK_Customer_SalesTerritory_TerritoryID
 LEFT JOIN sales.store AS T4 ON T4.businessentityid = T1.storeid;         -- FK_Customer_Store_StoreID</code></pre>
-<p>The table and every table its foreign keys point to, found for you — the same joins as <a href="#gtv"><code>gtv</code></a>
-writes, without typing the parent tables. One join per foreign key: a table referenced twice (a billing and a
-shipping address) is joined twice. <code>LEFT JOIN</code> where the key column may be NULL. Add a
-<code>WHERE</code> and delete the columns you do not need.</p>
+<p>The table and every table its foreign keys reference — the joins <a href="#gtv"><code>gtv</code></a> writes,
+without naming the referenced tables. One join per foreign-key constraint: a table referenced twice (a billing and
+a shipping address) is joined twice. <code>LEFT JOIN</code> where a referencing column is nullable. Foreign keys a
+partition inherits from its parent are left out. Add a <code>WHERE</code> and delete the columns you do not
+need.</p>
 
 <h3 id="gtr">gtr — rows that reference a row</h3>
 <pre><code>-- FK_SalesOrderHeader_Customer_CustomerID
@@ -566,9 +608,9 @@ SELECT
     totaldue
 FROM sales.salesorderheader
 WHERE customerid = [customerid];  -- sales.customer.customerid: integer</code></pre>
-<p>“What hangs on this row?” — for each foreign key of another table that points to this one, a <code>SELECT</code> of
-the rows that reference one row (here: the orders of one customer). Replace <code>[customerid]</code> with the key of
-the row you want to look at. Useful before a <code>DELETE</code> that fails on a foreign key. A table that nothing
+<p>For each foreign-key constraint of another table that references this one, a <code>SELECT</code> of the
+referencing rows of one row (here: the orders of one customer). Replace <code>[customerid]</code> with the key value
+of that row. Useful before a <code>DELETE</code> that fails with a foreign-key violation. A table that nothing
 references answers <i>No foreign key references …</i>.</p>
 
 <h3 id="gtau">gtau — audit every change</h3>
@@ -599,9 +641,10 @@ $$;
 CREATE TRIGGER customer_audit_trg
     AFTER INSERT OR UPDATE OR DELETE ON sales.customer
     FOR EACH ROW EXECUTE FUNCTION sales.[function_name]();</code></pre>
-<p>Every insert, update and delete of the table is written to <code>&lt;table&gt;_audit</code>: when, by whom, which
-operation, and the row before and after as <code>jsonb</code>. Name the function (in both places) and run the script in
-SQL mode. To see what changed in an update:</p>
+<p>A row-level <code>AFTER</code> trigger writes every <code>INSERT</code>, <code>UPDATE</code> and
+<code>DELETE</code> to <code>&lt;table&gt;_audit</code>: timestamp, <code>current_user</code>, <code>TG_OP</code>, and
+the old and new row as <code>jsonb</code>. Name the function (in both places) and run the script in SQL mode. To see
+what an update changed:</p>
 <pre><code>SELECT changed_at, changed_by, key, old_row -> key AS old, new_row -> key AS new
 FROM sales.customer_audit, jsonb_object_keys(new_row) AS key
 WHERE operation = 'UPDATE' AND old_row -> key IS DISTINCT FROM new_row -> key;</code></pre>
@@ -614,9 +657,9 @@ BEGIN
     --PROCESS HERE
 END;
 $$;</code></pre>
-<p>A starting point for your own procedure. <code>gp</code> alone creates it in <code>public</code>; <code>gp sales</code>
-creates it in <code>sales</code> (<kbd>Ctrl+Space</kbd> completes the schema name). It needs no table, and nothing
-is read from the database. Write the parameters between the parentheses and your code at
+<p>A skeleton for your own procedure. <code>gp</code> alone qualifies it with <code>public</code>; <code>gp sales</code>
+with <code>sales</code> (<kbd>Ctrl+Space</kbd> completes the schema name). It takes no table, and nothing is read
+from the server — the schema is not checked. Write the parameters between the parentheses and your code at
 <code>--PROCESS HERE</code>. For a dialog that also asks for the parameters, use the developer template
 <a href="templates.html">Create procedure</a>.</p>
 
@@ -650,8 +693,8 @@ END;
 $$;</code></pre>
 <p>This is <code>gpi sales.customer</code>. Each column the statement uses becomes a parameter: <code>p_</code> and the
 column name, with the column's type. The comment shows <code>NOT NULL</code> and the default. The columns are the
-same as for <a href="#gti"><code>gti</code></a>. The key that the database fills itself (here from a sequence) comes
-back to the caller in an <code>INOUT</code> parameter:</p>
+same as for <a href="#gti"><code>gti</code></a>. A key the server fills (here from a sequence) is returned to the
+caller through an <code>INOUT</code> parameter and <code>RETURNING … INTO</code>:</p>
 <pre><code>CALL sales.add_customer(1, NULL, 3, gen_random_uuid(), now(), NULL);  -- returns customerid</code></pre>
 <p>The other three commands:</p>
 <pre><code>CREATE OR REPLACE PROCEDURE sales.[procedure_name](
@@ -688,8 +731,8 @@ $$;</code></pre>
   <li>The procedure is created in the schema of the table; its name is the placeholder <code>[procedure_name]</code>,
       so the script does not run until you have named it. Run it in <b>SQL mode</b>.</li>
   <li>A column name that is not a plain identifier becomes a usable parameter name (<code>"Due Date"</code> →
-      <code>p_due_date</code>). If that name is also a column of the table, it gets <code>_2</code>, so the statement
-      never mixes up a parameter and a column.</li>
+      <code>p_due_date</code>). If that name is also a column of the table, it gets <code>_2</code>, so a reference in
+      the statement is never ambiguous between a parameter and a column.</li>
   <li>The parameters have the plain column type. (<code>%TYPE</code> in a parameter list is turned into the plain
       type by PostgreSQL anyway, with a notice.)</li>
   <li>A table without a key: <code>gpu</code> and <code>gpd</code> get <code>WHERE [condition]</code> and no key
@@ -709,13 +752,13 @@ BEGIN
 END;
 $$;</code></pre>
 <p>Like <a href="#gp"><code>gp</code></a>, but a function: <code>gf</code> alone uses <code>public</code>, <code>gf sales</code>
-uses <code>sales</code>. Besides the name, fill in the type the function returns and the value it returns. For a
-dialog, use the developer template <a href="templates.html">Create function</a>.</p>
+uses <code>sales</code>. Besides the name, fill in the return type and the returned value. For a dialog, use the
+developer template <a href="templates.html">Create function</a>.</p>
 
 <h3 id="functions">gfr, gfs, gft, gfe, gfj — functions that read a table</h3>
-<p>Five functions that only <b>read</b>. They are marked <code>STABLE</code>, so PostgreSQL may use them in queries and
-plans them better. They work on tables, views and foreign tables. Each one is created in the schema of the table,
-with the name placeholder <code>[function_name]</code>.</p>
+<p>Five read-only functions, declared with volatility <code>STABLE</code>. They work on tables, views and foreign
+tables. Each one is created in the schema of the table, with the name placeholder
+<code>[function_name]</code>.</p>
 <pre><code>CREATE OR REPLACE FUNCTION sales.[function_name](
     p_customerid  integer  -- primary key
 )
@@ -769,10 +812,11 @@ BEGIN
     WHERE [condition];  -- write a condition; columns as T1.column (the output columns are variables)
 END;
 $$;</code></pre>
-<p>This is <code>gft sales.customer</code>. Every column of <code>RETURNS TABLE</code> is also a variable inside the
-function. So a bare <code>customerid</code> in the query would be ambiguous (<i>column reference "customerid" is
-ambiguous</i>). That is why the table is called <code>T1</code> and every column is written <code>T1.column</code>; do
-the same in your condition. Delete columns you do not want from <b>both</b> lists, or add computed ones to both.</p>
+<p>This is <code>gft sales.customer</code>. Every column of <code>RETURNS TABLE</code> is an <code>OUT</code>
+parameter, hence a PL/pgSQL variable inside the function, so an unqualified <code>customerid</code> in the query is
+ambiguous (<i>column reference "customerid" is ambiguous</i>). Therefore the table is aliased <code>T1</code> and
+every column is written <code>T1.column</code>; do the same in your condition. Delete columns you do not want from
+<b>both</b> lists, or add computed ones to both.</p>
 <div class="tablewrap"><table>
 <tr><th>Command</th><th>Parameters</th><th>Returns</th><th>Body</th></tr>
 <tr><td class="k"><code>gfr</code></td><td>The key</td><td>The row type of the table</td><td><code>SELECT … INTO</code> a row variable; <code>NULL</code> when not found</td></tr>
@@ -784,9 +828,9 @@ the same in your condition. Delete columns you do not want from <b>both</b> list
 <ul>
   <li>The key and the parameter names follow the same rules as for the <a href="#procedures">procedures</a>:
       primary key, else a unique constraint, parameters <code>p_</code> + column name.</li>
-  <li>Views and foreign tables have no key (nor do some tables): <code>gfr</code>, <code>gfe</code> and
-      <code>gfj</code> then have no parameters and get <code>WHERE [condition]  -- no primary key: write a
-      condition</code>.</li>
+  <li>Views and foreign tables have no primary-key or unique constraint (nor do some tables): <code>gfr</code>,
+      <code>gfe</code> and <code>gfj</code> then have no parameters and get <code>WHERE [condition]  -- no primary
+      key: write a condition</code>.</li>
   <li><code>gfs</code> and <code>gft</code> have no parameters: add the ones your condition needs.</li>
   <li><code>gfj</code> returns every column as a JSON key. To leave one out, subtract it:
       <code>to_jsonb(T1) - 'rowguid'</code>.</li>

@@ -9,8 +9,9 @@
 <body>
 <main>
 <h1>Object view (definitions)</h1>
-<p class="lead">For every object in the tree, pgtc shows the SQL that would create it — the same idea as the
-<i>SQL</i> tab of pgAdmin. This is how you read a structure, and the starting point for changing it.</p>
+<p class="lead">For every object in the tree, pgtc shows its DDL, reconstructed from the system catalogs and the
+server's <code>pg_get_*def</code> functions — the equivalent of pgAdmin's <i>SQL</i> tab. The text is read only; it
+is also the starting point for changing the object.</p>
 
 <figure>
   <img src="img/window.svg" alt="The definition of a table" loading="lazy">
@@ -18,14 +19,14 @@
 </figure>
 
 <h2 id="default">The Default tab follows the tree</h2>
-<p>Move the cursor in the tree: the <i>Default</i> tab shows the definition of the row you are on. While the answer
-is on its way it says <i>loading…</i>. If you move on before it arrives, the old answer is dropped — you never see
-the definition of a row you have already left.</p>
-<p>The tab status row tells you where the object lives and that the text cannot be changed here:
+<p>The <i>Default</i> tab shows the definition of the row under the tree cursor. The definition is one catalog
+query with the object's OID as bind parameter, sent when the cursor has rested on the row for 200 ms; until the
+result arrives the tab says <i>loading…</i>. A result for a row the cursor has already left is discarded.</p>
+<p>The tab status row names the connection, role and database, and that the text is read only:
 <code>local · postgres@adventureworks · read only</code>.</p>
 
 <h2 id="content">What a definition contains</h2>
-<p>A definition is laid out the same way for every kind of object:</p>
+<p>Every kind of object uses the same layout, which follows pgAdmin:</p>
 <pre><code>-- Table: sales.customer                         what it is
 
 -- DROP TABLE IF EXISTS sales.customer;           how to drop it (as a comment)
@@ -61,27 +62,44 @@ CREATE INDEX IF NOT EXISTS ix_customer_territoryid
     ON sales.customer USING btree (territoryid);</code></pre>
 <div class="tablewrap"><table>
 <tr><th>Object</th><th>Its definition also includes</th></tr>
-<tr><td>Table, partition</td><td>Columns with defaults, identity and generated expressions; all constraints; partitioning; then its indexes, triggers, rules and row-security policies.</td></tr>
+<tr><td>Table, partition</td><td>Columns with defaults, identity and generated expressions; all constraints; the partition key (<code>PARTITION BY</code>); then its indexes, triggers, rules and row-level security policies.</td></tr>
 <tr><td>View</td><td>Its rules and triggers.</td></tr>
 <tr><td>Materialized view</td><td>Its indexes.</td></tr>
-<tr><td>Function, procedure</td><td>The complete <code>CREATE OR REPLACE FUNCTION …</code> with its body.</td></tr>
+<tr><td>Function, procedure</td><td>The complete <code>CREATE OR REPLACE FUNCTION …</code> / <code>PROCEDURE …</code> with its body.</td></tr>
 <tr><td>Column, constraint, index, trigger, rule, policy</td><td>The statement that adds just that part.</td></tr>
 <tr><td>Sequence, type, domain, schema, extension, role, database, tablespace, …</td><td>Its <code>CREATE</code> statement with owner, comment and privileges where they apply.</td></tr>
 </table></div>
-<p>The text comes from the server itself wherever PostgreSQL can produce it (view queries, function bodies, index
-and constraint definitions), so it is exact also on new server versions.</p>
+<p>Wherever PostgreSQL has a function that deparses an object, the text is the server's own output, so it is exact
+on every server version:</p>
+<div class="tablewrap"><table>
+<tr><th>Part</th><th>Source</th></tr>
+<tr><td>View and materialized view query</td><td><code>pg_get_viewdef()</code></td></tr>
+<tr><td>Function, procedure, trigger function</td><td><code>pg_get_functiondef()</code></td></tr>
+<tr><td>Index</td><td><code>pg_get_indexdef()</code></td></tr>
+<tr><td>Constraint (table and domain)</td><td><code>pg_get_constraintdef()</code></td></tr>
+<tr><td>Trigger</td><td><code>pg_get_triggerdef()</code></td></tr>
+<tr><td>Rule</td><td><code>pg_get_ruledef()</code></td></tr>
+<tr><td>Partition key</td><td><code>pg_get_partkeydef()</code></td></tr>
+<tr><td>Column defaults and other stored expressions</td><td><code>pg_get_expr()</code></td></tr>
+<tr><td>Type names</td><td><code>format_type()</code></td></tr>
+<tr><td>Comments</td><td><code>obj_description()</code>, <code>col_description()</code></td></tr>
+<tr><td>Privileges</td><td>The object's ACL, expanded with <code>aclexplode()</code> into <code>GRANT</code> statements.</td></tr>
+</table></div>
+<p>The rest — <code>CREATE TABLE</code>, <code>CREATE SEQUENCE</code>, <code>CREATE TYPE</code>, roles, databases,
+schemas — is assembled by pgtc from the catalog columns. Names are schema-qualified and quoted with
+<code>quote_ident()</code>.</p>
 
 <h3>Rows that are not objects</h3>
 <ul>
   <li>A <b>group</b> (<i>Tables</i>, <i>Columns</i>, …) lists its objects.</li>
-  <li>A <b>server</b> shows its connection data, state, version and whole configuration — see
+  <li>A <b>server</b> shows its connection parameters, state, server version and <code>pg_settings</code> — see
       <a href="connections.html#info">Connections</a>.</li>
 </ul>
 
 <h2 id="reading">Reading a definition</h2>
-<p>Press <kbd>F6</kbd> (or <kbd>Alt+2</kbd>) to move from the tree into the text. The view is the same editor as in a
-query tab, but <b>read only</b>: you can move, select, copy and search; keys that would change the text do nothing
-and the status line says so.</p>
+<p>Press <kbd>F6</kbd> (or <kbd>Alt+2</kbd>) to move from the tree into the text. The view is the editor of a query
+tab in <b>read-only</b> mode: moving, selecting, copying and searching work; editing keys are ignored, with a hint
+in the status line.</p>
 <div class="tablewrap"><table>
 <tr><th>Key</th><th>What it does</th></tr>
 <tr><td class="k">Arrows, <kbd>PgUp</kbd> / <kbd>PgDn</kbd></td><td>Move and scroll.</td></tr>
@@ -92,7 +110,7 @@ and the status line says so.</p>
 <tr><td class="k"><kbd>Ctrl+E</kbd></td><td>Edit the definition in a new query tab.</td></tr>
 <tr><td class="k"><kbd>F6</kbd></td><td>Back to the tree.</td></tr>
 </table></div>
-<p>Long lines are not wrapped; move right with the arrow keys or <kbd>End</kbd> to see the rest of a line.</p>
+<p>Long lines are not wrapped; the view scrolls horizontally with the arrow keys or <kbd>End</kbd>.</p>
 
 <h2 id="f3">Keeping a definition open: F3</h2>
 <figure>
@@ -101,42 +119,43 @@ and the status line says so.</p>
   <i>Default</i>.</figcaption>
 </figure>
 <p>The <i>Default</i> tab changes with every step in the tree. To keep a definition — to compare two tables, or to
-read a function while you write a query — press <kbd>F3</kbd> in the tree: the selected object opens in its
-<b>own tab</b>, named after it. Open as many as you need; switch between them with <kbd>Alt+Left</kbd> /
+read a function while writing a query — press <kbd>F3</kbd> in the tree: the selected object opens in its
+<b>own tab</b>, named after it. Any number can be open; switch between them with <kbd>Alt+Left</kbd> /
 <kbd>Alt+Right</kbd> and close one with <kbd>Ctrl+W</kbd>.</p>
-<p>An object tab shows the definition as it was when you opened it.</p>
+<p>An object tab is a snapshot: it shows the definition as read when the tab was opened and does not follow later
+DDL.</p>
 
 <h2 id="edit">Changing an object: Edit in new query tab (Ctrl+E)</h2>
-<p>pgtc has no dialogs that alter objects. You change an object the way a developer does: with SQL, which you can
-read before you run it.</p>
+<p>pgtc has no property dialogs that generate <code>ALTER</code> statements. Objects are changed with DDL in a
+query tab, which can be reviewed before it is executed.</p>
 <ol class="steps">
   <li>Select the object in the tree and wait for its definition (or go to its object tab).</li>
   <li>Press <kbd>Ctrl+E</kbd> — or <span class="menu">View → Edit in new query tab</span>, or the context menu.</li>
-  <li>A <b>new query tab</b> opens with the whole definition as its text, connected to the object's database.</li>
-  <li>Change the text and run it with <kbd>F5</kbd>.</li>
+  <li>A <b>new query tab</b> opens with the whole definition as its text and a session on the object's database.</li>
+  <li>Change the text and execute it with <kbd>F5</kbd>.</li>
 </ol>
 <figure>
   <img src="img/edit-in-tab.svg" alt="A definition in a query tab" loading="lazy">
   <figcaption>The definition of the view in a query tab: now it can be edited and executed.</figcaption>
 </figure>
-<p>How well this works depends on the kind of object:</p>
+<p>Whether the text can be executed as it is depends on the kind of object:</p>
 <div class="tablewrap"><table>
 <tr><th>Object</th><th>What to do in the query tab</th></tr>
-<tr><td>Function, procedure, view</td><td>The definition is <code>CREATE OR REPLACE …</code>: change it and run it. This is the normal way to edit a function.</td></tr>
-<tr><td>Table</td><td>The definition is <code>CREATE TABLE IF NOT EXISTS …</code>, which does nothing to an existing table. Use it as the reference while you write <code>ALTER TABLE</code> statements, or as the start of a similar table.</td></tr>
-<tr><td>Index, trigger, constraint, policy</td><td>Remove the <code>--</code> in front of the <code>DROP</code> line to drop and create it again.</td></tr>
+<tr><td>Function, procedure, view</td><td>The definition is <code>CREATE OR REPLACE …</code>: change it and execute it. The usual limits of <code>CREATE OR REPLACE</code> apply — a changed result type of a function, or removed or retyped columns of a view, need a <code>DROP</code> first.</td></tr>
+<tr><td>Table</td><td>The definition is <code>CREATE TABLE IF NOT EXISTS …</code>, a no-op on an existing table. Use it as the reference for writing <code>ALTER TABLE</code> statements, or as the start of a similar table.</td></tr>
+<tr><td>Index, trigger, constraint, policy</td><td>Uncomment the <code>DROP</code> line to drop and re-create the object.</td></tr>
 </table></div>
-<p>The text in the new tab is unsaved text like any other: closing the tab asks whether to save it to a file.</p>
+<p>The text in the new tab counts as unsaved text: closing the tab asks whether to save it to a file.</p>
 <p><kbd>Ctrl+E</kbd> is refused, with a hint in the status line:</p>
 <ul>
   <li>while the definition is still loading, and on rows without a definition (groups, errors);</li>
-  <li>on roles and tablespaces — they belong to the server, not to a database, so there is no database to open the
-      tab for;</li>
+  <li>on roles and tablespaces — they are cluster-wide objects, so there is no database to open the tab's session
+      on;</li>
   <li>on a server that is not connected.</li>
 </ul>
-<div class="tip"><p>To <b>create</b> or <b>drop</b> objects, the <a href="templates.html">developer templates</a>
-(<kbd>F7</kbd> in a query tab) write the statement for you — for example <i>Drop table</i> with the table of the tree
-already filled in.</p></div>
+<div class="tip"><p>For <code>CREATE</code> and <code>DROP</code> statements, the
+<a href="templates.html">developer templates</a> (<kbd>F7</kbd> in a query tab) generate the statement from a form —
+for example <i>Drop table</i> with the table selected in the tree already filled in.</p></div>
 </main>
 <script src="help.js"></script>
 </body>
