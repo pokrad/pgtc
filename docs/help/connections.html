@@ -9,8 +9,10 @@
 <body>
 <main>
 <h1>Connections</h1>
-<p class="lead">Saving servers, connecting and disconnecting, passwords, SSL — and how many connections pgtc really
-opens.</p>
+<p class="lead">A <b>connection</b> in pgtc is a saved server: its host, port, user and maintenance database, kept in
+the object tree. This chapter shows how to add, edit and delete one, how to connect and disconnect, where the
+password comes from, how to set up SSL — and which sessions pgtc opens on the server while you work, so that a long
+query in one tab never holds up the tree or another tab.</p>
 
 <h2 id="saved">Saved connections</h2>
 <p>A <b>saved connection</b> describes one server: a name, where it is, and who you are there. The saved connections
