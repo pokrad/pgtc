@@ -33,19 +33,11 @@ the server selected in the object tree; <a href="#test">Test</a> reads its choic
 <tr><td class="k"><span class="ui">Copy</span></td><td class="k"><kbd>C</kbd></td><td>Copies the template to a new file name in the same section.</td></tr>
 <tr><td class="k"><span class="ui">Rename</span></td><td class="k"><kbd>R</kbd></td><td>Renames the template's file or the section's directory.</td></tr>
 <tr><td class="k"><span class="ui">Delete</span></td><td class="k"><kbd>D</kbd></td><td>Deletes the template file or the empty section.</td></tr>
+<tr><td class="k"><span class="ui">Search</span></td><td class="k"><kbd>Alt+S</kbd>, <kbd>S</kbd></td><td>Matches name, description and file name.</td></tr>
 <tr><td class="k"><span class="ui">Close</span></td><td class="k"><kbd>Esc</kbd>, <kbd>L</kbd></td><td></td></tr>
 </table></div>
-<figure class="small">
-  <img src="img/tpe-manager-search.svg" alt="Searching in the template manager" loading="lazy">
-  <figcaption><span class="ui">Search</span> (<kbd>Alt+S</kbd>, or <kbd>S</kbd> in the list) matches name,
-  description and file name.</figcaption>
-</figure>
 
 <h3 id="sections">Sections</h3>
-<figure class="small">
-  <img src="img/tpe-section.svg" alt="New section" loading="lazy">
-  <figcaption><span class="ui">Section</span>.</figcaption>
-</figure>
 <ul>
   <li>A section is a directory below a version folder. <span class="ui">Section</span> creates it under
       <code>default/</code>; <code>Tables/Partitions</code> nests. The <a href="#save">Save template</a> dialog can
@@ -57,14 +49,6 @@ the server selected in the object tree; <a href="#test">Test</a> reads its choic
 </ul>
 
 <h3>Copy, rename, delete</h3>
-<figure class="small">
-  <img src="img/tpe-copy.svg" alt="Copy template" loading="lazy">
-  <figcaption><span class="ui">Copy</span> asks for a file name (without <code>.pgtemplate</code>).</figcaption>
-</figure>
-<figure class="small">
-  <img src="img/tpe-delete.svg" alt="Delete template" loading="lazy">
-  <figcaption><span class="ui">Delete</span>.</figcaption>
-</figure>
 <ul>
   <li>The copy is byte-identical: change its <span class="ui">Name</span>, or the picker shows two entries with the
       same label.</li>
@@ -83,10 +67,7 @@ the server selected in the object tree; <a href="#test">Test</a> reads its choic
     <figcaption>The file bar names the section and version folder the first save will propose.</figcaption>
   </figure></li>
   <li><kbd>Enter</kbd> on <span class="ui">Name</span>: name and description.
-  <figure class="small">
-    <img src="img/tpe-props.svg" alt="Name and description" loading="lazy">
-    <figcaption>The header keys <code>name</code> and <code>description</code>.</figcaption>
-  </figure></li>
+</li>
   <li><kbd>Insert</kbd> for each parameter (<a href="#param">parameter dialog</a>).</li>
   <li><kbd>Tab</kbd> to the body; write the SQL. <kbd>F7</kbd> inserts parameters, constructs and filters.</li>
   <li><kbd>Ctrl+S</kbd> <a href="#save">saves</a>; <kbd>F5</kbd> <a href="#test">tests the form</a>.</li>
@@ -120,16 +101,8 @@ the server selected in the object tree; <a href="#test">Test</a> reads its choic
 <p><kbd>Ctrl+S</kbd> <a href="#save">save</a>, <kbd>F5</kbd> <a href="#test">test</a>, <kbd>F7</kbd>
 <a href="#helpers">helper menu</a>, <kbd>Ctrl+T</kbd> list ↔ <a href="#raw">raw header</a>. <kbd>F5</kbd> and
 <kbd>F7</kbd> differ from a query tab's. Full list: <a href="#keys">below</a>.</p>
-<figure class="mid">
-  <img src="img/tpe-f1.svg" alt="F1 in the header list" loading="lazy">
-  <figcaption><kbd>F1</kbd> in the header list.</figcaption>
-</figure>
 
 <h2 id="list">The header list</h2>
-<figure>
-  <img src="img/tpe-list.svg" alt="The header list" loading="lazy">
-  <figcaption>A parameter row: name, type (or the <code>source</code>), <code>*</code> if required.</figcaption>
-</figure>
 <div class="tablewrap"><table>
 <tr><th>Key</th><th>Action</th></tr>
 <tr><td class="k"><kbd>Enter</kbd>, double click</td><td>Edit: name and description, or the <a href="#param">parameter</a>.</td></tr>
@@ -138,10 +111,6 @@ the server selected in the object tree; <a href="#test">Test</a> reads its choic
 <tr><td class="k"><kbd>Ctrl+Up</kbd> / <kbd>Ctrl+Down</kbd>, <kbd>Shift+Up</kbd> / <kbd>Shift+Down</kbd></td><td>Move the parameter: the order of the <code>[[param]]</code> tables and of the form's fields.</td></tr>
 <tr><td class="k"><kbd>F2</kbd></td><td>Context menu.</td></tr>
 </table></div>
-<figure>
-  <img src="img/tpe-list-menu.svg" alt="The context menu of the header list" loading="lazy">
-  <figcaption><kbd>F2</kbd>.</figcaption>
-</figure>
 <p>Renaming a parameter does not rewrite the body; the status row shows <i>Not declared: old · Not used: new</i>.</p>
 
 <h2 id="param">The parameter dialog</h2>
@@ -165,10 +134,6 @@ the server selected in the object tree; <a href="#test">Test</a> reads its choic
   <img src="img/tpe-param-source.svg" alt="A choice from database objects" loading="lazy">
   <figcaption><b>Database objects</b> (<code>source</code>): one of the
   <a href="templates.html#sources">built-in catalog queries</a>.</figcaption>
-</figure>
-<figure class="mid">
-  <img src="img/tpe-param-options.svg" alt="A choice with fixed options" loading="lazy">
-  <figcaption><b>Fixed options</b> (<code>options</code>): one value per line.</figcaption>
 </figure>
 <figure class="mid">
   <img src="img/tpe-param-query.svg" alt="A choice from a query" loading="lazy">
@@ -255,14 +220,6 @@ dialog opens with the selection as <span class="ui">Default</span>; on <span cla
 appended and its expression replaces the selection, so the rendered SQL is unchanged. A multi-line selection becomes
 a <code>sql</code> parameter. Not available in the raw header view.</p>
 <figure>
-  <img src="img/tpe-make-select.svg" alt="A text selected in the body" loading="lazy">
-  <figcaption>The selection.</figcaption>
-</figure>
-<figure class="mid">
-  <img src="img/tpe-make.svg" alt="The new parameter" loading="lazy">
-  <figcaption>The selection as the default.</figcaption>
-</figure>
-<figure>
   <img src="img/tpe-made.svg" alt="The parameter in place" loading="lazy">
   <figcaption><code>{{ comment }}</code> in place of the text.</figcaption>
 </figure>
@@ -290,10 +247,6 @@ a name, after <code>.</code>, <code>|</code> and <code>has("</code>; in the SQL 
 <figure>
   <img src="img/tpe-ac-fields.svg" alt="The fields of a list's rows" loading="lazy">
   <figcaption>After <code>c.</code> in <code>{% for c in columns %}</code>.</figcaption>
-</figure>
-<figure>
-  <img src="img/tpe-ac-filter.svg" alt="The filters" loading="lazy">
-  <figcaption>After <code>|</code>.</figcaption>
 </figure>
 <ul>
   <li>With the <a href="#raw">raw header</a> shown, the parameters are parsed from its text (none while it has an
@@ -388,10 +341,6 @@ variables are compared with the declarations.</p>
   <li>An existing file is overwritten only after confirmation; a file open in another tab is refused.</li>
   <li><span class="menu">Save as…</span> binds the tab to the new file; the old one is left unchanged.</li>
 </ul>
-<figure class="small">
-  <img src="img/tpe-not-saved.svg" alt="The template is not saved" loading="lazy">
-  <figcaption>A template with an <a href="#checks">error</a> is not saved; the file is left untouched.</figcaption>
-</figure>
 
 <h3 id="builtin">The built-in templates</h3>
 <figure class="small">
@@ -408,10 +357,6 @@ those files, so pgtc asks:</p>
 </ul>
 
 <h3>Closing a tab with changes</h3>
-<figure class="small">
-  <img src="img/tpe-close.svg" alt="Closing a template tab with changes" loading="lazy">
-  <figcaption><kbd>Ctrl+W</kbd> with unsaved changes.</figcaption>
-</figure>
 <p>As for a <a href="files.html">query tab</a>, governed by the same setting
 (<span class="ui">Ask to save query tabs when closing</span>). If the save is refused, the tab stays open.</p>
 
@@ -419,10 +364,6 @@ those files, so pgtc asks:</p>
 <p>A variant is a file with the same section and file name in a <a href="templates.html#where">version folder</a>
 <code>N_plus</code>; <kbd>F7</kbd> picks the folder with the highest <i>N</i> ≤ the server's major version, else
 <code>default</code>. For small differences a <a href="#constructs">version or feature test</a> is enough.</p>
-<figure class="small">
-  <img src="img/tpe-variant.svg" alt="Add variant for version" loading="lazy">
-  <figcaption><kbd>F7</kbd>, <span class="menu">Add variant for version…</span></figcaption>
-</figure>
 <ul>
   <li>The template must have a file. Type the first major version the variant applies to: a second tab opens with a
       copy; the file is created on its first <kbd>Ctrl+S</kbd>.</li>

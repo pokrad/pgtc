@@ -135,10 +135,6 @@ not a plain column:</p>
 </table></div>
 
 <h4>The whole row</h4>
-<figure>
-  <img src="img/dashboard-row.svg" alt="A session shown in full" loading="lazy">
-  <figcaption><kbd>Enter</kbd> on a session.</figcaption>
-</figure>
 
 <h3 id="blocking">Blocking</h3>
 <figure>
@@ -169,21 +165,12 @@ dashboard only; <code>copy</code> 14), joined to <code>pg_stat_activity</code>.<
 </ul>
 
 <h3 id="locks">Locks</h3>
-<figure>
-  <img src="img/dashboard-locks.svg" alt="The Locks list" loading="lazy">
-</figure>
 <p><code>pg_locks</code> without the dashboard's own rows. <i>Granted</i> is <i>yes</i> / <i>no</i>.</p>
 
 <h3 id="prepared">Prepared transactions</h3>
-<figure class="">
-  <img src="img/dashboard-prepared.svg" alt="One prepared transaction that has not been committed yet." loading="lazy">
-</figure>
 <p><code>pg_prepared_xacts</code>.</p>
 
 <h3 id="config">Configuration</h3>
-<figure>
-  <img src="img/dashboard-configuration.svg" alt="The Configuration list" loading="lazy">
-</figure>
 <p><code>pg_settings</code>: <code>name</code>, <code>category</code>, <code>setting</code> (in the base
 <code>unit</code>), <code>unit</code>, <code>short_desc</code>. Source and file of each setting: the
 <a href="connections.html#info">server row in the tree</a>.</p>
@@ -195,10 +182,6 @@ dashboard only; <code>copy</code> 14), joined to <code>pg_stat_activity</code>.<
 <tr><td class="k"><kbd>Alt+Shift+C</kbd></td><td><code>pg_cancel_backend(pid)</code></td></tr>
 <tr><td class="k"><kbd>F8</kbd></td><td><code>pg_terminate_backend(pid)</code></td></tr>
 </table></div>
-<figure class="small">
-  <img src="img/dashboard-terminate.svg" alt="Terminate session question" loading="lazy">
-  <figcaption>Always confirmed.</figcaption>
-</figure>
 <ul>
   <li>The signal is sent only if <code>pg_stat_activity</code> still has that PID with the
       <code>backend_start</code> the list showed, so a reused PID is not hit.</li>
@@ -216,10 +199,6 @@ tags set, <kbd>Alt+Shift+C</kbd> and <kbd>F8</kbd> act on all tagged sessions, a
 exited backend goes with it.</p>
 
 <h2 id="keys">All dashboard keys</h2>
-<figure class="mid">
-  <img src="img/dashboard-menu.svg" alt="The dashboard's context menu" loading="lazy">
-  <figcaption><kbd>F2</kbd>.</figcaption>
-</figure>
 <div class="tablewrap"><table>
 <tr><th>Key</th><th></th></tr>
 <tr><td class="k"><kbd>F5</kbd></td><td>Refresh now; reconnect.</td></tr>

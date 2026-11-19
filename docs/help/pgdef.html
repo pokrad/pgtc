@@ -21,10 +21,6 @@ control (stable order, clean diffs), and comparing two states. For data, use <co
 <h2 id="export">Exporting a definition</h2>
 <p>With the tree cursor on a <b>database row</b>: <span class="menu">File → Export database definition…</span>
 (also in the <kbd>F2</kbd> menu); name a <code>.pgdef</code> file.</p>
-<figure class="mid">
-  <img src="img/pgdef-export.svg" alt="Export database definition dialog" loading="lazy">
-  <figcaption>The export dialog.</figcaption>
-</figure>
 <ul>
   <li>The catalogs are read through a session of its own, in one <code>READ ONLY</code>,
       <code>REPEATABLE READ</code> transaction (one snapshot), with an empty <code>search_path</code>, so every

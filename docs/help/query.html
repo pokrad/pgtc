@@ -47,14 +47,6 @@
 <h2 id="run">Executing: F5</h2>
 <p><kbd>F5</kbd> (<span class="menu">Query → Execute</span>) sends the <b>selection</b>, or the <b>whole text</b> when
 nothing is selected. Rows are displayed as they arrive; the UI is not blocked.</p>
-<figure>
-  <img src="img/query-selection.svg" alt="Executing a selection" loading="lazy">
-  <figcaption>Only the selected statement is sent.</figcaption>
-</figure>
-<figure>
-  <img src="img/query-running.svg" alt="A running query" loading="lazy">
-  <figcaption>Elapsed time and the cancel key in the status row.</figcaption>
-</figure>
 
 <h3 id="script">Scripts: several statements at once</h3>
 <p>The text is sent unchanged as <b>one simple-query message</b>, as pgAdmin does; pgtc does not split it. Values
@@ -102,10 +94,6 @@ block</b>:</p>
   <li>A column is at most 40 characters wide; a longer value ends with <code>…</code>. A line break is shown as
       <code>↵</code>, a tab as <code>→</code>; copying gives the real characters.</li>
 </ul>
-<figure class="mid">
-  <img src="img/results-menu.svg" alt="Results context menu" loading="lazy">
-  <figcaption><kbd>F2</kbd> in the grid.</figcaption>
-</figure>
 
 <h3 id="batches">Large results: 1,000 rows at a time</h3>
 <figure>
@@ -170,18 +158,10 @@ the generate commands of <kbd>F4</kbd> are refused.</p>
       the script was rolled back as a whole.</li>
   <li><kbd>Enter</kbd> on the error moves to the editor and selects the token at the position.</li>
 </ul>
-<figure>
-  <img src="img/query-error-jump.svg" alt="After jumping to the error" loading="lazy">
-  <figcaption>After <kbd>Enter</kbd>: the token is selected.</figcaption>
-</figure>
 <p>Errors raised <b>inside a <code>DO</code> block</b> or in PL/pgSQL mode carry no position in the sent text: pgtc
 takes the line from <code>CONTEXT</code> (<code>PL/pgSQL function inline_code_block line N …</code>) and, for a
 failing SQL statement inside the block, the column from the internal query and internal position. Positions are
 those at the time of the error; after edits a jump may be off.</p>
-<figure class="mid">
-  <img src="img/messages-menu.svg" alt="Messages context menu" loading="lazy">
-  <figcaption><kbd>F2</kbd> in <i>Messages</i>.</figcaption>
-</figure>
 
 <h2 id="cancel">Cancelling a query</h2>
 <p><kbd>Alt+Shift+C</kbd> (<span class="menu">Query → Cancel</span>) sends a <b>cancel request</b> for the tab's
@@ -236,10 +216,6 @@ the body of an anonymous code block, sent as <code>DO $pgc$ … $pgc$;</code>. I
 <h2 id="close">Closing a query tab and quitting</h2>
 <p><kbd>Ctrl+W</kbd>, a click on the tab's <code>×</code>, or <span class="menu">View → Close tab</span> ends the
 tab's session; a statement still executing is cancelled.</p>
-<div class="shots">
-<figure><img src="img/save-changes.svg" alt="Save changes question" loading="lazy"><figcaption>Unsaved text.</figcaption></figure>
-<figure><img src="img/tx-close.svg" alt="Open transaction question" loading="lazy"><figcaption>An open transaction.</figcaption></figure>
-</div>
 <ul>
   <li><b>Unsaved text:</b> <span class="ui">Yes</span> closes the tab only after the file was written. The question
       can be turned off (<span class="menu">Settings → Settings…</span>, <span class="ui">Ask to save query tabs

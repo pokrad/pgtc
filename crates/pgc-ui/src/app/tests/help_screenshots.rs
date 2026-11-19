@@ -1374,17 +1374,13 @@ async fn help_screenshots() {
     a.focus = Focus::Tree;
     out.shot("window", &a, Crop::Full);
 
-    // the menus
-    for (i, name) in ["file", "view", "query", "tools", "settings", "help"]
-        .iter()
-        .enumerate()
+    // a menu (the Reference chapter lists the items of all of them)
     {
         let (mut a, _d, _) = query_scene();
         key(&mut a, "F9");
-        for _ in 0..i {
-            key(&mut a, "Right");
-        }
-        out.shot(&format!("menu-{name}"), &a, Crop::TopLeft(96, 20));
+        key(&mut a, "Right");
+        key(&mut a, "Right");
+        out.shot("menu-query", &a, Crop::TopLeft(96, 20));
     }
 
     // F1 in the query editor; Help → Keyboard shortcuts; About
@@ -1396,16 +1392,13 @@ async fn help_screenshots() {
     out.shot("shortcuts", &a, Crop::Full);
     let (mut a, _d, _) = query_scene();
     a.run(Command::About);
-    out.shot("about", &a, Crop::Dialog);
     let (mut a, _d, _) = query_scene();
     a.run(Command::ThirdPartyLicences);
-    out.shot("licences", &a, Crop::Full);
 
     // ---- connections ------------------------------------------------------------
     let (mut a, _d, _) = scene();
     a.focus = Focus::Tree;
     a.run(Command::NewConnection);
-    out.shot("conn-empty", &a, Crop::Dialog);
     {
         let d = a.dialogs.last_mut().unwrap();
         let ids: Vec<&'static str> = d.widgets.iter().map(|w| w.id).collect();
@@ -1442,7 +1435,6 @@ async fn help_screenshots() {
         &Hits::default(),
     );
     typing(&mut a, "secret42");
-    out.shot("conn-login", &a, Crop::Dialog);
 
     // a disconnected server's info text and its context menu
     let (mut a, _d, ids2) = scene();
@@ -1451,9 +1443,7 @@ async fn help_screenshots() {
     a.tree.select_server(uid2);
     a.follow_selection();
     a.focus = Focus::Tree;
-    out.shot("conn-disconnected", &a, Crop::Full);
     key(&mut a, "F2");
-    out.shot("conn-menu", &a, Crop::Full);
 
     // the connected server: its context menu, delete
     let (mut a, _d, ids2) = scene();
@@ -1465,7 +1455,6 @@ async fn help_screenshots() {
     out.shot("server-menu", &a, Crop::TopLeft(84, 20));
     a.popup = None;
     key(&mut a, "F8");
-    out.shot("conn-delete", &a, Crop::Dialog);
 
     // the server row: version and configuration
     let (mut a, _d, ids2) = scene();
@@ -1482,7 +1471,6 @@ async fn help_screenshots() {
     let (mut a, _d, ids2) = scene();
     select(&mut a, RowKind::Node(ids2.tables));
     a.focus = Focus::Tree;
-    out.shot("tree-group", &a, Crop::Full);
 
     // context menus: a table, the database
     let (mut a, _d, _) = scene();
@@ -1513,7 +1501,6 @@ async fn help_screenshots() {
     short_tree(&mut a, ids2);
     a.focus = Focus::Tree;
     key(&mut a, "Ctrl+F");
-    out.shot("find-empty", &a, Crop::Dialog);
     typing(&mut a, "territory");
     key(&mut a, "Alt+C");
     let seq = a.find_seq;
@@ -1629,7 +1616,6 @@ async fn help_screenshots() {
     tag(&mut a, "SELECT 100");
     finished(&mut a, 6, TxStatus::Idle);
     a.focus = Focus::Results;
-    out.shot("top100", &a, Crop::Full);
 
     // ---- the object view --------------------------------------------------------
     // F3: a view in its own tab, with Find open
@@ -1665,7 +1651,6 @@ async fn help_screenshots() {
     short_tree(&mut a, ids2);
     query_tab(&mut a, ids2, TOP_QUERY);
     start(&mut a);
-    out.shot("query-running", &a, Crop::Full);
 
     // a selection is executed
     let (mut a, _d, ids2) = scene();
@@ -1834,17 +1819,14 @@ async fn help_screenshots() {
     }
     out.shot("query-error", &a, Crop::Full);
     key(&mut a, "F2");
-    out.shot("messages-menu", &a, Crop::Full);
     a.popup = None;
     key(&mut a, "Enter");
     a.status.clear();
-    out.shot("query-error-jump", &a, Crop::Full);
 
     // results context menu
     let (mut a, _d, _) = query_scene();
     a.focus = Focus::Results;
     key(&mut a, "F2");
-    out.shot("results-menu", &a, Crop::Full);
 
     // an open transaction: auto commit off
     let (mut a, _d, ids2) = scene();
@@ -1861,7 +1843,6 @@ async fn help_screenshots() {
     finished(&mut a, 4, TxStatus::InTransaction);
     out.shot("tx-open", &a, Crop::Full);
     key(&mut a, "Ctrl+W");
-    out.shot("tx-close", &a, Crop::Dialog);
 
     // closing an unsaved tab
     let (mut a, _d, ids2) = scene();
@@ -1869,7 +1850,6 @@ async fn help_screenshots() {
     query_tab(&mut a, ids2, "");
     typing(&mut a, "SELECT * FROM sales.store;");
     key(&mut a, "Ctrl+W");
-    out.shot("save-changes", &a, Crop::Dialog);
 
     // ---- the editor -------------------------------------------------------------
     let (mut a, _d, _) = query_scene();
@@ -1879,7 +1859,6 @@ async fn help_screenshots() {
     key(&mut a, "Tab");
     typing(&mut a, "revenue");
     key(&mut a, "Alt+R");
-    out.shot("replace-confirm", &a, Crop::Full);
 
     // ---- autocomplete -----------------------------------------------------------
     let names = |a: &mut App| {
@@ -1957,7 +1936,6 @@ async fn help_screenshots() {
     names(&mut a);
     a.editor().set_cursor(21, false);
     popup_for(&mut a, false);
-    out.shot("ac-tables", &a, Crop::Full);
 
     // ---- PL/pgSQL mode ----------------------------------------------------------
     let (mut a, _d, ids2) = scene();
@@ -2009,10 +1987,8 @@ async fn help_screenshots() {
     }
     typing(&mut a, " ");
     key(&mut a, "Backspace");
-    out.shot("file-bar", &a, Crop::Full);
     a.open_file_dialog(true);
     listing(&mut a, WORK_FILES, ".sql");
-    out.shot("file-save", &a, Crop::Dialog);
 
     // the places
     let (mut a, _d, _) = query_scene();
@@ -2101,7 +2077,6 @@ async fn help_screenshots() {
     );
     finished(&mut a, 5, TxStatus::Idle);
     a.focus = Focus::Results;
-    out.shot("psql-dt", &a, Crop::Full);
 
     // d sales.customer
     let (mut a, _d, ids2) = scene();
@@ -2254,7 +2229,10 @@ async fn help_screenshots() {
         let sql = crate::psql::generate(what, &gen_customer);
         query_tab(&mut a, ids2, &sql);
         a.query_mut().unwrap().results_visible = false;
-        out.shot(name, &a, Crop::Area(32, 1, 88, 22));
+        // one picture of a generated statement is enough; the others are text
+        if name == "gen-gti" {
+            out.shot(name, &a, Crop::Area(32, 1, 88, 22));
+        }
         if let Some(t) = &out.txt {
             std::fs::write(t.join(format!("{name}.sql")), &sql).unwrap();
         }
@@ -2444,7 +2422,6 @@ async fn help_screenshots() {
     pick_template(&mut a, "CREATE");
     key(&mut a, "Alt+S");
     typing(&mut a, "drop");
-    out.shot("tpl-search", &a, Crop::Dialog);
 
     // Create table
     let (mut a, _d, _) = query_scene();
@@ -2558,7 +2535,6 @@ async fn help_screenshots() {
     std::fs::create_dir_all(&own).unwrap();
     std::fs::write(own.join("lookup_table.pgtemplate"), OWN_TEMPLATE).unwrap();
     pick_template(&mut a, "A code / name table");
-    out.shot("tpl-own-picker", &a, Crop::Dialog);
     key(&mut a, "Enter");
     {
         use crate::template_dialog::{FieldValue, Stop};
@@ -2591,24 +2567,20 @@ async fn help_screenshots() {
         // searching
         key(&mut a, "Alt+S");
         typing(&mut a, "trigger");
-        out.shot("tpe-manager-search", &a, Crop::Dialog);
         // a new section
         let (mut a, _d, _, _) = templates_scene();
         a.run(Command::TemplateManager);
         key(&mut a, "t");
         typing(&mut a, "Reports");
-        out.shot("tpe-section", &a, Crop::Dialog);
         // copy and delete
         let (mut a, _d, _, _) = templates_scene();
         a.run(Command::TemplateManager);
         select_row(&mut a, "items", "Create table");
         key(&mut a, "c");
-        out.shot("tpe-copy", &a, Crop::Dialog);
         let (mut a, _d, _, _) = templates_scene();
         a.run(Command::TemplateManager);
         select_row(&mut a, "items", "Create lookup table");
         key(&mut a, "d");
-        out.shot("tpe-delete", &a, Crop::Dialog);
     }
 
     // a new template: the empty tab, then its name
@@ -2621,7 +2593,6 @@ async fn help_screenshots() {
         typing(&mut a, "Create lookup table");
         key(&mut a, "Tab");
         typing(&mut a, "A code / name table with our standard columns");
-        out.shot("tpe-props", &a, Crop::Dialog);
     }
 
     // the template tab
@@ -2632,10 +2603,8 @@ async fn help_screenshots() {
     {
         let (mut a, _d, _) = template_tab_scene();
         select_param(&mut a, "name");
-        out.shot("tpe-list", &a, Crop::Area(32, 1, 88, 16));
         template_layout(&mut a);
         a.run(Command::ContextMenu);
-        out.shot("tpe-list-menu", &a, Crop::Area(32, 1, 88, 20));
     }
 
     // the parameter dialog: a name, a choice from the database, fixed options, a list
@@ -2668,7 +2637,6 @@ async fn help_screenshots() {
         d.set_text("default", "varchar");
         d.set_memo_text("options", "varchar\nchar\ninteger");
         d.focus_on("options");
-        out.shot("tpe-param-options", &a, Crop::Dialog);
         // a query of its own
         a.dialogs
             .last_mut()
@@ -2748,12 +2716,10 @@ async fn help_screenshots() {
         a.editor()
             .set_cursor(from + "Lookup table".chars().count(), true);
         a.editor().scroll_to_cursor();
-        out.shot("tpe-make-select", &a, Crop::Area(32, 1, 88, 22));
         a.run(Command::TemplateMakeParam);
         typing(&mut a, "comment");
         key(&mut a, "Tab");
         typing(&mut a, "Comment");
-        out.shot("tpe-make", &a, Crop::Dialog);
         key(&mut a, "Ctrl+Enter");
         a.sync_template_tab();
         a.editor().scroll_to_cursor();
@@ -2770,7 +2736,6 @@ async fn help_screenshots() {
         out.shot("tpe-ac-sql", &a, Crop::Area(32, 1, 88, 14));
         key(&mut a, "Enter");
         typing(&mut a, ".{{ name|");
-        out.shot("tpe-ac-filter", &a, Crop::Area(32, 1, 88, 18));
 
         let (mut a, _d, _, file) = templates_scene();
         let table = file
@@ -2805,7 +2770,6 @@ async fn help_screenshots() {
             .set_text(&text.replace("{% endif %}", "{% endfi %}"));
         a.sync_template_tab();
         key(&mut a, "Ctrl+S");
-        out.shot("tpe-not-saved", &a, Crop::Dialog);
         key(&mut a, "Enter");
         out.shot("tpe-error", &a, Crop::Full);
         let (mut a, _d, _) = template_tab_scene();
@@ -2842,7 +2806,6 @@ async fn help_screenshots() {
         let (mut a, _d, _) = template_tab_scene();
         typing(&mut a, "-- ");
         key(&mut a, "Ctrl+W");
-        out.shot("tpe-close", &a, Crop::Dialog);
     }
 
     // a variant for a server version
@@ -2851,7 +2814,6 @@ async fn help_screenshots() {
         a.run(Command::TemplateAddVariant);
         let d = a.dialogs.last_mut().unwrap();
         d.set_text("version", "16");
-        out.shot("tpe-variant", &a, Crop::Dialog);
     }
 
     // Test: the template in its real form
@@ -2875,7 +2837,6 @@ async fn help_screenshots() {
         let (mut a, _d, _) = template_tab_scene();
         select_param(&mut a, "name");
         key(&mut a, "F1");
-        out.shot("tpe-f1", &a, Crop::Dialog);
     }
 
     // ---- database definition ----------------------------------------------------
@@ -2892,7 +2853,6 @@ async fn help_screenshots() {
         ],
         ".pgdef",
     );
-    out.shot("pgdef-export", &a, Crop::Dialog);
 
     // the sync script, made by the real generator from two small models
     let model = |extra: bool| {
@@ -2988,13 +2948,10 @@ async fn help_screenshots() {
     out.shot("dashboard", &a, Crop::Full);
     let (mut a, _d) = dash();
     key(&mut a, "Enter");
-    out.shot("dashboard-row", &a, Crop::Full);
     let (mut a, _d) = dash();
     key(&mut a, "F2");
-    out.shot("dashboard-menu", &a, Crop::Full);
     let (mut a, _d) = dash();
     key(&mut a, "F8");
-    out.shot("dashboard-terminate", &a, Crop::Dialog);
     // tagging and the transaction duration
     let (mut a, _d) = dash();
     key(&mut a, "Down");
@@ -3248,7 +3205,10 @@ async fn help_screenshots() {
         key(&mut a, "Down");
         key(&mut a, "Up");
         a.status.clear();
-        out.shot(&format!("dashboard-{name}"), &a, Crop::Full);
+        // the other lists are plain grids of a catalog view
+        if matches!(name, "blocking" | "progress") {
+            out.shot(&format!("dashboard-{name}"), &a, Crop::Full);
+        }
     }
 
     // ---- SQL profiler -----------------------------------------------------------
@@ -3263,7 +3223,6 @@ async fn help_screenshots() {
     };
     // Start: the question
     let (mut a, _d, tab, conn) = prof();
-    out.shot("profiler-stopped", &a, Crop::Full);
     key(&mut a, "F5");
     let k = a.tabs[a.active_tab].profiler().unwrap().step_keys[0];
     a.on_profiler_event(
@@ -3284,7 +3243,6 @@ async fn help_screenshots() {
     a.status.clear();
     out.shot("profiler", &a, Crop::Full);
     key(&mut a, "Enter");
-    out.shot("profiler-entry", &a, Crop::Full);
     let (mut a, _d, _, _) = prof();
     profiler_records(&mut a);
     key(&mut a, "Ctrl+F");
@@ -3293,7 +3251,6 @@ async fn help_screenshots() {
     let (mut a, _d, _, _) = prof();
     profiler_records(&mut a);
     key(&mut a, "F2");
-    out.shot("profiler-menu", &a, Crop::Full);
 
     // ---- database statistics ----------------------------------------------------
     let (mut a, _d, ids2) = scene();
@@ -3430,7 +3387,6 @@ async fn help_screenshots() {
     // the model combo, open
     key(&mut a, "Alt+M");
     key(&mut a, "Space");
-    out.shot("ai-models", &a, Crop::Dialog);
 
     let (mut a, _d, ids) = scene();
     short_tree(&mut a, ids);
@@ -3472,7 +3428,6 @@ async fn help_screenshots() {
     a.dialogs.last_mut().unwrap().set_combo_selected("scope", 0);
     key(&mut a, "Alt+S");
     let id = a.ai.run.as_ref().unwrap().id;
-    out.shot("ai-waiting", &a, Crop::Full);
     // the steps of the request in Messages (texts of a real run)
     for step in [
         crate::ai::Progress::Thinking,
@@ -3539,7 +3494,6 @@ async fn help_screenshots() {
     // the top of the answer in view
     a.editor().set_cursor(0, false);
     a.editor().scroll_to_cursor();
-    out.shot("ai-trigger", &a, Crop::Full);
 
     // ---- settings and colour schemes --------------------------------------------
     let (mut a, _d, _) = query_scene();
@@ -3547,7 +3501,6 @@ async fn help_screenshots() {
     a.run(Command::Settings);
     out.shot("settings", &a, Crop::Dialog);
     key(&mut a, "Space");
-    out.shot("settings-scheme", &a, Crop::Dialog);
 
     for name in crate::theme::ThemeSet::built_in().names() {
         let (mut a, _d, ids2) = scene_with(&name);
@@ -3562,7 +3515,10 @@ async fn help_screenshots() {
             .chars()
             .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
             .collect();
-        out.shot(&format!("scheme-{file}"), &a, Crop::TopLeft(120, 24));
+        // Classic is the scheme of every other picture
+        if file != "classic" {
+            out.shot(&format!("scheme-{file}"), &a, Crop::TopLeft(120, 24));
+        }
     }
 
     // ASCII frames

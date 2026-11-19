@@ -43,10 +43,6 @@ with duration, PID, role, database, bind parameters and errors.</p>
 <h2 id="open">Opening the profiler</h2>
 <p><kbd>Alt+P</kbd> (also <kbd>Ctrl+P</kbd>) on a connected server or one of its databases;
 <span class="menu">Tools → SQL profiler</span>; the context menu.</p>
-<figure>
-  <img src="img/profiler-stopped.svg" alt="The profiler before Start" loading="lazy">
-  <figcaption><i>Stopped</i>: nothing has been changed on the server.</figcaption>
-</figure>
 <ul>
   <li>One profiler tab per server. Opened from a database row, the filter is preset to that database.</li>
   <li>Its own session on the maintenance database; entries with that session's PID are dropped.</li>
@@ -98,10 +94,6 @@ something has to change, pgtc lists it and asks:</p>
 </table></div>
 
 <h3>The whole entry</h3>
-<figure>
-  <img src="img/profiler-entry.svg" alt="A profiler entry in full" loading="lazy">
-  <figcaption><kbd>Enter</kbd> on an entry.</figcaption>
-</figure>
 
 <h2 id="filter">Filtering</h2>
 <p><kbd>Ctrl+F</kbd>:</p>
@@ -164,10 +156,6 @@ SELECT pg_reload_conf();</code></pre>
 </ul>
 
 <h2 id="keys">All profiler keys</h2>
-<figure class="mid">
-  <img src="img/profiler-menu.svg" alt="The profiler's context menu" loading="lazy">
-  <figcaption><kbd>F2</kbd>.</figcaption>
-</figure>
 <div class="tablewrap"><table>
 <tr><th>Key</th><th></th></tr>
 <tr><td class="k"><kbd>F5</kbd></td><td>Start / stop.</td></tr>

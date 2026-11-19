@@ -74,10 +74,6 @@ tree</span> is checked (all servers, saved):</p>
 <tr><td>A group</td><td>The list of its objects.</td></tr>
 <tr><td>A server</td><td>Connection parameters, version and <code>pg_settings</code> — see <a href="connections.html#info">Connections</a>.</td></tr>
 </table></div>
-<figure>
-  <img src="img/tree-group.svg" alt="A group row" loading="lazy">
-  <figcaption>The cursor on <i>Tables (19)</i>.</figcaption>
-</figure>
 
 <h2 id="menu">The context menu of a row</h2>
 <p><kbd>F2</kbd> or right click.</p>
@@ -133,10 +129,6 @@ query is sent, so unloaded groups are not searched. <kbd>Alt+S</kbd> again jumps
   <img src="img/find-object.svg" alt="Find object dialog with results" loading="lazy">
   <figcaption><code>territory</code> below <code>adventureworks</code>, columns included.</figcaption>
 </figure>
-<figure class="mid">
-  <img src="img/find-empty.svg" alt="The Find object dialog before you type." loading="lazy">
-  <figcaption><span class="ui">Below:</span> shows the scope.</figcaption>
-</figure>
 <div class="tablewrap"><table>
 <tr><th>Field</th><th>Meaning</th></tr>
 <tr><td class="k"><span class="ui">Name</span></td><td>Sent 200 ms after the last key. <code>%</code> and <code>_</code> are escaped. <kbd>Up</kbd> / <kbd>Down</kbd> move in the list while the focus stays here.</td></tr>
@@ -157,10 +149,6 @@ query is sent, so unloaded groups are not searched. <kbd>Alt+S</kbd> again jumps
 <p>In the editor and in a definition, <kbd>Ctrl+F</kbd> is <i>Find / replace</i>.</p>
 
 <h2 id="top">Select top 100 rows (Ctrl+B)</h2>
-<figure>
-  <img src="img/top100.svg" alt="Select top 100 rows" loading="lazy">
-  <figcaption><kbd>Ctrl+B</kbd> on <code>sales.customer</code>.</figcaption>
-</figure>
 <p>On a table, view, materialized view, foreign table or partition, or any row below one: opens a query tab with</p>
 <pre><code>SELECT * FROM sales.customer LIMIT 100;</code></pre>
 <p>and executes it. No <code>ORDER BY</code>; the name is schema-qualified and quoted. Also

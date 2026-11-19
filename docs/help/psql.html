@@ -65,10 +65,6 @@ kinds, generate commands their <i>Works on</i> kinds, <code>gp</code> / <code>gf
 <tr><td class="k"><code>dp</code></td><td>ACLs of tables, views, materialized views, sequences and foreign tables, with column privileges</td></tr>
 <tr><td class="k"><code>d</code> (no name)</td><td>Tables, views, materialized views, sequences and foreign tables</td></tr>
 </table></div>
-<figure>
-  <img src="img/psql-dt.svg" alt="The result of dt sales.*" loading="lazy">
-  <figcaption><code>dt sales.*</code></figcaption>
-</figure>
 <ul>
   <li>A command is a run of the tab like <kbd>F5</kbd>: result set (<a href="files.html#export">exportable</a>),
       <i>Messages</i>, elapsed time. The editor text is not touched.</li>
@@ -177,10 +173,6 @@ is folded to lower case. Each part becomes an anchored regular expression matche
 <p>The examples are for <code>sales.customer</code>: primary key <code>customerid</code>, filled from a sequence.</p>
 
 <h3 id="gts">gts — SELECT</h3>
-<figure class="mid">
-  <img src="img/gen-gts.svg" alt="After <code>gts sales.customer</code>." loading="lazy">
-  <figcaption><code>gts sales.customer</code></figcaption>
-</figure>
 <p>One column per line, no <code>WHERE</code>.</p>
 
 <h3 id="gti">gti — INSERT</h3>
@@ -205,18 +197,10 @@ is folded to lower case. Each part becomes an anchored regular expression matche
 with any other default are listed.</p>
 
 <h3 id="gtu">gtu — UPDATE, gtd — DELETE</h3>
-<figure>
-  <img src="img/gen-gtu.svg" alt="A generated UPDATE in the editor" loading="lazy">
-  <figcaption><code>gtu sales.customer</code></figcaption>
-</figure>
 <p><code>WHERE</code> on the key. <code>UPDATE</code> sets every non-key column except generated and
 <code>GENERATED ALWAYS</code> identity columns.</p>
 
 <h3 id="gto">gto — upsert (INSERT … ON CONFLICT)</h3>
-<figure class="mid">
-  <img src="img/gen-gto.svg" alt="After <code>gto sales.customer</code> (the statement continues below the screen)." loading="lazy">
-  <figcaption><code>gto sales.customer</code></figcaption>
-</figure>
 <ul>
   <li>Conflict target: the key. Unlike <code>gti</code>, the key column is listed even when a sequence fills it.</li>
   <li>All columns are key columns: <code>DO NOTHING</code>. No key: <code>ON CONFLICT DO NOTHING</code> with a

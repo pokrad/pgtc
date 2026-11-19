@@ -47,10 +47,6 @@ where the terminal reports it). The SQL replaces the selection or goes in at the
   <li><i>file name (not for this server version)</i>: the template exists only in
       <a href="#where">version folders</a> newer than the tab's server.</li>
 </ul>
-<figure class="small">
-  <img src="img/tpl-search.svg" alt="Searching the picker" loading="lazy">
-  <figcaption><code>drop</code> in <span class="ui">Search</span>.</figcaption>
-</figure>
 
 <h3 id="builtin">The built-in templates</h3>
 <div class="tablewrap"><table>
@@ -191,10 +187,6 @@ CREATE TABLE {{ schema|ident }}.{{ name|ident }} (
 {% endif %}
     CONSTRAINT {{ (name ~ "_pkey")|ident }} PRIMARY KEY (code)
 );</code></pre>
-<figure class="small">
-  <img src="img/tpl-own-picker.svg" alt="The picker with the new category" loading="lazy">
-  <figcaption>Saved as <code>default/Our team/lookup_table.pgtemplate</code>.</figcaption>
-</figure>
 <figure>
   <img src="img/tpl-own.svg" alt="The form of the example template" loading="lazy">
   <figcaption>Its form.</figcaption>

@@ -17,16 +17,10 @@ server.</p>
 (<a href="reference.html#files">Files and folders</a>) without passwords.
 <span class="menu">File → New connection…</span> adds one; nothing is sent to the server until
 <span class="menu">Connect</span>.</p>
-<div class="shots">
-<figure class="small">
-  <img src="img/conn-empty.svg" alt="The New connection dialog as it opens." loading="lazy">
-  <figcaption>Defaults.</figcaption>
-</figure>
 <figure class="small">
   <img src="img/conn-new.svg" alt="New connection dialog, filled in" loading="lazy">
   <figcaption>Filled in.</figcaption>
 </figure>
-</div>
 <div class="tablewrap"><table>
 <tr><th>Field</th><th>Notes</th></tr>
 <tr><td class="k"><span class="ui">Name</span></td><td>Display name only.</td></tr>
@@ -49,7 +43,7 @@ server.</p>
   <li><kbd>F8</kbd> deletes the saved connection after a confirmation. A connected server is
       <a href="#disconnect">disconnected</a> first. Nothing is executed on the server; a <code>.pgpass</code> line
       stays.
-      <figure class="small"><img src="img/conn-delete.svg" alt="Delete connection question" loading="lazy"></figure></li>
+</li>
 </ul>
 
 <h3 id="edit-connected">Editing a connected server</h3>
@@ -64,15 +58,7 @@ server.</p>
 </ul>
 
 <h2 id="connect">Connecting</h2>
-<figure>
-  <img src="img/conn-disconnected.svg" alt="A server that is not connected" loading="lazy">
-  <figcaption>A disconnected server: the default tab shows its saved parameters.</figcaption>
-</figure>
 <p><span class="menu">Connect</span> in the server's <kbd>F2</kbd> menu or in <span class="menu">File</span>.</p>
-<figure class="">
-  <img src="img/conn-menu.svg" alt="The context menu of the server: Connect is its first item." loading="lazy">
-  <figcaption>The server's context menu.</figcaption>
-</figure>
 <ul>
   <li>pgtc opens one session on the maintenance database and reads <code>server_version_num</code>. Several servers
       can be connected at once.</li>
@@ -100,9 +86,6 @@ server.</p>
 again.</p>
 
 <h2 id="login">The login dialog</h2>
-<figure class="small">
-  <img src="img/conn-login.svg" alt="Login dialog" loading="lazy">
-</figure>
 <ul>
   <li>Password lookup order: the connection dialog (kept in memory for this run), a connection URI,
       <code>PGPASSWORD</code>, <code>.pgpass</code>. The login dialog appears only when none yields a password and the

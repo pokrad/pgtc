@@ -68,9 +68,6 @@ With a selection, <kbd>F5</kbd> sends only the selected text and <kbd>Tab</kbd> 
       / <span class="ui">Skip</span> / <span class="ui">Cancel</span>); <span class="ui">Replace all</span> does not.
       Both can be undone.</li>
 </ul>
-<figure>
-  <img src="img/replace-confirm.svg" alt="Replace this occurrence?" loading="lazy">
-</figure>
 
 <h2 id="highlight">Syntax highlighting</h2>
 <ul>
@@ -109,10 +106,7 @@ parser.</p>
 <tr><td><code>alias.</code> or <code>table.</code> of this statement's <code>FROM</code> / <code>JOIN</code></td><td>The columns of that relation</td></tr>
 <tr><td>anything else</td><td>Columns of this statement's relations; visible relations and functions; keywords</td></tr>
 </table></div>
-<div class="shots">
-<figure><img src="img/ac-tables.svg" alt="Tables of a schema" loading="lazy"><figcaption>After <code>sales.c</code>.</figcaption></figure>
 <figure><img src="img/ac-prefix.svg" alt="Functions and keywords" loading="lazy"><figcaption>After <code>co</code> in the select list.</figcaption></figure>
-</div>
 <ul>
   <li>The typed prefix filters: case-insensitive, on the start of the name.</li>
   <li>Order: columns, relations, functions, schemas, types, keywords. An overloaded function is listed once.</li>

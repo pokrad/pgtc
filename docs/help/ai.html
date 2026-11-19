@@ -31,10 +31,6 @@ no table data) and the editor text. The answer is inserted into the editor and <
 <tr><td class="k"><span class="ui">Effort</span></td><td><i>Default</i> sends no effort parameter. The OpenAI-compatible protocol has three levels (<code>reasoning_effort</code>): <i>Extra high</i> and <i>Max</i> are sent as <code>high</code>. Default effort of the <kbd>F8</kbd> dialog.</td></tr>
 <tr><td class="k"><span class="ui">API key</span></td><td>A saved key shows as <code>********</code>: leave the stars to keep it, type over them to replace it, delete them to remove it. Empty: no key is sent (local servers).</td></tr>
 </table></div>
-<figure class="small">
-  <img src="img/ai-models.svg" alt="The list of the provider's models" loading="lazy">
-  <figcaption>The <span class="ui">Model</span> list.</figcaption>
-</figure>
 <ul>
   <li>OK also saves the model list — it is what the <kbd>F8</kbd> dialog offers. To pick up new models, open the
       dialog again and press OK.</li>
@@ -124,10 +120,6 @@ parameters other than the database name.</p>
 </ul>
 
 <h2 id="wait">Waiting, cancelling, errors</h2>
-<figure>
-  <img src="img/ai-waiting.svg" alt="The status line while the AI answers" loading="lazy">
-  <figcaption>The request is pending; the UI is not blocked.</figcaption>
-</figure>
 <ul>
   <li><kbd>Esc</kbd> cancels the request (after closing any open menu, dialog or quick search); a late answer is
       ignored.</li>
@@ -157,16 +149,6 @@ is inserted only when the answer is complete.</p>
   <li>One undo step removes the whole answer.</li>
   <li>An answer cut off at the model's length limit ends with a comment that says so.</li>
 </ul>
-
-<h2 id="examples">Another example: a trigger</h2>
-<figure>
-  <img src="img/ai-trigger.svg" alt="A trigger written by the AI" loading="lazy">
-  <figcaption>The prompt <i>“generate before insert row level trigger for humanresources.employee”</i> in an empty
-  editor.</figcaption>
-</figure>
-<p>The prompt names no behaviour, so the model invented a body from the column types and <code>CHECK</code>
-constraints it was sent, and says so in a comment. The script also contains <code>DROP TRIGGER IF EXISTS</code> —
-one reason to read an answer before <kbd>F5</kbd>.</p>
 
 <h2 id="privacy">Privacy: AI not allowed</h2>
 <p><span class="ui">AI not allowed</span> on a saved connection (<span class="menu">Edit connection…</span>;
