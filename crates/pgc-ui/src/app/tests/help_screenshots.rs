@@ -699,104 +699,6 @@ fn query_scene() -> (App, tempfile::TempDir, Ids) {
     (a, d, ids)
 }
 
-fn customer_rows() -> Vec<Vec<&'static str>> {
-    vec![
-        vec![
-            "1",
-            "\\N",
-            "934",
-            "1",
-            "3f5ae95e-b87d-4aed-95b4-c3797afcb74f",
-            "2014-09-12 11:15:07.263",
-        ],
-        vec![
-            "2",
-            "\\N",
-            "1028",
-            "1",
-            "e552f657-a9af-4a7d-a645-c429d6e02491",
-            "2014-09-12 11:15:07.263",
-        ],
-        vec![
-            "3",
-            "\\N",
-            "642",
-            "4",
-            "130774b1-db21-4ef3-98c8-c104bcd6ed6d",
-            "2014-09-12 11:15:07.263",
-        ],
-        vec![
-            "4",
-            "\\N",
-            "932",
-            "4",
-            "ff862851-1daa-4044-be7c-3e85583c054d",
-            "2014-09-12 11:15:07.263",
-        ],
-        vec![
-            "5",
-            "\\N",
-            "1026",
-            "4",
-            "83905bdc-6f5e-4f71-b162-c98da069f38a",
-            "2014-09-12 11:15:07.263",
-        ],
-        vec![
-            "6",
-            "\\N",
-            "644",
-            "4",
-            "1a92df88-bfa2-467d-bd54-fcb9e647fdd7",
-            "2014-09-12 11:15:07.263",
-        ],
-        vec![
-            "11000",
-            "13531",
-            "\\N",
-            "9",
-            "477586b3-2977-4e54-b1a8-569ab2c7c4d4",
-            "2014-09-12 11:15:07.263",
-        ],
-        vec![
-            "11001",
-            "5454",
-            "\\N",
-            "9",
-            "d7b1b6e3-5c0f-4c8a-8d4c-2b1f0c0c4f43",
-            "2014-09-12 11:15:07.263",
-        ],
-        vec![
-            "11002",
-            "11269",
-            "\\N",
-            "9",
-            "a1f9b3de-7d3c-4e0b-9a55-0c7a1d7c2b10",
-            "2014-09-12 11:15:07.263",
-        ],
-        vec![
-            "11003",
-            "11358",
-            "\\N",
-            "9",
-            "f6a4c5be-91d4-4d9e-8b1a-6a0d4e1f7c52",
-            "2014-09-12 11:15:07.263",
-        ],
-    ]
-}
-
-const CUSTOMER_COLS: &[(&str, u32)] = &[
-    ("customerid", 23),
-    ("personid", 23),
-    ("storeid", 23),
-    ("territoryid", 23),
-    ("rowguid", 2950),
-    ("modifieddate", 1114),
-];
-
-fn strs<'a, 'b>(rows: &'a [Vec<&'b str>]) -> Vec<&'a [&'b str]> {
-    rows.iter().map(Vec::as_slice).collect()
-}
-
 /// A fake folder listing for the open file dialog.
 fn listing(a: &mut App, entries: &[(&str, bool)], ext: &str) {
     let sep = std::path::MAIN_SEPARATOR;
@@ -1383,17 +1285,13 @@ async fn help_screenshots() {
         out.shot("menu-query", &a, Crop::TopLeft(96, 20));
     }
 
-    // F1 in the query editor; Help → Keyboard shortcuts; About
+    // F1 in the query editor; Help → Keyboard shortcuts
     let (mut a, _d, _) = query_scene();
     key(&mut a, "F1");
     out.shot("f1", &a, Crop::Full);
     let (mut a, _d, _) = query_scene();
     a.run(Command::KeyboardShortcuts);
     out.shot("shortcuts", &a, Crop::Full);
-    let (mut a, _d, _) = query_scene();
-    a.run(Command::About);
-    let (mut a, _d, _) = query_scene();
-    a.run(Command::ThirdPartyLicences);
 
     // ---- connections ------------------------------------------------------------
     let (mut a, _d, _) = scene();
@@ -1421,31 +1319,7 @@ async fn help_screenshots() {
     }
     out.shot("conn-new", &a, Crop::Dialog);
 
-    // the login dialog
-    let (mut a, _d, _) = scene();
-    let uid2 = a.tree.servers[1].uid;
-    a.tree.select_server(uid2);
-    a.follow_selection();
-    let id = fake_connecting(&mut a, uid2);
-    a.update(
-        Msg::Db(DbEvent::ConnectFailed {
-            id,
-            error: DbError::PasswordRequired,
-        }),
-        &Hits::default(),
-    );
-    typing(&mut a, "secret42");
-
-    // a disconnected server's info text and its context menu
-    let (mut a, _d, ids2) = scene();
-    short_tree(&mut a, ids2);
-    let uid2 = a.tree.servers[1].uid;
-    a.tree.select_server(uid2);
-    a.follow_selection();
-    a.focus = Focus::Tree;
-    key(&mut a, "F2");
-
-    // the connected server: its context menu, delete
+    // the connected server: its context menu
     let (mut a, _d, ids2) = scene();
     short_tree(&mut a, ids2);
     a.tree.select_server(ids2.uid);
@@ -1453,8 +1327,6 @@ async fn help_screenshots() {
     a.focus = Focus::Tree;
     key(&mut a, "F2");
     out.shot("server-menu", &a, Crop::TopLeft(84, 20));
-    a.popup = None;
-    key(&mut a, "F8");
 
     // the server row: version and configuration
     let (mut a, _d, ids2) = scene();
@@ -1467,11 +1339,6 @@ async fn help_screenshots() {
     out.shot("server-info", &a, Crop::Full);
 
     // ---- the object tree --------------------------------------------------------
-    // a group row lists its objects
-    let (mut a, _d, ids2) = scene();
-    select(&mut a, RowKind::Node(ids2.tables));
-    a.focus = Focus::Tree;
-
     // context menus: a table, the database
     let (mut a, _d, _) = scene();
     a.focus = Focus::Tree;
@@ -1592,31 +1459,6 @@ async fn help_screenshots() {
     a.dialogs[0].list_select("list", 1);
     out.shot("find-object", &a, Crop::Full);
 
-    // Select top 100 rows
-    let (mut a, _d, ids2) = scene();
-    query_tab(&mut a, ids2, "SELECT * FROM sales.customer LIMIT 100;");
-    start(&mut a);
-    let mut rows = customer_rows();
-    // 100 rows: the sample rows, then more individual customers
-    let more: Vec<[String; 2]> = (0..90)
-        .map(|i| [(11004 + i).to_string(), (11300 + i * 37 % 9000).to_string()])
-        .collect();
-    let more: &'static [[String; 2]] = Vec::leak(more);
-    for m in more {
-        rows.push(vec![
-            m[0].as_str(),
-            m[1].as_str(),
-            "\\N",
-            "9",
-            "5b3c1e2a-0d4f-4c7b-9e1a-7f2d3c4b5a69",
-            "2014-09-12 11:15:07.263",
-        ]);
-    }
-    result(&mut a, None, CUSTOMER_COLS, &strs(&rows), false);
-    tag(&mut a, "SELECT 100");
-    finished(&mut a, 6, TxStatus::Idle);
-    a.focus = Focus::Results;
-
     // ---- the object view --------------------------------------------------------
     // F3: a view in its own tab, with Find open
     let (mut a, _d, ids2) = scene();
@@ -1645,12 +1487,6 @@ async fn help_screenshots() {
     // ---- query tabs -------------------------------------------------------------
     let (a, _d, _) = query_scene();
     out.shot("query", &a, Crop::Full);
-
-    // running
-    let (mut a, _d, ids2) = scene();
-    short_tree(&mut a, ids2);
-    query_tab(&mut a, ids2, TOP_QUERY);
-    start(&mut a);
 
     // a selection is executed
     let (mut a, _d, ids2) = scene();
@@ -1818,15 +1654,6 @@ async fn help_screenshots() {
         q.message_cursor = q.messages.len().saturating_sub(2);
     }
     out.shot("query-error", &a, Crop::Full);
-    key(&mut a, "F2");
-    a.popup = None;
-    key(&mut a, "Enter");
-    a.status.clear();
-
-    // results context menu
-    let (mut a, _d, _) = query_scene();
-    a.focus = Focus::Results;
-    key(&mut a, "F2");
 
     // an open transaction: auto commit off
     let (mut a, _d, ids2) = scene();
@@ -1842,23 +1669,12 @@ async fn help_screenshots() {
     tag(&mut a, "UPDATE 2");
     finished(&mut a, 4, TxStatus::InTransaction);
     out.shot("tx-open", &a, Crop::Full);
-    key(&mut a, "Ctrl+W");
-
-    // closing an unsaved tab
-    let (mut a, _d, ids2) = scene();
-    short_tree(&mut a, ids2);
-    query_tab(&mut a, ids2, "");
-    typing(&mut a, "SELECT * FROM sales.store;");
-    key(&mut a, "Ctrl+W");
 
     // ---- the editor -------------------------------------------------------------
     let (mut a, _d, _) = query_scene();
     key(&mut a, "Ctrl+F");
     typing(&mut a, "total");
     out.shot("find", &a, Crop::Full);
-    key(&mut a, "Tab");
-    typing(&mut a, "revenue");
-    key(&mut a, "Alt+R");
 
     // ---- autocomplete -----------------------------------------------------------
     let names = |a: &mut App| {
@@ -1929,14 +1745,6 @@ async fn help_screenshots() {
     popup_for(&mut a, false);
     out.shot("ac-prefix", &a, Crop::Full);
 
-    // tables of a schema after FROM
-    let (mut a, _d, ids2) = scene();
-    short_tree(&mut a, ids2);
-    query_tab(&mut a, ids2, "SELECT *\nFROM sales.c");
-    names(&mut a);
-    a.editor().set_cursor(21, false);
-    popup_for(&mut a, false);
-
     // ---- PL/pgSQL mode ----------------------------------------------------------
     let (mut a, _d, ids2) = scene();
     short_tree(&mut a, ids2);
@@ -1978,17 +1786,6 @@ async fn help_screenshots() {
     a.dialogs.last_mut().unwrap().focus_on("files");
     a.dialogs.last_mut().unwrap().list_select("files", 3);
     out.shot("file-open", &a, Crop::Dialog);
-
-    // a tab with a file: the file bar; Save as
-    let (mut a, _d, _) = query_scene();
-    {
-        let dir = a.files.dir.clone();
-        a.query_mut().unwrap().file = Some(dir.join("best_customers.sql"));
-    }
-    typing(&mut a, " ");
-    key(&mut a, "Backspace");
-    a.open_file_dialog(true);
-    listing(&mut a, WORK_FILES, ".sql");
 
     // the places
     let (mut a, _d, _) = query_scene();
@@ -2058,25 +1855,6 @@ async fn help_screenshots() {
     key(&mut a, "Ctrl+Space");
     assert!(a.psql_completion.is_some());
     out.shot("psql-complete", &a, Crop::Full);
-
-    // dt sales.*
-    let (mut a, _d, ids2) = scene();
-    short_tree(&mut a, ids2);
-    query_tab(&mut a, ids2, "");
-    start(&mut a);
-    let dt: Vec<Vec<&str>> = SALES_TABLES
-        .iter()
-        .map(|t| vec!["sales", *t, "table", "postgres"])
-        .collect();
-    result(
-        &mut a,
-        Some("dt sales.*"),
-        &[("Schema", 19), ("Name", 19), ("Type", 25), ("Owner", 19)],
-        &strs(&dt),
-        false,
-    );
-    finished(&mut a, 5, TxStatus::Idle);
-    a.focus = Focus::Results;
 
     // d sales.customer
     let (mut a, _d, ids2) = scene();
@@ -2417,12 +2195,6 @@ async fn help_screenshots() {
     let (mut a, _d, _) = query_scene();
     pick_template(&mut a, "CREATE TABLE");
     out.shot("tpl-picker", &a, Crop::Full);
-    // the search box
-    let (mut a, _d, _) = query_scene();
-    pick_template(&mut a, "CREATE");
-    key(&mut a, "Alt+S");
-    typing(&mut a, "drop");
-
     // Create table
     let (mut a, _d, _) = query_scene();
     pick_template(&mut a, "CREATE TABLE");
@@ -2564,23 +2336,6 @@ async fn help_screenshots() {
         a.run(Command::TemplateManager);
         select_row(&mut a, "items", "Create lookup table");
         out.shot("tpe-manager", &a, Crop::Full);
-        // searching
-        key(&mut a, "Alt+S");
-        typing(&mut a, "trigger");
-        // a new section
-        let (mut a, _d, _, _) = templates_scene();
-        a.run(Command::TemplateManager);
-        key(&mut a, "t");
-        typing(&mut a, "Reports");
-        // copy and delete
-        let (mut a, _d, _, _) = templates_scene();
-        a.run(Command::TemplateManager);
-        select_row(&mut a, "items", "Create table");
-        key(&mut a, "c");
-        let (mut a, _d, _, _) = templates_scene();
-        a.run(Command::TemplateManager);
-        select_row(&mut a, "items", "Create lookup table");
-        key(&mut a, "d");
     }
 
     // a new template: the empty tab, then its name
@@ -2589,23 +2344,11 @@ async fn help_screenshots() {
         a.new_template_tab("Our team".into());
         a.sync_template_tab();
         out.shot("tpe-new", &a, Crop::Full);
-        key(&mut a, "Enter");
-        typing(&mut a, "Create lookup table");
-        key(&mut a, "Tab");
-        typing(&mut a, "A code / name table with our standard columns");
     }
 
     // the template tab
     let (a, _d, _) = template_tab_scene();
     out.shot("tpe-tab", &a, Crop::Full);
-
-    // the header list and its menu
-    {
-        let (mut a, _d, _) = template_tab_scene();
-        select_param(&mut a, "name");
-        template_layout(&mut a);
-        a.run(Command::ContextMenu);
-    }
 
     // the parameter dialog: a name, a choice from the database, fixed options, a list
     {
@@ -2734,8 +2477,6 @@ async fn help_screenshots() {
         key(&mut a, "Ctrl+End");
         typing(&mut a, "sch");
         out.shot("tpe-ac-sql", &a, Crop::Area(32, 1, 88, 14));
-        key(&mut a, "Enter");
-        typing(&mut a, ".{{ name|");
 
         let (mut a, _d, _, file) = templates_scene();
         let table = file
@@ -2780,7 +2521,7 @@ async fn help_screenshots() {
         out.shot("tpe-checks", &a, Crop::Area(32, 1, 88, 32));
     }
 
-    // saving: a new template, a template of pgtc, closing with changes
+    // saving: a new template, a template of pgtc
     {
         let (mut a, _d, _, _) = templates_scene();
         a.new_template_tab("Our team".into());
@@ -2802,18 +2543,6 @@ async fn help_screenshots() {
         typing(&mut a, "-- our rules\n");
         key(&mut a, "Ctrl+S");
         out.shot("tpe-builtin", &a, Crop::Dialog);
-
-        let (mut a, _d, _) = template_tab_scene();
-        typing(&mut a, "-- ");
-        key(&mut a, "Ctrl+W");
-    }
-
-    // a variant for a server version
-    {
-        let (mut a, _d, _) = template_tab_scene();
-        a.run(Command::TemplateAddVariant);
-        let d = a.dialogs.last_mut().unwrap();
-        d.set_text("version", "16");
     }
 
     // Test: the template in its real form
@@ -2832,28 +2561,7 @@ async fn help_screenshots() {
         out.shot("tpe-test", &a, Crop::Full);
     }
 
-    // the keys that work now
-    {
-        let (mut a, _d, _) = template_tab_scene();
-        select_param(&mut a, "name");
-        key(&mut a, "F1");
-    }
-
     // ---- database definition ----------------------------------------------------
-    let (mut a, _d, ids2) = scene();
-    short_tree(&mut a, ids2);
-    a.focus = Focus::Tree;
-    a.run(Command::ExportDefinition);
-    listing(
-        &mut a,
-        &[
-            ("migrations", true),
-            ("reports", true),
-            ("adventureworks_2026-10.pgdef", false),
-        ],
-        ".pgdef",
-    );
-
     // the sync script, made by the real generator from two small models
     let model = |extra: bool| {
         let note = if extra {
@@ -2946,12 +2654,6 @@ async fn help_screenshots() {
     key(&mut a, "Ctrl+R");
     a.status.clear();
     out.shot("dashboard", &a, Crop::Full);
-    let (mut a, _d) = dash();
-    key(&mut a, "Enter");
-    let (mut a, _d) = dash();
-    key(&mut a, "F2");
-    let (mut a, _d) = dash();
-    key(&mut a, "F8");
     // tagging and the transaction duration
     let (mut a, _d) = dash();
     key(&mut a, "Down");
@@ -3014,201 +2716,13 @@ async fn help_screenshots() {
                 ],
             ]),
         );
-        d.apply_rows(
-            List::Locks,
-            to_rows(&[
-                &[
-                    "41377",
-                    "relation",
-                    DB,
-                    "sales.salesorderheader",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "5/1204",
-                    "RowExclusiveLock",
-                    "true",
-                    "true",
-                ],
-                &[
-                    "41377",
-                    "transactionid",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "88104",
-                    "",
-                    "",
-                    "",
-                    "5/1204",
-                    "ExclusiveLock",
-                    "true",
-                    "false",
-                ],
-                &[
-                    "41502",
-                    "relation",
-                    DB,
-                    "sales.salesorderheader",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "7/881",
-                    "RowExclusiveLock",
-                    "true",
-                    "true",
-                ],
-                &[
-                    "41502",
-                    "transactionid",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "88104",
-                    "",
-                    "",
-                    "",
-                    "7/881",
-                    "ShareLock",
-                    "false",
-                    "false",
-                ],
-                &[
-                    "41502",
-                    "tuple",
-                    DB,
-                    "sales.salesorderheader",
-                    "412",
-                    "7",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "7/881",
-                    "ExclusiveLock",
-                    "true",
-                    "false",
-                ],
-                &[
-                    "40112",
-                    "relation",
-                    DB,
-                    "sales.salesorderdetail",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "9/3310",
-                    "ShareUpdateExclusiveLock",
-                    "true",
-                    "false",
-                ],
-            ]),
-        );
-        d.apply_rows(
-            List::Prepared,
-            to_rows(&[&[
-                "order-import-7731",
-                DB,
-                "webshop",
-                "88090",
-                "2026-11-16 09:12:44",
-            ]]),
-        );
-        d.apply_rows(
-            List::Configuration,
-            to_rows(&[
-                &[
-                    "autovacuum",
-                    "Autovacuum",
-                    "on",
-                    "",
-                    "Starts the autovacuum subprocess.",
-                ],
-                &[
-                    "autovacuum_naptime",
-                    "Autovacuum",
-                    "60",
-                    "s",
-                    "Time to sleep between autovacuum runs.",
-                ],
-                &[
-                    "checkpoint_timeout",
-                    "Write-Ahead Log / Checkpoints",
-                    "300",
-                    "s",
-                    "Sets the maximum time between automatic WAL checkpoints.",
-                ],
-                &[
-                    "effective_cache_size",
-                    "Query Tuning / Planner Cost Constants",
-                    "786432",
-                    "8kB",
-                    "Sets the planner's assumption about the total size of the data caches.",
-                ],
-                &[
-                    "log_min_duration_statement",
-                    "Reporting and Logging / When to Log",
-                    "-1",
-                    "ms",
-                    "Sets the minimum execution time above which all statements will be logged.",
-                ],
-                &[
-                    "max_connections",
-                    "Connections and Authentication / Connection Settings",
-                    "200",
-                    "",
-                    "Sets the maximum number of concurrent connections.",
-                ],
-                &[
-                    "max_wal_senders",
-                    "Replication / Sending Servers",
-                    "10",
-                    "",
-                    "Sets the maximum number of simultaneously running WAL sender processes.",
-                ],
-                &[
-                    "shared_buffers",
-                    "Resource Usage / Memory",
-                    "262144",
-                    "8kB",
-                    "Sets the number of shared memory buffers used by the server.",
-                ],
-                &[
-                    "work_mem",
-                    "Resource Usage / Memory",
-                    "16384",
-                    "kB",
-                    "Sets the maximum memory to be used for query workspaces.",
-                ],
-            ]),
-        );
     }
-    for name in ["blocking", "progress", "locks", "prepared", "configuration"] {
+    for name in ["blocking", "progress"] {
         key(&mut a, "Alt+Right");
         key(&mut a, "Down");
         key(&mut a, "Up");
         a.status.clear();
-        // the other lists are plain grids of a catalog view
-        if matches!(name, "blocking" | "progress") {
-            out.shot(&format!("dashboard-{name}"), &a, Crop::Full);
-        }
+        out.shot(&format!("dashboard-{name}"), &a, Crop::Full);
     }
 
     // ---- SQL profiler -----------------------------------------------------------
@@ -3242,15 +2756,11 @@ async fn help_screenshots() {
     profiler_records(&mut a);
     a.status.clear();
     out.shot("profiler", &a, Crop::Full);
-    key(&mut a, "Enter");
     let (mut a, _d, _, _) = prof();
     profiler_records(&mut a);
     key(&mut a, "Ctrl+F");
     typing(&mut a, "reporting");
     out.shot("profiler-filter", &a, Crop::Dialog);
-    let (mut a, _d, _, _) = prof();
-    profiler_records(&mut a);
-    key(&mut a, "F2");
 
     // ---- database statistics ----------------------------------------------------
     let (mut a, _d, ids2) = scene();
@@ -3384,9 +2894,6 @@ async fn help_screenshots() {
     }
     key(&mut a, "Space");
     out.shot("ai-settings", &a, Crop::Dialog);
-    // the model combo, open
-    key(&mut a, "Alt+M");
-    key(&mut a, "Space");
 
     let (mut a, _d, ids) = scene();
     short_tree(&mut a, ids);
@@ -3463,44 +2970,11 @@ async fn help_screenshots() {
     });
     out.shot("ai-answer", &a, Crop::Full);
 
-    // a second sample: a trigger, into an empty editor (results hidden)
-    let (mut a, _d, ids) = scene();
-    short_tree(&mut a, ids);
-    query_tab(&mut a, ids, "");
-    a.query_mut().unwrap().results_visible = false;
-    a.settings.ai = pgc_core::settings::AiSettings {
-        enabled: true,
-        protocol: pgc_core::settings::AiProtocol::Anthropic,
-        base_url: "https://api.anthropic.com".into(),
-        model: "claude-sonnet-5-5".into(),
-        effort: Default::default(),
-        models: ai_models(),
-    };
-    key(&mut a, "F8");
-    let lookup = *a
-        .template_lookups
-        .iter()
-        .find(|(_, t)| matches!(t, LookupTarget::AiStructure { .. }))
-        .unwrap()
-        .0;
-    a.lookup_loaded(lookup, Ok(ai_structure()));
-    typing(&mut a, AI_TRIGGER_PROMPT);
-    key(&mut a, "Alt+S");
-    let id = a.ai.run.as_ref().unwrap().id;
-    a.on_ai_event(crate::app::AiEvent {
-        id,
-        result: Ok(AI_TRIGGER_ANSWER.into()),
-    });
-    // the top of the answer in view
-    a.editor().set_cursor(0, false);
-    a.editor().scroll_to_cursor();
-
     // ---- settings and colour schemes --------------------------------------------
     let (mut a, _d, _) = query_scene();
     a.settings.clipboard.system = true;
     a.run(Command::Settings);
     out.shot("settings", &a, Crop::Dialog);
-    key(&mut a, "Space");
 
     for name in crate::theme::ThemeSet::built_in().names() {
         let (mut a, _d, ids2) = scene_with(&name);
@@ -3560,53 +3034,6 @@ GROUP BY c.customerid, p.firstname, p.lastname
 ORDER BY total_due_2014 DESC, c.customerid
 LIMIT 10;
 ";
-
-/// Claude's real answer (claude-sonnet-5-5) to [`AI_TRIGGER_PROMPT`] with this
-/// sample and an empty editor, taken with `PGTC_AI_LIVE=trigger` on 2026-11-18.
-const AI_TRIGGER_ANSWER: &str = r#"-- BEFORE INSERT row-level trigger for humanresources.employee.
--- You did not say what it should do, so it normalizes incoming values and
--- adds one sanity check. Adjust the body to your needs.
-
-CREATE OR REPLACE FUNCTION humanresources.employee_before_insert()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    -- Trim and normalize text values
-    NEW.nationalidnumber := btrim(NEW.nationalidnumber);
-    NEW.loginid          := lower(btrim(NEW.loginid));
-    NEW.jobtitle         := btrim(NEW.jobtitle);
-
-    -- Store codes in uppercase (the CHECK constraints compare upper() values)
-    NEW.gender        := upper(NEW.gender);
-    NEW.maritalstatus := upper(NEW.maritalstatus);
-
-    -- Fill in values if the caller passed NULL explicitly
-    -- (explicit NULLs override column defaults, so they are handled here)
-    NEW.organizationnode := COALESCE(NEW.organizationnode, '/');
-    NEW.rowguid          := COALESCE(NEW.rowguid, uuid_generate_v1());
-
-    -- Always stamp the modification time on insert
-    NEW.modifieddate := now();
-
-    -- Business rule: an employee must be at least 18 years old when hired
-    IF NEW.hiredate < (NEW.birthdate + INTERVAL '18 years')::date THEN
-        RAISE EXCEPTION 'Employee % must be at least 18 years old at hire date (birthdate %, hiredate %)',
-            NEW.businessentityid, NEW.birthdate, NEW.hiredate
-            USING ERRCODE = 'check_violation';
-    END IF;
-
-    RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS trg_employee_before_insert ON humanresources.employee;
-
-CREATE TRIGGER trg_employee_before_insert
-BEFORE INSERT ON humanresources.employee
-FOR EACH ROW
-EXECUTE FUNCTION humanresources.employee_before_insert();
-"#;
 
 /// A part of AdventureWorks as `sql/ai/default/structure.sql` reads it.
 fn ai_structure() -> Vec<Vec<String>> {
