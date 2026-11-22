@@ -41,7 +41,7 @@ jobs:
             os: macos-latest
             target: x86_64-apple-darwin
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # the tag must be the version of the workspace (a suffix after "-" is free)
       - name: Check the version
@@ -81,7 +81,7 @@ jobs:
             tar -czf "$dir.tar.gz" "$dir"
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.name }}
           path: |
@@ -94,7 +94,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           path: dist
           merge-multiple: true
