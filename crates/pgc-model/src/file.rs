@@ -159,6 +159,10 @@ mod tests {
     fn bad_files_are_errors() {
         assert!(matches!(from_text("{"), Err(FileError::Format(_))));
         assert!(from_text("{}").unwrap().schemas.is_empty());
+        // an enum without labels, a composite type without attributes
+        let text = r#"{"schemas": [{"name": "s", "types": [
+            {"name": "e", "kind": "enum"}, {"name": "c", "kind": "composite"}]}]}"#;
+        assert_eq!(from_text(text).unwrap().schemas[0].types.len(), 2);
     }
 
     #[test]

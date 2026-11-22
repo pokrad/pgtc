@@ -147,6 +147,7 @@ ALTER TABLE sales.customernote ADD CONSTRAINT customernote_customerid_fkey
 <tr><td>A view or function differs</td><td><code>CREATE OR REPLACE</code>, or <code>DROP</code> and <code>CREATE</code> where PostgreSQL does not allow that (changed result type).</td></tr>
 <tr><td>A constraint, index, trigger, rule, policy or materialized view differs</td><td><code>DROP</code> and <code>CREATE</code>.</td></tr>
 <tr><td>A generated column's expression differs</td><td><code>DROP COLUMN</code> and <code>ADD COLUMN</code>.</td></tr>
+<tr><td>A column is ordinary on one side, generated on the other</td><td>A <code>-- NOTE:</code>; no statement (replacing it would drop its values).</td></tr>
 <tr><td>A table's <b>partition key</b> differs</td><td>The table is re-created, <b>keeping the rows</b> — see below.</td></tr>
 <tr><td>No <code>ALTER</code> can apply the difference (a domain's base type)</td><td>A <code>-- NOTE:</code> comment only.</td></tr>
 </table></div>

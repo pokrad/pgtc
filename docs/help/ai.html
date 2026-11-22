@@ -29,7 +29,7 @@ no table data) and the editor text. The answer is inserted into the editor and <
 <tr><td class="k"><span class="ui">Protocol</span></td><td><b>OpenAI-compatible</b>: <code>POST {base URL}/chat/completions</code>, key as <code>Authorization: Bearer</code>. <b>Anthropic</b>: <code>POST {base URL}/v1/messages</code>, key as <code>x-api-key</code>.</td></tr>
 <tr><td class="k"><span class="ui">Model</span></td><td>The models the provider lists for the key (<code>GET {base URL}/models</code>; Anthropic: <code>/v1/models</code>), read when the dialog opens and after the preset, base URL or key changes. <span class="ui">Other…</span> takes a model ID typed by hand. Default model of the <kbd>F8</kbd> dialog.</td></tr>
 <tr><td class="k"><span class="ui">Effort</span></td><td><i>Default</i> sends no effort parameter. The OpenAI-compatible protocol has three levels (<code>reasoning_effort</code>): <i>Extra high</i> and <i>Max</i> are sent as <code>high</code>. Default effort of the <kbd>F8</kbd> dialog.</td></tr>
-<tr><td class="k"><span class="ui">API key</span></td><td>A saved key shows as <code>********</code>: leave the stars to keep it, type over them to replace it, delete them to remove it. Empty: no key is sent (local servers).</td></tr>
+<tr><td class="k"><span class="ui">API key</span></td><td>A saved key shows as <code>********</code>: leave the stars to keep it, type over them to replace it, delete them to remove it. The key belongs to the saved base URL: another preset or URL empties the field, the saved URL brings the stars back. Empty: no key is sent (local servers).</td></tr>
 </table></div>
 <ul>
   <li>OK also saves the model list — it is what the <kbd>F8</kbd> dialog offers. To pick up new models, open the

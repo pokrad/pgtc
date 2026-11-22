@@ -39,6 +39,7 @@ the command is disabled.</p>
   <li><span class="menu">File → Save SQL file as…</span> binds the tab to the new file; it asks before
       overwriting.</li>
   <li>Written as UTF-8 without BOM — always the whole text, also with a selection.</li>
+  <li>Line ends: a file read with CR LF is written with CR LF; any other with LF.</li>
   <li>The write is atomic: <code><i>name</i>.tmp</code> in the same folder, flushed, renamed over the target. An
       existing file keeps its permissions; a symbolic link is followed. Where no temporary file can be created,
       the file is written in place.</li>

@@ -139,6 +139,9 @@ pub(super) struct AiState {
     pub(super) preset_seen: usize,
     /// The AI settings dialog still shows the saved key as stars, untouched.
     pub(super) key_stars: bool,
+    /// The stars were taken away because the dialog shows another provider's URL
+    /// (the key is the saved provider's); they come back with the saved URL.
+    pub(super) key_hidden: bool,
     /// The open AI settings dialog: the provider's models as read, and the chosen
     /// model (its id; may be one typed by hand).
     pub(super) form_models: Vec<pgc_core::settings::AiModel>,

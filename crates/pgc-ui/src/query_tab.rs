@@ -175,6 +175,8 @@ pub struct QueryState {
     pub auto_rollback: bool,
     pub plpgsql: bool,
     pub file: Option<PathBuf>,
+    /// The file was read with CR LF line ends: it is saved with them (D-064).
+    pub crlf: bool,
     /// The text is being written to a file (D-072); a save asked for meanwhile waits
     /// in `save_next`.
     pub saving: bool,
@@ -214,6 +216,7 @@ impl QueryState {
             auto_rollback,
             plpgsql: false,
             file: None,
+            crlf: false,
             saving: false,
             save_next: None,
             sent: None,

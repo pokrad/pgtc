@@ -194,7 +194,7 @@ is folded to lower case. Each part becomes an anchored regular expression matche
     [modifieddate]
 );</code></pre>
 <p>Left out: generated columns, identity columns and columns whose default calls <code>nextval()</code>. Columns
-with any other default are listed.</p>
+with any other default are listed. Nothing left: <code>INSERT INTO … DEFAULT VALUES</code>.</p>
 
 <h3 id="gtu">gtu — UPDATE, gtd — DELETE</h3>
 <p><code>WHERE</code> on the key. <code>UPDATE</code> sets every non-key column except generated and

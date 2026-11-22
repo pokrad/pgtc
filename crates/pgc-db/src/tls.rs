@@ -1,6 +1,8 @@
 //! TLS for PostgreSQL connections (D-033): rustls with the `ring` provider.
 //!
 //! - `disable` / `prefer` / `require`: certificate not checked (libpq semantics);
+//! - `require` with a root certificate file: as `verify-ca` (libpq does the same
+//!   when a root CA file is there);
 //! - `verify-ca`: chain checked, host name not;
 //! - `verify-full`: chain and host name checked.
 //!
@@ -67,6 +69,11 @@ pub fn connector(mode: SslMode, root_cert: Option<&str>) -> Result<MakeRustlsCon
     let builder = ClientConfig::builder_with_provider(provider.clone())
         .with_safe_default_protocol_versions()
         .map_err(|e| DbError::Other(format!("TLS setup: {e}")))?;
+    // a root certificate was given to be checked against: `require` does so
+    let mode = match (mode, root_cert) {
+        (SslMode::Require, Some(_)) => SslMode::VerifyCa,
+        _ => mode,
+    };
     let config = match mode {
         SslMode::Disable | SslMode::Prefer | SslMode::Require => builder
             .dangerous()
@@ -195,6 +202,17 @@ mod tests {
         for mode in [SslMode::Disable, SslMode::Prefer, SslMode::Require] {
             assert!(connector(mode, None).is_ok());
         }
+    }
+
+    /// `require` with a root certificate file checks the chain against it (the file
+    /// is read); `prefer` does not look at it.
+    #[test]
+    fn require_with_a_root_cert_checks_it() {
+        let Err(e) = connector(SslMode::Require, Some("/does/not/exist.pem")) else {
+            panic!("expected an error");
+        };
+        assert!(e.to_string().contains("root certificate file"), "{e}");
+        assert!(connector(SslMode::Prefer, Some("/does/not/exist.pem")).is_ok());
     }
 
     #[test]

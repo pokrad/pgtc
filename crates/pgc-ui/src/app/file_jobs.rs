@@ -16,13 +16,15 @@ use crate::dialog::Dialog;
 
 /// Work for the background.
 pub(super) enum FileJob {
-    /// Read an SQL file (UTF-8, without its byte order mark).
+    /// Read an SQL file (UTF-8, without its byte order mark, its line ends as LF).
     Open { path: PathBuf },
-    /// Write `text`, the text of tab `tab` at editor revision `revision`.
+    /// Write `text`, the text of tab `tab` at editor revision `revision` — with CR LF
+    /// line ends when `crlf` (D-064).
     Save {
         tab: u64,
         path: PathBuf,
         text: String,
+        crlf: bool,
         revision: u64,
     },
     /// Read a `.pgdef` file to compare it with `database` on server `uid`.
@@ -88,8 +90,10 @@ pub enum PathState {
 
 /// The outcome of a [`FileJob`]; errors are texts for the user.
 pub enum FileEvent {
+    /// The text has LF line ends; `crlf`: the file has CR LF.
     Opened {
         path: PathBuf,
+        crlf: bool,
         result: Result<String, String>,
     },
     Saved {
@@ -174,14 +178,22 @@ impl FileJob {
                         }),
                     Err(e) => Err(format!("Cannot open {}:\n{e}", path.display())),
                 };
-                FileEvent::Opened { path, result }
+                let crlf = result.as_ref().is_ok_and(|t| t.contains("\r\n"));
+                let result = result.map(|t| pgc_editor::line_feeds(&t).into_owned());
+                FileEvent::Opened { path, crlf, result }
             }
             FileJob::Save {
                 tab,
                 path,
                 text,
+                crlf,
                 revision,
             } => {
+                let text = if crlf {
+                    text.replace('\n', "\r\n")
+                } else {
+                    text
+                };
                 // a temporary file first: a crash or a full disk keeps the old file
                 let result = pgc_core::fsutil::atomic_write(
                     &path,
@@ -363,6 +375,7 @@ impl App {
             return;
         }
         q.saving = true;
+        let crlf = q.crlf;
         let editor = &t.view.editor;
         let (text, revision) = (editor.text(), editor.revision());
         self.status = format!("Saving {}…", path.display());
@@ -370,6 +383,7 @@ impl App {
             tab,
             path,
             text,
+            crlf,
             revision,
         });
     }
@@ -383,13 +397,14 @@ impl App {
 
     pub(super) fn on_file_event(&mut self, event: FileEvent) {
         match event {
-            FileEvent::Opened { path, result } => match result {
+            FileEvent::Opened { path, crlf, result } => match result {
                 Ok(text) => {
                     let mut view = TextView::new(false, self.tab_width());
                     view.load(text);
                     let id = self.add_query_tab(view);
                     if let Some(q) = self.tabs.last_mut().and_then(|t| t.query_mut()) {
                         q.file = Some(path.clone());
+                        q.crlf = crlf;
                     }
                     self.bind_query_tab(id);
                     self.status = format!("Opened {}", path.display());

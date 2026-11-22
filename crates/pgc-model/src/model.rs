@@ -100,9 +100,13 @@ pub struct Type {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum TypeKind {
     Enum {
+        /// An enum may have no labels: the server's JSON then has no such key.
+        #[serde(default)]
         labels: Vec<String>,
     },
     Composite {
+        /// A composite type may have no attributes.
+        #[serde(default)]
         attributes: Vec<Attribute>,
     },
     Domain {

@@ -173,6 +173,17 @@ fn lex_lines(rope: &Rope, start: usize, end: usize, mut state: LexState) -> LexS
     state
 }
 
+/// `text` with LF as its only line end: CR LF and a lone CR become LF. The editor's
+/// text has no other line ends — every movement and deletion counts on that; a file's
+/// CR LF is put back when it is saved (D-064).
+pub fn line_feeds(text: &str) -> std::borrow::Cow<'_, str> {
+    if text.contains('\r') {
+        text.replace("\r\n", "\n").replace('\r', "\n").into()
+    } else {
+        text.into()
+    }
+}
+
 fn trim_newline(slice: ropey::RopeSlice<'_>) -> ropey::RopeSlice<'_> {
     let mut len = slice.len_chars();
     if len > 0 && slice.char(len - 1) == '\n' {
@@ -224,7 +235,7 @@ impl Default for Editor {
 impl Editor {
     pub fn new(text: &str, read_only: bool, tab_width: usize) -> Self {
         Self {
-            rope: Rope::from_str(text),
+            rope: Rope::from_str(&line_feeds(text)),
             cursor: 0,
             anchor: None,
             goal_col: None,
@@ -297,7 +308,7 @@ impl Editor {
 
     /// Replaces the whole text (new document: undo history and cursor reset).
     pub fn set_text(&mut self, text: &str) {
-        self.rope = Rope::from_str(text);
+        self.rope = Rope::from_str(&line_feeds(text));
         self.cursor = 0;
         self.anchor = None;
         self.goal_col = None;
@@ -414,7 +425,7 @@ impl Editor {
                 self.cursor = self.rope.len_chars();
             }
             Action::Insert(text) => {
-                let text = text.replace("\r\n", "\n").replace('\r', "\n");
+                let text = line_feeds(&text);
                 let typing = text.chars().count() == 1 && !text.contains('\n');
                 self.replace_selection(&text, typing);
             }
@@ -1068,6 +1079,20 @@ mod tests {
 
     fn ed(text: &str) -> Editor {
         Editor::new(text, false, 4)
+    }
+
+    /// The text has LF line ends only (D-064): CR LF and CR are no part of it, and
+    /// no other character breaks a line.
+    #[test]
+    fn line_ends_are_line_feeds() {
+        let mut e = ed("a\r\nb\rc\n");
+        assert_eq!(e.text(), "a\nb\nc\n");
+        e.set_text("x\r\ny");
+        assert_eq!(e.text(), "x\ny");
+        assert_eq!(e.len_lines(), 2);
+        // form feed, vertical tab, U+2028: characters of the line
+        assert_eq!(ed("a\u{c}b\u{b}c\u{2028}d").len_lines(), 1);
+        assert_eq!(line_feeds("plain\n"), "plain\n");
     }
 
     fn type_str(e: &mut Editor, s: &str) {

@@ -8,5 +8,5 @@ pub mod editor;
 pub mod lexer;
 pub mod render;
 
-pub use editor::{Action, Editor, Found, Motion, SearchOptions};
+pub use editor::{Action, Editor, Found, Motion, SearchOptions, line_feeds};
 pub use render::{EditorStyles, gutter_width, render};

@@ -1097,7 +1097,9 @@ pgtc (binary)
 - **Status:** Accepted
 - libpq SSL modes: `disable`, `prefer` (**default**), `require`, `verify-ca`,
   `verify-full`; stored per saved connection.
-  - `require` encrypts but does not check the certificate (libpq semantics);
+  - `require` encrypts but does not check the certificate (libpq semantics) —
+    unless the connection has a root certificate file: then it checks the chain
+    against it, as `verify-ca` (libpq does the same when a root CA file is there);
   - `verify-ca` checks the chain; `verify-full` also the host name.
 - Trust: the **OS certificate store** (`rustls-native-certs`), or only the file given as
   the connection's root certificate (`sslrootcert`), as libpq.
@@ -1480,7 +1482,12 @@ pgtc (binary)
     ...): the load adds and changes, it never removes.
   - **Replacing:** objects that cannot be altered are dropped and created again
     (constraints, indexes, triggers, rules, policies, materialized views, functions
-    whose result type changed, generated columns whose expression changed).
+    whose result type changed, generated columns whose expression changed). A
+    column that is ordinary on one side and generated on the other is **not**
+    replaced — that would drop its values: the script has a `-- NOTE:` for it.
+  - **Extensions** are created with `CASCADE`, so one that needs another does not
+    depend on the order of the names. The script sets `check_function_bodies = false`
+    when it has functions and resets it at its end (the session is the query tab's).
   - **Tables are never dropped without a copy.** A table is re-created only when its
     partitioning changed. The script first copies it with its data into
     `_TableCopy_<name>` (same schema), drops it, creates it as in the file (plus
@@ -2364,6 +2371,10 @@ pgtc (binary)
   dialog (D-041), opened in the folder of the tab's file with its name filled in (a
   tab without a file: the dialogs' folder and `query.sql`); asks before overwriting
   an existing file. Afterwards the tab belongs to the new file.
+- **Line ends:** the editor's text has LF line ends only. A file is read with CR LF
+  and lone CR turned into LF (as pasted text is); a file that had CR LF is written
+  with CR LF again, Save as included; a new text is written with LF. No other
+  character breaks a line in the editor (form feed, U+2028, …).
 - **File name:** a query tab with a file shows its full path in a **file bar**: one
   full-width row right above the editor, coloured like an inactive tab
   (`tabs.inactive`); never in the tab label. A path that does not fit is shortened
@@ -2551,7 +2562,11 @@ pgtc (binary)
     `.pgpass`) — not in `settings.toml`, which users copy and show. No environment
     variables. A saved key shows as `********`: left as it is, it stays; the first
     change (typing or pasting anywhere in it, Backspace, Delete) takes the stars
-    away, what is typed is the new key; emptied, the file is removed. No key (empty): nothing is sent
+    away, what is typed is the new key; emptied, the file is removed. The saved key
+    belongs to the saved base URL: with another URL in the dialog (a preset, or
+    typed) the stars are taken away — the key is not sent to that provider, and OK
+    saves "no key" unless one is typed — and they are back when the URL is the
+    saved one again. No key (empty): nothing is sent
     (local servers); a service that needs one answers with its own error. The key
     is never written to the log.
   - AI counts as *set up* when it is enabled and base URL and model are filled.
@@ -2946,3 +2961,4 @@ pgtc (binary)
 | 2026-11-19 | D-054 updated: the `F4` autocomplete offers schemas first wherever the argument can be schema-qualified (inserted as `sales.`, the list goes on with that schema's objects); `di`, `df`, `dT`, `dD` offer schemas only. |
 | 2026-11-20 | D-022 updated: release binaries — a tag `v<version>` builds Windows x64, Linux x64 / ARM64 (static musl) and macOS ARM64 / x64 on GitHub Actions and publishes them, unsigned, with checksums as a GitHub Release; CI builds and tests on the three systems. D-025 updated: the source is on GitHub. |
 | 2026-11-22 | D-074 updated: the template tab's *Parameters* and *Preview* captions are bars of their own row instead of titles on the separator lines. |
+| 2026-11-22 | D-033 updated: `require` with a root certificate file checks the chain against it, as `verify-ca` (libpq). D-073 updated: the saved AI key belongs to the saved base URL — another URL in the settings dialog takes the stars away, the saved URL brings them back. D-064 updated: the editor's text has LF line ends only; a file read with CR LF is saved with CR LF. D-048 updated: an ordinary column is not replaced by a generated one (or the reverse) — a note instead; `CREATE EXTENSION … CASCADE`; `check_function_bodies` is reset at the end of the script. |

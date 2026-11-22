@@ -240,6 +240,11 @@ impl App {
         } else {
             String::new()
         };
+        self.open_file_dialog_named(save, &name);
+    }
+
+    /// The Open / Save as dialog with `name` in its name field.
+    fn open_file_dialog_named(&mut self, save: bool, name: &str) {
         let (kind, title) = if save {
             (DialogKind::SaveFile, "Save SQL file as")
         } else {
@@ -249,7 +254,7 @@ impl App {
             kind,
             title,
             ext: "sql",
-            name: &name,
+            name,
             label_width: 15,
             list_rows: 14,
             above: Vec::new(),
@@ -316,7 +321,7 @@ impl App {
                 let options = export_options(dialog);
                 self.open_export_dialog(Some(name), Some(options));
             }
-            DialogKind::SaveFile => self.open_file_dialog(true),
+            DialogKind::SaveFile => self.open_file_dialog_named(true, &name),
             DialogKind::OpenFile => self.open_file_dialog(false),
             DialogKind::SaveDefinition { server, database } => {
                 self.open_definition_dialog(true, &name, (*server, database.clone()));

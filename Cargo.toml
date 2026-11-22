@@ -40,7 +40,8 @@ tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "sync", "
 # SQL editor (D-015) and clipboard (D-023)
 arboard = { version = "3.7.0", default-features = false, features = ["wayland-data-control"] }
 regex = "1.13.1"
-ropey = "1.6"
+# only LF breaks a line: the editor's text has no other line ends (D-064)
+ropey = { version = "1.6", default-features = false, features = ["simd"] }
 unicode-width = "0.2.3"
 
 # SQL templates (D-010)

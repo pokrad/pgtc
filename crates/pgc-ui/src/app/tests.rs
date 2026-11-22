@@ -1075,6 +1075,37 @@ fn quitting_asks_about_each_unsaved_query_tab() {
     assert!(a.should_quit());
 }
 
+/// A file with CR LF line ends (D-064): LF in the editor, CR LF again when saved —
+/// also for the lines typed meanwhile.
+#[test]
+fn a_file_keeps_its_cr_lf_line_ends() {
+    let (mut a, dir) = app();
+    let path = dir.path().join("win.sql");
+    std::fs::write(&path, "select 1;\r\nselect 2;\r\n").unwrap();
+    a.open_path(path.clone());
+    assert_eq!(
+        a.tabs[a.active_tab].view.editor.text(),
+        "select 1;\nselect 2;\n"
+    );
+    key(&mut a, "Enter");
+    typing(&mut a, "-- new");
+    key(&mut a, "Ctrl+S");
+    assert_eq!(
+        std::fs::read_to_string(&path).unwrap(),
+        "\r\n-- newselect 1;\r\nselect 2;\r\n"
+    );
+    // a file with LF stays as it is
+    let path = dir.path().join("unix.sql");
+    std::fs::write(&path, "select 1;\nselect 2;\n").unwrap();
+    a.open_path(path.clone());
+    key(&mut a, "Enter");
+    key(&mut a, "Ctrl+S");
+    assert_eq!(
+        std::fs::read_to_string(&path).unwrap(),
+        "\nselect 1;\nselect 2;\n"
+    );
+}
+
 /// Quitting with a changed tab that has a file: Yes saves to that file, no dialog.
 #[test]
 fn quitting_saves_a_tab_with_a_file_without_asking_for_a_name() {
@@ -5151,6 +5182,8 @@ async fn the_saved_ai_key_is_not_sent_to_another_provider() {
         tick(&mut a);
         let req = a.ai.unsent_models.take().expect("the models are read");
         assert!(!has_key(&req), "{}", req.url);
+        // the key field is empty: OK would not keep the key for this provider
+        assert_eq!(a.dialogs.last().unwrap().text("key"), Some(""));
     }
     // back at the saved provider: with the key again
     a.dialogs
@@ -5160,6 +5193,19 @@ async fn the_saved_ai_key_is_not_sent_to_another_provider() {
     tick(&mut a);
     let req = a.ai.unsent_models.take().expect("the models are read");
     assert!(has_key(&req));
+    assert_eq!(a.dialogs.last().unwrap().text("key"), Some("********"));
+    // a key typed for another provider is not replaced by the stars
+    let d = a.dialogs.last_mut().unwrap();
+    d.set_combo_selected("preset", 2);
+    tick(&mut a);
+    a.dialogs.last_mut().unwrap().set_text("key", "sk-other");
+    tick(&mut a);
+    a.dialogs
+        .last_mut()
+        .unwrap()
+        .set_combo_selected("preset", 1);
+    tick(&mut a);
+    assert_eq!(a.dialogs.last().unwrap().text("key"), Some("sk-other"));
 }
 
 /// Model and effort (D-073): Settings → AI… reads the provider's models into a combo

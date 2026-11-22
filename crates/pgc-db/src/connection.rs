@@ -489,10 +489,27 @@ async fn run(
         config.password(pw);
     }
 
-    let (client, connection) = match config.connect(connector).await {
-        Ok(pair) => pair,
-        Err(e) => {
+    // The driver's connect timeout is for the TCP connect of each address only: a
+    // host that accepts and then says nothing (a stalled proxy, a port of something
+    // else) would be waited for without end. The same time again is given to the
+    // TLS handshake and the authentication.
+    let silent = || {
+        DbError::Other(format!(
+            "no answer from the server within {} s",
+            params.connect_timeout.as_secs()
+        ))
+    };
+    let connected = tokio::time::timeout(params.connect_timeout * 2, config.connect(connector));
+    let (client, connection) = match connected.await {
+        Ok(Ok(pair)) => pair,
+        Ok(Err(e)) => {
             let error = DbError::from_pg(&e);
+            tracing::info!(id, "connect failed: {error}");
+            sink(DbEvent::ConnectFailed { id, error });
+            return;
+        }
+        Err(_) => {
+            let error = silent();
             tracing::info!(id, "connect failed: {error}");
             sink(DbEvent::ConnectFailed { id, error });
             return;
@@ -528,15 +545,20 @@ async fn run(
         timeout: params.connect_timeout,
     };
 
-    let version = match client
-        .query_one("SELECT current_setting('server_version_num')::int4", &[])
-        .await
-    {
-        Ok(row) => ServerVersion(row.get::<_, i32>(0).max(0) as u32),
-        Err(e) => {
+    let version = client.query_one("SELECT current_setting('server_version_num')::int4", &[]);
+    let version = match tokio::time::timeout(params.connect_timeout, version).await {
+        Ok(Ok(row)) => ServerVersion(row.get::<_, i32>(0).max(0) as u32),
+        Ok(Err(e)) => {
             sink(DbEvent::ConnectFailed {
                 id,
                 error: DbError::from_pg(&e),
+            });
+            return;
+        }
+        Err(_) => {
+            sink(DbEvent::ConnectFailed {
+                id,
+                error: silent(),
             });
             return;
         }

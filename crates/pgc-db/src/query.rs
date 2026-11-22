@@ -301,6 +301,8 @@ pub(crate) async fn execute(
     emit: &(dyn Fn(QueryEvent) + Sync),
 ) -> Option<Request> {
     let start = Instant::now();
+    // the time a result was paused, waiting for the user: not part of the total
+    let mut waited = Duration::ZERO;
     let mut pending = None;
     let mut had_error = false;
 
@@ -380,7 +382,10 @@ pub(crate) async fn execute(
                                 });
                                 // Backpressure (D-019): stop reading until the UI asks.
                                 while !fetch_all {
-                                    let Some(request) = next_or_lost(client, rx).await else {
+                                    let paused = Instant::now();
+                                    let request = next_or_lost(client, rx).await;
+                                    waited += paused.elapsed();
+                                    let Some(request) = request else {
                                         // the stream ends with the error; the
                                         // connection task reports the loss
                                         drop_all = true;
@@ -470,7 +475,7 @@ pub(crate) async fn execute(
         }
     }
     emit(QueryEvent::Finished {
-        elapsed: start.elapsed(),
+        elapsed: start.elapsed().saturating_sub(waited),
         status: client.transaction_status().into(),
     });
     pending

@@ -844,6 +844,7 @@ impl App {
         );
         self.ai.preset_seen = preset;
         self.ai.key_stars = saved;
+        self.ai.key_hidden = false;
         self.ai.fetch_seen = None;
         self.dialogs.push(dialog);
         self.ai_rebuild_models();
@@ -887,6 +888,24 @@ impl App {
         let Some(d) = self.dialogs.last_mut() else {
             return;
         };
+        // the saved key is the saved provider's: with another URL in the dialog (a
+        // preset, or typed) the key field is empty — OK would save "no key" —, and
+        // the stars are back when the URL is the saved one again, unless a key was
+        // typed meanwhile
+        let saved_url = d.text("url").map(str::trim) == Some(self.settings.ai.base_url.trim());
+        if self.ai.key_stars && !saved_url {
+            d.set_text("key", "");
+            self.ai.key_stars = false;
+            self.ai.key_hidden = true;
+        } else if self.ai.key_hidden {
+            if d.text("key").is_some_and(|k| !k.is_empty()) {
+                self.ai.key_hidden = false;
+            } else if saved_url {
+                d.set_text("key", SAVED_KEY);
+                self.ai.key_stars = true;
+                self.ai.key_hidden = false;
+            }
+        }
         // the model combo: a model is chosen; Other… asks for a name
         let selected = d.selected("model").unwrap_or(0);
         if selected != self.ai.model_seen && !d.combo_open() {

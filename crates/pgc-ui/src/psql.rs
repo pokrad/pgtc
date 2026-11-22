@@ -449,6 +449,13 @@ pub fn matching(input: &str) -> Vec<(&'static str, &'static str, &'static str)> 
         .collect()
 }
 
+/// `base` is a relation list command — `dt`, `dE`, `dtvm`: `d` and its letters. The
+/// one rule for running it and for its autocomplete.
+fn is_relation_list(base: &str) -> bool {
+    base.strip_prefix('d')
+        .is_some_and(|l| !l.is_empty() && l.chars().all(|c| "tvmisE".contains(c)))
+}
+
 /// The argument of `input` and the object kinds autocomplete offers for it (D-054):
 /// the command's own list; combined letters (`dtv`) add up. `None` when the input
 /// has no argument yet (no space after the command) or the command offers nothing.
@@ -461,10 +468,7 @@ pub fn completion_target(input: &str) -> Option<(&str, Vec<&'static str>)> {
     let row = |c: &str| COMMANDS.iter().chain(GENERATE).find(|r| r.0 == c);
     let mut kinds: Vec<&'static str> = match row(base) {
         Some(r) => r.3.to_vec(),
-        None if base.len() > 2
-            && base.starts_with('d')
-            && base[1..].chars().all(|c| "tvmisE".contains(c)) =>
-        {
+        None if is_relation_list(base) => {
             let mut kinds = Vec::new();
             for c in base[1..].chars() {
                 match c {
@@ -638,7 +642,7 @@ pub fn parse(input: &str) -> Result<Cmd, String> {
         "dx" => list("list_extensions.sql", None, false),
         "db" => list("list_tablespaces.sql", None, false),
         "dp" => list("list_privileges.sql", None, true),
-        b if b.len() > 1 && b.starts_with('d') && b[1..].chars().all(|c| "tvmisE".contains(c)) => {
+        b if is_relation_list(b) => {
             let mut kinds = String::new();
             for c in b[1..].chars() {
                 kinds.push_str(match c {
@@ -2458,10 +2462,15 @@ fn test_value(table: &str, c: &GenColumn) -> (String, String) {
     let unique = c.pk_pos.is_some() || c.uk_pos.is_some();
     let name = quote_ident(&c.name);
     let (base, args) = match ty.find('(') {
-        Some(i) => (
-            ty[..i].trim().to_owned() + ty[ty.find(')').map_or(ty.len(), |j| j + 1)..].trim_end(),
-            ty[i + 1..ty.find(')').unwrap_or(ty.len())].to_owned(),
-        ),
+        Some(i) => {
+            // the `)` of this `(`: a type may be named anything, `"a)b("` too
+            let close = ty[i..].find(')').map_or(ty.len(), |j| i + j);
+            let after = ty.get(close + 1..).unwrap_or("");
+            (
+                ty[..i].trim().to_owned() + after.trim_end(),
+                ty[i + 1..close].to_owned(),
+            )
+        }
         None => (ty.clone(), String::new()),
     };
     let nums: Vec<u32> = args
@@ -2816,6 +2825,8 @@ mod tests {
             t("dtvE x"),
             Some(("x".into(), vec!["foreign table", "table", "view"]))
         );
+        // one letter that has no row of its own
+        assert_eq!(t("dE x"), Some(("x".into(), vec!["foreign table"])));
         assert_eq!(t("d+ x").unwrap().1, RELATIONS_SORTED);
         assert_eq!(t("gts o").unwrap().1, ["foreign table", "table", "view"]);
         assert_eq!(t("gtm o").unwrap().1, ["table"]);
@@ -3378,6 +3389,9 @@ mod tests {
     #[test]
     fn test_values_by_type() {
         let v = |ty: &str, not_null: bool| test_value("public.t", &col("c", ty, not_null)).0;
+        // a type named to confuse: no slicing behind its end
+        v("\"a)b(\"", true);
+        v("numeric(10", true);
         assert_eq!(v("integer", true), "(random() * 1000)::integer");
         assert_eq!(
             v("numeric(5,2)", true),
