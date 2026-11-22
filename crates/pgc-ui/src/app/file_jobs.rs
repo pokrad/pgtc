@@ -8,9 +8,9 @@ use std::sync::Arc;
 use pgc_core::places::Place;
 use pgc_model::Database;
 
-use super::closing::AfterSave;
 use super::definition::JobKind;
 use super::files::list_dir;
+use super::state::TabWait;
 use super::{App, TextView};
 use crate::dialog::Dialog;
 
@@ -521,8 +521,8 @@ impl App {
         };
         if let Err(e) = result {
             // closing / quitting that waited for this save stops
-            self.closing.after_save = None;
-            self.closing.bulk = None;
+            self.closing.saves_off();
+            self.closing.questions_off();
             self.status.clear();
             self.error(&e);
             return;
@@ -541,19 +541,11 @@ impl App {
 
     /// Tab `tab` was saved: closing it, or quitting, that waited for the save goes on.
     pub(super) fn after_save(&mut self, tab: u64) {
-        match self.closing.after_save {
-            Some(AfterSave::Close(closing)) if closing == tab => {
-                self.closing.after_save = None;
-                self.request_close_tab(tab, false);
-            }
-            // another tab's save: the close that waits for its own save stays
-            Some(AfterSave::Close(_)) | None => {}
-            Some(AfterSave::Bulk) => {
-                self.closing.after_save = None;
-                if let Some((b, _)) = self.closing.bulk {
-                    self.request_bulk(b);
-                }
-            }
+        // (another tab's save: what waits for its own save stays)
+        if self.closing.waited(tab, TabWait::Save) {
+            self.request_close_tab(tab, false);
+        } else if let Some(b) = self.closing.bulk_saved(tab) {
+            self.request_bulk(b);
         }
     }
 }

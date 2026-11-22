@@ -3,17 +3,10 @@
 
 use pgc_db::{ConnectionHandle, TxStatus};
 
+use super::state::TabWait;
 use super::{App, Focus, Tab, TabBody};
 use crate::dialog::{Button, Dialog, DialogKind};
-use crate::query_tab::{AfterRun, QueryConn};
-
-/// What follows a save asked for by "Save changes?" (D-019).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum AfterSave {
-    Close(u64),
-    /// Continue quitting / disconnecting.
-    Bulk,
-}
+use crate::query_tab::QueryConn;
 
 /// Closing many tabs at once (D-043).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -73,14 +66,18 @@ impl App {
         }
     }
 
-    /// "Save changes?" → Yes: save to the tab's file or ask for one; `then` runs
-    /// after a successful save.
-    pub(super) fn save_before(&mut self, id: u64, then: AfterSave) {
+    /// "Save changes?" → Yes: save to the tab's file or ask for one. Saved, the tab
+    /// closes — or, `bulk`, closing many tabs goes on.
+    pub(super) fn save_before(&mut self, id: u64, bulk: bool) {
         let Some(i) = self.tab_index(id) else {
             return;
         };
         self.active_tab = i;
-        self.closing.after_save = Some(then);
+        if bulk {
+            self.closing.bulk_saving(id);
+        } else {
+            self.closing.wait(id, TabWait::Save);
+        }
         // a template tab has its own way of saving (D-074)
         if self.tabs[i].template().is_some() {
             self.save_template(id, false);
@@ -101,6 +98,7 @@ impl App {
             return;
         }
         let tab = self.tabs.remove(i);
+        self.closing.forget_tab(tab.id);
         self.pending_defs.retain(|_, t| *t != tab.id);
         self.template_lookups.retain(|_, t| t.tab() != Some(tab.id));
         let conn = match tab.body {
@@ -165,11 +163,7 @@ impl App {
     /// Quitting or disconnecting a server: asks about unsaved query text, one tab at
     /// a time, then about open transactions; `Cancel` stops (D-019, D-043).
     pub(super) fn request_bulk(&mut self, b: Bulk) {
-        let skip = match &self.closing.bulk {
-            Some((current, skip)) if *current == b => skip.clone(),
-            _ => Vec::new(),
-        };
-        self.closing.bulk = Some((b, skip.clone()));
+        let skip = self.closing.ask(b).skip.clone();
         let title = match b {
             Bulk::Quit => "Quit",
             Bulk::Disconnect(_) => "Disconnect",
@@ -204,7 +198,8 @@ impl App {
             self.finish_bulk(b);
             return;
         }
-        self.closing.bulk = Some((b, Vec::new()));
+        // (the question about unsaved text is answered for every tab)
+        self.closing.ask(b).skip.clear();
         let text = if open == 1 {
             "A query tab has an open transaction.".to_owned()
         } else {
@@ -294,18 +289,34 @@ impl App {
         handles
     }
 
-    /// Finishes quitting / disconnecting once every COMMIT sent for it has finished.
+    /// "Commit all" of closing many tabs: a COMMIT in every tab with an open
+    /// transaction; all of them answered, the tabs close.
+    pub(super) fn commit_bulk(&mut self) {
+        let Some(b) = self.closing.bulk.as_ref().map(|b| b.what) else {
+            return;
+        };
+        let sent: Vec<u64> = self
+            .bulk_transactions(b)
+            .into_iter()
+            .filter(|id| self.send_commit(*id))
+            .collect();
+        if self.closing.commit(sent).is_some() {
+            self.maybe_finish_bulk();
+        }
+    }
+
+    /// Finishes quitting / disconnecting once every COMMIT sent for it has finished
+    /// (and no tab of it runs anything else).
     pub(super) fn maybe_finish_bulk(&mut self) {
-        let Some(b) = self.closing.bulk_pending else {
+        let Some(b) = self.closing.committing() else {
             return;
         };
         let waiting = self.tabs.iter().any(|t| {
             Self::in_bulk(b, t)
-                && t.query()
-                    .is_some_and(|q| q.after_run == Some(AfterRun::Bulk) || q.busy())
+                && (self.closing.commit_awaited(t.id) || t.query().is_some_and(|q| q.busy()))
         });
         if !waiting {
-            self.closing.bulk_pending = None;
+            self.closing.bulk = None;
             self.finish_bulk(b);
         }
     }

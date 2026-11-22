@@ -273,14 +273,8 @@ pub fn duration_text(secs: f64) -> String {
 
 /// `12 MB`, as `pg_size_pretty` without the bytes.
 pub fn size_text(n: u64) -> String {
-    const UNITS: [&str; 6] = ["bytes", "kB", "MB", "GB", "TB", "PB"];
-    let mut size = n as f64;
-    let mut unit = 0;
-    while size >= 10.0 * 1024.0 && unit < UNITS.len() - 1 {
-        size /= 1024.0;
-        unit += 1;
-    }
-    format!("{} {}", thousands(size.round() as usize), UNITS[unit])
+    let (size, unit) = crate::grid::size_scaled(n);
+    format!("{} {unit}", thousands(size.round() as usize))
 }
 
 /// The summary strip's values of one `stats.sql` row (D-057).

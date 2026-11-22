@@ -5,8 +5,6 @@
 use std::time::Duration;
 
 use pgc_db::{ConnId, DbError, DbEvent};
-use pgc_sql::RenderContext;
-use ratatui::layout::Position;
 
 use super::connections::MonitorEvent;
 use super::{App, Effect, Focus, TabBody, Target, TextView};
@@ -14,7 +12,6 @@ use crate::dialog::{Button, Dialog, DialogKind, Widget};
 use crate::keymap::Command;
 use crate::menu::{self, MenuEntry, Popup};
 use crate::profiler::{AfterRestore, Check, LogReader, Phase, Profiler, READ_CHUNK};
-use crate::view::Hits;
 
 const SQL_FOLDER: &str = "profiler";
 /// Pause between log reads.
@@ -125,13 +122,7 @@ impl App {
         version: pgc_core::ServerVersion,
         file: &str,
     ) -> Result<String, String> {
-        let ctx = RenderContext {
-            version,
-            show_system: self.settings.ui.show_system_objects,
-        };
-        self.sql
-            .render(SQL_FOLDER, file, ctx)
-            .map_err(|e| e.to_string())
+        self.render_monitor_sql(SQL_FOLDER, version, file)
     }
 
     /// `F5`: Start when stopped, Stop when running (D-058).
@@ -668,27 +659,6 @@ impl App {
             Command::ProfilerPause => p.phase == Phase::Running,
             Command::ShowRow => !p.grid.rows.is_empty(),
             _ => true,
-        }
-    }
-
-    pub(super) fn profiler_mouse(
-        &mut self,
-        kind: crossterm::event::MouseEventKind,
-        p: Position,
-        hits: &Hits,
-    ) -> bool {
-        if self.profiler().is_none() {
-            return false;
-        }
-        let ph = &hits.profiler;
-        match self.monitor_mouse(kind, p, ph.grid, &ph.cells) {
-            Some(menu) => {
-                if menu {
-                    self.open_profiler_menu((p.x, p.y + 1));
-                }
-                true
-            }
-            None => false,
         }
     }
 

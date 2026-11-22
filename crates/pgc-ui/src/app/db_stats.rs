@@ -2,8 +2,6 @@
 //! statistics (only on `F5`), its keys.
 
 use pgc_db::{ConnId, DbError, DbEvent};
-use pgc_sql::RenderContext;
-use ratatui::layout::Position;
 
 use super::connections::MonitorEvent;
 use super::{App, Focus, TabBody, Target, TextView};
@@ -11,7 +9,6 @@ use crate::db_stats::DbStats;
 use crate::keymap::Command;
 use crate::menu::{self, Popup};
 use crate::tree::ConnState;
-use crate::view::Hits;
 
 const SQL_FOLDER: &str = "db_stats";
 
@@ -102,14 +99,7 @@ impl App {
         let (Some(version), true, None) = (s.version, s.connected(), s.key) else {
             return;
         };
-        let ctx = RenderContext {
-            version,
-            show_system: self.settings.ui.show_system_objects,
-        };
-        let sql = self
-            .sql
-            .render(SQL_FOLDER, "stats.sql", ctx)
-            .map_err(|e| e.to_string());
+        let sql = self.render_monitor_sql(SQL_FOLDER, version, "stats.sql");
         self.next_key += 1;
         let key = self.next_key;
         let Some(s) = self.tabs[i].db_stats_mut() else {
@@ -179,27 +169,5 @@ impl App {
             menu::item("Select &all", Command::SelectAll),
         ];
         self.popup = Some(Popup::new(entries, anchor, &|c| self.is_enabled(c)));
-    }
-
-    /// Mouse in the statistics tab. Returns true if the event was used.
-    pub(super) fn db_stats_mouse(
-        &mut self,
-        kind: crossterm::event::MouseEventKind,
-        p: Position,
-        hits: &Hits,
-    ) -> bool {
-        if self.db_stats().is_none() {
-            return false;
-        }
-        let sh = &hits.db_stats;
-        match self.monitor_mouse(kind, p, sh.grid, &sh.cells) {
-            Some(menu) => {
-                if menu {
-                    self.open_db_stats_menu((p.x, p.y + 1));
-                }
-                true
-            }
-            None => false,
-        }
     }
 }

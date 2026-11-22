@@ -275,47 +275,69 @@ pub enum Gen {
 /// Rows `gtg` writes without a number.
 pub const TEST_ROWS: u32 = 100;
 
+/// The generate commands that take one table name, and what each generates: the one
+/// list the parser, the messages and the input line go by. (`gtv` takes several
+/// tables, `gtg` a number as well, `gp` / `gf` a schema: the parser has those.)
+const TABLE_COMMANDS: &[(&str, Gen)] = &[
+    ("gts", Gen::Select),
+    ("gti", Gen::Insert),
+    ("gtu", Gen::Update),
+    ("gtd", Gen::Delete),
+    ("gtc", Gen::Cursor),
+    ("gto", Gen::Upsert),
+    ("gtsi", Gen::Vars),
+    ("gtm", Gen::Merge),
+    (
+        "gtrb",
+        Gen::Trigger {
+            row: true,
+            before: true,
+        },
+    ),
+    (
+        "gtra",
+        Gen::Trigger {
+            row: true,
+            before: false,
+        },
+    ),
+    (
+        "gtsb",
+        Gen::Trigger {
+            row: false,
+            before: true,
+        },
+    ),
+    (
+        "gtsa",
+        Gen::Trigger {
+            row: false,
+            before: false,
+        },
+    ),
+    ("gpi", Gen::ProcInsert),
+    ("gpu", Gen::ProcUpdate),
+    ("gpd", Gen::ProcDelete),
+    ("gpo", Gen::ProcUpsert),
+    ("gfr", Gen::FuncRow),
+    ("gfs", Gen::FuncSet),
+    ("gft", Gen::FuncTable),
+    ("gfe", Gen::FuncExists),
+    ("gfj", Gen::FuncJson),
+    ("gtj", Gen::JoinParents),
+    ("gtr", Gen::Referencing),
+    ("gtau", Gen::Audit),
+];
+
 impl Gen {
     /// The F4 command of a generate kind (for messages).
     pub fn command(self) -> &'static str {
         match self {
-            Gen::Select => "gts",
-            Gen::Insert => "gti",
-            Gen::Update => "gtu",
-            Gen::Delete => "gtd",
-            Gen::Cursor => "gtc",
-            Gen::Upsert => "gto",
-            Gen::Vars => "gtsi",
-            Gen::Merge => "gtm",
-            Gen::Trigger {
-                row: true,
-                before: true,
-            } => "gtrb",
-            Gen::Trigger {
-                row: true,
-                before: false,
-            } => "gtra",
-            Gen::Trigger {
-                row: false,
-                before: true,
-            } => "gtsb",
-            Gen::Trigger {
-                row: false,
-                before: false,
-            } => "gtsa",
-            Gen::ProcInsert => "gpi",
-            Gen::ProcUpdate => "gpu",
-            Gen::ProcDelete => "gpd",
-            Gen::ProcUpsert => "gpo",
-            Gen::FuncRow => "gfr",
-            Gen::FuncSet => "gfs",
-            Gen::FuncTable => "gft",
-            Gen::FuncExists => "gfe",
-            Gen::FuncJson => "gfj",
             Gen::TestData { .. } => "gtg",
-            Gen::JoinParents => "gtj",
-            Gen::Referencing => "gtr",
-            Gen::Audit => "gtau",
+            what => TABLE_COMMANDS
+                .iter()
+                .find(|(_, g)| *g == what)
+                .map_or("", |(command, _)| command),
         }
     }
 
@@ -327,23 +349,14 @@ impl Gen {
         )
     }
 
-    /// Works on tables only (not views or foreign tables).
+    /// Works on tables only (not views or foreign tables): by the object kinds its
+    /// row of [`GENERATE`] offers, so that the two cannot say different things.
     pub fn tables_only(self) -> bool {
-        !matches!(
-            self,
-            Gen::Select
-                | Gen::Insert
-                | Gen::Update
-                | Gen::Delete
-                | Gen::Cursor
-                | Gen::Upsert
-                | Gen::Vars
-                | Gen::FuncRow
-                | Gen::FuncSet
-                | Gen::FuncTable
-                | Gen::FuncExists
-                | Gen::FuncJson
-        )
+        let command = self.command();
+        GENERATE
+            .iter()
+            .find(|row| row.0 == command)
+            .is_none_or(|row| row.3 != SELECTABLE)
     }
 }
 
@@ -397,35 +410,8 @@ pub fn list_rows() -> Vec<Option<(&'static str, &'static str, &'static str)>> {
 
 /// A generate command typed without its table: the input waits for the name.
 pub fn needs_table(input: &str) -> bool {
-    matches!(
-        without_backslash(input),
-        "gts"
-            | "gti"
-            | "gtu"
-            | "gtd"
-            | "gtc"
-            | "gto"
-            | "gtsi"
-            | "gtv"
-            | "gtm"
-            | "gtrb"
-            | "gtra"
-            | "gtsb"
-            | "gtsa"
-            | "gpi"
-            | "gpu"
-            | "gpd"
-            | "gpo"
-            | "gfr"
-            | "gfs"
-            | "gft"
-            | "gfe"
-            | "gfj"
-            | "gtg"
-            | "gtj"
-            | "gtr"
-            | "gtau"
-    )
+    let word = without_backslash(input);
+    matches!(word, "gtv" | "gtg") || TABLE_COMMANDS.iter().any(|(command, _)| *command == word)
 }
 
 /// The typed text without surrounding spaces and a leading psql backslash.
@@ -566,35 +552,11 @@ pub fn parse(input: &str) -> Result<Cmd, String> {
                 table: parse_name(&args[0])?,
             });
         }
-        "gts" | "gti" | "gtu" | "gtd" | "gtc" | "gto" | "gtsi" | "gtm" | "gtrb" | "gtra"
-        | "gtsb" | "gtsa" | "gpi" | "gpu" | "gpd" | "gpo" | "gfr" | "gfs" | "gft" | "gfe"
-        | "gfj" | "gtj" | "gtr" | "gtau" => {
-            let what = match word {
-                "gts" => Gen::Select,
-                "gti" => Gen::Insert,
-                "gtu" => Gen::Update,
-                "gtc" => Gen::Cursor,
-                "gto" => Gen::Upsert,
-                "gtsi" => Gen::Vars,
-                "gtm" => Gen::Merge,
-                "gtrb" | "gtra" | "gtsb" | "gtsa" => Gen::Trigger {
-                    row: word.as_bytes()[2] == b'r',
-                    before: word.ends_with('b'),
-                },
-                "gpi" => Gen::ProcInsert,
-                "gpu" => Gen::ProcUpdate,
-                "gpd" => Gen::ProcDelete,
-                "gpo" => Gen::ProcUpsert,
-                "gfr" => Gen::FuncRow,
-                "gfs" => Gen::FuncSet,
-                "gft" => Gen::FuncTable,
-                "gfe" => Gen::FuncExists,
-                "gfj" => Gen::FuncJson,
-                "gtj" => Gen::JoinParents,
-                "gtr" => Gen::Referencing,
-                "gtau" => Gen::Audit,
-                _ => Gen::Delete,
-            };
+        _ if TABLE_COMMANDS.iter().any(|(command, _)| *command == word) => {
+            let what = TABLE_COMMANDS
+                .iter()
+                .find(|(command, _)| *command == word)
+                .map_or(Gen::Select, |(_, what)| *what);
             let Some(arg) = arg else {
                 return Err(format!(
                     "{word} needs a table name, e.g. {word} public.orders"
@@ -2897,6 +2859,34 @@ mod tests {
         let m: Vec<&str> = matching("gf").iter().map(|c| c.0).collect();
         assert_eq!(m, ["gf", "gfr", "gfs", "gft", "gfe", "gfj"]);
         assert_eq!(matching("dt+ x").len(), 1);
+    }
+
+    #[test]
+    /// The one list of the table commands agrees with the rows shown to the user:
+    /// every command has a row, and which work on views too is said once.
+    fn table_commands_and_their_rows_agree() {
+        for (command, what) in TABLE_COMMANDS {
+            assert_eq!(what.command(), *command);
+            assert!(GENERATE.iter().any(|r| r.0 == *command), "{command}");
+            assert!(needs_table(command), "{command}");
+            assert!(matches!(
+                parse(&format!("{command} t")),
+                Ok(Cmd::Generate { what: w, .. }) if w == *what
+            ));
+        }
+        let selectable: Vec<&str> = TABLE_COMMANDS
+            .iter()
+            .filter(|(_, what)| !what.tables_only())
+            .map(|(command, _)| *command)
+            .collect();
+        assert_eq!(
+            selectable,
+            [
+                "gts", "gti", "gtu", "gtd", "gtc", "gto", "gtsi", "gfr", "gfs", "gft", "gfe", "gfj"
+            ]
+        );
+        assert!(Gen::TestData { rows: 1 }.tables_only());
+        assert!(needs_table("gtv") && needs_table("\\gtg") && !needs_table("dt"));
     }
 
     #[test]

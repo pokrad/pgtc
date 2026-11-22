@@ -50,7 +50,7 @@ use pgc_editor::{Action, Editor, SearchOptions};
 use pgc_sql::SqlCatalog;
 
 pub use self::ai::{AiEvent, AiModels, AiMsg, AiProgress};
-use self::closing::{AfterSave, Bulk};
+use self::closing::Bulk;
 use self::definition::{JobKind, StructureJob};
 use self::editing::editor_action;
 pub use self::file_jobs::{FileEvent, FileSink};
@@ -65,7 +65,7 @@ use crate::export::{ExportEvent, ExportSink};
 use crate::keymap::{Command, Context, Keymap};
 use crate::keys::KeyCombo;
 use crate::menu::{self, MenuDef, MenuEvent, MenuState, Popup};
-use crate::query_tab::{AfterRun, QueryState};
+use crate::query_tab::QueryState;
 use crate::theme::{Theme, ThemeSet};
 use crate::tree::{ConnState, RowKind, Tree};
 use crate::view::Hits;
@@ -1321,8 +1321,12 @@ impl App {
             Command::Execute => self.execute(),
             Command::CancelQuery => self.cancel_query(),
             Command::FetchAll => self.fetch_all(),
-            Command::Commit => self.send_simple(self.active_tab, "COMMIT", None),
-            Command::Rollback => self.send_simple(self.active_tab, "ROLLBACK", None),
+            Command::Commit => {
+                self.send_simple(self.active_tab, "COMMIT");
+            }
+            Command::Rollback => {
+                self.send_simple(self.active_tab, "ROLLBACK");
+            }
             Command::ToggleAutoCommit => self.toggle_query(|q| {
                 q.auto_commit = !q.auto_commit;
                 format!("Auto commit {}", on_off(q.auto_commit))
@@ -1651,38 +1655,30 @@ impl App {
                     (DialogKind::Find, button) => self.find_dialog_done(dialog, button),
                     (DialogKind::ReplaceConfirm, button) => self.replace_confirm_done(button),
                     (DialogKind::SaveChanges { tab }, Button::Yes) => {
-                        self.save_before(tab, AfterSave::Close(tab));
+                        self.save_before(tab, false);
                     }
                     (DialogKind::QuitSaveChanges { tab }, Button::Yes) => {
-                        self.save_before(tab, AfterSave::Bulk);
+                        self.save_before(tab, true);
                     }
                     (DialogKind::QuitSaveChanges { tab }, Button::No) => {
-                        if let Some((b, skip)) = self.closing.bulk.as_mut() {
-                            skip.push(tab);
-                            let b = *b;
-                            self.request_bulk(b);
+                        if let Some(b) = self.closing.bulk.as_mut() {
+                            b.skip.push(tab);
+                            let what = b.what;
+                            self.request_bulk(what);
                         }
                     }
                     (DialogKind::SaveChanges { tab }, Button::No) => {
                         self.request_close_tab(tab, false)
                     }
                     (DialogKind::CloseTransaction { tab }, Button::Commit) => {
-                        self.finish_transaction(tab, AfterRun::CloseTab);
+                        self.commit_and_close(tab);
                     }
                     (DialogKind::CloseTransaction { tab }, Button::Rollback) => self.close_tab(tab),
-                    (DialogKind::QuitTransactions, Button::Commit) => {
-                        if let Some((b, _)) = self.closing.bulk.take() {
-                            self.closing.bulk_pending = Some(b);
-                            for id in self.bulk_transactions(b) {
-                                self.finish_transaction(id, AfterRun::Bulk);
-                            }
-                            self.maybe_finish_bulk();
-                        }
-                    }
+                    (DialogKind::QuitTransactions, Button::Commit) => self.commit_bulk(),
                     (DialogKind::QuitTransactions, Button::Rollback) => {
                         // closing the connections rolls the transactions back
-                        if let Some((b, _)) = self.closing.bulk.take() {
-                            self.finish_bulk(b);
+                        if let Some(b) = self.closing.bulk.take() {
+                            self.finish_bulk(b.what);
                         }
                     }
                     (DialogKind::CancelWait { tab }, Button::Close) => self.abort_query_conn(tab),
@@ -1775,7 +1771,7 @@ impl App {
                 )
             });
         if !saving {
-            self.closing.after_save = None;
+            self.closing.saves_off();
         }
         if !saving
             && !self.dialogs.iter().any(|d| {
@@ -1785,7 +1781,7 @@ impl App {
                 )
             })
         {
-            self.closing.bulk = None;
+            self.closing.questions_off();
         }
     }
 }

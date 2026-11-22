@@ -4,10 +4,11 @@
 use pgc_db::{ConnId, DbEvent, ExecuteRequest, TxStatus};
 
 use super::result_export::take_export_rows;
+use super::state::TabWait;
 use super::{App, Tab, TabBody, Target, TextView};
 use crate::dialog::{Button, Dialog, DialogKind};
 use crate::export::ToWriter;
-use crate::query_tab::{AfterRun, LineMap, MessageKind, QueryConn, QueryConnState, Sent};
+use crate::query_tab::{LineMap, MessageKind, QueryConn, QueryConnState, Sent};
 use crate::tree::{ConnState, RowKind};
 
 impl App {
@@ -129,10 +130,8 @@ impl App {
                     Some(e) => format!("Session lost: {e}"),
                     None => "Session closed".to_owned(),
                 });
-                // a COMMIT sent for quitting / disconnecting will not be answered
-                if q.after_run.take() == Some(AfterRun::Bulk) {
-                    self.closing.bulk_pending = None;
-                }
+                // a COMMIT sent for closing will not be answered
+                self.commit_lost(tab);
                 self.drop_tab_lookups(tab);
             }
             DbEvent::Lookup { key, result, .. } => self.lookup_loaded(key, result),
@@ -144,10 +143,6 @@ impl App {
         let Some(i) = self.tab_index(tab) else {
             return;
         };
-        let Some(q) = self.tabs[i].query_mut() else {
-            return;
-        };
-        let after = q.after_run.take();
         // the run has ended: "the server did not react to the cancel request" is not
         // a question any more (its Close session would end an idle session)
         self.dialogs
@@ -173,21 +168,26 @@ impl App {
                 .rev()
                 .find(|m| m.kind == MessageKind::Command)
                 .is_some_and(|m| m.text == "COMMIT");
-        match after {
-            Some(AfterRun::CloseTab) if committed => self.close_tab(tab),
-            Some(AfterRun::Bulk) if committed => self.maybe_finish_bulk(),
+        // was this run the COMMIT that closing the tab, or many tabs, waited for?
+        let closes = self.closing.waited(tab, TabWait::Commit);
+        let of_bulk = self.closing.commit_answered(tab);
+        match (closes || of_bulk, committed) {
+            (true, true) if closes => self.close_tab(tab),
+            (true, true) => self.maybe_finish_bulk(),
             // nothing was committed: the tab stays, with the reason in Messages, and
             // quitting / disconnecting stops
-            Some(_) => {
-                q.show_messages = true;
-                q.results_visible = true;
-                self.closing.bulk_pending = None;
+            (true, false) => {
+                if let Some(q) = self.tabs[i].query_mut() {
+                    q.show_messages = true;
+                    q.results_visible = true;
+                }
+                self.closing.commits_off();
                 self.active_tab = i;
                 self.status = "The transaction was not committed — see Messages".to_owned();
             }
             // quitting / disconnecting may have waited for this run (a tab that was
             // busy when the COMMITs were sent)
-            None => self.maybe_finish_bulk(),
+            (false, _) => self.maybe_finish_bulk(),
         }
     }
 
@@ -295,23 +295,38 @@ impl App {
         self.tab_status(i, "Executing…");
     }
 
-    /// COMMIT / ROLLBACK in the query tab at index `i` (D-019).
-    pub(super) fn send_simple(&mut self, i: usize, sql: &str, after: Option<AfterRun>) {
+    /// COMMIT / ROLLBACK in the query tab at index `i` (D-019). False when it could
+    /// not be sent (not connected, or something runs there).
+    pub(super) fn send_simple(&mut self, i: usize, sql: &str) -> bool {
         let Some(q) = self.tabs[i].query() else {
-            return;
+            return false;
         };
         if !q.connected() || q.busy() {
-            return;
+            return false;
         }
         self.send_query(i, sql.to_owned(), Sent::new(0, sql), false);
-        if let Some(q) = self.tabs[i].query_mut() {
-            q.after_run = after;
+        true
+    }
+
+    /// COMMIT in tab `tab`; false when it could not be sent.
+    pub(super) fn send_commit(&mut self, tab: u64) -> bool {
+        self.tab_index(tab)
+            .is_some_and(|i| self.send_simple(i, "COMMIT"))
+    }
+
+    /// "Commit" when a tab with an open transaction closes: committed, it closes.
+    pub(super) fn commit_and_close(&mut self, tab: u64) {
+        if self.send_commit(tab) {
+            self.closing.wait(tab, TabWait::Commit);
         }
     }
 
-    pub(super) fn finish_transaction(&mut self, tab: u64, after: AfterRun) {
-        if let Some(i) = self.tab_index(tab) {
-            self.send_simple(i, "COMMIT", Some(after));
+    /// The session of tab `tab` is gone: a COMMIT sent for closing will not be
+    /// answered — the tab stays, closing many tabs stops.
+    fn commit_lost(&mut self, tab: u64) {
+        self.closing.waited(tab, TabWait::Commit);
+        if self.closing.commit_answered(tab) {
+            self.closing.commits_off();
         }
     }
 
@@ -384,12 +399,10 @@ impl App {
             self.connections.remove(&conn.id);
             q.connection_gone();
             q.info("Session closed (the server did not react to the cancel request)");
-            // what waited for this run will not come (as when the session is lost):
-            // a later run must not close the tab or go on quitting
-            if q.after_run.take() == Some(AfterRun::Bulk) {
-                self.closing.bulk_pending = None;
-            }
         }
+        // what waited for this run will not come (as when the session is lost): a
+        // later run must not close the tab or go on quitting
+        self.commit_lost(tab);
         self.drop_tab_lookups(tab);
     }
 

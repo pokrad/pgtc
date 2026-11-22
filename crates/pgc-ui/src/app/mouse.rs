@@ -97,14 +97,9 @@ impl App {
         if !self.modal() && self.template_mouse(m.kind, p, hits) {
             return;
         }
-        // the dashboard tab's lists and grid (D-057)
-        if !self.modal() && self.dashboard_mouse(m.kind, p, hits) {
-            return;
-        }
-        if !self.modal() && self.profiler_mouse(m.kind, p, hits) {
-            return;
-        }
-        if !self.modal() && self.db_stats_mouse(m.kind, p, hits) {
+        // the list of a dashboard, profiler or statistics tab; the dashboard's
+        // list labels (D-057, D-058, D-062)
+        if !self.modal() && self.monitor_tab_mouse(m.kind, p, hits) {
             return;
         }
         match m.kind {

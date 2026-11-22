@@ -4,8 +4,6 @@
 use std::time::Duration;
 
 use pgc_db::{ConnId, DbError, DbEvent};
-use pgc_sql::RenderContext;
-use ratatui::layout::Position;
 
 use super::connections::MonitorEvent;
 use super::{App, Effect, Focus, TabBody, Target, TextView};
@@ -14,7 +12,6 @@ use crate::dialog::{Dialog, DialogKind};
 use crate::keymap::Command;
 use crate::menu::{self, MenuEntry, Popup};
 use crate::tree::{ConnState, RowKind};
-use crate::view::Hits;
 
 const SQL_FOLDER: &str = "dashboard";
 
@@ -112,13 +109,7 @@ impl App {
         version: pgc_core::ServerVersion,
         file: &str,
     ) -> Result<String, String> {
-        let ctx = RenderContext {
-            version,
-            show_system: self.settings.ui.show_system_objects,
-        };
-        self.sql
-            .render(SQL_FOLDER, file, ctx)
-            .map_err(|e| e.to_string())
+        self.render_monitor_sql(SQL_FOLDER, version, file)
     }
 
     /// Sends the stats query (`stats`) and the shown list's query, unless they are on
@@ -407,7 +398,7 @@ impl App {
         true
     }
     /// Shows `list` and reads it at once.
-    fn show_list(&mut self, list: List) {
+    pub(super) fn show_list(&mut self, list: List) {
         let tab = self.active_tab_id();
         if let Some(d) = self.dashboard_mut() {
             d.list = list;
@@ -600,40 +591,6 @@ impl App {
             Command::ClearTags => !d.tags.is_empty(),
             Command::ShowRow => d.loaded(d.list) && !d.grid().rows.is_empty(),
             _ => true,
-        }
-    }
-
-    /// Mouse in the dashboard tab. Returns true if the event was used.
-    pub(super) fn dashboard_mouse(
-        &mut self,
-        kind: crossterm::event::MouseEventKind,
-        p: Position,
-        hits: &Hits,
-    ) -> bool {
-        use crossterm::event::{MouseButton, MouseEventKind};
-        if self.dashboard().is_none() {
-            return false;
-        }
-        let dh = &hits.dashboard;
-        match kind {
-            MouseEventKind::Down(MouseButton::Left)
-                if dh.lists.iter().any(|(_, r)| r.contains(p)) =>
-            {
-                if let Some((list, _)) = dh.lists.iter().find(|(_, r)| r.contains(p)) {
-                    self.focus = Focus::Results;
-                    self.show_list(*list);
-                }
-                true
-            }
-            _ => match self.monitor_mouse(kind, p, dh.grid, &dh.cells) {
-                Some(menu) => {
-                    if menu {
-                        self.open_dashboard_menu((p.x, p.y + 1));
-                    }
-                    true
-                }
-                None => false,
-            },
         }
     }
 }

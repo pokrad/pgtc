@@ -149,14 +149,6 @@ impl Finished {
     }
 }
 
-/// What to do when the current execution has finished.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AfterRun {
-    CloseTab,
-    /// Quitting or disconnecting a server waits for this COMMIT (D-043).
-    Bulk,
-}
-
 #[derive(Debug)]
 pub struct QueryState {
     pub conn: Option<QueryConn>,
@@ -194,7 +186,6 @@ pub struct QueryState {
     pub messages_dropped: usize,
     /// `Ctrl+A` in Messages: copy copies all of them (D-019).
     pub messages_all_selected: bool,
-    pub after_run: Option<AfterRun>,
     /// Server uid and database of the tab (kept to reconnect, D-041).
     pub binding: Option<(u64, String)>,
     pub export: Option<ExportRun>,
@@ -231,7 +222,6 @@ impl QueryState {
             completed: 0,
             messages_dropped: 0,
             messages_all_selected: false,
-            after_run: None,
             binding: None,
             export: None,
             drop_rows: false,

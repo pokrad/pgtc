@@ -1489,26 +1489,16 @@ impl Dialog {
 
     fn insert_text(&mut self, text: &str) {
         if let WidgetKind::Input { value, cursor, .. } = &mut self.widgets[self.focus].kind {
-            let at = byte_index(value, *cursor);
-            value.insert_str(at, text);
-            *cursor += text.chars().count();
+            line::insert(value, cursor, text);
         }
     }
 
     fn input_edit(&mut self, backspace: bool) {
         if let WidgetKind::Input { value, cursor, .. } = &mut self.widgets[self.focus].kind {
-            let pos = if backspace {
-                if *cursor == 0 {
-                    return;
-                }
-                *cursor -= 1;
-                *cursor
+            if backspace {
+                line::backspace(value, cursor);
             } else {
-                *cursor
-            };
-            if pos < value.chars().count() {
-                let at = byte_index(value, pos);
-                value.remove(at);
+                line::delete(value, *cursor);
             }
         }
     }
@@ -2065,8 +2055,33 @@ pub(crate) fn input_char_at(text: &str, from: usize, x: u16, masked: bool) -> us
     text.chars().count()
 }
 
-fn byte_index(s: &str, char_index: usize) -> usize {
-    s.char_indices().nth(char_index).map_or(s.len(), |(b, _)| b)
+/// One line of text with a cursor (a char index): the editing that the inputs of the
+/// dialogs and the text fields of the developer template form have in common.
+pub(crate) mod line {
+    fn byte_index(s: &str, char_index: usize) -> usize {
+        s.char_indices().nth(char_index).map_or(s.len(), |(b, _)| b)
+    }
+
+    /// Puts `new` in at the cursor, which goes behind it.
+    pub fn insert(text: &mut String, cursor: &mut usize, new: &str) {
+        text.insert_str(byte_index(text, *cursor), new);
+        *cursor += new.chars().count();
+    }
+
+    /// Removes the character before the cursor.
+    pub fn backspace(text: &mut String, cursor: &mut usize) {
+        if *cursor > 0 {
+            *cursor -= 1;
+            delete(text, *cursor);
+        }
+    }
+
+    /// Removes the character at `cursor`, when there is one.
+    pub fn delete(text: &mut String, cursor: usize) {
+        if cursor < text.chars().count() {
+            text.remove(byte_index(text, cursor));
+        }
+    }
 }
 
 pub(crate) fn draw_shadow(frame: &mut Frame, area: Rect, style: Style) {

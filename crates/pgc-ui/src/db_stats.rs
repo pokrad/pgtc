@@ -64,17 +64,11 @@ fn big(n: u64) -> String {
 
 /// `12 MB (12,582,912 bytes)`, units of 1024 as `pg_size_pretty`.
 pub fn bytes(n: u64) -> String {
-    const UNITS: [&str; 6] = ["bytes", "kB", "MB", "GB", "TB", "PB"];
-    let mut size = n as f64;
-    let mut unit = 0;
-    while size >= 10.0 * 1024.0 && unit < UNITS.len() - 1 {
-        size /= 1024.0;
-        unit += 1;
-    }
-    if unit == 0 {
+    let (size, unit) = crate::grid::size_scaled(n);
+    if unit == "bytes" {
         format!("{} bytes", big(n))
     } else {
-        format!("{} {} ({} bytes)", size.round(), UNITS[unit], big(n))
+        format!("{} {unit} ({} bytes)", size.round(), big(n))
     }
 }
 

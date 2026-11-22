@@ -5,7 +5,7 @@ use crossterm::event::{MouseButton, MouseEventKind};
 use ratatui::layout::{Position, Rect};
 
 use super::query::connection_label;
-use super::{App, Effect, Focus, Tab};
+use super::{App, Effect, Focus, Tab, TabBody};
 use crate::dashboard::OwnConn;
 use crate::grid::CellArea;
 use crate::keymap::Command;
@@ -20,6 +20,61 @@ impl App {
     /// The own connection of the dashboard, profiler or database statistics tab `tab`.
     pub(super) fn own_conn(&mut self, tab: u64) -> Option<OwnConn<'_>> {
         self.tab_mut(tab)?.monitor_mut().map(|m| m.own_conn())
+    }
+
+    /// The SQL of `file` in `folder` (`dashboard`, `profiler`, `db_stats`) for a
+    /// server of `version`.
+    pub(super) fn render_monitor_sql(
+        &self,
+        folder: &str,
+        version: pgc_core::ServerVersion,
+        file: &str,
+    ) -> Result<String, String> {
+        let ctx = pgc_sql::RenderContext {
+            version,
+            show_system: self.settings.ui.show_system_objects,
+        };
+        self.sql
+            .render(folder, file, ctx)
+            .map_err(|e| e.to_string())
+    }
+
+    /// Mouse in the dashboard, profiler or statistics tab that is shown. Returns true
+    /// if the event was used.
+    pub(super) fn monitor_tab_mouse(
+        &mut self,
+        kind: MouseEventKind,
+        p: Position,
+        hits: &crate::view::Hits,
+    ) -> bool {
+        // the dashboard's list labels: a click shows that list
+        if let TabBody::Dashboard(_) = self.tabs[self.active_tab].body
+            && kind == MouseEventKind::Down(MouseButton::Left)
+            && let Some((list, _)) = hits.dashboard.lists.iter().find(|(_, r)| r.contains(p))
+        {
+            self.focus = Focus::Results;
+            self.show_list(*list);
+            return true;
+        }
+        let (grid, cells) = match self.tabs[self.active_tab].body {
+            TabBody::Dashboard(_) => (hits.dashboard.grid, &hits.dashboard.cells),
+            TabBody::Profiler(_) => (hits.profiler.grid, &hits.profiler.cells),
+            TabBody::DbStats(_) => (hits.db_stats.grid, &hits.db_stats.cells),
+            _ => return false,
+        };
+        let Some(menu) = self.monitor_mouse(kind, p, grid, cells) else {
+            return false;
+        };
+        if menu {
+            let at = (p.x, p.y + 1);
+            match self.tabs[self.active_tab].body {
+                TabBody::Dashboard(_) => self.open_dashboard_menu(at),
+                TabBody::Profiler(_) => self.open_profiler_menu(at),
+                TabBody::DbStats(_) => self.open_db_stats_menu(at),
+                _ => {}
+            }
+        }
+        true
     }
 
     /// How far a key moves the cell cursor of a grid, as (rows, columns): the arrows,

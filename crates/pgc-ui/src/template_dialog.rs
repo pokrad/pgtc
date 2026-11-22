@@ -21,6 +21,7 @@ use ratatui::widgets::{Block, Clear, Paragraph};
 use unicode_width::UnicodeWidthStr;
 
 use crate::combo::{self, ComboList, ListEvent};
+use crate::dialog::line;
 use crate::keymap::Command;
 use crate::theme::{Role, Theme};
 
@@ -437,9 +438,7 @@ impl TemplateForm {
                 if let KeyCode::Char(c) = ev.code
                     && !modified
                 {
-                    let at = byte_index(text, *cursor);
-                    text.insert(at, c);
-                    *cursor += 1;
+                    line::insert(text, cursor, c.encode_utf8(&mut [0; 4]));
                     return FormEvent::None;
                 }
                 let len = text.chars().count();
@@ -448,15 +447,8 @@ impl TemplateForm {
                     Some(Command::Right) => *cursor = (*cursor + 1).min(len),
                     Some(Command::Home) => *cursor = 0,
                     Some(Command::End) => *cursor = len,
-                    Some(Command::Backspace) if *cursor > 0 => {
-                        *cursor -= 1;
-                        let at = byte_index(text, *cursor);
-                        text.remove(at);
-                    }
-                    Some(Command::Delete) if *cursor < len => {
-                        let at = byte_index(text, *cursor);
-                        text.remove(at);
-                    }
+                    Some(Command::Backspace) => line::backspace(text, cursor),
+                    Some(Command::Delete) => line::delete(text, *cursor),
                     Some(Command::Up) => self.move_focus(-1),
                     Some(Command::Down) => self.move_focus(1),
                     Some(Command::Accept) => return FormEvent::Ok,
@@ -651,9 +643,7 @@ impl TemplateForm {
             match &mut self.fields[i].value {
                 FieldValue::Text { text: t, cursor } => {
                     let clean: String = text.chars().filter(|c| !c.is_control()).collect();
-                    let at = byte_index(t, *cursor);
-                    t.insert_str(at, &clean);
-                    *cursor += clean.chars().count();
+                    line::insert(t, cursor, &clean);
                 }
                 FieldValue::Sql(e) => {
                     e.apply(Action::Insert(text.replace("\r\n", "\n")));
@@ -1345,10 +1335,6 @@ fn put(frame: &mut Frame, x: u16, y: u16, text: &str, width: u16, style: Style) 
     }
     let w = width.min(area.right() - x) as usize;
     frame.buffer_mut().set_stringn(x, y, text, w, style);
-}
-
-fn byte_index(s: &str, chars: usize) -> usize {
-    s.char_indices().nth(chars).map_or(s.len(), |(i, _)| i)
 }
 
 #[cfg(test)]

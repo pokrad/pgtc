@@ -217,6 +217,19 @@ impl ResultSet {
 }
 
 /// `1234567` → `1,234,567`
+/// A size in the unit `pg_size_pretty` shows it in (units of 1024, the next one
+/// from 10,240 on): the number, not yet rounded, and the unit.
+pub fn size_scaled(n: u64) -> (f64, &'static str) {
+    const UNITS: [&str; 6] = ["bytes", "kB", "MB", "GB", "TB", "PB"];
+    let mut size = n as f64;
+    let mut unit = 0;
+    while size >= 10.0 * 1024.0 && unit < UNITS.len() - 1 {
+        size /= 1024.0;
+        unit += 1;
+    }
+    (size, UNITS[unit])
+}
+
 pub fn thousands(n: usize) -> String {
     let s = n.to_string();
     let mut out = String::new();

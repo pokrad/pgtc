@@ -365,7 +365,7 @@ fn a_template_that_does_not_parse_is_not_saved() {
     assert!(message(&a).starts_with("The template is not saved"));
     key(&mut a, "Enter");
     assert!(a.template().is_some());
-    assert_eq!(a.closing.after_save, None);
+    assert!(a.closing.nothing_waits());
     // No closes it without saving
     key(&mut a, "Ctrl+W");
     key(&mut a, "n");

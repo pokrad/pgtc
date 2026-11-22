@@ -1017,7 +1017,7 @@ fn closing_an_unsaved_query_tab_asks_to_save() {
     esc(&mut a);
     assert!(a.dialogs.is_empty());
     assert_eq!(a.tabs.len(), 2);
-    assert_eq!(a.closing.after_save, None);
+    assert!(a.closing.nothing_waits());
     // ... saving through it closes the tab
     key(&mut a, "Ctrl+W");
     key(&mut a, "y");
@@ -3785,7 +3785,7 @@ async fn quitting_with_commit_all_needs_real_commits() {
     commit_all(&mut a);
     end_run(&mut a, 99, tab, Ok("ROLLBACK"));
     assert!(!a.should_quit());
-    assert_eq!(a.closing.bulk_pending, None);
+    assert_eq!(a.closing.committing(), None);
     assert!(a.status.contains("not committed"), "{}", a.status);
 
     // committed: quits
@@ -3806,7 +3806,7 @@ async fn quitting_with_commit_all_needs_real_commits() {
         },
     );
     assert!(!a.should_quit());
-    assert_eq!(a.closing.bulk_pending, None);
+    assert_eq!(a.closing.committing(), None);
     let q = a.query().unwrap();
     assert!(q.conn.is_none() && !q.busy());
     // nothing is open any more: F10 quits
@@ -4045,10 +4045,10 @@ fn a_failed_save_stops_closing() {
     a.new_query_tab(None);
     typing(&mut a, "select 1;");
     let tab = a.tabs[a.active_tab].id;
-    a.closing.after_save = Some(AfterSave::Close(tab));
+    a.closing.wait(tab, super::state::TabWait::Save);
     a.save_to(dir.path().join("missing").join("q.sql"));
     assert!(a.tab_index(tab).is_some(), "the tab stays");
-    assert_eq!(a.closing.after_save, None);
+    assert!(a.closing.nothing_waits());
     assert!(a.editor().modified());
     assert!(!a.query().unwrap().saving);
     let d = a.dialogs.last().expect("the error");

@@ -8,7 +8,7 @@ use std::time::Instant;
 use pgc_core::places::Place;
 use ratatui::layout::{Position, Rect};
 
-use super::closing::{AfterSave, Bulk};
+use super::closing::Bulk;
 use super::templates::Picker;
 use crate::template_dialog::{Choice, TemplateForm};
 
@@ -63,17 +63,45 @@ pub(super) struct FileDialogState {
     pub(super) save_tab: Option<u64>,
 }
 
-/// Closing tabs, quitting, disconnecting (D-019, D-043): the questions on their way
-/// and what is waited for.
+/// What a tab that is being closed waits for (D-019).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum TabWait {
+    /// Its text is being saved ("Save changes?" → Yes); then it closes.
+    Save,
+    /// Its COMMIT is on its way ("open transaction" → Commit); committed, it closes.
+    Commit,
+}
+
+/// Where closing many tabs at once is (D-043).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum BulkStage {
+    /// The questions: about unsaved text tab by tab, then about open transactions.
+    Asking,
+    /// This tab is being saved; the questions go on when it is.
+    Saving(u64),
+    /// The COMMITs of these tabs are on their way; all answered, the tabs close.
+    Committing(Vec<u64>),
+}
+
+/// Quitting, or disconnecting / deleting / reconnecting a server (D-043).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct BulkClose {
+    pub(super) what: Bulk,
+    /// The tabs whose unsaved text the user chose not to save.
+    pub(super) skip: Vec<u64>,
+    pub(super) stage: BulkStage,
+}
+
+/// Closing tabs, quitting, disconnecting (D-019, D-043): what is on its way and what
+/// it waits for. The one place that says so — a tab does not keep a note of its own.
+/// Its state changes only through the methods below; the handlers call them when a
+/// save or a run ends, a session is lost or a question is given up.
 #[derive(Debug, Default)]
 pub(super) struct Closing {
-    /// What to do once a "Save changes?" save has succeeded.
-    pub(super) after_save: Option<AfterSave>,
-    /// Quitting / disconnecting: what, and the tabs whose unsaved text the user chose
-    /// not to save.
-    pub(super) bulk: Option<(Bulk, Vec<u64>)>,
-    /// Quitting / disconnecting waits for COMMITs to finish.
-    pub(super) bulk_pending: Option<Bulk>,
+    /// Single tabs that close once what they wait for has happened.
+    tabs: Vec<(u64, TabWait)>,
+    /// Closing many tabs at once.
+    pub(super) bulk: Option<BulkClose>,
     /// An edited connection being connected again (D-035): its uid and the objects
     /// down to the tree row that was selected, to open the tree to it again.
     pub(super) reopen: Option<(u64, Vec<(crate::objects::ObjType, u32)>)>,
@@ -81,6 +109,133 @@ pub(super) struct Closing {
     pub(super) quit_after_restore: bool,
     /// The event loop ends.
     pub(super) quit: bool,
+}
+
+impl Closing {
+    /// Tab `tab` closes once `what` has happened.
+    pub(super) fn wait(&mut self, tab: u64, what: TabWait) {
+        self.tabs.retain(|(t, _)| *t != tab);
+        self.tabs.push((tab, what));
+    }
+
+    /// `what` has happened to tab `tab`: true when the tab waited for it (it waits
+    /// no longer).
+    pub(super) fn waited(&mut self, tab: u64, what: TabWait) -> bool {
+        let before = self.tabs.len();
+        self.tabs.retain(|w| *w != (tab, what));
+        self.tabs.len() != before
+    }
+
+    /// Closing many tabs is at its questions for `what`: starts it, or goes on with
+    /// it (the tabs not to save are remembered while it is the same thing).
+    pub(super) fn ask(&mut self, what: Bulk) -> &mut BulkClose {
+        let skip = match self.bulk.take() {
+            Some(b) if b.what == what => b.skip,
+            _ => Vec::new(),
+        };
+        self.bulk.insert(BulkClose {
+            what,
+            skip,
+            stage: BulkStage::Asking,
+        })
+    }
+
+    /// Closing many tabs waits for the save of `tab`.
+    pub(super) fn bulk_saving(&mut self, tab: u64) {
+        if let Some(b) = &mut self.bulk {
+            b.stage = BulkStage::Saving(tab);
+        }
+    }
+
+    /// Tab `tab` was saved: what closing many tabs goes on with, when it waited for
+    /// that save.
+    pub(super) fn bulk_saved(&mut self, tab: u64) -> Option<Bulk> {
+        match &mut self.bulk {
+            Some(b) if b.stage == BulkStage::Saving(tab) => {
+                b.stage = BulkStage::Asking;
+                Some(b.what)
+            }
+            _ => None,
+        }
+    }
+
+    /// The questions of closing many tabs are answered: what it is, and it waits for
+    /// the COMMITs of `tabs` now. `None` when it is not at its questions.
+    pub(super) fn commit(&mut self, tabs: Vec<u64>) -> Option<Bulk> {
+        match &mut self.bulk {
+            Some(b) if b.stage == BulkStage::Asking => {
+                b.stage = BulkStage::Committing(tabs);
+                Some(b.what)
+            }
+            _ => None,
+        }
+    }
+
+    /// What closing many tabs is, while it waits for COMMITs.
+    pub(super) fn committing(&self) -> Option<Bulk> {
+        match &self.bulk {
+            Some(b) if matches!(b.stage, BulkStage::Committing(_)) => Some(b.what),
+            _ => None,
+        }
+    }
+
+    /// Closing many tabs still waits for the COMMIT of `tab`.
+    pub(super) fn commit_awaited(&self, tab: u64) -> bool {
+        matches!(&self.bulk, Some(BulkClose { stage: BulkStage::Committing(tabs), .. })
+            if tabs.contains(&tab))
+    }
+
+    /// The COMMIT of `tab` was answered, or will not be: true when closing many tabs
+    /// waited for it.
+    pub(super) fn commit_answered(&mut self, tab: u64) -> bool {
+        match &mut self.bulk {
+            Some(BulkClose {
+                stage: BulkStage::Committing(tabs),
+                ..
+            }) => {
+                let before = tabs.len();
+                tabs.retain(|t| *t != tab);
+                tabs.len() != before
+            }
+            _ => false,
+        }
+    }
+
+    /// A save for closing was given up or has failed: nothing waits for a save any
+    /// more (the tabs stay open, closing many tabs stops).
+    pub(super) fn saves_off(&mut self) {
+        self.tabs.retain(|(_, w)| *w != TabWait::Save);
+        if matches!(&self.bulk, Some(b) if matches!(b.stage, BulkStage::Saving(_))) {
+            self.bulk = None;
+        }
+    }
+
+    /// The questions of closing many tabs were given up (`Cancel`, `Esc`).
+    pub(super) fn questions_off(&mut self) {
+        if matches!(&self.bulk, Some(b) if b.stage == BulkStage::Asking) {
+            self.bulk = None;
+        }
+    }
+
+    /// A COMMIT that closing many tabs waited for did not commit, or its session is
+    /// gone: closing many tabs stops.
+    pub(super) fn commits_off(&mut self) {
+        if self.committing().is_some() {
+            self.bulk = None;
+        }
+    }
+
+    /// No single tab waits for anything.
+    #[cfg(test)]
+    pub(super) fn nothing_waits(&self) -> bool {
+        self.tabs.is_empty()
+    }
+
+    /// Tab `tab` is closed: nothing waits for it.
+    pub(super) fn forget_tab(&mut self, tab: u64) {
+        self.tabs.retain(|(t, _)| *t != tab);
+        self.commit_answered(tab);
+    }
 }
 
 /// `Esc` waiting for a digit (D-032): the number of the wait, so that an older

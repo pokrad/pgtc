@@ -2139,8 +2139,8 @@ impl App {
         }
         if let Err(e) = result {
             // closing / quitting that waited for this save stops
-            self.closing.after_save = None;
-            self.closing.bulk = None;
+            self.closing.saves_off();
+            self.closing.questions_off();
             self.status.clear();
             self.error(&e);
             return;
