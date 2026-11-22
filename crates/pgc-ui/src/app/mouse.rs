@@ -28,10 +28,17 @@ impl App {
                 return;
             }
             if m.kind == MouseEventKind::Down(MouseButton::Left)
-                && let Some((stop, area)) = hits.template.iter().find(|(_, r)| r.contains(p))
+                && let Some((stop, _)) = hits.template.iter().find(|(_, r)| r.contains(p))
                 && let Some(form) = self.templates.form.as_mut()
             {
-                let event = form.click(*stop, p.y, *area);
+                // which of the stop's areas: a list field has one per row
+                let row = hits
+                    .template
+                    .iter()
+                    .filter(|(s, _)| s == stop)
+                    .position(|(_, r)| r.contains(p))
+                    .unwrap_or(0);
+                let event = form.click(*stop, row);
                 self.form_event(event);
             }
             return;
@@ -296,7 +303,10 @@ impl App {
                 self.focus = Focus::Tabs;
                 self.request_close_tab(id, true);
             }
-        } else if let Some(i) = hits.tabs.iter().position(|r| r.contains(p)) {
+        } else if let Some(i) = hits.tabs.iter().position(|r| r.contains(p))
+            // the tab may be gone since the frame the click is measured against
+            && i < self.tabs.len()
+        {
             self.active_tab = i;
             // dashboard / profiler: the list (D-059)
             self.focus = if self.list_tab() || self.db_stats().is_some() {

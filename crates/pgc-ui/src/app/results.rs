@@ -162,20 +162,16 @@ impl App {
 
     /// `double`: the second click of a double click, which jumps like Enter.
     pub(super) fn click_results(&mut self, p: Position, hits: &Hits, double: bool) {
-        let grid = hits.grid;
         let Some(q) = self.query_mut() else {
             return;
         };
         if q.on_messages() {
-            let i = (p.y - grid.y) as usize;
-            if i < q.messages.len() {
+            // the message drawn at the click, whatever its height
+            if let Some(&(m, _)) = hits.message_rows.iter().find(|(_, r)| r.contains(p))
+                && m < q.messages.len()
+            {
                 q.messages_all_selected = false;
-                q.message_cursor = hits
-                    .message_rows
-                    .iter()
-                    .find(|(_, r)| r.contains(p))
-                    .map(|(m, _)| *m)
-                    .unwrap_or(q.message_cursor);
+                q.message_cursor = m;
                 if double {
                     self.jump_to_message();
                 }

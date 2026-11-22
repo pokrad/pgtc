@@ -248,9 +248,11 @@ fn qt_ident(value: &Value) -> String {
     quote_ident(&value.to_string())
 }
 
-/// pgAdmin's `qtTypeIdent`: type names with spaces such as `double precision` stay
-/// unquoted, array suffixes are kept.
+/// pgAdmin's `qtTypeIdent`: a type name is quoted as an identifier, except the names
+/// the grammar knows — `integer`, `numeric`, `double precision`, `"char"` — and what
+/// is quoted already; array suffixes and a type modifier (`numeric(10,2)`) are kept.
 fn qt_type_ident(name: &str) -> String {
+    // spelled with a space, or always quoted
     const UNQUOTED: &[&str] = &[
         "bit varying",
         "\"char\"",
@@ -263,13 +265,44 @@ fn qt_type_ident(name: &str) -> String {
         "\"trigger\"",
         "\"unknown\"",
     ];
+    // the column-name keywords that are type names: quoted they would be other,
+    // mostly missing, types ("integer" is not integer)
+    const KEYWORD_TYPES: &[&str] = &[
+        "bigint",
+        "bit",
+        "boolean",
+        "char",
+        "character",
+        "dec",
+        "decimal",
+        "float",
+        "int",
+        "integer",
+        "interval",
+        "nchar",
+        "numeric",
+        "real",
+        "smallint",
+        "time",
+        "timestamp",
+        "varchar",
+    ];
     let mut base = name;
     let mut suffix = String::new();
     while let Some(b) = base.strip_suffix("[]") {
         base = b;
-        suffix.push_str("[]");
+        suffix.insert_str(0, "[]");
     }
-    if UNQUOTED.contains(&base.to_lowercase().as_str()) {
+    if base.ends_with(')')
+        && let Some(i) = base.find('(')
+    {
+        suffix.insert_str(0, &base[i..]);
+        base = base[..i].trim_end();
+    }
+    let lower = base.to_lowercase();
+    let known = UNQUOTED.contains(&lower.as_str()) || KEYWORD_TYPES.contains(&lower.as_str());
+    let quoted = base.len() >= 2 && base.starts_with('"') && base.ends_with('"');
+    if known || quoted {
         format!("{base}{suffix}")
     } else {
         format!("{}{suffix}", quote_ident(base))
@@ -338,6 +371,19 @@ mod tests {
             "double precision[]"
         );
         assert_eq!(render_str("{{ 'MyType'|qtTypeIdent }}", 0), "\"MyType\"");
+        // names of the grammar, with array suffix and type modifier
+        for (given, written) in [
+            ("int[]", "int[]"),
+            ("integer", "integer"),
+            ("numeric(10,2)", "numeric(10,2)"),
+            ("character varying(20)[]", "character varying(20)[]"),
+            ("\"My Type\"", "\"My Type\""),
+            ("My Type[]", "\"My Type\"[]"),
+            ("text", "text"),
+        ] {
+            let template = format!("{{{{ '{given}'|qtTypeIdent }}}}");
+            assert_eq!(render_str(&template, 0), written, "{given}");
+        }
         assert_eq!(
             render_str("{% if [{'a': 0}, {'a': 1}]|hasAny('a') %}y{% endif %}", 0),
             "y"

@@ -1129,20 +1129,28 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
                 .filter(writable)
                 .filter(|c| c.identity.is_empty() && !c.filled_by_sequence())
                 .collect();
-            lines.push((format!("INSERT INTO {table} ("), String::new()));
-            for (i, c) in cols.iter().enumerate() {
-                let comma = if i + 1 < cols.len() { "," } else { "" };
+            if cols.is_empty() {
+                // every column is filled by the database
                 lines.push((
-                    format!("    {}{comma}", quote_ident(&c.name)),
-                    insert_comment(c),
+                    format!("INSERT INTO {table} DEFAULT VALUES;"),
+                    String::new(),
                 ));
+            } else {
+                lines.push((format!("INSERT INTO {table} ("), String::new()));
+                for (i, c) in cols.iter().enumerate() {
+                    let comma = if i + 1 < cols.len() { "," } else { "" };
+                    lines.push((
+                        format!("    {}{comma}", quote_ident(&c.name)),
+                        insert_comment(c),
+                    ));
+                }
+                lines.push((") VALUES (".to_owned(), String::new()));
+                for (i, c) in cols.iter().enumerate() {
+                    let comma = if i + 1 < cols.len() { "," } else { "" };
+                    lines.push((format!("    {}{comma}", ph(c)), String::new()));
+                }
+                lines.push((");".to_owned(), String::new()));
             }
-            lines.push((") VALUES (".to_owned(), String::new()));
-            for (i, c) in cols.iter().enumerate() {
-                let comma = if i + 1 < cols.len() { "," } else { "" };
-                lines.push((format!("    {}{comma}", ph(c)), String::new()));
-            }
-            lines.push((");".to_owned(), String::new()));
         }
         Gen::Update => {
             let mut set: Vec<&GenColumn> = t
@@ -2846,6 +2854,17 @@ mod tests {
         let m: Vec<&str> = matching("gf").iter().map(|c| c.0).collect();
         assert_eq!(m, ["gf", "gfr", "gfs", "gft", "gfe", "gfj"]);
         assert_eq!(matching("dt+ x").len(), 1);
+    }
+
+    #[test]
+    fn insert_into_a_table_the_database_fills() {
+        // only a serial key and a generated column: nothing to list
+        let mut t = orders();
+        t.columns.retain(|c| c.name == "id" || c.name == "total");
+        assert_eq!(
+            generate(Gen::Insert, &t),
+            "INSERT INTO public.orders DEFAULT VALUES;"
+        );
     }
 
     #[test]

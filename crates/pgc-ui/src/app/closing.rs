@@ -123,6 +123,10 @@ impl App {
             handle.end(pgc_db::END_GRACE);
             self.connections.remove(&id);
         }
+        // a tab left of the active one: the active tab has moved one place
+        if i < self.active_tab {
+            self.active_tab -= 1;
+        }
         self.active_tab = self.active_tab.min(self.tabs.len() - 1);
         if self.focus == Focus::Results {
             self.focus = Focus::Tabs;

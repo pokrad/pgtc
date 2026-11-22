@@ -300,10 +300,12 @@ pub enum ExportEvent {
         id: u64,
         rows: u64,
     },
-    /// Writing failed; the file is deleted.
+    /// Writing failed; the incomplete file is deleted — `deleted` is false when the
+    /// file could not even be created (what is at the path is not this export's).
     Failed {
         id: u64,
         error: String,
+        deleted: bool,
     },
     /// Aborted; the file is deleted.
     Aborted {
@@ -325,11 +327,28 @@ pub fn spawn(
     std::thread::spawn(move || {
         let fail = |error: String| {
             let _ = std::fs::remove_file(&path);
-            sink(ExportEvent::Failed { id, error });
+            sink(ExportEvent::Failed {
+                id,
+                error,
+                deleted: true,
+            });
         };
-        let mut exporter = match File::create(&path)
-            .and_then(|f| Exporter::new(BufWriter::new(f), options, &columns))
-        {
+        let file = match File::create(&path) {
+            Ok(f) => f,
+            Err(e) => {
+                sink(ExportEvent::Failed {
+                    id,
+                    error: format!(
+                        "Cannot write {}:
+{e}",
+                        path.display()
+                    ),
+                    deleted: false,
+                });
+                return;
+            }
+        };
+        let mut exporter = match Exporter::new(BufWriter::new(file), options, &columns) {
             Ok(e) => e,
             Err(e) => {
                 fail(format!("Cannot write {}:\n{e}", path.display()));
@@ -566,12 +585,16 @@ mod tests {
         w.send(ToWriter::Abort).unwrap();
         assert_eq!(rx.recv().unwrap(), ExportEvent::Aborted { id: 2 });
         assert!(!path.exists());
-        // cannot create the file
+        // cannot create the file: nothing of this export to delete
         let path = dir.path().join("missing").join("c.csv");
         let _w = spawn(3, path, opts(ExportFormat::Csv), cols, sink);
         assert!(matches!(
             rx.recv().unwrap(),
-            ExportEvent::Failed { id: 3, .. }
+            ExportEvent::Failed {
+                id: 3,
+                deleted: false,
+                ..
+            }
         ));
     }
 }

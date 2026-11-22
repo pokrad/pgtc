@@ -1200,8 +1200,9 @@ impl TemplateForm {
         })
     }
 
-    /// A click on stop `s`.
-    pub fn click(&mut self, s: Stop, y: u16, area: Rect) -> FormEvent {
+    /// A click on stop `s`, on the `row`-th of its drawn areas (a list field has one
+    /// per row).
+    pub fn click(&mut self, s: Stop, row: usize) -> FormEvent {
         self.popup = None;
         self.focus = s;
         match s {
@@ -1223,11 +1224,9 @@ impl TemplateForm {
                         });
                     }
                     FieldValue::List { rows, selected } => {
-                        let _ = (y, area);
-                        let row_in_list = y.saturating_sub(area.y) as usize;
                         let first = (*selected).saturating_sub(LIST_ROWS as usize - 1);
-                        if first + row_in_list < rows.len() {
-                            *selected = first + row_in_list;
+                        if first + row < rows.len() {
+                            *selected = first + row;
                         }
                     }
                     _ => {}

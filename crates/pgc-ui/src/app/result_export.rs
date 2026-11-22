@@ -227,19 +227,27 @@ impl App {
                     self.status = text;
                 }
             }
-            ExportEvent::Failed { error, .. } => {
+            ExportEvent::Failed { error, deleted, .. } => {
                 if e.from_stream && paused {
                     q.close_paused();
                 }
-                q.info(format!("Export failed; {} was deleted.", e.path.display()));
+                if deleted {
+                    q.info(format!("Export failed; {} was deleted.", e.path.display()));
+                } else {
+                    q.info("Export failed.".to_owned());
+                }
                 if active {
                     self.status = "Export failed".to_owned();
                 }
-                self.error(&format!(
-                    "{error}
+                if deleted {
+                    self.error(&format!(
+                        "{error}
 
 The incomplete file was deleted."
-                ));
+                    ));
+                } else {
+                    self.error(&error);
+                }
             }
             ExportEvent::Aborted { .. } => {
                 if e.from_stream && paused {

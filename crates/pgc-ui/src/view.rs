@@ -583,6 +583,23 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
     }
 }
 
+/// The first message drawn in a Messages pane of `height` rows so that the cursor
+/// message is visible: about half the pane is given to the messages before it — less
+/// when the cursor message needs the rows itself. `lines`: the height of each message.
+fn first_message(lines: impl Iterator<Item = usize>, cursor: usize, height: usize) -> usize {
+    let lines: Vec<usize> = lines.take(cursor + 1).collect();
+    let Some(&own) = lines.get(cursor) else {
+        return cursor.saturating_sub(height / 2);
+    };
+    let mut free = (height / 2).min(height.saturating_sub(own));
+    let mut first = cursor;
+    while first > 0 && lines[first - 1] <= free {
+        first -= 1;
+        free -= lines[first];
+    }
+    first
+}
+
 /// The editor colours of a colour scheme.
 pub(crate) fn editor_styles(t: &crate::theme::Theme) -> EditorStyles {
     EditorStyles {
@@ -677,8 +694,11 @@ fn render_results(
         }
         let mut y = body.y;
         let hint = t.get(Role::MessagesInfo);
-        // keep the cursor message visible: start a few messages before it
-        let first = q.message_cursor.saturating_sub(body.height as usize / 2);
+        let first = first_message(
+            q.messages.iter().map(|m| m.text.lines().count()),
+            q.message_cursor,
+            body.height as usize,
+        );
         for (i, m) in q.messages.iter().enumerate().skip(first) {
             if y >= body.bottom() {
                 break;
@@ -829,4 +849,21 @@ fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: 
         Span::styled(right, style),
     ]);
     frame.render_widget(Paragraph::new(line), area);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::first_message;
+
+    #[test]
+    fn the_cursor_message_is_drawn() {
+        // one-line messages: half the pane before the cursor
+        assert_eq!(first_message([1; 20].into_iter(), 10, 10), 5);
+        assert_eq!(first_message([1; 20].into_iter(), 2, 10), 0);
+        // three-line notices before a four-line error: only what fits before it
+        assert_eq!(first_message([3, 3, 3, 3, 3, 3, 4].into_iter(), 6, 10), 5);
+        // a message higher than the pane starts at the top
+        assert_eq!(first_message([3, 3, 30].into_iter(), 2, 10), 2);
+        assert_eq!(first_message([1, 1].into_iter(), 1, 0), 1);
+    }
 }

@@ -252,6 +252,12 @@ impl App {
         }
         let statements: Vec<String> = p.planned.iter().map(|c| c.set_sql()).collect();
         p.phase = Phase::Applying;
+        // changed from the moment they are sent: closing the tab, quitting or a lost
+        // session before the answers puts them back as well, and they are noted in
+        // case pgtc ends without that (D-058)
+        p.applied = std::mem::take(&mut p.planned);
+        let (uid, applied) = (p.uid, p.applied.clone());
+        self.record_profiler_changes(uid, &applied);
         self.profiler_step(tab, statements);
     }
 
@@ -331,10 +337,6 @@ impl App {
         match p.phase {
             Phase::Applying => {
                 // whatever went through is put back by Stop
-                p.applied = std::mem::take(&mut p.planned);
-                // ... and noted until then, in case pgtc ends without it (D-058)
-                let (uid, applied) = (p.uid, p.applied.clone());
-                self.record_profiler_changes(uid, &applied);
                 if let Some(e) = error {
                     self.error(&format!(
                         "Cannot change the logging settings — this needs a superuser\n\

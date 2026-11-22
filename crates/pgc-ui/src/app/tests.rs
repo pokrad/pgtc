@@ -1164,6 +1164,23 @@ fn each_tab_shows_its_own_connection() {
 }
 
 #[test]
+fn closing_a_tab_left_of_the_active_one_keeps_the_active_tab() {
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "a");
+    let first = bound_tab(&mut a, uid, "shop", "");
+    let second = bound_tab(&mut a, uid, "shop", "");
+    let third = bound_tab(&mut a, uid, "shop", "");
+    a.active_tab = a.tabs.iter().position(|t| t.id == second).unwrap();
+    a.close_tab(first);
+    assert_eq!(a.tabs[a.active_tab].id, second);
+    // the active tab itself: the one that takes its place
+    a.close_tab(second);
+    assert_eq!(a.tabs[a.active_tab].id, third);
+    a.close_tab(third);
+    assert_eq!(a.active_tab, a.tabs.len() - 1);
+}
+
+#[test]
 fn disconnect_closes_the_servers_tabs() {
     let (mut a, _d) = app();
     let a_uid = add_server(&mut a, "a");
@@ -3301,6 +3318,8 @@ async fn profiler_asks_reads_and_restores() {
         vec![vec!["on", "stderr", "default", "-1", "default", "99"]],
     );
     key(&mut a, "y");
+    // sent: they count as changed before the answers (a tab closed now puts them back)
+    assert!(prof(&a).needs_restore());
     let keys = prof(&a).step_keys.clone();
     assert_eq!(keys.len(), 3);
     for k in keys {
@@ -5104,6 +5123,43 @@ fn memo_up_and_down_follow_the_wrapped_rows() {
     key(&mut d, Command::Down);
     key(&mut d, Command::Down);
     assert_eq!(e(&d), 34 + 3);
+}
+
+/// The saved key is the saved provider's: trying out another preset reads that
+/// provider's models without it.
+#[tokio::test]
+async fn the_saved_ai_key_is_not_sent_to_another_provider() {
+    let (mut a, _d) = app();
+    a.settings.ai.base_url = "https://api.anthropic.com".into();
+    let file = a.paths.ai_key_file();
+    std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+    std::fs::write(&file, "sk-saved").unwrap();
+    let has_key =
+        |req: &crate::ai::Request| req.headers.iter().any(|(_, v)| v.contains("sk-saved"));
+    let tick = |a: &mut App| {
+        a.update(Msg::Tick, &Hits::default());
+    };
+    a.run(Command::AiSettings);
+    tick(&mut a);
+    let req = a.ai.unsent_models.take().expect("the models are read");
+    assert!(has_key(&req), "the saved provider gets its key");
+    for preset in 2..=crate::ai::PRESETS.len() {
+        a.dialogs
+            .last_mut()
+            .unwrap()
+            .set_combo_selected("preset", preset);
+        tick(&mut a);
+        let req = a.ai.unsent_models.take().expect("the models are read");
+        assert!(!has_key(&req), "{}", req.url);
+    }
+    // back at the saved provider: with the key again
+    a.dialogs
+        .last_mut()
+        .unwrap()
+        .set_combo_selected("preset", 1);
+    tick(&mut a);
+    let req = a.ai.unsent_models.take().expect("the models are read");
+    assert!(has_key(&req));
 }
 
 /// Model and effort (D-073): Settings → AI… reads the provider's models into a combo

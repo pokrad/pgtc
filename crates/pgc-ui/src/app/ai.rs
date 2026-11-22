@@ -936,7 +936,11 @@ impl App {
             ..AiSettings::default()
         };
         let key = if self.ai.key_stars && typed == SAVED_KEY {
-            ai::api_key(&self.paths.ai_key_file())
+            // the saved key is the key of the saved provider: it is not sent to
+            // another one just because a preset or a URL was tried out
+            (a.base_url == self.settings.ai.base_url.trim())
+                .then(|| ai::api_key(&self.paths.ai_key_file()))
+                .flatten()
         } else {
             Some(typed).filter(|k| !k.is_empty())
         };

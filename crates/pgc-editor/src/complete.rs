@@ -130,9 +130,13 @@ impl Tok {
     fn name(&self) -> Option<String> {
         match self.kind {
             TokenKind::Text | TokenKind::Keyword => Some(self.text.to_lowercase()),
-            TokenKind::QuotedIdent if self.text.len() >= 2 && self.text.ends_with('"') => {
-                Some(self.text[1..self.text.len() - 1].replace("\"\"", "\""))
-            }
+            // a name that goes on from the line before does not start with the quote:
+            // its first part is not here, so it is no name to look up
+            TokenKind::QuotedIdent => self
+                .text
+                .strip_prefix('"')
+                .and_then(|t| t.strip_suffix('"'))
+                .map(|t| t.replace("\"\"", "\"")),
             _ => None,
         }
     }
@@ -390,6 +394,15 @@ mod tests {
         let a = at("select \"My T\".na| from x").unwrap();
         assert_eq!(a.want, Want::Qualified("My T".into()));
         assert_eq!(a.prefix, "na");
+    }
+
+    #[test]
+    fn a_quoted_name_from_the_line_before_is_no_name() {
+        // the second line starts inside the name: no slicing by the missing quote
+        let a = at("select * from \"My\nČolumn\".|");
+        assert!(a.is_none_or(|a| a.want != Want::Qualified("olumn".into())));
+        let a = at("select * from \"My\nx\" t where t.|").unwrap();
+        assert_eq!(a.want, Want::Qualified("t".into()));
     }
 
     #[test]

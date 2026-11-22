@@ -185,7 +185,8 @@ fn non_empty(s: String) -> Option<String> {
     (!s.is_empty()).then_some(s)
 }
 
-/// Percent-decoding (UTF-8).
+/// Percent-decoding (UTF-8). The errors do not quote the text: it may be the
+/// password, and they go to the log file.
 fn decode(s: &str) -> Result<String, String> {
     let bytes = s.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
@@ -195,7 +196,7 @@ fn decode(s: &str) -> Result<String, String> {
             let hex = s
                 .get(i + 1..i + 3)
                 .and_then(|h| u8::from_str_radix(h, 16).ok())
-                .ok_or_else(|| format!("invalid percent-encoding in '{s}'"))?;
+                .ok_or("invalid percent-encoding in the URI")?;
             out.push(hex);
             i += 3;
         } else {
@@ -203,7 +204,7 @@ fn decode(s: &str) -> Result<String, String> {
             i += 1;
         }
     }
-    String::from_utf8(out).map_err(|_| format!("invalid UTF-8 in '{s}'"))
+    String::from_utf8(out).map_err(|_| "invalid UTF-8 in the URI".to_owned())
 }
 
 #[cfg(test)]
@@ -217,6 +218,15 @@ mod tests {
                 .find(|(n, _)| *n == k)
                 .map(|(_, v)| v.to_string())
         }
+    }
+
+    #[test]
+    fn a_bad_uri_does_not_quote_its_parts() {
+        // the part may be the password, and the error goes to the log
+        let e = parse_uri("postgresql://me:100%safe@host/db").unwrap_err();
+        assert!(!e.contains("safe"), "{e}");
+        let e = parse_uri("postgresql://me:%ff%fesecret@host/db").unwrap_err();
+        assert!(!e.contains("secret"), "{e}");
     }
 
     #[test]
