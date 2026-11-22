@@ -181,6 +181,9 @@ pub(crate) async fn catalog(
     emit: &(dyn Fn(QueryEvent) + Sync),
 ) {
     let start = Instant::now();
+    // inside the user's open transaction: a failure must not fail it (D-019)
+    let guarded = crate::connection::own_savepoint(client).await;
+    let mut failed = false;
     for q in req.queries {
         let result = async {
             let stmt = client.prepare(&q.sql).await?;
@@ -212,6 +215,7 @@ pub(crate) async fn catalog(
                 m.internal_position = None;
                 m.internal_query = None;
                 emit(QueryEvent::Error(m));
+                failed = true;
                 break;
             }
             Ok((_, rows)) if rows.is_empty() && q.stop_if_empty.is_some() => {
@@ -231,6 +235,9 @@ pub(crate) async fn catalog(
                 });
             }
         }
+    }
+    if guarded {
+        crate::connection::end_own_savepoint(client, !failed).await;
     }
     // current transaction status (also after an error)
     let _ = client.simple_query("").await;

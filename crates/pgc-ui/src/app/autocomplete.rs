@@ -166,7 +166,7 @@ impl App {
                 return;
             }
         }
-        let (built, held) = completion_list(&a, q);
+        let (built, held) = completion_list(&a, q, !manual);
         let needs = built.needs.clone();
         if manual && held {
             self.status = NAMES_HELD.to_owned();
@@ -226,7 +226,7 @@ impl App {
             self.completion = None;
             return;
         }
-        let (built, _) = completion_list(&a, q);
+        let (built, _) = completion_list(&a, q, popup.auto);
         let needs = built.needs.clone();
         if built.items.is_empty() && !built.loading {
             self.completion = None;
@@ -354,6 +354,7 @@ impl App {
         if q.names.generation != generation {
             return;
         }
+        let failed = result.is_err();
         match (need, result) {
             (Need::Objects, Ok(rows)) => q.names.set_objects(rows),
             (Need::Columns(key), Ok(rows)) => {
@@ -377,7 +378,14 @@ impl App {
             }
         }
         if self.completion.as_ref().is_some_and(|p| p.tab == tab) {
-            self.refresh_completion();
+            if failed {
+                // the list would ask again at once, and again after every failure
+                // (a statement timeout on a large catalog): it closes; the next
+                // letter or Ctrl+Space asks once more
+                self.completion = None;
+            } else {
+                self.refresh_completion();
+            }
         }
     }
 }
@@ -386,13 +394,21 @@ impl App {
 /// by a running or paused result, another request on it would end that result (D-019):
 /// names that are not read yet are then not asked for, and the list offers what is
 /// known. Returns the list and whether names were held back.
+///
+/// `auto`: the list opened by itself while typing. Inside an open transaction it
+/// then asks the server for nothing — a query nobody asked for would take the
+/// transaction's snapshot (REPEATABLE READ) or wait on a lock in it; `Ctrl+Space`
+/// reads the names (in a savepoint, D-052).
 fn completion_list(
     a: &pgc_editor::complete::Analysis,
     q: &QueryState,
+    auto: bool,
 ) -> (crate::completion::Built, bool) {
     let mut built = crate::completion::build(a, &q.names, pgc_editor::lexer::keywords());
     // (in a failed transaction every lookup is an error until it is rolled back)
-    let busy = q.running.is_some() || q.tx == pgc_db::TxStatus::Failed;
+    let busy = q.running.is_some()
+        || q.tx == pgc_db::TxStatus::Failed
+        || (auto && q.tx == pgc_db::TxStatus::InTransaction);
     let held = busy && !built.needs.is_empty();
     if held {
         built.needs.clear();

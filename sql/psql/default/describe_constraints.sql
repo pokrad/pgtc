@@ -4,7 +4,7 @@
 SELECT r.conname::text AS "Name",
     CASE r.contype WHEN 'p' THEN 'primary key' WHEN 'u' THEN 'unique'
         WHEN 'f' THEN 'foreign key' WHEN 'c' THEN 'check' WHEN 'x' THEN 'exclusion'
-        WHEN 't' THEN 'trigger' END::text AS "Type",
+        WHEN 't' THEN 'trigger' WHEN 'n' THEN 'not null' END::text AS "Type",
     pg_catalog.pg_get_constraintdef(r.oid, true)::text AS "Definition"
 FROM t
 JOIN pg_catalog.pg_constraint r ON r.conrelid = t.oid

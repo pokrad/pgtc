@@ -120,6 +120,22 @@ async fn psql_commands_against_a_real_server() {
     assert!(t[1].starts_with("2: Columns · 3 rows"), "{t:?}");
     assert!(t.iter().any(|x| x.contains("Indexes")), "{t:?}");
     assert!(!t.iter().any(|x| x.contains("Triggers")), "{t:?}");
+    // a generated column reads as in psql, not as a default
+    a.editor().set_text(
+        "CREATE TEMP TABLE pgtc_psql_gen (a int, b int GENERATED ALWAYS AS (a * 2) STORED)",
+    );
+    key(&mut a, "F5");
+    pump(&mut a, &mut rx, &hits, idle).await;
+    a.editor().set_text("");
+    run(&mut a, "d pgtc_psql_gen");
+    pump(&mut a, &mut rx, &hits, idle).await;
+    let columns = &a.query().unwrap().results[1];
+    assert_eq!(
+        columns.rows[1][4].as_deref(),
+        Some("generated always as ((a * 2)) stored"),
+        "{:?}",
+        columns.rows
+    );
     // not found: a message, no result set
     run(&mut a, "d no_such_table_here");
     pump(&mut a, &mut rx, &hits, idle).await;

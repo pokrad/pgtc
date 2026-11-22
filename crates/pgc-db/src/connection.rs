@@ -617,10 +617,17 @@ async fn run(
             }) => {
                 let result = if read_only {
                     lookup_read_only(&client, &sql).await
-                } else if params.is_empty() {
-                    lookup(&client, &sql).await
                 } else {
-                    lookup_params(&client, &sql, &params).await
+                    let guarded = own_savepoint(&client).await;
+                    let result = if params.is_empty() {
+                        lookup(&client, &sql).await
+                    } else {
+                        lookup_params(&client, &sql, &params).await
+                    };
+                    if guarded {
+                        end_own_savepoint(&client, result.is_ok()).await;
+                    }
+                    result
                 };
                 sink(DbEvent::Lookup { id, key, result });
             }
@@ -672,6 +679,40 @@ async fn lookup_params(
                 .collect()
         })
         .collect()
+}
+
+/// A query of pgtc's own — names for autocomplete, a psql-style command, a choice
+/// list — inside the user's open transaction: it runs in a savepoint, so that its
+/// failure (a statement timeout, a lock timeout) does not fail the transaction and
+/// with it the user's uncommitted work (D-019). True when the savepoint is set; it
+/// is then ended with [`end_own_savepoint`]. Nothing is done outside a transaction.
+pub(crate) async fn own_savepoint(client: &tokio_postgres::Client) -> bool {
+    if client.transaction_status() != tokio_postgres::TransactionStatus::InTransaction {
+        return false;
+    }
+    match client.batch_execute("SAVEPOINT pgtc_own").await {
+        Ok(()) => true,
+        Err(e) => {
+            tracing::warn!("savepoint for a query of pgtc: {}", crate::describe(&e));
+            false
+        }
+    }
+}
+
+/// Ends the savepoint of [`own_savepoint`]: released, after a failure rolled back to
+/// first (the transaction is usable again).
+pub(crate) async fn end_own_savepoint(client: &tokio_postgres::Client, ok: bool) {
+    let end = if ok {
+        "RELEASE SAVEPOINT pgtc_own"
+    } else {
+        "ROLLBACK TO SAVEPOINT pgtc_own; RELEASE SAVEPOINT pgtc_own"
+    };
+    if let Err(e) = client.batch_execute(end).await {
+        tracing::warn!(
+            "ending the savepoint of a query of pgtc: {}",
+            crate::describe(&e)
+        );
+    }
 }
 
 /// [`lookup`] with nothing left behind: in a read-only transaction when none is open,

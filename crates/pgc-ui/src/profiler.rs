@@ -547,6 +547,10 @@ pub struct Profiler {
     pub read_key: Option<u64>,
     pub step_keys: Vec<u64>,
     pub step_error: Option<String>,
+    /// The step's statements that change a setting (not the reload), and how many of
+    /// them failed: when all did, nothing was changed.
+    pub step_settings: Vec<u64>,
+    pub step_settings_failed: usize,
     pub after_restore: AfterRestore,
     pub timer_seq: u64,
     pub error: Option<String>,
@@ -580,6 +584,8 @@ impl Profiler {
             read_key: None,
             step_keys: Vec::new(),
             step_error: None,
+            step_settings: Vec::new(),
+            step_settings_failed: 0,
             after_restore: AfterRestore::Stop,
             timer_seq: 0,
             error: None,

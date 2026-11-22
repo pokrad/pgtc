@@ -91,7 +91,9 @@ parser.</p>
 
 <h3>When the list opens</h3>
 <ul>
-  <li>By itself after a <code>.</code> and after the <b>third letter</b> of a word, if there are candidates.</li>
+  <li>By itself after a <code>.</code> and after the <b>third letter</b> of a word, if there are candidates.
+      Inside an open transaction the list that opens by itself offers only names read before — it sends no
+      query of its own; the key reads them (in a savepoint, so a failure does not abort the transaction).</li>
   <li>On <kbd>Ctrl+Space</kbd> or <kbd>Alt+/</kbd> (for terminals that intercept <kbd>Ctrl+Space</kbd>).</li>
   <li>Never inside a string constant, a comment or a quoted identifier — but inside the dollar-quoted body of a
       function or <code>DO</code> block.</li>

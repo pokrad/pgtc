@@ -317,6 +317,10 @@ desktop dependency.
     definition file was written by a newer pgtc (format N).* The number goes up only
     when an older pgtc could no longer read a newer file correctly; a new optional
     field does not change it, and fields this pgtc does not know are ignored.
+  - **Not a definition file:** a JSON file whose top level has keys, none of them a
+    definition file's (`format`, `extensions`, `schemas`), is refused — some other
+    JSON file picked by mistake would otherwise read as an empty database. Unknown
+    keys beside known ones stay ignored; `{}` is an empty database.
 - **Shared structure model:** one in-memory model (Rust structs describing the database
   structure):
   - Export = read database → model → write JSON file.
@@ -1105,6 +1109,9 @@ pgtc (binary)
   the connection's root certificate (`sslrootcert`), as libpq.
 - Implemented with `rustls` (crypto provider `ring`, avoids a CMake/NASM build on
   Windows) via `tokio-postgres-rustls`. Client certificates: later.
+- libpq's `allow` is not a mode of pgtc: in `PGSSLMODE` or a URI it is read as
+  `prefer` (encrypted whenever the server offers it), with a line in the log — not
+  refused.
 
 ### D-034 — Supported server versions
 - **Status:** Accepted (refines D-010, D-011)
@@ -1659,6 +1666,13 @@ pgtc (binary)
   not pass `Ctrl+Space` on), and **automatically** after typing `.` and after typing the
   **3rd letter** of a name. Opened automatically, the list appears only when it has
   entries; opened by key with nothing to offer, the status line says *No suggestions*.
+- **Inside an open transaction** the automatically opened list asks the server for
+  nothing: it offers the names read before and the keywords. A query nobody asked
+  for would take the transaction's snapshot (`REPEATABLE READ`) or wait on a lock in
+  it. The key reads the names. Every query of pgtc's own on a query tab's session —
+  these names, the `F4` commands (D-054), choice lists (D-046), the schema read for
+  the AI assistant (D-073) — runs in a **savepoint** when a transaction is open, so
+  its failure (a statement or lock timeout) does not fail the transaction.
 - **Context** (from the lexer, in the statement around the cursor, between `;`):
   - after `FROM` / `JOIN` / `UPDATE` / `INTO` / `TABLE` (and after `,` in a `FROM`
     list) → schemas and tables, views, materialized views, foreign tables;
@@ -2074,6 +2088,9 @@ pgtc (binary)
   kept in memory (`pg_stat_*`, `pg_locks`, `pg_replication_slots`); none scans a table,
   lists a directory (except `pg_ls_tmpdir`, see below) or takes a lock that could block
   other sessions. A list is read only while it is shown.
+- **A failed read of the statistics** (graphs and strip) is shown where the graphs
+  are — in the strip's rows when the window has no room for graphs — and leaves the
+  list below as it is; the list's own error is shown in the list.
 - **Summary strip:** always shown, four text lines between the graphs and the lists:
   - *Global:* server role (primary / standby), uptime, size of the databases and its
     growth per second, cache hit ratio and rollback ratio (both between the last two
@@ -2665,6 +2682,13 @@ pgtc (binary)
   sent (and how many came from the prompt cache) and received, and the end with the
   time — or the error, or that it was cancelled. The SQL still goes into the editor
   only when it is complete.
+- **Where the answer goes:** to the place the request was sent from — the selection
+  and cursor of then, whatever is selected when it arrives (the editor stays usable
+  while a request runs). When the text was edited meanwhile, the selection that was
+  sent is looked for: at its old place, else at the one place its text is found. If
+  it cannot be found (its text was changed), or no selection was sent and the text
+  was edited, the answer goes in at the cursor, replaces nothing, and the status
+  line says so.
 - **The answer:** code fences (```` ``` ````) are removed; the SQL replaces the
   selection, or is inserted at the cursor when there is none (on a line of its own),
   with the prompt above it as `--` comment lines; text outside code fences becomes
@@ -2727,7 +2751,9 @@ pgtc (binary)
     loop with its fields and the `loop.last` comma.
   - *Insert construct:* `if`, `if / else`, `for`, `{% if has("…") %}` with the features
     of the feature table (D-011) to pick from, `server_version`, `database`. A
-    selection is wrapped by the construct.
+    selection is wrapped by the construct. These two are pgtc's variables of every
+    template: a parameter may not have one of their names (a template that declares
+    one is an error, not a silently replaced value).
   - *Insert filter:* `ident`, `qtLiteral`, `indent`, `default`, `upper`, … each with a
     one-line description. The filter goes behind the value of the `{{ }}` the cursor
     is in; a selected name becomes `{{ name|filter }}`; elsewhere a new `{{ |filter }}`.
@@ -2978,3 +3004,4 @@ pgtc (binary)
 | 2026-11-22 | D-074 updated: the template tab's *Parameters* and *Preview* captions are bars of their own row instead of titles on the separator lines. |
 | 2026-11-22 | D-033 updated: `require` with a root certificate file checks the chain against it, as `verify-ca` (libpq). D-073 updated: the saved AI key belongs to the saved base URL — another URL in the settings dialog takes the stars away, the saved URL brings them back. D-064 updated: the editor's text has LF line ends only; a file read with CR LF is saved with CR LF. D-048 updated: an ordinary column is not replaced by a generated one (or the reverse) — a note instead; `CREATE EXTENSION … CASCADE`; `check_function_bodies` is reset at the end of the script. |
 | 2026-11-22 | D-048 updated: a view that differs is always dropped and created again, with the chain of views that depend on it or on a dropped function (also views only in the database); tables stay out of the chain. A column's type is changed with `USING`, its default dropped before and set after. New enum labels come first in the script, with a note. |
+| 2026-11-22 | D-052 / D-019 updated: inside an open transaction the automatically opened autocomplete list reads nothing from the server; pgtc's own queries on a query tab's session run in a savepoint there. D-073 updated: the AI answer goes to the place the request was sent from. D-074 updated: `server_version` and `database` are no parameter names. D-033 updated: `sslmode=allow` is read as `prefer`. D-012 updated: a JSON file with nothing of a definition file is refused. D-057 updated: a failed read of the statistics is shown where the graphs are. |

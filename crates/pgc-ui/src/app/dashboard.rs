@@ -87,6 +87,7 @@ impl App {
             && let Some(d) = self.dashboard_of(tab)
         {
             d.error = None;
+            d.stats_error = None;
             d.stats_key = None;
             d.size_key = None;
             d.list_key = None;
@@ -207,6 +208,7 @@ impl App {
             d.stats_key = None;
             match result {
                 Ok(rows) => {
+                    d.stats_error = None;
                     if let Some(s) = rows
                         .first()
                         .and_then(|r| crate::dashboard::Sample::from_row(r))
@@ -214,7 +216,9 @@ impl App {
                         d.apply_stats(s);
                     }
                 }
-                Err(e) => d.error = Some(e.to_string()),
+                // its own place: the list's answer, which comes next, would take
+                // it away at once
+                Err(e) => d.stats_error = Some(e.to_string()),
             }
         } else if d.size_key == Some(key) {
             d.size_key = None;

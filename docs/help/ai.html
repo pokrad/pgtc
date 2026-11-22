@@ -143,6 +143,8 @@ is inserted only when the answer is complete.</p>
   <figcaption>The prompt as comments, then the SQL. Nothing has run.</figcaption>
 </figure>
 <ul>
+  <li>Goes where the request was sent from, whatever is selected when it arrives. If the text sent as selection
+      was edited meanwhile, it is inserted at the cursor and replaces nothing (the status line says so).</li>
   <li>Replaces the selection, or is inserted at the cursor on a line of its own, preceded by the prompt as
       <code>--</code> comments.</li>
   <li>Markdown code fences are removed; text around them becomes comments.</li>

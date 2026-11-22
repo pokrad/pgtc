@@ -583,6 +583,9 @@ pub struct Dashboard {
     pub timer_seq: u64,
     /// Error of the last refresh (shown in the tab).
     pub error: Option<String>,
+    /// Error of the last read of the statistics: shown where the graphs are — the
+    /// list below does not depend on it (D-057).
+    pub stats_error: Option<String>,
 }
 
 impl Dashboard {
@@ -630,6 +633,7 @@ impl Dashboard {
             asking: None,
             timer_seq: 0,
             error: None,
+            stats_error: None,
             pane: Pane::default(),
         }
     }
@@ -1311,12 +1315,36 @@ pub fn render(
         Constraint::Fill(1),
     ])
     .areas(area);
+    // the statistics could not be read: the reason where they would be
+    let stats_error = |frame: &mut Frame, area: Rect| {
+        let lines: Vec<Line> = d
+            .stats_error
+            .iter()
+            .flat_map(|e| e.lines())
+            .map(|l| {
+                Line::from(Span::styled(
+                    format!(" {l}"),
+                    theme.get(Role::MessagesError),
+                ))
+            })
+            .collect();
+        frame.render_widget(Paragraph::new(lines).style(normal), area);
+    };
+    let failed = d.stats_error.is_some();
     if rows > 0 {
-        render_graphs(frame, d, graphs_area, rows, spark, theme);
+        if failed {
+            stats_error(frame, graphs_area);
+        } else {
+            render_graphs(frame, d, graphs_area, rows, spark, theme);
+        }
         separator(frame, sep0);
     }
     if strip > 0 {
-        render_strip(frame, d, strip_area, theme);
+        if failed && rows == 0 {
+            stats_error(frame, strip_area);
+        } else {
+            render_strip(frame, d, strip_area, theme);
+        }
         separator(frame, sep1);
     }
     separator(frame, sep2);

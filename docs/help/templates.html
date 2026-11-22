@@ -268,7 +268,7 @@ CREATE TABLE {{ schema|ident }}.{{ name|ident }} (
 <tr><td class="k"><code>{{ x|ident }}</code></td><td>Identifier: double-quoted unless it matches <code>[a-z_][a-z0-9_]*</code> and is not a reserved, type-name or column-name key word. Use it for every identifier.</td></tr>
 <tr><td class="k"><code>{{ x|qtLiteral }}</code></td><td>String literal: <code>O'Brien</code> → <code>'O''Brien'</code>.</td></tr>
 <tr><td class="k"><code>{{ (name ~ "_pkey")|ident }}</code></td><td>A derived name, quoted as one identifier.</td></tr>
-<tr><td class="k"><code>{{ server_version }}</code>, <code>{{ database }}</code></td><td><code>server_version_num</code> as an integer (<code>170002</code>); the tab's database.</td></tr>
+<tr><td class="k"><code>{{ server_version }}</code>, <code>{{ database }}</code></td><td><code>server_version_num</code> as an integer (<code>170002</code>); the tab's database. No parameter may have one of these names.</td></tr>
 <tr><td class="k"><code>{% if has("NullsNotDistinct") %}</code></td><td>Feature test against pgtc's feature table. An unknown feature name is a rendering error.</td></tr>
 </table></div>
 <ul>

@@ -4155,6 +4155,64 @@ async fn profiler_note_is_dropped_when_nothing_is_changed_or_on_forget() {
     assert_eq!(a.next_key, before, "nothing is read");
 }
 
+/// Start without the right to change settings: every ALTER SYSTEM fails, so nothing
+/// was changed — one message, no restore, no note left behind.
+#[tokio::test]
+async fn profiler_start_without_rights_changes_and_notes_nothing() {
+    let (mut a, _d) = app();
+    let note = a.paths.profiler_restore_file();
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    key(&mut a, "Home");
+    a.run(Command::SqlProfiler);
+    let tab = a.tabs[1].id;
+    let conn = {
+        let p = a.tabs[1].profiler_mut().unwrap();
+        let c = p.conn.as_mut().unwrap();
+        c.handle.abort();
+        c.handle = pgc_db::ConnectionHandle::detached(c.id);
+        c.connected = true;
+        p.version = Some(pgc_core::ServerVersion(170002));
+        c.id
+    };
+    fn prof(a: &App) -> &crate::profiler::Profiler {
+        a.tabs[1].profiler().unwrap()
+    }
+    key(&mut a, "F5");
+    let k = prof(&a).step_keys[0];
+    profiler_answer(
+        &mut a,
+        conn,
+        tab,
+        k,
+        vec![vec!["on", "stderr", "default", "-1", "default", "99"]],
+    );
+    key(&mut a, "y");
+    for k in prof(&a).step_keys.clone() {
+        a.on_profiler_event(
+            conn,
+            tab,
+            DbEvent::Lookup {
+                id: conn,
+                key: k,
+                result: Err(DbError::Other("permission denied".into())),
+            },
+        );
+    }
+    assert_eq!(prof(&a).phase, crate::profiler::Phase::Stopped);
+    assert!(!prof(&a).needs_restore());
+    assert!(prof(&a).step_keys.is_empty(), "no restore was sent");
+    assert_eq!(a.dialogs.len(), 1, "one message");
+    let text = &a.dialogs[0].widgets[0].label.text;
+    assert!(
+        text.contains("Cannot change the logging settings"),
+        "{text}"
+    );
+    let left = std::fs::read_to_string(&note).unwrap_or_default();
+    assert!(!left.contains("log_min_duration_statement"), "{left}");
+}
+
 /// Start notes the changed settings; Stop removes the note once they are back
 /// (D-058).
 #[tokio::test]
@@ -4246,13 +4304,24 @@ async fn file_dialogs_list_and_check_in_the_background() {
     a.open_file_dialog(false);
     assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::OpenFile);
     assert_eq!(rows(&a), "Reading…");
-    // a resize now fits the list to its one row; the listing gets the height back
+    // a resize now keeps the list's height, though it has one row; a screen too
+    // low for it makes it smaller, and it gets the height back
     let height = a.dialogs.last().unwrap().list_rows_of("files");
     a.dialogs
         .last_mut()
         .unwrap()
         .fit_text(Rect::new(0, 0, 100, 40));
-    assert_eq!(a.dialogs.last().unwrap().list_rows_of("files"), 1);
+    assert_eq!(a.dialogs.last().unwrap().list_rows_of("files"), height);
+    a.dialogs
+        .last_mut()
+        .unwrap()
+        .fit_text(Rect::new(0, 0, 100, 12));
+    assert!(a.dialogs.last().unwrap().list_rows_of("files") < height);
+    a.dialogs
+        .last_mut()
+        .unwrap()
+        .fit_text(Rect::new(0, 0, 100, 40));
+    assert_eq!(a.dialogs.last().unwrap().list_rows_of("files"), height);
     // nothing to choose yet
     key(&mut a, "Enter");
     assert_eq!(a.dialogs.len(), 1);

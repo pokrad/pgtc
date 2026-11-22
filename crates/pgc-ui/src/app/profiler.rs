@@ -269,6 +269,7 @@ impl App {
             .and_then(|p| p.version)
             .map(|v| self.render_profiler_sql(v, "reload.sql"));
         let mut keys = Vec::new();
+        let settings = statements.len();
         let mut sqls = statements;
         match reload {
             Some(Ok(sql)) => sqls.push(sql),
@@ -288,6 +289,8 @@ impl App {
         for (key, sql) in keys.iter().zip(sqls) {
             c.handle.lookup(*key, sql);
         }
+        p.step_settings = keys[..settings.min(keys.len())].to_vec();
+        p.step_settings_failed = 0;
         p.step_keys = keys;
         p.step_error = None;
     }
@@ -336,12 +339,21 @@ impl App {
         let error = p.step_error.take();
         match p.phase {
             Phase::Applying => {
-                // whatever went through is put back by Stop
                 if let Some(e) = error {
+                    // no setting was changed (no ALTER SYSTEM rights): nothing to put
+                    // back — a restore would only fail the same way —, nothing noted
+                    if p.step_settings_failed >= p.step_settings.len() {
+                        p.applied.clear();
+                        p.phase = Phase::Stopped;
+                        let uid = p.uid;
+                        self.forget_profiler_changes(uid);
+                        self.status = "Profiler not started".to_owned();
+                    }
                     self.error(&format!(
                         "Cannot change the logging settings — this needs a superuser\n\
                          (or ALTER SYSTEM rights):\n{e}"
                     ));
+                    // whatever went through is put back by Stop
                     self.profiler_stop(tab, AfterRestore::Stop);
                 } else {
                     self.profiler_running(tab);
@@ -519,6 +531,9 @@ impl App {
         }
         if let Err(e) = result {
             p.step_error.get_or_insert_with(|| e.to_string());
+            if p.step_settings.contains(&key) {
+                p.step_settings_failed += 1;
+            }
         }
         if p.step_keys.is_empty() {
             self.profiler_step_done(tab);

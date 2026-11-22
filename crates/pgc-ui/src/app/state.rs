@@ -118,6 +118,18 @@ pub(super) struct AiRun {
     pub(super) prompt: String,
     pub(super) started: Instant,
     pub(super) abort: Option<tokio::task::AbortHandle>,
+    /// Where the answer belongs: the cursor and the selection of the editor when the
+    /// request was sent (the model was told its answer replaces that selection).
+    pub(super) place: AiPlace,
+}
+
+/// The place in the editor an AI request was sent for (D-073).
+pub(super) struct AiPlace {
+    pub(super) cursor: usize,
+    pub(super) selection: Option<(usize, usize)>,
+    pub(super) selected: Option<String>,
+    /// The editor's revision then: the same now means nothing was edited meanwhile.
+    pub(super) revision: u64,
 }
 
 /// The AI assistant (D-073).

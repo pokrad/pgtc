@@ -95,7 +95,7 @@ async fn event_loop(
 ) -> Result<()> {
     // Terminal input → messages.
     let input_tx = tx.clone();
-    let input = tokio::spawn(async move {
+    let mut input = tokio::spawn(async move {
         let mut events = crossterm::event::EventStream::new();
         while let Some(event) = events.next().await {
             match event {
@@ -117,7 +117,17 @@ async fn event_loop(
         if let Err(e) = tui.draw(|frame| view::render(frame, app, &mut hits)) {
             break Err(e.into());
         }
-        let Some(msg) = rx.recv().await else {
+        // the input task ends when the terminal is gone (a closed SSH session, a
+        // read error): there is nobody to work for — pgtc ends, and with it its
+        // sessions, instead of staying behind with them
+        let msg = tokio::select! {
+            msg = rx.recv() => msg,
+            _ = &mut input => {
+                tracing::error!("terminal input has ended; quitting");
+                None
+            }
+        };
+        let Some(msg) = msg else {
             break Ok(());
         };
         let mut effects = app.update(msg, &hits);

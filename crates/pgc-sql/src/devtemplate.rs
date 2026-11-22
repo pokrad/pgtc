@@ -451,6 +451,13 @@ fn check_params(params: &[Param], in_list: bool) -> Result<(), String> {
         if seen.contains(&n) {
             return Err(format!("parameter '{n}' is declared twice"));
         }
+        // pgtc's own variables of a template: a parameter of that name would be
+        // replaced by them without a word (D-046)
+        if !in_list && CONTEXT_VARIABLES.iter().any(|(v, _)| *v == n) {
+            return Err(format!(
+                "parameter name '{n}' is taken: it is pgtc's variable of that name"
+            ));
+        }
         seen.push(n);
         if p.fill && (p.kind != ParamType::Sql || in_list) {
             return Err(format!(
@@ -663,6 +670,7 @@ pub fn render(
         };
         vars.insert(p.name.clone(), value);
     }
+    // (their names: CONTEXT_VARIABLES)
     vars.insert("server_version".to_owned(), Value::from(ctx.version.0));
     vars.insert("database".to_owned(), Value::from(ctx.database.clone()));
     env.render_str(&template.body, Value::from(vars))
@@ -1011,6 +1019,12 @@ fn version_dirs(dir: &Path) -> Vec<std::path::PathBuf> {
         .collect()
 }
 
+/// A rename that changes only the case of the name (`tables` → `Tables`): where file
+/// names ignore case (Windows, macOS) the new name "exists" — it is the item itself.
+fn only_case_differs(from: &str, to: &str) -> bool {
+    from != to && from.to_lowercase() == to.to_lowercase()
+}
+
 fn sibling(rel: &str, name: &str) -> String {
     match rel.rsplit_once('/') {
         Some((parent, _)) => format!("{parent}/{name}"),
@@ -1037,7 +1051,7 @@ impl LibraryOp {
                 check_file_name(name)?;
                 let to = sibling(section, name.trim());
                 let dirs = version_dirs(dir);
-                if dirs.iter().any(|d| d.join(&to).exists()) {
+                if !only_case_differs(section, &to) && dirs.iter().any(|d| d.join(&to).exists()) {
                     return Err(format!("The section {to} exists already."));
                 }
                 for d in dirs {
@@ -1074,12 +1088,14 @@ impl LibraryOp {
                 check_file_name(stem)?;
                 let to = sibling(rel, &format!("{}.{EXTENSION}", stem.trim()));
                 let dirs = version_dirs(dir);
-                if dirs.iter().any(|d| d.join(&to).exists()) {
+                let copy = matches!(self, LibraryOp::Copy { .. });
+                if !(only_case_differs(rel, &to) && !copy)
+                    && dirs.iter().any(|d| d.join(&to).exists())
+                {
                     return Err(format!(
                         "A template with the file name {to} exists already."
                     ));
                 }
-                let copy = matches!(self, LibraryOp::Copy { .. });
                 for d in dirs {
                     let from = d.join(rel);
                     if !from.is_file() {
@@ -1423,6 +1439,11 @@ CREATE FUNCTION {{ schema|ident }}.{{ name|ident }}(
     #[test]
     fn header_errors() {
         assert!(parse("CREATE").unwrap_err().contains("start with"));
+        // pgtc's own variables are no parameter names
+        for name in ["database", "server_version"] {
+            let text = format!("+++\n[[param]]\nname = \"{name}\"\ntype = \"text\"\n+++\n");
+            assert!(parse(&text).unwrap_err().contains("is taken"), "{name}");
+        }
         assert!(
             parse("+++\nname = \"x\"\n")
                 .unwrap_err()
@@ -1803,6 +1824,31 @@ name = \"{body}\"
         .run(root)
         .unwrap();
         assert!(root.join("default/Own").is_dir());
+        // only the case of a name changes: not "exists already" where file names
+        // ignore case
+        LibraryOp::RenameSection {
+            section: "Own".into(),
+            name: "OWN".into(),
+        }
+        .run(root)
+        .unwrap();
+        LibraryOp::Rename {
+            rel: "Tables/first.pgtemplate".into(),
+            stem: "First".into(),
+        }
+        .run(root)
+        .unwrap();
+        let names: Vec<String> = std::fs::read_dir(root.join("default/Tables"))
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert!(names.contains(&"First.pgtemplate".to_owned()), "{names:?}");
+        LibraryOp::RenameSection {
+            section: "OWN".into(),
+            name: "Own".into(),
+        }
+        .run(root)
+        .unwrap();
         LibraryOp::DeleteSection("Own".into()).run(root).unwrap();
         assert!(!root.join("default/Own").exists());
     }

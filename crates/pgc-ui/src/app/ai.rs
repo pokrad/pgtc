@@ -394,12 +394,22 @@ impl App {
                 None
             }
         };
+        let place = {
+            let e = self.tab_index(tab).map(|i| &self.tabs[i].view.editor);
+            super::state::AiPlace {
+                cursor: e.map_or(0, |e| e.cursor()),
+                selection: e.and_then(|e| e.selection()),
+                selected: e.and_then(|e| e.selected_text()),
+                revision: e.map_or(0, |e| e.revision()),
+            }
+        };
         self.ai.run = Some(AiRun {
             id,
             tab,
             prompt,
             started: std::time::Instant::now(),
             abort,
+            place,
         });
         self.ai_note(tab, &asked);
         self.status = format!(
@@ -484,12 +494,19 @@ impl App {
                 );
                 let mut text = ai::editor_insert(&run.prompt, &answer);
                 let editor = &mut self.tabs[i].view.editor;
+                // where it was asked for, not where the cursor happens to be now
+                let found = place_answer(editor, &run.place);
                 // the prompt comment starts a line of its own
                 if editor.selection().is_none() && editor.cursor_line_col().1 > 0 {
                     text.insert(0, '\n');
                 }
                 editor.apply(Action::Insert(text));
-                self.status = "AI answer inserted — review it before you run it".to_owned();
+                self.status = if found {
+                    "AI answer inserted — review it before you run it".to_owned()
+                } else {
+                    "AI answer inserted at the cursor: the text it was asked for has changed"
+                        .to_owned()
+                };
             }
             Err(e) => {
                 self.ai_note(run.tab, &format!("failed after {after}: {e}"));
@@ -1059,4 +1076,108 @@ fn group(n: usize) -> String {
         out.push(c);
     }
     out
+}
+
+/// Puts the cursor and the selection of `editor` where the answer of a request sent
+/// from `place` belongs (D-073). Nothing edited since: the cursor and selection of
+/// then. Edited: the selection that was sent, where it is now — at its old place, or
+/// the one place its text is found. False when that is not possible (no selection was
+/// sent, or its text has changed): the answer then goes to the cursor as it is, and
+/// replaces nothing.
+fn place_answer(editor: &mut pgc_editor::Editor, place: &super::state::AiPlace) -> bool {
+    let select = |editor: &mut pgc_editor::Editor, (start, end): (usize, usize)| {
+        editor.set_cursor(start, false);
+        editor.set_cursor(end, true);
+    };
+    if editor.revision() == place.revision {
+        match place.selection {
+            Some(range) => select(editor, range),
+            None => editor.set_cursor(place.cursor, false),
+        }
+        return true;
+    }
+    let now = editor.cursor();
+    if let (Some(range), Some(sent)) = (place.selection, &place.selected) {
+        let text = editor.text();
+        let byte = |pos: usize| text.char_indices().nth(pos).map_or(text.len(), |(b, _)| b);
+        if text.get(byte(range.0)..byte(range.1)) == Some(sent.as_str()) {
+            select(editor, range);
+            return true;
+        }
+        let mut places = text.match_indices(sent.as_str());
+        if let (Some((at, _)), None) = (places.next(), places.next()) {
+            let start = text[..at].chars().count();
+            select(editor, (start, start + sent.chars().count()));
+            return true;
+        }
+    }
+    // (a selection made meanwhile is not what the answer is for)
+    editor.set_cursor(now, false);
+    false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::place_answer;
+    use crate::app::state::AiPlace;
+    use pgc_editor::{Action, Editor};
+
+    /// The place of a request sent with `start..end` selected.
+    fn sent(e: &mut Editor, start: usize, end: usize) -> AiPlace {
+        e.set_cursor(start, false);
+        e.set_cursor(end, true);
+        AiPlace {
+            cursor: e.cursor(),
+            selection: e.selection(),
+            selected: e.selected_text(),
+            revision: e.revision(),
+        }
+    }
+
+    /// The answer replaces what was sent, not what is selected when it arrives.
+    #[test]
+    fn the_answer_goes_where_it_was_asked_for() {
+        let text = "select a;\nselect b;\n";
+        // another statement is selected meanwhile
+        let mut e = Editor::new(text, false, 4);
+        let place = sent(&mut e, 0, 9);
+        e.set_cursor(10, false);
+        e.set_cursor(19, true);
+        assert!(place_answer(&mut e, &place));
+        assert_eq!(e.selected_text().as_deref(), Some("select a;"));
+
+        // text typed before it: the sent text is found where it is now
+        let mut e = Editor::new(text, false, 4);
+        let place = sent(&mut e, 10, 19);
+        e.set_cursor(0, false);
+        e.apply(Action::Insert("-- note\n".into()));
+        assert!(place_answer(&mut e, &place));
+        assert_eq!(e.selection(), Some((18, 27)));
+        assert_eq!(e.selected_text().as_deref(), Some("select b;"));
+
+        // the sent text itself was changed: at the cursor, nothing is replaced
+        let mut e = Editor::new(text, false, 4);
+        let place = sent(&mut e, 0, 9);
+        e.set_cursor(7, false);
+        e.apply(Action::Insert("x".into()));
+        e.set_cursor(11, false);
+        e.set_cursor(20, true);
+        assert!(!place_answer(&mut e, &place));
+        assert_eq!(e.selection(), None);
+        assert_eq!(e.cursor(), 20);
+
+        // no selection was sent and nothing was edited: the cursor of then
+        let mut e = Editor::new(text, false, 4);
+        e.set_cursor(10, false);
+        let place = AiPlace {
+            cursor: 10,
+            selection: None,
+            selected: None,
+            revision: e.revision(),
+        };
+        e.set_cursor(0, false);
+        e.set_cursor(9, true);
+        assert!(place_answer(&mut e, &place));
+        assert_eq!((e.cursor(), e.selection()), (10, None));
+    }
 }

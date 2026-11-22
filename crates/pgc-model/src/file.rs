@@ -20,7 +20,12 @@ pub enum FileError {
     Format(#[from] serde_json::Error),
     #[error("This definition file was written by a newer pgtc (format {0}).")]
     Newer(u32),
+    #[error("not a definition file: it has \"{0}\", and nothing a definition file has")]
+    Foreign(String),
 }
+
+/// The keys at the top of a definition file.
+const TOP_KEYS: [&str; 3] = ["format", "extensions", "schemas"];
 
 /// The file as written: the format number, then the database.
 #[derive(Serialize)]
@@ -60,6 +65,17 @@ pub fn from_text(text: &str) -> Result<Database, FileError> {
     let file: Input = serde_json::from_str(text)?;
     if file.format > FORMAT {
         return Err(FileError::Newer(file.format));
+    }
+    // every part of a definition may be missing, so any JSON object would read as an
+    // empty database (a package.json picked by mistake: "nothing differs"). A file
+    // with keys, none of them a definition file's, is some other file. Unknown keys
+    // beside known ones are ignored, as D-012 says (a newer pgtc may add some).
+    let top: std::collections::BTreeMap<String, serde::de::IgnoredAny> =
+        serde_json::from_str(text)?;
+    if !top.keys().any(|k| TOP_KEYS.contains(&k.as_str()))
+        && let Some(key) = top.into_keys().next()
+    {
+        return Err(FileError::Foreign(key));
     }
     let mut db = file.database;
     db.normalize();
@@ -159,6 +175,9 @@ mod tests {
     fn bad_files_are_errors() {
         assert!(matches!(from_text("{"), Err(FileError::Format(_))));
         assert!(from_text("{}").unwrap().schemas.is_empty());
+        // some other JSON file
+        let e = from_text(r#"{"name": "app", "version": "1.0.0"}"#).unwrap_err();
+        assert!(matches!(&e, FileError::Foreign(k) if k == "name"), "{e}");
         // an enum without labels, a composite type without attributes
         let text = r#"{"schemas": [{"name": "s", "types": [
             {"name": "e", "kind": "enum"}, {"name": "c", "kind": "composite"}]}]}"#;

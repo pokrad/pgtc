@@ -120,7 +120,8 @@ again.</p>
   <li>Trusted CAs come from the operating system's store. With <span class="ui">Root cert. file</span> set,
       <b>only</b> the certificates in that PEM file are trusted — and <code>require</code> then checks the chain
       against it, as <code>verify-ca</code> does.</li>
-  <li>Client certificates (<code>sslcert</code> / <code>sslkey</code>) are not supported.</li>
+  <li>Client certificates (<code>sslcert</code> / <code>sslkey</code>) are not supported.
+      <code>sslmode=allow</code> is read as <code>prefer</code>.</li>
   <li>A <a href="query.html">cancel request</a> goes over its own connection with the same <code>sslmode</code> and
       root certificate.</li>
 </ul>

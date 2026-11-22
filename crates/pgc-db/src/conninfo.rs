@@ -76,7 +76,7 @@ pub fn resolve_with(
         None => None,
     };
     let env_ssl = match env("PGSSLMODE") {
-        Some(m) => Some(SslMode::from_name(&m).ok_or_else(|| format!("invalid PGSSLMODE '{m}'"))?),
+        Some(m) => Some(ssl_mode(&m).ok_or_else(|| format!("invalid PGSSLMODE '{m}'"))?),
         None => None,
     };
 
@@ -167,7 +167,7 @@ pub fn parse_uri(uri: &str) -> Result<UriParts, String> {
         match k {
             "sslmode" => {
                 parts.ssl_mode =
-                    Some(SslMode::from_name(&v).ok_or_else(|| format!("invalid sslmode '{v}'"))?);
+                    Some(ssl_mode(&v).ok_or_else(|| format!("invalid sslmode '{v}'"))?);
             }
             "sslrootcert" => parts.ssl_root_cert = non_empty(v),
             "host" => parts.host = non_empty(v),
@@ -179,6 +179,16 @@ pub fn parse_uri(uri: &str) -> Result<UriParts, String> {
         }
     }
     Ok(parts)
+}
+
+/// An `sslmode` as libpq names it. pgtc has no `allow` (D-033): it is read as
+/// `prefer` — encrypted whenever the server offers it — rather than refused.
+fn ssl_mode(name: &str) -> Option<SslMode> {
+    if name == "allow" {
+        tracing::warn!("sslmode 'allow' is not supported; 'prefer' is used");
+        return Some(SslMode::Prefer);
+    }
+    SslMode::from_name(name)
 }
 
 fn non_empty(s: String) -> Option<String> {
@@ -218,6 +228,13 @@ mod tests {
                 .find(|(n, _)| *n == k)
                 .map(|(_, v)| v.to_string())
         }
+    }
+
+    #[test]
+    fn sslmode_allow_is_read_as_prefer() {
+        let p = parse_uri("postgresql://host/db?sslmode=allow").unwrap();
+        assert_eq!(p.ssl_mode, Some(SslMode::Prefer));
+        assert!(parse_uri("postgresql://host/db?sslmode=maybe").is_err());
     }
 
     #[test]

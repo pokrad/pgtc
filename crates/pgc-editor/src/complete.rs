@@ -262,18 +262,29 @@ fn closed(t: &Tok) -> bool {
 fn tables(stmt: &[Tok]) -> Vec<TableRef> {
     let mut out = Vec::new();
     let mut in_list = false;
+    // how deep in parentheses, and how deep the table list is: a comma inside the
+    // parentheses of a list's entry — `f(x, y)`, `t (a, b)` — is not the list's
+    let (mut depth, mut list_depth) = (0usize, 0usize);
     let mut i = 0;
     while i < stmt.len() {
         let t = &stmt[i];
+        if t.is("(") {
+            depth += 1;
+        } else if t.is(")") {
+            depth = depth.saturating_sub(1);
+        }
         let starts = if t.keyword_in(TABLE_KEYWORDS) {
             in_list = true;
+            list_depth = depth;
             true
         } else if t.keyword_in(CLAUSE_KEYWORDS) {
             in_list = false;
             false
         } else {
-            in_list && t.is(",")
+            in_list && depth == list_depth && t.is(",")
         };
+        // `INSERT INTO t (a, b)`: the parenthesis is the column list, not a call
+        let into = t.keyword_in(&["into"]);
         i += 1;
         if !starts {
             continue;
@@ -296,6 +307,13 @@ fn tables(stmt: &[Tok]) -> Vec<TableRef> {
             _ => (None, first, i + 1),
         };
         if stmt.get(next).is_some_and(|t| t.is("(")) {
+            if into {
+                out.push(TableRef {
+                    schema,
+                    name,
+                    alias: None,
+                });
+            }
             continue;
         }
         let mut j = next;
@@ -403,6 +421,16 @@ mod tests {
         assert!(a.is_none_or(|a| a.want != Want::Qualified("olumn".into())));
         let a = at("select * from \"My\nx\" t where t.|").unwrap();
         assert_eq!(a.want, Want::Qualified("t".into()));
+    }
+
+    #[test]
+    fn parentheses_in_a_table_list() {
+        // the column list of INSERT: its table, and its commas are not the list's
+        let a = at("insert into sales.orders (id, na|").unwrap();
+        assert_eq!(a.tables, vec![t(Some("sales"), "orders", None)]);
+        // the arguments of a function in FROM are no tables
+        let a = at("select | from f(x, y), items i").unwrap();
+        assert_eq!(a.tables, vec![t(None, "items", Some("i"))]);
     }
 
     #[test]

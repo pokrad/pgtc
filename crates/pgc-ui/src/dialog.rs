@@ -217,6 +217,8 @@ pub enum WidgetKind {
         selected: usize,
         offset: usize,
         rows: u16,
+        /// The height the list was made with: `rows` on a screen with room for it.
+        made_rows: u16,
     },
     /// Combo box (drop-down): shows the selected value; Enter / Space / click opens the
     /// list (crate::combo).
@@ -335,6 +337,7 @@ impl Widget {
                 selected,
                 offset,
                 rows,
+                made_rows: rows,
             },
         }
     }
@@ -783,13 +786,16 @@ impl Dialog {
 
     /// Visible rows of list `id` (its height).
     pub fn set_list_rows(&mut self, id: &str, new_rows: u16) {
-        if let Some(WidgetKind::List { rows, .. }) = self
+        if let Some(WidgetKind::List {
+            rows, made_rows, ..
+        }) = self
             .widgets
             .iter_mut()
             .find(|w| w.id == id)
             .map(|w| &mut w.kind)
         {
             *rows = new_rows.max(1);
+            *made_rows = *rows;
         }
     }
 
@@ -807,6 +813,7 @@ impl Dialog {
             selected,
             offset,
             rows,
+            ..
         }) = self
             .widgets
             .iter_mut()
@@ -1232,11 +1239,14 @@ impl Dialog {
                 selected,
                 offset,
                 rows,
+                made_rows,
                 ..
             } = &mut w.kind
             {
                 let label = u16::from(!w.label.text.is_empty());
-                *rows = (items.len() as u16).clamp(1, free.saturating_sub(label).max(1));
+                // the height it was made with, not the number of its items now: a
+                // list that is filtered down gets its rows back
+                *rows = (*made_rows).clamp(1, free.saturating_sub(label).max(1));
                 *offset = (*offset)
                     .min(items.len().saturating_sub(*rows as usize))
                     .min(*selected);
@@ -1733,6 +1743,7 @@ impl Dialog {
                     selected,
                     offset,
                     rows,
+                    ..
                 } => {
                     if w.has_label_row() {
                         frame.render_widget(
