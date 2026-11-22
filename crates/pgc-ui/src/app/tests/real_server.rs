@@ -762,12 +762,15 @@ async fn closing_a_paused_result_against_a_real_server() {
     pump(&mut a, &mut rx, &hits, |a| !a.query().unwrap().busy()).await;
 
     // a lone SELECT is cancelled: reading its 100,000 slow rows would take minutes
-    // (the pump gives up after 10 s), and the cancel does not hit the next statement
+    // (the pump gives up after 10 s), and the cancel does not hit the next statement.
+    // The first rows are not slow — the first batch must be there within those 10 s,
+    // and on Windows pg_sleep(0.002) takes about 16 ms (the timer's resolution) —,
+    // with some to spare, as the server sends rows when its buffer is full.
     run(
         &mut a,
         &mut rx,
         &hits,
-        "select g, pg_sleep(0.002) from generate_series(1, 100000) g",
+        "select g, case when g > 3000 then pg_sleep(0.002) end from generate_series(1, 100000) g",
     )
     .await;
     assert!(a.query().unwrap().paused());
@@ -1002,6 +1005,8 @@ async fn template_against_a_real_server() {
         password: Some(password),
         ..startup
     };
+    // the templates folder is the only source (D-013): the built-in ones go there
+    pgc_sql::devtemplate::install(&paths.user_templates_dir()).unwrap();
     let mut a = App::new(paths, settings, sink, Some(startup));
     let hits = Hits {
         screen: Rect::new(0, 0, 120, 40),

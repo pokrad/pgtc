@@ -110,6 +110,8 @@ opens no tab (<i>The schema of adventureworks already matches the definition fil
 -- definition file. Objects that exist only in the database are kept.
 -- Review it before running.
 
+DROP VIEW sales.vcustomeroverview;
+
 ALTER TABLE sales.customer ADD COLUMN note text;
 ALTER TABLE sales.customer ADD COLUMN createdby text NOT NULL DEFAULT CURRENT_USER;
 
@@ -120,7 +122,7 @@ CREATE TABLE sales.customernote (
     CONSTRAINT customernote_pkey PRIMARY KEY (customernoteid)
 );
 
-CREATE OR REPLACE VIEW sales.vcustomeroverview AS
+CREATE VIEW sales.vcustomeroverview AS
 SELECT c.customerid, c.territoryid, count(n.*) AS notes FROM sales.customer c LEFT JOIN ...;
 
 CREATE INDEX ix_customernote_customerid ON sales.customernote USING btree (customerid);
@@ -141,11 +143,12 @@ ALTER TABLE sales.customernote ADD CONSTRAINT customernote_customerid_fkey
 <tr><th>Situation</th><th>What the script does</th></tr>
 <tr><td>Object only in the file</td><td><code>CREATE</code>.</td></tr>
 <tr><td>Object only in the database</td><td>Nothing.</td></tr>
-<tr><td>A column is missing; its type, default or <code>NOT NULL</code> differs</td><td><code>ADD COLUMN</code> / <code>ALTER COLUMN … TYPE</code>, <code>SET</code> / <code>DROP DEFAULT</code>, <code>SET</code> / <code>DROP NOT NULL</code>.</td></tr>
+<tr><td>A column is missing; its type, default or <code>NOT NULL</code> differs</td><td><code>ADD COLUMN</code> / <code>ALTER COLUMN … TYPE … USING column::type</code> (a default is dropped before and set after), <code>SET</code> / <code>DROP DEFAULT</code>, <code>SET</code> / <code>DROP NOT NULL</code>.</td></tr>
 <tr><td>A property of an existing object is absent in the file (a default, a comment)</td><td>Removed: <code>DROP DEFAULT</code>, <code>COMMENT ON … IS NULL</code>. Properties follow the file; only whole objects and parts are kept.</td></tr>
-<tr><td>An enum lacks labels; a composite type lacks or has different attributes</td><td><code>ALTER TYPE … ADD VALUE IF NOT EXISTS</code>; <code>ADD ATTRIBUTE</code> / <code>ALTER ATTRIBUTE … TYPE</code>.</td></tr>
-<tr><td>A view or function differs</td><td><code>CREATE OR REPLACE</code>, or <code>DROP</code> and <code>CREATE</code> where PostgreSQL does not allow that (changed result type).</td></tr>
-<tr><td>A constraint, index, trigger, rule, policy or materialized view differs</td><td><code>DROP</code> and <code>CREATE</code>.</td></tr>
+<tr><td>An enum lacks labels; a composite type lacks or has different attributes</td><td><code>ALTER TYPE … ADD VALUE IF NOT EXISTS</code>, at the start of the script — a label cannot be used in the transaction that adds it: when the script fails with <i>unsafe use of new value</i>, run these statements on their own first; <code>ADD ATTRIBUTE</code> / <code>ALTER ATTRIBUTE … TYPE</code>.</td></tr>
+<tr><td>A view or materialized view differs</td><td><code>DROP</code> and <code>CREATE</code> — together with every view that depends on it, also one that exists only in the database (created again as it is there, with its indexes, triggers and rules). Privileges on the dropped views are not restored.</td></tr>
+<tr><td>A function differs</td><td><code>CREATE OR REPLACE</code>; <code>DROP</code> and <code>CREATE</code> when the result type differs — the views that use it are replaced with it.</td></tr>
+<tr><td>A constraint, index, trigger, rule or policy differs</td><td><code>DROP</code> and <code>CREATE</code>.</td></tr>
 <tr><td>A generated column's expression differs</td><td><code>DROP COLUMN</code> and <code>ADD COLUMN</code>.</td></tr>
 <tr><td>A column is ordinary on one side, generated on the other</td><td>A <code>-- NOTE:</code>; no statement (replacing it would drop its values).</td></tr>
 <tr><td>A table's <b>partition key</b> differs</td><td>The table is re-created, <b>keeping the rows</b> — see below.</td></tr>

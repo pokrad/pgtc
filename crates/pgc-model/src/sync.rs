@@ -3,7 +3,7 @@
 //! database, ordered by dependencies.
 //!
 //! Order:
-//! 0. schemas, 1. extensions,
+//! 0. schemas, 1. extensions, new enum labels, the `DROP`s of replaced views,
 //! 2. types, sequences, functions, tables, views, materialized views — topologically
 //!    sorted by `depends_on` (and partition parents),
 //! 3. data of re-created tables, 4. indexes (a foreign key may reference columns that
@@ -152,6 +152,22 @@ pub fn sync_script(want: &Database, live: &Database) -> Option<String> {
             );
         }
     }
+    // views that are replaced: dropped first, those that depend on others before them
+    let replaced = replaced_views(want, live);
+    for r in &replaced {
+        let what = if r.kind == ObjKind::MaterializedView {
+            "MATERIALIZED VIEW"
+        } else {
+            "VIEW"
+        };
+        out.push(
+            1,
+            Key::Part(r.clone(), "drop".into()),
+            &[],
+            format!("DROP {what} {};", qn(&r.schema, &r.name)),
+        );
+    }
+    let replaced: BTreeSet<ObjRef> = replaced.into_iter().collect();
     let empty = Schema::default();
     for ws in &want.schemas {
         let ls = live.schema(&ws.name).unwrap_or(&empty);
@@ -212,6 +228,7 @@ pub fn sync_script(want: &Database, live: &Database) -> Option<String> {
                 v,
                 ls.views.iter().find(|l| l.name == v.name),
                 false,
+                replaced.contains(&obj(ObjKind::View, &ws.name, &v.name)),
             );
         }
         for v in &ws.materialized_views {
@@ -221,7 +238,27 @@ pub fn sync_script(want: &Database, live: &Database) -> Option<String> {
                 v,
                 ls.materialized_views.iter().find(|l| l.name == v.name),
                 true,
+                replaced.contains(&obj(ObjKind::MaterializedView, &ws.name, &v.name)),
             );
+        }
+    }
+    // views only in the database that were dropped with what they depend on: created
+    // again as they are there
+    for ls in &live.schemas {
+        let ws = want.schema(&ls.name).unwrap_or(&empty);
+        for l in &ls.views {
+            if replaced.contains(&obj(ObjKind::View, &ls.name, &l.name))
+                && !ws.views.iter().any(|v| v.name == l.name)
+            {
+                view(&mut out, &ls.name, l, None, false, false);
+            }
+        }
+        for l in &ls.materialized_views {
+            if replaced.contains(&obj(ObjKind::MaterializedView, &ls.name, &l.name))
+                && !ws.materialized_views.iter().any(|v| v.name == l.name)
+            {
+                view(&mut out, &ls.name, l, None, true, false);
+            }
         }
     }
     // sequences released before a DROP TABLE get their owner back
@@ -245,6 +282,126 @@ pub fn sync_script(want: &Database, live: &Database) -> Option<String> {
         }
     }
     render(out)
+}
+
+/// A function that differs in what `CREATE OR REPLACE` cannot change: it is dropped
+/// and created again.
+fn function_dropped(f: &Function, l: &Function) -> bool {
+    l.definition != f.definition && (l.result != f.result || l.procedure != f.procedure)
+}
+
+fn view_changed(v: &View, l: &View) -> bool {
+    l.definition != v.definition || l.options != v.options
+}
+
+/// The views and materialized views that are dropped and created again (D-048): those
+/// that differ from the file, and — the chain — every view of the database that
+/// depends on one of them or on a function that is dropped. In the order of their
+/// drops: a view comes before those it depends on.
+fn replaced_views(want: &Database, live: &Database) -> Vec<ObjRef> {
+    // what is dropped: the views, and the functions the chain starts from as well
+    let mut gone: BTreeSet<ObjRef> = BTreeSet::new();
+    for ws in &want.schemas {
+        let Some(ls) = live.schema(&ws.name) else {
+            continue;
+        };
+        for f in &ws.functions {
+            let l = ls
+                .functions
+                .iter()
+                .find(|l| l.name == f.name && l.args == f.args);
+            if l.is_some_and(|l| function_dropped(f, l)) {
+                gone.insert(ObjRef {
+                    kind: ObjKind::Function,
+                    schema: ws.name.clone(),
+                    name: f.name.clone(),
+                    args: Some(f.args.clone()),
+                });
+            }
+        }
+        for (kind, views, have) in [
+            (ObjKind::View, &ws.views, &ls.views),
+            (
+                ObjKind::MaterializedView,
+                &ws.materialized_views,
+                &ls.materialized_views,
+            ),
+        ] {
+            for v in views {
+                let l = have.iter().find(|l| l.name == v.name);
+                if l.is_some_and(|l| view_changed(v, l)) {
+                    gone.insert(obj(kind, &ws.name, &v.name));
+                }
+            }
+        }
+    }
+    // the views of the database, with what they depend on there
+    let views: Vec<(ObjRef, &View)> = live
+        .schemas
+        .iter()
+        .flat_map(|s| {
+            let plain = s
+                .views
+                .iter()
+                .map(|v| (obj(ObjKind::View, &s.name, &v.name), v));
+            let materialized = s
+                .materialized_views
+                .iter()
+                .map(|v| (obj(ObjKind::MaterializedView, &s.name, &v.name), v));
+            plain.chain(materialized)
+        })
+        .collect();
+    loop {
+        let more: Vec<ObjRef> = views
+            .iter()
+            .filter(|(r, v)| !gone.contains(r) && v.depends_on.iter().any(|d| gone.contains(d)))
+            .map(|(r, _)| r.clone())
+            .collect();
+        if more.is_empty() {
+            break;
+        }
+        gone.extend(more);
+    }
+    // a view is dropped once no view that depends on it is left
+    let mut left: Vec<&(ObjRef, &View)> = views.iter().filter(|(r, _)| gone.contains(r)).collect();
+    let mut order = Vec::with_capacity(left.len());
+    while !left.is_empty() {
+        let free: Vec<ObjRef> = left
+            .iter()
+            .filter(|(r, _)| !left.iter().any(|(o, v)| o != r && v.depends_on.contains(r)))
+            .map(|(r, _)| r.clone())
+            .collect();
+        if free.is_empty() {
+            // views cannot depend on each other in a circle; never loop for ever
+            order.extend(left.drain(..).map(|(r, _)| r.clone()));
+            break;
+        }
+        left.retain(|(r, _)| !free.contains(r));
+        order.extend(free);
+    }
+    order
+}
+
+/// `v` with the indexes, triggers and rules that exist only in the database: a
+/// replaced view gets them again (parts only in the database are kept, D-048).
+fn merge_view(v: &View, l: &View) -> View {
+    let mut m = v.clone();
+    for i in &l.indexes {
+        if !m.indexes.iter().any(|x| x.name == i.name) {
+            m.indexes.push(i.clone());
+        }
+    }
+    for t in &l.triggers {
+        if !m.triggers.iter().any(|x| x.name == t.name) {
+            m.triggers.push(t.clone());
+        }
+    }
+    for r in &l.rules {
+        if !m.rules.iter().any(|x| x.name == r.name) {
+            m.rules.push(r.clone());
+        }
+    }
+    m
 }
 
 type TableKey = (String, String);
@@ -699,6 +856,24 @@ fn alter_type(
     let mut push = |sql: String| out.push(2, key.clone(), deps, sql);
     match (want, live) {
         (TypeKind::Enum { labels }, TypeKind::Enum { labels: have }) => {
+            // before everything that may use the labels (phase 1)
+            let mut first = true;
+            let mut push = |sql: String| {
+                if std::mem::take(&mut first) {
+                    out.push(
+                        1,
+                        key.clone(),
+                        &[],
+                        format!(
+                            "-- NOTE: PostgreSQL does not let a new enum label be used in the \
+                             transaction that adds it.\n-- If the script fails with \"unsafe use \
+                             of new value\", run the ALTER TYPE {q} ADD VALUE\n-- statements on \
+                             their own first, then the script again."
+                        ),
+                    );
+                }
+                out.push(1, key.clone(), &[], sql);
+            };
             let mut known: Vec<&String> = have.iter().collect();
             for (i, l) in labels.iter().enumerate() {
                 if known.contains(&l) {
@@ -895,7 +1070,7 @@ fn function(out: &mut Script, schema: &str, f: &Function, live: Option<&Function
         None => out.push(2, key.clone(), &f.depends_on, create),
         Some(l) if l.definition == f.definition => {}
         Some(l) => {
-            if l.result != f.result || l.procedure != f.procedure {
+            if function_dropped(f, l) {
                 let old = format!(
                     "{} {}({})",
                     if l.procedure { "PROCEDURE" } else { "FUNCTION" },
@@ -1066,14 +1241,31 @@ fn alter_table(out: &mut Script, key: &Key, deps: &[ObjRef], q: &str, t: &Table,
             }
             continue;
         }
-        if c.data_type != h.data_type || c.collation != h.collation {
+        // a new type: the old default must not stand in its way (it is set again
+        // below), and the values are cast explicitly — that also converts what has
+        // no implicit cast (text to integer)
+        let retyped = c.data_type != h.data_type;
+        let default_again = retyped && h.default.is_some() && c.generated.is_none();
+        if default_again {
+            push(format!("{col} DROP DEFAULT;"));
+        }
+        if retyped || c.collation != h.collation {
+            let using = if retyped {
+                format!(" USING {}::{}", qi(&c.name), c.data_type)
+            } else {
+                String::new()
+            };
             push(format!(
-                "{col} TYPE {}{};",
+                "{col} TYPE {}{}{using};",
                 c.data_type,
                 collate(&c.collation)
             ));
         }
-        if c.default != h.default && c.generated.is_none() {
+        if default_again {
+            if let Some(d) = &c.default {
+                push(format!("{col} SET DEFAULT {d};"));
+            }
+        } else if c.default != h.default && c.generated.is_none() {
             push(match &c.default {
                 Some(d) => format!("{col} SET DEFAULT {d};"),
                 None => format!("{col} DROP DEFAULT;"),
@@ -1307,7 +1499,22 @@ fn policies(out: &mut Script, r: &ObjRef, q: &str, t: &Table, live: Option<&Tabl
 
 // ---- views --------------------------------------------------------------------------
 
-fn view(out: &mut Script, schema: &str, v: &View, live: Option<&View>, materialized: bool) {
+/// `replaced`: the view differs, or something it depends on is dropped — its drop
+/// is in the script already ([`replaced_views`]); it is created as a new one.
+fn view(
+    out: &mut Script,
+    schema: &str,
+    v: &View,
+    live: Option<&View>,
+    materialized: bool,
+    replaced: bool,
+) {
+    let merged = match live {
+        Some(l) if replaced => Some(merge_view(v, l)),
+        _ => None,
+    };
+    let v = merged.as_ref().unwrap_or(v);
+    let live = if replaced { None } else { live };
     let kind = if materialized {
         ObjKind::MaterializedView
     } else {
@@ -1327,30 +1534,9 @@ fn view(out: &mut Script, schema: &str, v: &View, live: Option<&View>, materiali
     } else {
         "VIEW"
     };
-    let changed = live.is_some_and(|l| l.definition != v.definition || l.options != v.options);
-    // a materialized view cannot be replaced: drop it (its indexes go with it)
-    let recreated = materialized && changed;
-    match live {
-        None => {}
-        Some(_) if recreated => {
-            out.push(
-                2,
-                key.clone(),
-                &v.depends_on,
-                format!("DROP MATERIALIZED VIEW {q};"),
-            );
-        }
-        Some(_) if !changed => {}
-        Some(_) => {
-            out.push(
-                2,
-                key.clone(),
-                &v.depends_on,
-                format!("CREATE OR REPLACE VIEW {q}{with} AS\n{body};"),
-            );
-        }
-    }
-    if live.is_none() || recreated {
+    // a view that is there is the same as in the file: one that differs is replaced
+    debug_assert!(live.is_none_or(|l| !view_changed(v, l)));
+    if live.is_none() {
         let tail = if materialized { "\n  WITH DATA" } else { "" };
         out.push(
             2,
@@ -1359,7 +1545,6 @@ fn view(out: &mut Script, schema: &str, v: &View, live: Option<&View>, materiali
             format!("CREATE {what} {q}{with} AS\n{body}{tail};"),
         );
     }
-    let live = if recreated { None } else { live };
     comment(
         out,
         2,
@@ -1529,7 +1714,7 @@ mod tests {
             "ALTER TYPE public.mood ADD VALUE IF NOT EXISTS 'joy' AFTER 'happy';",
             "ALTER TABLE public.t ALTER COLUMN a DROP DEFAULT;",
             "ALTER TABLE public.t ALTER COLUMN a SET NOT NULL;",
-            "ALTER TABLE public.t ALTER COLUMN b TYPE varchar(10);",
+            "ALTER TABLE public.t ALTER COLUMN b TYPE varchar(10) USING b::varchar(10);",
             "ALTER TABLE public.t ADD COLUMN c date;",
             "COMMENT ON TABLE public.t IS 'it''s new';",
         ] {
@@ -1693,6 +1878,126 @@ mod tests {
             "{text}"
         );
         assert!(text.contains("GENERATED ALWAYS AS (qty * 3)"), "{text}");
+    }
+
+    /// A view that differs is dropped and created again — with every view of the
+    /// database that depends on it, also one that is not in the file; a view that is
+    /// the same and depends on nothing replaced is not touched.
+    #[test]
+    fn a_changed_view_is_replaced_with_the_views_that_depend_on_it() {
+        let r = |kind, name: &str| obj(kind, "app", name);
+        let v = |name: &str, body: &str, deps: Vec<ObjRef>| View {
+            name: name.into(),
+            definition: format!(" SELECT {body};"),
+            depends_on: deps,
+            ..Default::default()
+        };
+        let mut live = schema("app");
+        live.views = vec![
+            v("base", "1 AS a, 2 AS b", vec![]),
+            v("mid", "a FROM app.base", vec![r(ObjKind::View, "base")]),
+            // only in the database, two levels up
+            v(
+                "top_only_db",
+                "a FROM app.mid",
+                vec![r(ObjKind::View, "mid")],
+            ),
+            v("other", "3 AS c", vec![]),
+        ];
+        live.materialized_views = vec![View {
+            indexes: vec![Index {
+                name: "m_db_idx".into(),
+                definition: "CREATE INDEX m_db_idx ON app.m USING btree (a)".into(),
+                ..Default::default()
+            }],
+            ..v("m", "a FROM app.base", vec![r(ObjKind::View, "base")])
+        }];
+        let mut want = schema("app");
+        want.views = vec![
+            v("base", "1 AS a", vec![]),
+            v("mid", "a FROM app.base", vec![r(ObjKind::View, "base")]),
+            v("other", "3 AS c", vec![]),
+        ];
+        want.materialized_views = vec![v("m", "a FROM app.base", vec![r(ObjKind::View, "base")])];
+        let text = sync_script(&db(vec![want]), &db(vec![live])).unwrap();
+        let at = |what: &str| {
+            text.find(what)
+                .unwrap_or_else(|| panic!("{what} is missing in\n{text}"))
+        };
+        // dropped from the top of the chain down, then created from the bottom up
+        assert!(at("DROP VIEW app.top_only_db;") < at("DROP VIEW app.mid;"));
+        assert!(at("DROP VIEW app.mid;") < at("DROP VIEW app.base;"));
+        assert!(at("DROP MATERIALIZED VIEW app.m;") < at("DROP VIEW app.base;"));
+        assert!(at("DROP VIEW app.base;") < at("CREATE VIEW app.base AS\n SELECT 1 AS a;"));
+        assert!(at("CREATE VIEW app.base AS") < at("CREATE VIEW app.mid AS"));
+        assert!(at("CREATE VIEW app.mid AS") < at("CREATE VIEW app.top_only_db AS"));
+        assert!(at("CREATE VIEW app.base AS") < at("CREATE MATERIALIZED VIEW app.m AS"));
+        // the index that exists only in the database is there again
+        at("CREATE INDEX m_db_idx ON app.m USING btree (a);");
+        assert!(!text.contains("CREATE OR REPLACE VIEW"), "{text}");
+        assert!(!text.contains("app.other"), "{text}");
+    }
+
+    /// A function that is dropped takes the views that use it with it.
+    #[test]
+    fn a_dropped_function_takes_its_views_along() {
+        let f = |result: &str| Function {
+            name: "f".into(),
+            args: "x integer".into(),
+            result: Some(result.into()),
+            definition: format!(
+                "CREATE OR REPLACE FUNCTION app.f(x integer)\n RETURNS {result}\nRETURN 1\n"
+            ),
+            ..Default::default()
+        };
+        let uses_f = View {
+            name: "v".into(),
+            definition: " SELECT app.f(1) AS n;".into(),
+            depends_on: vec![ObjRef {
+                kind: ObjKind::Function,
+                schema: "app".into(),
+                name: "f".into(),
+                args: Some("x integer".into()),
+            }],
+            ..Default::default()
+        };
+        let mut live = schema("app");
+        live.functions.push(f("integer"));
+        live.views.push(uses_f.clone());
+        let mut want = live.clone();
+        want.functions[0] = f("bigint");
+        let text = sync_script(&db(vec![want]), &db(vec![live])).unwrap();
+        let at = |what: &str| {
+            text.find(what)
+                .unwrap_or_else(|| panic!("{what} is missing in\n{text}"))
+        };
+        assert!(at("DROP VIEW app.v;") < at("DROP FUNCTION app.f(x integer);"));
+        assert!(at("RETURNS bigint") < at("CREATE VIEW app.v AS"));
+    }
+
+    /// A new column type: the old default out of the way, the values cast.
+    #[test]
+    fn a_column_type_change_casts_and_sets_the_default_again() {
+        let table = |ty: &str, default: &str| {
+            let mut s = schema("public");
+            s.tables.push(Table {
+                name: "t".into(),
+                columns: vec![Column {
+                    default: Some(default.into()),
+                    ..col("s", ty)
+                }],
+                ..Default::default()
+            });
+            db(vec![s])
+        };
+        let text = sync_script(&table("integer", "0"), &table("text", "'x'::text")).unwrap();
+        let col = "ALTER TABLE public.t ALTER COLUMN s";
+        assert!(
+            text.contains(&format!(
+                "{col} DROP DEFAULT;\n{col} TYPE integer USING s::integer;\n{col} SET DEFAULT 0;"
+            )),
+            "{text}"
+        );
     }
 
     #[test]

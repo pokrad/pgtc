@@ -1481,8 +1481,23 @@ pgtc (binary)
   - **No drops of objects that exist only in the database** (tables, columns, functions,
     ...): the load adds and changes, it never removes.
   - **Replacing:** objects that cannot be altered are dropped and created again
-    (constraints, indexes, triggers, rules, policies, materialized views, functions
-    whose result type changed, generated columns whose expression changed). A
+    (constraints, indexes, triggers, rules, policies, views, materialized views,
+    functions whose result type changed, generated columns whose expression changed).
+  - **Views — the chain:** a view or materialized view that differs is always
+    dropped and created again (never `CREATE OR REPLACE`), and with it every view of
+    the database that depends on it or on a function that is dropped — also views
+    that exist only in the database, created again as they are there. The `DROP`s
+    come first in the script, dependents before what they depend on; the views are
+    created again in dependency order, with their indexes, triggers and rules,
+    including those that exist only in the database. A view that is the same and
+    depends on nothing replaced is not touched. Tables are never part of the chain:
+    they are dropped only by the rule below. Privileges on a dropped view are not
+    restored (the load never sets them).
+  - **A column's type:** `ALTER COLUMN … TYPE … USING column::type`; a default is
+    dropped before the change and set again after it.
+  - **New enum labels** are added at the start of the script, with a note: a label
+    cannot be used in the transaction that adds it, so a script that uses it at once
+    must have those statements run on their own first. A
     column that is ordinary on one side and generated on the other is **not**
     replaced — that would drop its values: the script has a `-- NOTE:` for it.
   - **Extensions** are created with `CASCADE`, so one that needs another does not
@@ -2962,3 +2977,4 @@ pgtc (binary)
 | 2026-11-20 | D-022 updated: release binaries — a tag `v<version>` builds Windows x64, Linux x64 / ARM64 (static musl) and macOS ARM64 / x64 on GitHub Actions and publishes them, unsigned, with checksums as a GitHub Release; CI builds and tests on the three systems. D-025 updated: the source is on GitHub. |
 | 2026-11-22 | D-074 updated: the template tab's *Parameters* and *Preview* captions are bars of their own row instead of titles on the separator lines. |
 | 2026-11-22 | D-033 updated: `require` with a root certificate file checks the chain against it, as `verify-ca` (libpq). D-073 updated: the saved AI key belongs to the saved base URL — another URL in the settings dialog takes the stars away, the saved URL brings them back. D-064 updated: the editor's text has LF line ends only; a file read with CR LF is saved with CR LF. D-048 updated: an ordinary column is not replaced by a generated one (or the reverse) — a note instead; `CREATE EXTENSION … CASCADE`; `check_function_bodies` is reset at the end of the script. |
+| 2026-11-22 | D-048 updated: a view that differs is always dropped and created again, with the chain of views that depend on it or on a dropped function (also views only in the database); tables stay out of the chain. A column's type is changed with `USING`, its default dropped before and set after. New enum labels come first in the script, with a note. |

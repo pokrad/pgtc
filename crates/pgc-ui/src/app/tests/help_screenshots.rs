@@ -2877,6 +2877,8 @@ async fn help_screenshots() {
     let file = a.paths.ai_key_file();
     std::fs::create_dir_all(file.parent().unwrap()).unwrap();
     std::fs::write(&file, "sk-ant-example").unwrap();
+    // ... of the saved provider (the stars are only there with its URL)
+    a.settings.ai.base_url = "https://api.anthropic.com".into();
     a.run(Command::AiSettings);
     a.dialogs
         .last_mut()
