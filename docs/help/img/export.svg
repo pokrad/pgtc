@@ -1,19 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="648" height="456" viewBox="0 0 648 456" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15" shape-rendering="crispEdges" xml:space="preserve">
 <rect width="648" height="456" fill="#0037da"/>
 <rect x="0" y="0" width="630.5" height="19.5" fill="#cccccc"/>
-<text x="630 639" y="14.25" fill="#cccccc">──</text>
+<rect x="630" y="8.75" width="18" height="1.5" fill="#cccccc"/>
 <rect x="0" y="19" width="630.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="19" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234" y="33.25" fill="#0c0c0c">┌─────────────────────────</text>
+<rect x="12.75" y="27.75" width="5.25" height="1.5" fill="#0c0c0c"/>
+<rect x="12.75" y="27.75" width="1.5" height="10.25" fill="#0c0c0c"/>
+<rect x="18" y="27.75" width="225" height="1.5" fill="#0c0c0c"/>
 <text x="252 261 270 279 288 297" y="33.25" fill="#0037da">Export</text>
 <text x="315 324 333 342 351 360" y="33.25" fill="#0037da">result</text>
-<text x="378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612" y="33.25" fill="#0c0c0c">──────────────────────────┐</text>
+<rect x="378" y="27.75" width="234" height="1.5" fill="#0c0c0c"/>
+<rect x="612" y="27.75" width="5.25" height="1.5" fill="#0c0c0c"/>
+<rect x="615.75" y="27.75" width="1.5" height="10.25" fill="#0c0c0c"/>
 <rect x="0" y="38" width="630.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="38" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="52.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="38" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="27 36 45 54 63 72 81" y="52.25" fill="#0c0c0c">Folder:</text>
 <text x="99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288" y="52.25" fill="#0c0c0c">D:\work\adventureworks</text>
-<text x="612" y="52.25" fill="#0c0c0c">│</text>
+<rect x="615.75" y="38" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="630 639" y="52.25" fill="#767676">to</text>
 <rect x="0" y="57" width="171.5" height="19.5" fill="#cccccc"/>
 <rect x="171" y="57" width="108.5" height="19.5" fill="#3a96dd"/>
@@ -21,114 +25,114 @@
 <rect x="288" y="57" width="315.5" height="19.5" fill="#3a96dd"/>
 <rect x="603" y="57" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="57" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="71.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="57" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="27" y="71.25" fill="#0037da" text-decoration="underline">N</text>
 <text x="36 45 54" y="71.25" fill="#0c0c0c">ame</text>
 <text x="72 81" y="71.25" fill="#0c0c0c">or</text>
 <text x="99 108 117 126 135" y="71.25" fill="#0c0c0c">path:</text>
 <text x="171 180 189 198 207 216 225 234 243 252 261 270" y="71.25" fill="#0c0c0c" font-weight="700">result_1.csv</text>
-<text x="612" y="71.25" fill="#0c0c0c">│</text>
+<rect x="615.75" y="57" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="76" width="630.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="76" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="90.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="76" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="36 45 54" y="90.25" fill="#0c0c0c">..\</text>
-<text x="612" y="90.25" fill="#0c0c0c">│</text>
+<rect x="615.75" y="76" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="95" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="95" width="576.5" height="19.5" fill="#3a96dd"/>
 <rect x="603" y="95" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="95" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="109.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="95" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="36 45 54 63 72 81 90 99 108 117 126" y="109.25" fill="#0c0c0c">migrations\</text>
-<text x="612" y="109.25" fill="#0c0c0c">│</text>
+<rect x="615.75" y="95" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="114" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="114" width="576.5" height="19.5" fill="#3a96dd"/>
 <rect x="603" y="114" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="114" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="128.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="114" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="36 45 54 63 72 81 90 99" y="128.25" fill="#0c0c0c">reports\</text>
-<text x="612" y="128.25" fill="#0c0c0c">│</text>
+<rect x="615.75" y="114" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="133" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="133" width="576.5" height="19.5" fill="#3a96dd"/>
 <rect x="603" y="133" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="133" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="147.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="133" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="36 45 54 63 72 81 90 99 108 117 126 135 144 153 162" y="147.25" fill="#0c0c0c" font-weight="700">territories.csv</text>
-<text x="612" y="147.25" fill="#0c0c0c">│</text>
+<rect x="615.75" y="133" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="152" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="152" width="576.5" height="19.5" fill="#3a96dd"/>
 <rect x="603" y="152" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="152" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="166.25" fill="#0c0c0c">│</text>
-<text x="612" y="166.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="152" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="615.75" y="152" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="171" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="171" width="576.5" height="19.5" fill="#3a96dd"/>
 <rect x="603" y="171" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="171" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="185.25" fill="#0c0c0c">│</text>
-<text x="612" y="185.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="171" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="615.75" y="171" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="190" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="190" width="576.5" height="19.5" fill="#3a96dd"/>
 <rect x="603" y="190" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="190" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="204.25" fill="#0c0c0c">│</text>
-<text x="612" y="204.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="190" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="615.75" y="190" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="209" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="209" width="576.5" height="19.5" fill="#3a96dd"/>
 <rect x="603" y="209" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="209" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="223.25" fill="#0c0c0c">│</text>
-<text x="612" y="223.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="209" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="615.75" y="209" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="228" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="228" width="576.5" height="19.5" fill="#3a96dd"/>
 <rect x="603" y="228" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="228" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="242.25" fill="#0c0c0c">│</text>
-<text x="612" y="242.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="228" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="615.75" y="228" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="247" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="247" width="576.5" height="19.5" fill="#3a96dd"/>
 <rect x="603" y="247" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="247" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="261.25" fill="#0c0c0c">│</text>
-<text x="612" y="261.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="247" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="615.75" y="247" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="266" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="266" width="576.5" height="19.5" fill="#3a96dd"/>
 <rect x="603" y="266" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="266" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="280.25" fill="#0c0c0c">│</text>
-<text x="612" y="280.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="266" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="615.75" y="266" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="285" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="285" width="576.5" height="19.5" fill="#3a96dd"/>
 <rect x="603" y="285" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="285" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="299.25" fill="#0c0c0c">│</text>
-<text x="612" y="299.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="285" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="615.75" y="285" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="304" width="171.5" height="19.5" fill="#cccccc"/>
 <rect x="171" y="304" width="117.5" height="19.5" fill="#3a96dd"/>
 <rect x="288" y="304" width="342.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="304" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="318.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="304" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="27 36 45" y="318.25" fill="#0c0c0c">For</text>
 <text x="54" y="318.25" fill="#0037da" text-decoration="underline">m</text>
 <text x="63 72 81" y="318.25" fill="#0c0c0c">at:</text>
 <text x="180 189 198" y="318.25" fill="#0c0c0c">CSV</text>
 <text x="279" y="318.25" fill="#0c0c0c">▼</text>
-<text x="612" y="318.25" fill="#0c0c0c">│</text>
-<text x="630 639" y="318.25" fill="#767676">──</text>
+<rect x="615.75" y="304" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="630" y="312.75" width="18" height="1.5" fill="#767676"/>
 <rect x="0" y="323" width="171.5" height="19.5" fill="#cccccc"/>
 <rect x="171" y="323" width="144.5" height="19.5" fill="#3a96dd"/>
 <rect x="315" y="323" width="315.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="323" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="337.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="323" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="27 36 45" y="337.25" fill="#0c0c0c">CSV</text>
 <text x="63" y="337.25" fill="#0037da" text-decoration="underline">s</text>
 <text x="72 81 90 99 108 117 126 135 144" y="337.25" fill="#0c0c0c">eparator:</text>
 <text x="180" y="337.25" fill="#0c0c0c">,</text>
 <text x="198 207 216 225 234 243 252" y="337.25" fill="#0c0c0c">(comma)</text>
 <text x="306" y="337.25" fill="#0c0c0c">▼</text>
-<text x="612" y="337.25" fill="#0c0c0c">│</text>
+<rect x="615.75" y="323" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="342" width="630.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="342" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="356.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="342" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="27" y="356.25" fill="#0c0c0c">[</text>
 <text x="45" y="356.25" fill="#0c0c0c">]</text>
 <text x="63 72 81" y="356.25" fill="#0c0c0c">CSV</text>
@@ -136,15 +140,15 @@
 <text x="144 153 162 171 180" y="356.25" fill="#0c0c0c">UTF-8</text>
 <text x="198" y="356.25" fill="#0037da" text-decoration="underline">B</text>
 <text x="207 216" y="356.25" fill="#0c0c0c">OM</text>
-<text x="612" y="356.25" fill="#0c0c0c">│</text>
-<text x="630 639" y="356.25" fill="#767676">──</text>
+<rect x="615.75" y="342" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="630" y="350.75" width="18" height="1.5" fill="#767676"/>
 <rect x="0" y="361" width="630.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="361" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="375.25" fill="#0c0c0c">│</text>
-<text x="612" y="375.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="361" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="615.75" y="361" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="380" width="630.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="380" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="394.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="380" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="180 189" y="394.25" fill="#0c0c0c">[&lt;</text>
 <text x="207" y="394.25" fill="#0037da" text-decoration="underline">O</text>
 <text x="216" y="394.25" fill="#0c0c0c">K</text>
@@ -157,16 +161,29 @@
 <text x="378" y="394.25" fill="#0037da" text-decoration="underline">C</text>
 <text x="387 396 405 414 423" y="394.25" fill="#0c0c0c">ancel</text>
 <text x="441" y="394.25" fill="#0c0c0c">]</text>
-<text x="612" y="394.25" fill="#0c0c0c">│</text>
+<rect x="615.75" y="380" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="399" width="630.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="399" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612" y="413.25" fill="#0c0c0c">└──────────────────────────────────────────────────────────────────┘</text>
+<rect x="12.75" y="399" width="1.5" height="10.25" fill="#0c0c0c"/>
+<rect x="12.75" y="407.75" width="5.25" height="1.5" fill="#0c0c0c"/>
+<rect x="18" y="407.75" width="594" height="1.5" fill="#0c0c0c"/>
+<rect x="615.75" y="399" width="1.5" height="10.25" fill="#0c0c0c"/>
+<rect x="612" y="407.75" width="5.25" height="1.5" fill="#0c0c0c"/>
 <rect x="0" y="418" width="630.5" height="19.5" fill="#cccccc"/>
 <rect x="630" y="418" width="18.5" height="19.5" fill="#0c0c0c"/>
 <rect x="18" y="437" width="630.5" height="19.5" fill="#0c0c0c"/>
-<text x="54 63" y="451.25" fill="#767676">║║</text>
-<text x="90 99 108 117 126 135 144 153" y="451.25" fill="#767676">4│Robert</text>
-<text x="189 198 207 216 225 234" y="451.25" fill="#767676">│Vessa</text>
-<text x="297" y="451.25" fill="#767676">│</text>
-<text x="351 360 369 378 387 396 405 414 423 432 441 450 459 468" y="451.25" fill="#767676">8│816755.5763│</text>
+<rect x="55.9" y="437" width="1.199997" height="19" fill="#767676"/>
+<rect x="59.9" y="437" width="1.199997" height="19" fill="#767676"/>
+<rect x="64.9" y="437" width="1.199997" height="19" fill="#767676"/>
+<rect x="68.9" y="437" width="1.199997" height="19" fill="#767676"/>
+<text x="90" y="451.25" fill="#767676">4</text>
+<rect x="102.75" y="437" width="1.5" height="19" fill="#767676"/>
+<text x="108 117 126 135 144 153" y="451.25" fill="#767676">Robert</text>
+<rect x="192.75" y="437" width="1.5" height="19" fill="#767676"/>
+<text x="198 207 216 225 234" y="451.25" fill="#767676">Vessa</text>
+<rect x="300.75" y="437" width="1.5" height="19" fill="#767676"/>
+<text x="351" y="451.25" fill="#767676">8</text>
+<rect x="363.75" y="437" width="1.5" height="19" fill="#767676"/>
+<text x="369 378 387 396 405 414 423 432 441 450 459" y="451.25" fill="#767676">816755.5763</text>
+<rect x="471.75" y="437" width="1.5" height="19" fill="#767676"/>
 </svg>

@@ -4,120 +4,124 @@
 <text x="648 657" y="14.25" fill="#cccccc">oo</text>
 <rect x="0" y="19" width="648.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="19" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234" y="33.25" fill="#0c0c0c">┌─────────────────────────</text>
+<rect x="12.75" y="27.75" width="5.25" height="1.5" fill="#0c0c0c"/>
+<rect x="12.75" y="27.75" width="1.5" height="10.25" fill="#0c0c0c"/>
+<rect x="18" y="27.75" width="225" height="1.5" fill="#0c0c0c"/>
 <text x="252 261 270 279 288 297" y="33.25" fill="#0037da">Insert</text>
 <text x="315 324 333 342 351 360 369 378 387" y="33.25" fill="#0037da">construct</text>
-<text x="405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630" y="33.25" fill="#0c0c0c">─────────────────────────┐</text>
+<rect x="405" y="27.75" width="225" height="1.5" fill="#0c0c0c"/>
+<rect x="630" y="27.75" width="5.25" height="1.5" fill="#0c0c0c"/>
+<rect x="633.75" y="27.75" width="1.5" height="10.25" fill="#0c0c0c"/>
 <text x="648 657" y="33.25" fill="#767676">|i</text>
 <rect x="0" y="38" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="38" width="594.5" height="19.5" fill="#3a96dd"/>
 <rect x="621" y="38" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="38" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="52.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="38" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="36 45" y="52.25" fill="#0c0c0c">if</text>
 <text x="63" y="52.25" fill="#0c0c0c">…</text>
 <text x="81 90 99 108 117" y="52.25" fill="#0c0c0c">endif</text>
-<text x="630" y="52.25" fill="#0c0c0c">│</text>
+<rect x="633.75" y="38" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="648 657" y="52.25" fill="#767676">de</text>
 <rect x="0" y="57" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="57" width="594.5" height="19.5" fill="#3a96dd"/>
 <rect x="621" y="57" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="57" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="71.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="57" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="36 45" y="71.25" fill="#0c0c0c">if</text>
 <text x="63" y="71.25" fill="#0c0c0c">…</text>
 <text x="81 90 99 108" y="71.25" fill="#0c0c0c">else</text>
 <text x="126" y="71.25" fill="#0c0c0c">…</text>
 <text x="144 153 162 171 180" y="71.25" fill="#0c0c0c">endif</text>
-<text x="630" y="71.25" fill="#0c0c0c">│</text>
+<rect x="633.75" y="57" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="648" y="71.25" fill="#767676">,</text>
 <rect x="0" y="76" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="621" y="76" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="76" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="90.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="76" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="36 45 54" y="90.25" fill="#f2f2f2">for</text>
 <text x="72" y="90.25" fill="#f2f2f2">…</text>
 <text x="90 99 108 117 126 135" y="90.25" fill="#f2f2f2">endfor</text>
-<text x="630" y="90.25" fill="#0c0c0c">│</text>
+<rect x="633.75" y="76" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="95" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="95" width="594.5" height="19.5" fill="#3a96dd"/>
 <rect x="621" y="95" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="95" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="109.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="95" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="36 45 54 63 72" y="109.25" fill="#0c0c0c">comma</text>
 <text x="90 99 108 117 126 135 144" y="109.25" fill="#0c0c0c">between</text>
 <text x="162 171 180 189" y="109.25" fill="#0c0c0c">rows</text>
-<text x="630" y="109.25" fill="#0c0c0c">│</text>
+<rect x="633.75" y="95" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="648" y="109.25" fill="#767676">T</text>
 <rect x="0" y="114" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="114" width="594.5" height="19.5" fill="#3a96dd"/>
 <rect x="621" y="114" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="114" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="128.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="114" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="36 45 54 63 72" y="128.25" fill="#0c0c0c">value</text>
 <text x="90 99" y="128.25" fill="#0c0c0c">{{</text>
 <text x="117" y="128.25" fill="#0c0c0c">…</text>
 <text x="135 144" y="128.25" fill="#0c0c0c">}}</text>
-<text x="630" y="128.25" fill="#0c0c0c">│</text>
+<rect x="633.75" y="114" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="648 657" y="128.25" fill="#767676">ta</text>
 <rect x="0" y="133" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="133" width="594.5" height="19.5" fill="#3a96dd"/>
 <rect x="621" y="133" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="133" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="147.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="133" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="36 45 54 63 72 81 90" y="147.25" fill="#0c0c0c">comment</text>
 <text x="108 117" y="147.25" fill="#0c0c0c">{#</text>
 <text x="135" y="147.25" fill="#0c0c0c">…</text>
 <text x="153 162" y="147.25" fill="#0c0c0c">#}</text>
-<text x="630" y="147.25" fill="#0c0c0c">│</text>
+<rect x="633.75" y="133" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="152" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="152" width="594.5" height="19.5" fill="#3a96dd"/>
 <rect x="621" y="152" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="152" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="166.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="152" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="36 45 54 63 72 81 90 99 108 117 126 135 144 153" y="166.25" fill="#0c0c0c">server_version</text>
 <text x="171 180 189 198 207" y="166.25" fill="#0c0c0c">check</text>
-<text x="630" y="166.25" fill="#0c0c0c">│</text>
+<rect x="633.75" y="152" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="648" y="166.25" fill="#767676">e</text>
 <rect x="0" y="171" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="171" width="594.5" height="19.5" fill="#3a96dd"/>
 <rect x="621" y="171" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="171" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="185.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="171" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234" y="185.25" fill="#0c0c0c">has("GeneratedColumns")</text>
-<text x="630" y="185.25" fill="#0c0c0c">│</text>
+<rect x="633.75" y="171" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="190" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="190" width="594.5" height="19.5" fill="#3a96dd"/>
 <rect x="621" y="190" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="190" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="204.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="190" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234" y="204.25" fill="#0c0c0c">has("NullsNotDistinct")</text>
-<text x="630" y="204.25" fill="#0c0c0c">│</text>
+<rect x="633.75" y="190" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="209" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="209" width="594.5" height="19.5" fill="#3a96dd"/>
 <rect x="621" y="209" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="209" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="223.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="209" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225" y="223.25" fill="#0c0c0c">has("TriggerParentId")</text>
-<text x="630" y="223.25" fill="#0c0c0c">│</text>
+<rect x="633.75" y="209" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="648 657" y="223.25" fill="#767676">he</text>
 <rect x="0" y="228" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="228" width="594.5" height="19.5" fill="#3a96dd"/>
 <rect x="621" y="228" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="228" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="242.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="228" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189" y="242.25" fill="#0c0c0c">has("LastSeqScan")</text>
-<text x="630" y="242.25" fill="#0c0c0c">│</text>
+<rect x="633.75" y="228" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="247" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="27" y="247" width="594.5" height="19.5" fill="#3a96dd"/>
 <rect x="621" y="247" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="247" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="261.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="247" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207" y="261.25" fill="#0c0c0c">has("StatChecksums")</text>
-<text x="630" y="261.25" fill="#0c0c0c">│</text>
+<rect x="633.75" y="247" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="266" width="648.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="266" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="280.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="266" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="27 36 45 54" y="280.25" fill="#0c0c0c">Once</text>
 <text x="72 81 90" y="280.25" fill="#0c0c0c">for</text>
 <text x="108 117 126 135 144" y="280.25" fill="#0c0c0c">every</text>
@@ -130,18 +134,18 @@
 <text x="423 432 441 450 459 468" y="280.25" fill="#0c0c0c">fields</text>
 <text x="486 495 504" y="280.25" fill="#0c0c0c">are</text>
 <text x="522 531 540 549 558 567 576 585" y="280.25" fill="#0c0c0c">row.name</text>
-<text x="630" y="280.25" fill="#0c0c0c">│</text>
+<rect x="633.75" y="266" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="285" width="648.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="285" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="299.25" fill="#0c0c0c">│</text>
-<text x="630" y="299.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="285" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="633.75" y="285" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="304" width="648.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="304" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="318.25" fill="#0c0c0c">│</text>
-<text x="630" y="318.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="304" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="633.75" y="304" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="323" width="648.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="323" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="337.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="323" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="234 243" y="337.25" fill="#0c0c0c">[&lt;</text>
 <text x="261" y="337.25" fill="#0037da" text-decoration="underline">O</text>
 <text x="270" y="337.25" fill="#0c0c0c">K</text>
@@ -150,16 +154,23 @@
 <text x="333" y="337.25" fill="#0037da" text-decoration="underline">C</text>
 <text x="342 351 360 369 378" y="337.25" fill="#0c0c0c">ancel</text>
 <text x="396" y="337.25" fill="#0c0c0c">]</text>
-<text x="630" y="337.25" fill="#0c0c0c">│</text>
+<rect x="633.75" y="323" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="342" width="648.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="342" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630" y="356.25" fill="#0c0c0c">└────────────────────────────────────────────────────────────────────┘</text>
+<rect x="12.75" y="342" width="1.5" height="10.25" fill="#0c0c0c"/>
+<rect x="12.75" y="350.75" width="5.25" height="1.5" fill="#0c0c0c"/>
+<rect x="18" y="350.75" width="612" height="1.5" fill="#0c0c0c"/>
+<rect x="633.75" y="342" width="1.5" height="10.25" fill="#0c0c0c"/>
+<rect x="630" y="350.75" width="5.25" height="1.5" fill="#0c0c0c"/>
 <text x="648 657" y="356.25" fill="#767676">UL</text>
 <rect x="0" y="361" width="648.5" height="19.5" fill="#cccccc"/>
 <rect x="648" y="361" width="18.5" height="19.5" fill="#0c0c0c"/>
 <rect x="18" y="380" width="648.5" height="19.5" fill="#0c0c0c"/>
-<text x="63 72" y="394.25" fill="#767676">║║</text>
-<text x="405" y="394.25" fill="#767676">│</text>
+<rect x="64.9" y="380" width="1.199997" height="19" fill="#767676"/>
+<rect x="68.9" y="380" width="1.199997" height="19" fill="#767676"/>
+<rect x="73.9" y="380" width="1.199997" height="19" fill="#767676"/>
+<rect x="77.9" y="380" width="1.199997" height="19" fill="#767676"/>
+<rect x="408.75" y="380" width="1.5" height="19" fill="#767676"/>
 <text x="450 459 468 477 486 495 504 513 522 531" y="394.25" fill="#767676">CONSTRAINT</text>
 <text x="549 558 567 576 585 594 603 612 621" y="394.25" fill="#767676">name_pkey</text>
 <text x="639 648 657" y="394.25" fill="#767676">PRI</text>

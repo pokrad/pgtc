@@ -3,59 +3,63 @@
 <rect x="0" y="0" width="594.5" height="19.5" fill="#cccccc"/>
 <rect x="0" y="19" width="594.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="19" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216" y="33.25" fill="#0c0c0c">┌───────────────────────</text>
+<rect x="12.75" y="27.75" width="5.25" height="1.5" fill="#0c0c0c"/>
+<rect x="12.75" y="27.75" width="1.5" height="10.25" fill="#0c0c0c"/>
+<rect x="18" y="27.75" width="207" height="1.5" fill="#0c0c0c"/>
 <text x="234 243 252 261" y="33.25" fill="#0037da">Save</text>
 <text x="279 288 297 306 315 324 333 342" y="33.25" fill="#0037da">template</text>
-<text x="360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576" y="33.25" fill="#0c0c0c">────────────────────────┐</text>
+<rect x="360" y="27.75" width="216" height="1.5" fill="#0c0c0c"/>
+<rect x="576" y="27.75" width="5.25" height="1.5" fill="#0c0c0c"/>
+<rect x="579.75" y="27.75" width="1.5" height="10.25" fill="#0c0c0c"/>
 <rect x="0" y="38" width="180.5" height="19.5" fill="#cccccc"/>
 <rect x="180" y="38" width="135.5" height="19.5" fill="#3a96dd"/>
 <rect x="315" y="38" width="279.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="38" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="52.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="38" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="27" y="52.25" fill="#0037da" text-decoration="underline">S</text>
 <text x="36 45 54 63 72 81 90" y="52.25" fill="#0c0c0c">ection:</text>
 <text x="189 198 207" y="52.25" fill="#0c0c0c">Our</text>
 <text x="225 234 243 252" y="52.25" fill="#0c0c0c">team</text>
 <text x="306" y="52.25" fill="#0c0c0c">▼</text>
-<text x="576" y="52.25" fill="#0c0c0c">│</text>
+<rect x="579.75" y="38" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="57" width="180.5" height="19.5" fill="#cccccc"/>
 <rect x="180" y="57" width="387.5" height="19.5" fill="#3a96dd"/>
 <rect x="567" y="57" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="57" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="71.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="57" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="27" y="71.25" fill="#0037da" text-decoration="underline">N</text>
 <text x="36 45" y="71.25" fill="#0c0c0c">ew</text>
 <text x="63 72 81 90 99 108 117 126" y="71.25" fill="#0c0c0c">section:</text>
-<text x="576" y="71.25" fill="#0c0c0c">│</text>
+<rect x="579.75" y="57" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="76" width="180.5" height="19.5" fill="#cccccc"/>
 <rect x="180" y="76" width="387.5" height="19.5" fill="#3a96dd"/>
 <rect x="567" y="76" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="76" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="90.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="76" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="27" y="90.25" fill="#0037da" text-decoration="underline">V</text>
 <text x="36 45 54 63 72 81" y="90.25" fill="#0c0c0c">ersion</text>
 <text x="99 108 117 126 135 144 153" y="90.25" fill="#0c0c0c">folder:</text>
 <text x="180 189 198 207 216 225 234" y="90.25" fill="#0c0c0c">default</text>
-<text x="576" y="90.25" fill="#0c0c0c">│</text>
+<rect x="579.75" y="76" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="95" width="180.5" height="19.5" fill="#cccccc"/>
 <rect x="180" y="95" width="171.5" height="19.5" fill="#3a96dd"/>
 <rect x="351" y="95" width="9.5" height="19.5" fill="#0c0c0c"/>
 <rect x="360" y="95" width="207.5" height="19.5" fill="#3a96dd"/>
 <rect x="567" y="95" width="27.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="95" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="109.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="95" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="27" y="109.25" fill="#0037da" text-decoration="underline">F</text>
 <text x="36 45 54" y="109.25" fill="#0c0c0c">ile</text>
 <text x="72 81 90 99 108" y="109.25" fill="#0c0c0c">name:</text>
 <text x="180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342" y="109.25" fill="#0c0c0c" font-weight="700">create_lookup_table</text>
-<text x="576" y="109.25" fill="#0c0c0c">│</text>
+<rect x="579.75" y="95" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="114" width="594.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="114" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="128.25" fill="#0c0c0c">│</text>
-<text x="576" y="128.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="114" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="579.75" y="114" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="133" width="594.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="133" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="147.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="133" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="27 36 45 54 63 72 81" y="147.25" fill="#0c0c0c">Version</text>
 <text x="99 108 117 126 135 144 153" y="147.25" fill="#0c0c0c">folder:</text>
 <text x="171 180 189 198 207 216 225" y="147.25" fill="#0c0c0c">default</text>
@@ -65,22 +69,22 @@
 <text x="405 414" y="147.25" fill="#0c0c0c">or</text>
 <text x="432 441 450 459 468 477 486" y="147.25" fill="#0c0c0c">16_plus</text>
 <text x="504 513 522" y="147.25" fill="#0c0c0c">for</text>
-<text x="576" y="147.25" fill="#0c0c0c">│</text>
+<rect x="579.75" y="133" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="152" width="594.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="152" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="166.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="152" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="27 36 45 54 63 72 81 90 99 108" y="166.25" fill="#0c0c0c">PostgreSQL</text>
 <text x="126 135" y="166.25" fill="#0c0c0c">16</text>
 <text x="153 162 171" y="166.25" fill="#0c0c0c">and</text>
 <text x="189 198 207 216 225 234" y="166.25" fill="#0c0c0c">newer.</text>
-<text x="576" y="166.25" fill="#0c0c0c">│</text>
+<rect x="579.75" y="152" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="171" width="594.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="171" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="185.25" fill="#0c0c0c">│</text>
-<text x="576" y="185.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="171" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="579.75" y="171" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="190" width="594.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="190" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9" y="204.25" fill="#0c0c0c">│</text>
+<rect x="12.75" y="190" width="1.5" height="19" fill="#0c0c0c"/>
 <text x="207 216" y="204.25" fill="#0c0c0c">[&lt;</text>
 <text x="234" y="204.25" fill="#0037da" text-decoration="underline">O</text>
 <text x="243" y="204.25" fill="#0c0c0c">K</text>
@@ -89,14 +93,21 @@
 <text x="306" y="204.25" fill="#0037da" text-decoration="underline">C</text>
 <text x="315 324 333 342 351" y="204.25" fill="#0c0c0c">ancel</text>
 <text x="369" y="204.25" fill="#0c0c0c">]</text>
-<text x="576" y="204.25" fill="#0c0c0c">│</text>
+<rect x="579.75" y="190" width="1.5" height="19" fill="#0c0c0c"/>
 <rect x="0" y="209" width="594.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="209" width="18.5" height="19.5" fill="#0c0c0c"/>
-<text x="9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576" y="223.25" fill="#0c0c0c">└──────────────────────────────────────────────────────────────┘</text>
+<rect x="12.75" y="209" width="1.5" height="10.25" fill="#0c0c0c"/>
+<rect x="12.75" y="217.75" width="5.25" height="1.5" fill="#0c0c0c"/>
+<rect x="18" y="217.75" width="558" height="1.5" fill="#0c0c0c"/>
+<rect x="579.75" y="209" width="1.5" height="10.25" fill="#0c0c0c"/>
+<rect x="576" y="217.75" width="5.25" height="1.5" fill="#0c0c0c"/>
 <rect x="0" y="228" width="594.5" height="19.5" fill="#cccccc"/>
 <rect x="594" y="228" width="18.5" height="19.5" fill="#0c0c0c"/>
 <rect x="18" y="247" width="594.5" height="19.5" fill="#0c0c0c"/>
-<text x="36 45" y="261.25" fill="#767676">║║</text>
-<text x="378" y="261.25" fill="#767676">│</text>
+<rect x="37.9" y="247" width="1.199997" height="19" fill="#767676"/>
+<rect x="41.9" y="247" width="1.199997" height="19" fill="#767676"/>
+<rect x="46.9" y="247" width="1.199997" height="19" fill="#767676"/>
+<rect x="50.9" y="247" width="1.199997" height="19" fill="#767676"/>
+<rect x="381.75" y="247" width="1.5" height="19" fill="#767676"/>
 <text x="396 405 414 423 432 441 450" y="261.25" fill="#767676">Preview</text>
 </svg>

@@ -13,317 +13,568 @@
 <text x="342 351 360 369 378 387 396" y="14.25" fill="#0c0c0c">ettings</text>
 <text x="441" y="14.25" fill="#0c0c0c" text-decoration="underline">H</text>
 <text x="450 459 468" y="14.25" fill="#0c0c0c">elp</text>
-<text x="0 9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783 792 801 810 819 828 837 846 855 864 873 882 891 900 909 918 927 936 945 954 963 972 981 990 999 1008 1017 1026 1035 1044 1053 1062 1071" y="33.25" fill="#cccccc">╔════════════════════════╗╔════════════════════════════════════════════════════════════════════════════════════════════╗</text>
+<rect x="1.9" y="25.9" width="7.1" height="1.2000008" fill="#cccccc"/>
+<rect x="1.9" y="25.9" width="1.1999999" height="12.1" fill="#cccccc"/>
+<rect x="5.9" y="29.9" width="3.1" height="1.2000008" fill="#cccccc"/>
+<rect x="5.9" y="29.9" width="1.1999998" height="8.1" fill="#cccccc"/>
+<rect x="9" y="25.9" width="216" height="1.2000008" fill="#cccccc"/>
+<rect x="9" y="29.9" width="216" height="1.2000008" fill="#cccccc"/>
+<rect x="225" y="25.9" width="7.100006" height="1.2000008" fill="#cccccc"/>
+<rect x="230.9" y="25.9" width="1.2000122" height="12.1" fill="#cccccc"/>
+<rect x="225" y="29.9" width="3.100006" height="1.2000008" fill="#cccccc"/>
+<rect x="226.9" y="29.9" width="1.2000122" height="8.1" fill="#cccccc"/>
+<rect x="235.9" y="25.9" width="7.100006" height="1.2000008" fill="#cccccc"/>
+<rect x="235.9" y="25.9" width="1.2000122" height="12.1" fill="#cccccc"/>
+<rect x="239.9" y="29.9" width="3.100006" height="1.2000008" fill="#cccccc"/>
+<rect x="239.9" y="29.9" width="1.2000122" height="8.1" fill="#cccccc"/>
+<rect x="243" y="25.9" width="828" height="1.2000008" fill="#cccccc"/>
+<rect x="243" y="29.9" width="828" height="1.2000008" fill="#cccccc"/>
+<rect x="1071" y="25.9" width="7.0999756" height="1.2000008" fill="#cccccc"/>
+<rect x="1076.9" y="25.9" width="1.1999512" height="12.1" fill="#cccccc"/>
+<rect x="1071" y="29.9" width="3.0999756" height="1.2000008" fill="#cccccc"/>
+<rect x="1072.9" y="29.9" width="1.1999512" height="8.1" fill="#cccccc"/>
 <rect x="9" y="38" width="216.5" height="19.5" fill="#cccccc"/>
 <rect x="333" y="38" width="297.5" height="19.5" fill="#3a96dd"/>
-<text x="0" y="52.25" fill="#cccccc">║</text>
+<rect x="1.9" y="38" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="38" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="72 81 90 99 108 117 126 135 144 153 162" y="52.25" fill="#0c0c0c">Connections</text>
-<text x="225 234" y="52.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="38" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="38" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="38" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="38" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261 270 279 288 297 306" y="52.25" fill="#cccccc">Default</text>
 <text x="342 351 360 369 378 387" y="52.25" fill="#0c0c0c">Stats:</text>
 <text x="405 414 423 432 441" y="52.25" fill="#0c0c0c">local</text>
 <text x="459" y="52.25" fill="#0c0c0c">·</text>
 <text x="477 486 495 504 513 522 531 540 549 558 567 576 585 594" y="52.25" fill="#0c0c0c">adventureworks</text>
 <text x="612" y="52.25" fill="#0c0c0c">×</text>
-<text x="1071" y="52.25" fill="#cccccc">║</text>
-<text x="0 9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783 792 801 810 819 828 837 846 855 864 873 882 891 900 909 918 927 936 945 954 963 972 981 990 999 1008 1017 1026 1035 1044 1053 1062 1071" y="71.25" fill="#cccccc">╟────────────────────────╢╟────────────────────────────────────────────────────────────────────────────────────────────╢</text>
-<text x="0" y="90.25" fill="#cccccc">║</text>
+<rect x="1072.9" y="38" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="38" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="57" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="57" width="1.1999998" height="19" fill="#cccccc"/>
+<rect x="5.75" y="65.75" width="3.25" height="1.5" fill="#cccccc"/>
+<rect x="9" y="65.75" width="216" height="1.5" fill="#cccccc"/>
+<rect x="226.9" y="57" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="57" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="225" y="65.75" width="3.25" height="1.5" fill="#cccccc"/>
+<rect x="235.9" y="57" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="57" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.75" y="65.75" width="3.25" height="1.5" fill="#cccccc"/>
+<rect x="243" y="65.75" width="828" height="1.5" fill="#cccccc"/>
+<rect x="1072.9" y="57" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="57" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1071" y="65.75" width="3.25" height="1.5" fill="#cccccc"/>
+<rect x="1.9" y="76" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="76" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="18" y="90.25" fill="#cccccc">▼</text>
 <text x="36 45 54 63 72" y="90.25" fill="#cccccc">local</text>
 <text x="90 99 108 117 126 135 144 153 162 171 180" y="90.25" fill="#cccccc">(connected)</text>
-<text x="225 234" y="90.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="76" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="76" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="76" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="76" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261 270 279" y="90.25" fill="#cccccc">Size</text>
-<text x="513" y="90.25" fill="#cccccc">│</text>
+<rect x="516.75" y="76" width="1.5" height="19" fill="#cccccc"/>
 <text x="531 540 549 558 567 576 585 594" y="90.25" fill="#cccccc">Backends</text>
-<text x="792" y="90.25" fill="#cccccc">│</text>
+<rect x="795.75" y="76" width="1.5" height="19" fill="#cccccc"/>
 <text x="810 819 828 837 846" y="90.25" fill="#cccccc">Cache</text>
 <text x="864 873 882" y="90.25" fill="#cccccc">hit</text>
 <text x="900 909 918 927 936" y="90.25" fill="#cccccc">ratio</text>
-<text x="1071" y="90.25" fill="#cccccc">║</text>
-<text x="0" y="109.25" fill="#cccccc">║</text>
+<rect x="1072.9" y="76" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="76" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="95" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="95" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="36" y="109.25" fill="#cccccc">▼</text>
 <text x="54 63 72 81 90 99 108 117 126" y="109.25" fill="#cccccc">Databases</text>
 <text x="144 153 162" y="109.25" fill="#cccccc">(2)</text>
-<text x="225 234" y="109.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="95" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="95" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="95" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="95" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261 270 279" y="109.25" fill="#cccccc">1250</text>
 <text x="297 306" y="109.25" fill="#cccccc">MB</text>
-<text x="513" y="109.25" fill="#cccccc">│</text>
+<rect x="516.75" y="95" width="1.5" height="19" fill="#cccccc"/>
 <text x="531 540" y="109.25" fill="#cccccc">41</text>
 <text x="558 567 576" y="109.25" fill="#cccccc">(no</text>
 <text x="594 603 612 621 630 639" y="109.25" fill="#cccccc">limit)</text>
-<text x="792" y="109.25" fill="#cccccc">│</text>
+<rect x="795.75" y="95" width="1.5" height="19" fill="#cccccc"/>
 <text x="810 819 828 837 846" y="109.25" fill="#cccccc">99.39</text>
 <text x="864" y="109.25" fill="#cccccc">%</text>
-<text x="1071" y="109.25" fill="#cccccc">║</text>
+<rect x="1072.9" y="95" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="95" width="1.1999512" height="19" fill="#cccccc"/>
 <rect x="9" y="114" width="216.5" height="19.5" fill="#cccccc"/>
-<text x="0" y="128.25" fill="#cccccc">║</text>
+<rect x="1.9" y="114" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="114" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="54" y="128.25" fill="#0c0c0c">▼</text>
 <text x="72 81 90 99 108 117 126 135 144 153 162 171 180 189" y="128.25" fill="#0c0c0c">adventureworks</text>
 <text x="207 216" y="128.25" fill="#0c0c0c">(c</text>
-<text x="225 234" y="128.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="114" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="114" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="114" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="114" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261 270 279 288 297 306 315 324 333 342 351" y="128.25" fill="#cccccc">Transactions</text>
-<text x="648" y="128.25" fill="#cccccc">│</text>
+<rect x="651.75" y="114" width="1.5" height="19" fill="#cccccc"/>
 <text x="666 675 684" y="128.25" fill="#cccccc">XID</text>
 <text x="702 711 720" y="128.25" fill="#cccccc">age</text>
-<text x="1071" y="128.25" fill="#cccccc">║</text>
-<text x="0" y="147.25" fill="#cccccc">║</text>
+<rect x="1072.9" y="114" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="114" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="133" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="133" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="72" y="147.25" fill="#cccccc">►</text>
 <text x="90 99 108 117 126" y="147.25" fill="#cccccc">Casts</text>
-<text x="225 234" y="147.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="133" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="133" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="133" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="133" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261 270 279 288 297 306 315 324" y="147.25" fill="#cccccc">committed</text>
 <text x="342 351 360 369 378 387 396 405 414" y="147.25" fill="#cccccc">9,041,377</text>
 <text x="432" y="147.25" fill="#cccccc">·</text>
 <text x="450 459 468 477 486 495" y="147.25" fill="#cccccc">rolled</text>
 <text x="513 522 531 540" y="147.25" fill="#cccccc">back</text>
 <text x="558 567 576 585 594 603" y="147.25" fill="#cccccc">50,231</text>
-<text x="648" y="147.25" fill="#cccccc">│</text>
+<rect x="651.75" y="133" width="1.5" height="19" fill="#cccccc"/>
 <text x="666 675 684 693 702 711 720 729 738" y="147.25" fill="#cccccc">1,843,207</text>
-<text x="1071" y="147.25" fill="#cccccc">║</text>
-<text x="0" y="166.25" fill="#cccccc">║</text>
+<rect x="1072.9" y="133" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="133" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="152" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="152" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="72" y="166.25" fill="#cccccc">►</text>
 <text x="90 99 108 117 126 135 144 153" y="166.25" fill="#cccccc">Catalogs</text>
-<text x="225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783 792 801 810 819 828 837 846 855 864 873 882 891 900 909 918 927 936 945 954 963 972 981 990 999 1008 1017 1026 1035 1044 1053 1062 1071" y="166.25" fill="#cccccc">║╟────────────────────────────────────────────────────────────────────────────────────────────╢</text>
+<rect x="226.9" y="152" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="152" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="152" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="152" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.75" y="160.75" width="3.25" height="1.5" fill="#cccccc"/>
+<rect x="243" y="160.75" width="828" height="1.5" fill="#cccccc"/>
+<rect x="1072.9" y="152" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="152" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1071" y="160.75" width="3.25" height="1.5" fill="#cccccc"/>
 <rect x="243" y="171" width="648.5" height="19.5" fill="#3a96dd"/>
-<text x="0" y="185.25" fill="#cccccc">║</text>
+<rect x="1.9" y="171" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="171" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="72" y="185.25" fill="#cccccc">►</text>
 <text x="90 99 108 117 126" y="185.25" fill="#cccccc">Event</text>
 <text x="144 153 162 171 180 189 198 207" y="185.25" fill="#cccccc">Triggers</text>
-<text x="225 234" y="185.25" fill="#cccccc">║║</text>
-<text x="270 279 288 297 306 315" y="185.25" fill="#0c0c0c">│Group</text>
-<text x="441 450 459 468 477 486 495 504 513 522" y="185.25" fill="#0c0c0c">│Statistic</text>
-<text x="612 621 630 639 648 657" y="185.25" fill="#0c0c0c">│Value</text>
-<text x="882" y="185.25" fill="#0c0c0c">│</text>
-<text x="1071" y="185.25" fill="#cccccc">║</text>
+<rect x="226.9" y="171" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="171" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="171" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="171" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="273.75" y="171" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="279 288 297 306 315" y="185.25" fill="#0c0c0c">Group</text>
+<rect x="444.75" y="171" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="450 459 468 477 486 495 504 513 522" y="185.25" fill="#0c0c0c">Statistic</text>
+<rect x="615.75" y="171" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="621 630 639 648 657" y="185.25" fill="#0c0c0c">Value</text>
+<rect x="885.75" y="171" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="1072.9" y="171" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="171" width="1.1999512" height="19" fill="#cccccc"/>
 <rect x="279" y="190" width="162.5" height="19.5" fill="#cccccc"/>
-<text x="0" y="204.25" fill="#cccccc">║</text>
+<rect x="1.9" y="190" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="190" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="72" y="204.25" fill="#cccccc">►</text>
 <text x="90 99 108 117 126 135 144 153 162 171" y="204.25" fill="#cccccc">Extensions</text>
-<text x="225 234" y="204.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="190" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="190" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="190" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="190" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="261" y="204.25" fill="#c19c00">1</text>
-<text x="270" y="204.25" fill="#cccccc">│</text>
+<rect x="273.75" y="190" width="1.5" height="19" fill="#cccccc"/>
 <text x="279 288 297 306 315 324 333 342" y="204.25" fill="#0c0c0c">Database</text>
-<text x="441 450 459 468 477" y="204.25" fill="#cccccc">│Size</text>
-<text x="612 621 630 639 648" y="204.25" fill="#cccccc">│1250</text>
+<rect x="444.75" y="190" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477" y="204.25" fill="#cccccc">Size</text>
+<rect x="615.75" y="190" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630 639 648" y="204.25" fill="#cccccc">1250</text>
 <text x="666 675" y="204.25" fill="#cccccc">MB</text>
 <text x="693 702 711 720 729 738 747 756 765 774 783 792 801 810" y="204.25" fill="#cccccc">(1,310,368,640</text>
-<text x="828 837 846 855 864 873 882" y="204.25" fill="#cccccc">bytes)│</text>
-<text x="1071" y="204.25" fill="#cccccc">║</text>
-<text x="0" y="223.25" fill="#cccccc">║</text>
+<text x="828 837 846 855 864 873" y="204.25" fill="#cccccc">bytes)</text>
+<rect x="885.75" y="190" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="190" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="190" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="209" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="209" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="72" y="223.25" fill="#cccccc">►</text>
 <text x="90 99 108 117 126 135 144" y="223.25" fill="#cccccc">Foreign</text>
 <text x="162 171 180 189" y="223.25" fill="#cccccc">Data</text>
-<text x="207 216 225 234" y="223.25" fill="#cccccc">Wr║║</text>
+<text x="207 216" y="223.25" fill="#cccccc">Wr</text>
+<rect x="226.9" y="209" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="209" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="209" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="209" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="261" y="223.25" fill="#c19c00">2</text>
-<text x="270 279 288 297 306 315 324 333 342" y="223.25" fill="#cccccc">│Database</text>
-<text x="441 450 459 468 477 486 495 504 513" y="223.25" fill="#cccccc">│Backends</text>
-<text x="612 621 630" y="223.25" fill="#cccccc">│41</text>
-<text x="882" y="223.25" fill="#cccccc">│</text>
-<text x="1071" y="223.25" fill="#cccccc">║</text>
-<text x="0" y="242.25" fill="#cccccc">║</text>
+<rect x="273.75" y="209" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315 324 333 342" y="223.25" fill="#cccccc">Database</text>
+<rect x="444.75" y="209" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486 495 504 513" y="223.25" fill="#cccccc">Backends</text>
+<rect x="615.75" y="209" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630" y="223.25" fill="#cccccc">41</text>
+<rect x="885.75" y="209" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="209" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="209" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="228" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="228" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="72" y="242.25" fill="#cccccc">►</text>
 <text x="90 99 108 117 126 135 144 153 162" y="242.25" fill="#cccccc">Languages</text>
-<text x="225 234" y="242.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="228" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="228" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="228" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="228" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="261" y="242.25" fill="#c19c00">3</text>
-<text x="270 279 288 297 306 315 324 333 342" y="242.25" fill="#cccccc">│Database</text>
-<text x="441 450 459 468 477 486 495 504 513 522 531" y="242.25" fill="#cccccc">│Connection</text>
+<rect x="273.75" y="228" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315 324 333 342" y="242.25" fill="#cccccc">Database</text>
+<rect x="444.75" y="228" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486 495 504 513 522 531" y="242.25" fill="#cccccc">Connection</text>
 <text x="549 558 567 576 585" y="242.25" fill="#cccccc">limit</text>
-<text x="612 621 630" y="242.25" fill="#cccccc">│no</text>
+<rect x="615.75" y="228" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630" y="242.25" fill="#cccccc">no</text>
 <text x="648 657 666 675 684" y="242.25" fill="#cccccc">limit</text>
-<text x="882" y="242.25" fill="#cccccc">│</text>
-<text x="1071" y="242.25" fill="#cccccc">║</text>
-<text x="0" y="261.25" fill="#cccccc">║</text>
+<rect x="885.75" y="228" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="228" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="228" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="247" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="247" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="72" y="261.25" fill="#cccccc">►</text>
 <text x="90 99 108 117 126 135 144 153 162 171 180 189" y="261.25" fill="#cccccc">Publications</text>
-<text x="225 234" y="261.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="247" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="247" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="247" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="247" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="261" y="261.25" fill="#c19c00">4</text>
-<text x="270 279 288 297 306 315 324 333 342" y="261.25" fill="#cccccc">│Database</text>
-<text x="441 450 459 468 477 486 495 504 513 522 531 540" y="261.25" fill="#cccccc">│Transaction</text>
+<rect x="273.75" y="247" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315 324 333 342" y="261.25" fill="#cccccc">Database</text>
+<rect x="444.75" y="247" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486 495 504 513 522 531 540" y="261.25" fill="#cccccc">Transaction</text>
 <text x="558 567" y="261.25" fill="#cccccc">ID</text>
-<text x="585 594 603 612 621 630 639 648 657 666 675 684 693" y="261.25" fill="#cccccc">age│1,843,207</text>
-<text x="882" y="261.25" fill="#cccccc">│</text>
-<text x="1071" y="261.25" fill="#cccccc">║</text>
-<text x="0" y="280.25" fill="#cccccc">║</text>
+<text x="585 594 603" y="261.25" fill="#cccccc">age</text>
+<rect x="615.75" y="247" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630 639 648 657 666 675 684 693" y="261.25" fill="#cccccc">1,843,207</text>
+<rect x="885.75" y="247" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="247" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="247" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="266" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="266" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="72" y="280.25" fill="#cccccc">▼</text>
 <text x="90 99 108 117 126 135 144" y="280.25" fill="#cccccc">Schemas</text>
 <text x="162 171 180" y="280.25" fill="#cccccc">(6)</text>
-<text x="225 234" y="280.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="266" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="266" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="266" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="266" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="261" y="280.25" fill="#c19c00">5</text>
-<text x="270 279 288 297 306 315 324 333 342" y="280.25" fill="#cccccc">│Database</text>
-<text x="441 450 459 468 477 486 495 504 513 522" y="280.25" fill="#cccccc">│Multixact</text>
+<rect x="273.75" y="266" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315 324 333 342" y="280.25" fill="#cccccc">Database</text>
+<rect x="444.75" y="266" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486 495 504 513 522" y="280.25" fill="#cccccc">Multixact</text>
 <text x="540 549" y="280.25" fill="#cccccc">ID</text>
 <text x="567 576 585" y="280.25" fill="#cccccc">age</text>
-<text x="612 621 630" y="280.25" fill="#cccccc">│12</text>
-<text x="882" y="280.25" fill="#cccccc">│</text>
-<text x="1071" y="280.25" fill="#cccccc">║</text>
-<text x="0" y="299.25" fill="#cccccc">║</text>
+<rect x="615.75" y="266" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630" y="280.25" fill="#cccccc">12</text>
+<rect x="885.75" y="266" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="266" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="266" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="285" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="285" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="90" y="299.25" fill="#cccccc">►</text>
-<text x="108 117 126 135 144 153 162 171 180 189 198 207 216 225 234" y="299.25" fill="#cccccc">humanresource║║</text>
+<text x="108 117 126 135 144 153 162 171 180 189 198 207 216" y="299.25" fill="#cccccc">humanresource</text>
+<rect x="226.9" y="285" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="285" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="285" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="285" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="261" y="299.25" fill="#c19c00">6</text>
-<text x="270 279 288 297 306 315 324 333 342" y="299.25" fill="#cccccc">│Database</text>
-<text x="441 450 459 468 477 486 495 504 513 522 531" y="299.25" fill="#cccccc">│Statistics</text>
+<rect x="273.75" y="285" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315 324 333 342" y="299.25" fill="#cccccc">Database</text>
+<rect x="444.75" y="285" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486 495 504 513 522 531" y="299.25" fill="#cccccc">Statistics</text>
 <text x="549 558 567 576 585" y="299.25" fill="#cccccc">reset</text>
-<text x="612 621 630 639 648 657 666 675 684 693 702" y="299.25" fill="#cccccc">│2026-10-01</text>
+<rect x="615.75" y="285" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630 639 648 657 666 675 684 693 702" y="299.25" fill="#cccccc">2026-10-01</text>
 <text x="720 729 738 747 756 765 774 783 792 801 810" y="299.25" fill="#cccccc">06:00:11+02</text>
-<text x="882" y="299.25" fill="#cccccc">│</text>
-<text x="1071" y="299.25" fill="#cccccc">║</text>
-<text x="0" y="318.25" fill="#cccccc">║</text>
+<rect x="885.75" y="285" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="285" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="285" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="304" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="304" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="90" y="318.25" fill="#cccccc">►</text>
 <text x="108 117 126 135 144 153" y="318.25" fill="#cccccc">person</text>
-<text x="225 234" y="318.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="304" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="304" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="304" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="304" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="261" y="318.25" fill="#c19c00">7</text>
-<text x="270 279 288 297 306 315 324 333 342 351 360 369 378" y="318.25" fill="#cccccc">│Transactions</text>
-<text x="441 450 459 468 477 486 495 504 513 522" y="318.25" fill="#cccccc">│Committed</text>
-<text x="612 621 630 639 648 657 666 675 684 693" y="318.25" fill="#cccccc">│9,041,377</text>
-<text x="882" y="318.25" fill="#cccccc">│</text>
-<text x="1071" y="318.25" fill="#cccccc">║</text>
-<text x="0" y="337.25" fill="#cccccc">║</text>
+<rect x="273.75" y="304" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315 324 333 342 351 360 369 378" y="318.25" fill="#cccccc">Transactions</text>
+<rect x="444.75" y="304" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486 495 504 513 522" y="318.25" fill="#cccccc">Committed</text>
+<rect x="615.75" y="304" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630 639 648 657 666 675 684 693" y="318.25" fill="#cccccc">9,041,377</text>
+<rect x="885.75" y="304" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="304" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="304" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="323" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="323" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="90" y="337.25" fill="#cccccc">►</text>
 <text x="108 117 126 135 144 153 162 171 180 189" y="337.25" fill="#cccccc">production</text>
-<text x="225 234" y="337.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="323" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="323" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="323" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="323" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="261" y="337.25" fill="#c19c00">8</text>
-<text x="270 279 288 297 306 315 324 333 342 351 360 369 378" y="337.25" fill="#cccccc">│Transactions</text>
-<text x="441 450 459 468 477 486 495" y="337.25" fill="#cccccc">│Rolled</text>
+<rect x="273.75" y="323" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315 324 333 342 351 360 369 378" y="337.25" fill="#cccccc">Transactions</text>
+<rect x="444.75" y="323" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486 495" y="337.25" fill="#cccccc">Rolled</text>
 <text x="513 522 531 540" y="337.25" fill="#cccccc">back</text>
-<text x="612 621 630 639 648 657 666" y="337.25" fill="#cccccc">│50,231</text>
-<text x="882" y="337.25" fill="#cccccc">│</text>
-<text x="1071" y="337.25" fill="#cccccc">║</text>
-<text x="0" y="356.25" fill="#cccccc">║</text>
+<rect x="615.75" y="323" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630 639 648 657 666" y="337.25" fill="#cccccc">50,231</text>
+<rect x="885.75" y="323" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="323" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="323" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="342" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="342" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="90" y="356.25" fill="#cccccc">►</text>
 <text x="108 117 126 135 144 153" y="356.25" fill="#cccccc">public</text>
-<text x="225 234" y="356.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="342" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="342" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="342" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="342" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="261" y="356.25" fill="#c19c00">9</text>
-<text x="270 279 288 297 306 315 324 333 342 351 360 369 378" y="356.25" fill="#cccccc">│Transactions</text>
-<text x="441 450 459 468 477 486 495 504 513 522" y="356.25" fill="#cccccc">│Deadlocks</text>
-<text x="612 621" y="356.25" fill="#cccccc">│4</text>
-<text x="882" y="356.25" fill="#cccccc">│</text>
-<text x="1071" y="356.25" fill="#cccccc">║</text>
-<text x="0" y="375.25" fill="#cccccc">║</text>
+<rect x="273.75" y="342" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315 324 333 342 351 360 369 378" y="356.25" fill="#cccccc">Transactions</text>
+<rect x="444.75" y="342" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486 495 504 513 522" y="356.25" fill="#cccccc">Deadlocks</text>
+<rect x="615.75" y="342" width="1.5" height="19" fill="#cccccc"/>
+<text x="621" y="356.25" fill="#cccccc">4</text>
+<rect x="885.75" y="342" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="342" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="342" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="361" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="361" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="90" y="375.25" fill="#cccccc">►</text>
 <text x="108 117 126 135 144 153 162 171 180 189" y="375.25" fill="#cccccc">purchasing</text>
-<text x="225 234" y="375.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="361" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="361" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="361" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="361" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261" y="375.25" fill="#c19c00">10</text>
-<text x="270 279 288 297 306 315" y="375.25" fill="#cccccc">│Block</text>
+<rect x="273.75" y="361" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315" y="375.25" fill="#cccccc">Block</text>
 <text x="333 342 351" y="375.25" fill="#cccccc">I/O</text>
-<text x="441 450 459 468 477 486 495" y="375.25" fill="#cccccc">│Blocks</text>
+<rect x="444.75" y="361" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486 495" y="375.25" fill="#cccccc">Blocks</text>
 <text x="513 522 531 540" y="375.25" fill="#cccccc">read</text>
-<text x="612 621 630 639 648 657 666 675 684 693" y="375.25" fill="#cccccc">│7,841,233</text>
-<text x="882" y="375.25" fill="#cccccc">│</text>
-<text x="1071" y="375.25" fill="#cccccc">║</text>
-<text x="0" y="394.25" fill="#cccccc">║</text>
+<rect x="615.75" y="361" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630 639 648 657 666 675 684 693" y="375.25" fill="#cccccc">7,841,233</text>
+<rect x="885.75" y="361" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="361" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="361" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="380" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="380" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="90" y="394.25" fill="#cccccc">►</text>
 <text x="108 117 126 135 144" y="394.25" fill="#cccccc">sales</text>
-<text x="225 234" y="394.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="380" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="380" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="380" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="380" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261" y="394.25" fill="#c19c00">11</text>
-<text x="270 279 288 297 306 315" y="394.25" fill="#cccccc">│Block</text>
+<rect x="273.75" y="380" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315" y="394.25" fill="#cccccc">Block</text>
 <text x="333 342 351" y="394.25" fill="#cccccc">I/O</text>
-<text x="441 450 459 468 477 486 495" y="394.25" fill="#cccccc">│Blocks</text>
+<rect x="444.75" y="380" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486 495" y="394.25" fill="#cccccc">Blocks</text>
 <text x="513 522 531" y="394.25" fill="#cccccc">hit</text>
-<text x="612 621 630 639 648 657 666 675 684 693 702 711 720 729" y="394.25" fill="#cccccc">│1,284,977,310</text>
-<text x="882" y="394.25" fill="#cccccc">│</text>
-<text x="1071" y="394.25" fill="#cccccc">║</text>
-<text x="0" y="413.25" fill="#cccccc">║</text>
+<rect x="615.75" y="380" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630 639 648 657 666 675 684 693 702 711 720 729" y="394.25" fill="#cccccc">1,284,977,310</text>
+<rect x="885.75" y="380" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="380" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="380" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="399" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="399" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="72" y="413.25" fill="#cccccc">►</text>
 <text x="90 99 108 117 126 135 144 153 162 171 180 189 198" y="413.25" fill="#cccccc">Subscriptions</text>
-<text x="225 234" y="413.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="399" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="399" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="399" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="399" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261" y="413.25" fill="#c19c00">12</text>
-<text x="270 279 288 297 306 315" y="413.25" fill="#cccccc">│Block</text>
+<rect x="273.75" y="399" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315" y="413.25" fill="#cccccc">Block</text>
 <text x="333 342 351" y="413.25" fill="#cccccc">I/O</text>
-<text x="441 450 459 468 477 486" y="413.25" fill="#cccccc">│Cache</text>
+<rect x="444.75" y="399" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486" y="413.25" fill="#cccccc">Cache</text>
 <text x="504 513 522" y="413.25" fill="#cccccc">hit</text>
 <text x="540 549 558 567 576" y="413.25" fill="#cccccc">ratio</text>
-<text x="612 621 630 639 648 657" y="413.25" fill="#cccccc">│99.39</text>
+<rect x="615.75" y="399" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630 639 648 657" y="413.25" fill="#cccccc">99.39</text>
 <text x="675" y="413.25" fill="#cccccc">%</text>
-<text x="882" y="413.25" fill="#cccccc">│</text>
-<text x="1071" y="413.25" fill="#cccccc">║</text>
-<text x="0" y="432.25" fill="#cccccc">║</text>
+<rect x="885.75" y="399" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="399" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="399" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="418" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="418" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="54" y="432.25" fill="#cccccc">►</text>
 <text x="72 81 90 99 108 117 126 135" y="432.25" fill="#cccccc">postgres</text>
-<text x="225 234" y="432.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="418" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="418" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="418" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="418" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261" y="432.25" fill="#c19c00">13</text>
-<text x="270 279 288 297 306 315" y="432.25" fill="#cccccc">│Block</text>
+<rect x="273.75" y="418" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315" y="432.25" fill="#cccccc">Block</text>
 <text x="333 342 351" y="432.25" fill="#cccccc">I/O</text>
-<text x="441 450 459 468 477" y="432.25" fill="#cccccc">│Read</text>
+<rect x="444.75" y="418" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477" y="432.25" fill="#cccccc">Read</text>
 <text x="495 504 513 522" y="432.25" fill="#cccccc">time</text>
-<text x="612 621" y="432.25" fill="#cccccc">│6</text>
+<rect x="615.75" y="418" width="1.5" height="19" fill="#cccccc"/>
+<text x="621" y="432.25" fill="#cccccc">6</text>
 <text x="639 648 657" y="432.25" fill="#cccccc">min</text>
 <text x="675 684" y="432.25" fill="#cccccc">53</text>
 <text x="702" y="432.25" fill="#cccccc">s</text>
-<text x="882" y="432.25" fill="#cccccc">│</text>
-<text x="1071" y="432.25" fill="#cccccc">║</text>
-<text x="0" y="451.25" fill="#cccccc">║</text>
+<rect x="885.75" y="418" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="418" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="418" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="437" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="437" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="36" y="451.25" fill="#cccccc">►</text>
 <text x="54 63 72 81 90 99 108 117 126 135 144" y="451.25" fill="#cccccc">Login/Group</text>
 <text x="162 171 180 189 198" y="451.25" fill="#cccccc">Roles</text>
-<text x="216 225 234" y="451.25" fill="#cccccc">(║║</text>
+<text x="216" y="451.25" fill="#cccccc">(</text>
+<rect x="226.9" y="437" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="437" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="437" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="437" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261" y="451.25" fill="#c19c00">14</text>
-<text x="270 279 288 297 306 315" y="451.25" fill="#cccccc">│Block</text>
+<rect x="273.75" y="437" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315" y="451.25" fill="#cccccc">Block</text>
 <text x="333 342 351" y="451.25" fill="#cccccc">I/O</text>
-<text x="441 450 459 468 477 486" y="451.25" fill="#cccccc">│Write</text>
+<rect x="444.75" y="437" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486" y="451.25" fill="#cccccc">Write</text>
 <text x="504 513 522 531" y="451.25" fill="#cccccc">time</text>
-<text x="612 621" y="451.25" fill="#cccccc">│1</text>
+<rect x="615.75" y="437" width="1.5" height="19" fill="#cccccc"/>
+<text x="621" y="451.25" fill="#cccccc">1</text>
 <text x="639 648 657" y="451.25" fill="#cccccc">min</text>
 <text x="675 684" y="451.25" fill="#cccccc">38</text>
 <text x="702" y="451.25" fill="#cccccc">s</text>
-<text x="882" y="451.25" fill="#cccccc">│</text>
-<text x="1071" y="451.25" fill="#cccccc">║</text>
-<text x="0" y="470.25" fill="#cccccc">║</text>
+<rect x="885.75" y="437" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="437" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="437" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="456" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="456" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="36" y="470.25" fill="#cccccc">►</text>
 <text x="54 63 72 81 90 99 108 117 126 135 144" y="470.25" fill="#cccccc">Tablespaces</text>
-<text x="225 234" y="470.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="456" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="456" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="456" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="456" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261" y="470.25" fill="#c19c00">15</text>
-<text x="270 279 288 297 306 315 324" y="470.25" fill="#cccccc">│Tuples</text>
-<text x="441 450 459 468 477 486 495 504 513" y="470.25" fill="#cccccc">│Returned</text>
-<text x="612 621 630 639 648 657 666 675 684 693 702 711 720 729" y="470.25" fill="#cccccc">│6,120,447,781</text>
-<text x="882" y="470.25" fill="#cccccc">│</text>
-<text x="1071" y="470.25" fill="#cccccc">║</text>
-<text x="0" y="489.25" fill="#cccccc">║</text>
+<rect x="273.75" y="456" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315 324" y="470.25" fill="#cccccc">Tuples</text>
+<rect x="444.75" y="456" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486 495 504 513" y="470.25" fill="#cccccc">Returned</text>
+<rect x="615.75" y="456" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630 639 648 657 666 675 684 693 702 711 720 729" y="470.25" fill="#cccccc">6,120,447,781</text>
+<rect x="885.75" y="456" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="456" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="456" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="475" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="475" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="18" y="489.25" fill="#cccccc">►</text>
 <text x="36 45 54 63 72 81 90 99 108 117" y="489.25" fill="#cccccc">production</text>
-<text x="225 234" y="489.25" fill="#cccccc">║║</text>
+<rect x="226.9" y="475" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="475" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="475" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="475" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261" y="489.25" fill="#c19c00">16</text>
-<text x="270 279 288 297 306 315 324" y="489.25" fill="#cccccc">│Tuples</text>
-<text x="441 450 459 468 477 486 495 504" y="489.25" fill="#cccccc">│Fetched</text>
-<text x="612 621 630 639 648 657 666 675 684 693 702 711" y="489.25" fill="#cccccc">│981,277,340</text>
-<text x="882" y="489.25" fill="#cccccc">│</text>
-<text x="1071" y="489.25" fill="#cccccc">║</text>
-<text x="0" y="508.25" fill="#cccccc">║</text>
-<text x="225 234" y="508.25" fill="#cccccc">║║</text>
+<rect x="273.75" y="475" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315 324" y="489.25" fill="#cccccc">Tuples</text>
+<rect x="444.75" y="475" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486 495 504" y="489.25" fill="#cccccc">Fetched</text>
+<rect x="615.75" y="475" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630 639 648 657 666 675 684 693 702 711" y="489.25" fill="#cccccc">981,277,340</text>
+<rect x="885.75" y="475" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="475" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="475" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="494" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="494" width="1.1999998" height="19" fill="#cccccc"/>
+<rect x="226.9" y="494" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="494" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="494" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="494" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261" y="508.25" fill="#c19c00">17</text>
-<text x="270 279 288 297 306 315 324" y="508.25" fill="#cccccc">│Tuples</text>
-<text x="441 450 459 468 477 486 495 504 513" y="508.25" fill="#cccccc">│Inserted</text>
-<text x="612 621 630 639 648 657 666 675 684 693 702" y="508.25" fill="#cccccc">│13,377,041</text>
-<text x="882" y="508.25" fill="#cccccc">│</text>
-<text x="1071" y="508.25" fill="#cccccc">║</text>
-<text x="0" y="527.25" fill="#cccccc">║</text>
-<text x="225 234" y="527.25" fill="#cccccc">║║</text>
+<rect x="273.75" y="494" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315 324" y="508.25" fill="#cccccc">Tuples</text>
+<rect x="444.75" y="494" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486 495 504 513" y="508.25" fill="#cccccc">Inserted</text>
+<rect x="615.75" y="494" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630 639 648 657 666 675 684 693 702" y="508.25" fill="#cccccc">13,377,041</text>
+<rect x="885.75" y="494" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="494" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="494" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="513" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="513" width="1.1999998" height="19" fill="#cccccc"/>
+<rect x="226.9" y="513" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="513" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="513" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="513" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261" y="527.25" fill="#c19c00">18</text>
-<text x="270 279 288 297 306 315 324" y="527.25" fill="#cccccc">│Tuples</text>
-<text x="441 450 459 468 477 486 495 504" y="527.25" fill="#cccccc">│Updated</text>
-<text x="612 621 630 639 648 657 666 675 684 693" y="527.25" fill="#cccccc">│8,041,226</text>
-<text x="882" y="527.25" fill="#cccccc">│</text>
-<text x="1071" y="527.25" fill="#cccccc">║</text>
-<text x="0" y="546.25" fill="#cccccc">║</text>
-<text x="225 234" y="546.25" fill="#cccccc">║║</text>
+<rect x="273.75" y="513" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315 324" y="527.25" fill="#cccccc">Tuples</text>
+<rect x="444.75" y="513" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486 495 504" y="527.25" fill="#cccccc">Updated</text>
+<rect x="615.75" y="513" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630 639 648 657 666 675 684 693" y="527.25" fill="#cccccc">8,041,226</text>
+<rect x="885.75" y="513" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="513" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="513" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="532" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="532" width="1.1999998" height="19" fill="#cccccc"/>
+<rect x="226.9" y="532" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="532" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="532" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="532" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261" y="546.25" fill="#c19c00">19</text>
-<text x="270 279 288 297 306 315 324" y="546.25" fill="#cccccc">│Tuples</text>
-<text x="441 450 459 468 477 486 495 504" y="546.25" fill="#cccccc">│Deleted</text>
-<text x="612 621 630 639 648 657 666 675 684 693" y="546.25" fill="#cccccc">│1,002,977</text>
-<text x="882" y="546.25" fill="#cccccc">│</text>
-<text x="1071" y="546.25" fill="#cccccc">║</text>
-<text x="0" y="565.25" fill="#cccccc">║</text>
-<text x="225 234" y="565.25" fill="#cccccc">║║</text>
+<rect x="273.75" y="532" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315 324" y="546.25" fill="#cccccc">Tuples</text>
+<rect x="444.75" y="532" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486 495 504" y="546.25" fill="#cccccc">Deleted</text>
+<rect x="615.75" y="532" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630 639 648 657 666 675 684 693" y="546.25" fill="#cccccc">1,002,977</text>
+<rect x="885.75" y="532" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="532" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="532" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="551" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="551" width="1.1999998" height="19" fill="#cccccc"/>
+<rect x="226.9" y="551" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="551" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="551" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="551" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261" y="565.25" fill="#c19c00">20</text>
-<text x="270 279 288 297 306 315 324 333 342 351" y="565.25" fill="#cccccc">│Temporary</text>
+<rect x="273.75" y="551" width="1.5" height="19" fill="#cccccc"/>
+<text x="279 288 297 306 315 324 333 342 351" y="565.25" fill="#cccccc">Temporary</text>
 <text x="369 378 387 396 405" y="565.25" fill="#cccccc">files</text>
-<text x="441 450 459 468 477 486" y="565.25" fill="#cccccc">│Files</text>
-<text x="612 621 630 639" y="565.25" fill="#cccccc">│318</text>
-<text x="882" y="565.25" fill="#cccccc">│</text>
-<text x="1071" y="565.25" fill="#cccccc">║</text>
-<text x="0" y="584.25" fill="#cccccc">║</text>
-<text x="225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783 792 801 810 819 828 837 846 855 864 873 882 891 900 909 918 927 936 945 954 963 972 981 990 999 1008 1017 1026 1035 1044 1053 1062 1071" y="584.25" fill="#cccccc">║╟────────────────────────────────────────────────────────────────────────────────────────────╢</text>
+<rect x="444.75" y="551" width="1.5" height="19" fill="#cccccc"/>
+<text x="450 459 468 477 486" y="565.25" fill="#cccccc">Files</text>
+<rect x="615.75" y="551" width="1.5" height="19" fill="#cccccc"/>
+<text x="621 630 639" y="565.25" fill="#cccccc">318</text>
+<rect x="885.75" y="551" width="1.5" height="19" fill="#cccccc"/>
+<rect x="1072.9" y="551" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="551" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="570" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="570" width="1.1999998" height="19" fill="#cccccc"/>
+<rect x="226.9" y="570" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="570" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="570" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="570" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.75" y="578.75" width="3.25" height="1.5" fill="#cccccc"/>
+<rect x="243" y="578.75" width="828" height="1.5" fill="#cccccc"/>
+<rect x="1072.9" y="570" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="570" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1071" y="578.75" width="3.25" height="1.5" fill="#cccccc"/>
 <rect x="243" y="589" width="828.5" height="19.5" fill="#3a96dd"/>
-<text x="0" y="603.25" fill="#cccccc">║</text>
-<text x="225 234" y="603.25" fill="#cccccc">║║</text>
+<rect x="1.9" y="589" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="589" width="1.1999998" height="19" fill="#cccccc"/>
+<rect x="226.9" y="589" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="230.9" y="589" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="235.9" y="589" width="1.2000122" height="19" fill="#cccccc"/>
+<rect x="239.9" y="589" width="1.2000122" height="19" fill="#cccccc"/>
 <text x="252 261 270 279 288" y="603.25" fill="#0c0c0c">local</text>
 <text x="306" y="603.25" fill="#0c0c0c">·</text>
 <text x="324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522" y="603.25" fill="#0c0c0c">postgres@adventureworks</text>
@@ -337,7 +588,27 @@
 <text x="990 999" y="603.25" fill="#0c0c0c">1,</text>
 <text x="1017 1026 1035" y="603.25" fill="#0c0c0c">Col</text>
 <text x="1053" y="603.25" fill="#0c0c0c">1</text>
-<text x="1071" y="603.25" fill="#cccccc">║</text>
-<text x="0 9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783 792 801 810 819 828 837 846 855 864 873 882 891 900 909 918 927 936 945 954 963 972 981 990 999 1008 1017 1026 1035 1044 1053 1062 1071" y="622.25" fill="#cccccc">╚════════════════════════╝╚════════════════════════════════════════════════════════════════════════════════════════════╝</text>
+<rect x="1072.9" y="589" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1076.9" y="589" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="608" width="1.1999999" height="12.099976" fill="#cccccc"/>
+<rect x="1.9" y="618.9" width="7.1" height="1.1999512" fill="#cccccc"/>
+<rect x="5.9" y="608" width="1.1999998" height="8.099976" fill="#cccccc"/>
+<rect x="5.9" y="614.9" width="3.1" height="1.1999512" fill="#cccccc"/>
+<rect x="9" y="614.9" width="216" height="1.1999512" fill="#cccccc"/>
+<rect x="9" y="618.9" width="216" height="1.1999512" fill="#cccccc"/>
+<rect x="230.9" y="608" width="1.2000122" height="12.099976" fill="#cccccc"/>
+<rect x="225" y="618.9" width="7.100006" height="1.1999512" fill="#cccccc"/>
+<rect x="226.9" y="608" width="1.2000122" height="8.099976" fill="#cccccc"/>
+<rect x="225" y="614.9" width="3.100006" height="1.1999512" fill="#cccccc"/>
+<rect x="235.9" y="608" width="1.2000122" height="12.099976" fill="#cccccc"/>
+<rect x="235.9" y="618.9" width="7.100006" height="1.1999512" fill="#cccccc"/>
+<rect x="239.9" y="608" width="1.2000122" height="8.099976" fill="#cccccc"/>
+<rect x="239.9" y="614.9" width="3.100006" height="1.1999512" fill="#cccccc"/>
+<rect x="243" y="614.9" width="828" height="1.1999512" fill="#cccccc"/>
+<rect x="243" y="618.9" width="828" height="1.1999512" fill="#cccccc"/>
+<rect x="1076.9" y="608" width="1.1999512" height="12.099976" fill="#cccccc"/>
+<rect x="1071" y="618.9" width="7.0999756" height="1.1999512" fill="#cccccc"/>
+<rect x="1072.9" y="608" width="1.1999512" height="8.099976" fill="#cccccc"/>
+<rect x="1071" y="614.9" width="3.0999756" height="1.1999512" fill="#cccccc"/>
 <rect x="0" y="627" width="1080.5" height="19.5" fill="#3a96dd"/>
 </svg>

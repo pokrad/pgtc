@@ -1,18 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="792" height="456" viewBox="0 0 792 456" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15" shape-rendering="crispEdges" xml:space="preserve">
 <rect width="792" height="456" fill="#0037da"/>
-<text x="0 9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783" y="14.25" fill="#cccccc">╔══════════════════════════════════════════════════════════════════════════════════════╗</text>
+<rect x="1.9" y="6.9" width="7.1" height="1.2000003" fill="#cccccc"/>
+<rect x="1.9" y="6.9" width="1.1999999" height="12.1" fill="#cccccc"/>
+<rect x="5.9" y="10.9" width="3.1" height="1.2000008" fill="#cccccc"/>
+<rect x="5.9" y="10.9" width="1.1999998" height="8.1" fill="#cccccc"/>
+<rect x="9" y="6.9" width="774" height="1.2000003" fill="#cccccc"/>
+<rect x="9" y="10.9" width="774" height="1.2000008" fill="#cccccc"/>
+<rect x="783" y="6.9" width="7.0999756" height="1.2000003" fill="#cccccc"/>
+<rect x="788.9" y="6.9" width="1.1999512" height="12.1" fill="#cccccc"/>
+<rect x="783" y="10.9" width="3.0999756" height="1.2000008" fill="#cccccc"/>
+<rect x="784.9" y="10.9" width="1.1999512" height="8.1" fill="#cccccc"/>
 <rect x="99" y="19" width="252.5" height="19.5" fill="#3a96dd"/>
-<text x="0" y="33.25" fill="#cccccc">║</text>
+<rect x="1.9" y="19" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="19" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="18 27 36 45 54 63 72" y="33.25" fill="#cccccc">Default</text>
 <text x="108 117 126 135 144" y="33.25" fill="#0c0c0c">Query</text>
 <text x="162" y="33.25" fill="#0c0c0c">1</text>
 <text x="180" y="33.25" fill="#0c0c0c">–</text>
 <text x="198 207 216 225 234 243 252 261 270 279 288 297 306 315" y="33.25" fill="#0c0c0c">adventureworks</text>
 <text x="333" y="33.25" fill="#0c0c0c">×</text>
-<text x="783" y="33.25" fill="#cccccc">║</text>
-<text x="0 9 18 27 36 45 54 63 72 81 90 99 108 117 126 135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783" y="52.25" fill="#cccccc">╟──────────────────────────────────────────────────────────────────────────────────────╢</text>
+<rect x="784.9" y="19" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="19" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="38" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="38" width="1.1999998" height="19" fill="#cccccc"/>
+<rect x="5.75" y="46.75" width="3.25" height="1.5" fill="#cccccc"/>
+<rect x="9" y="46.75" width="774" height="1.5" fill="#cccccc"/>
+<rect x="784.9" y="38" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="38" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="783" y="46.75" width="3.25" height="1.5" fill="#cccccc"/>
 <rect x="45" y="57" width="9.5" height="19.5" fill="#f9f1a5"/>
-<text x="0" y="71.25" fill="#cccccc">║</text>
+<rect x="1.9" y="57" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="57" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="27" y="71.25" fill="#3a96dd">1</text>
 <text x="45" y="71.25" fill="#0037da">C</text>
 <text x="54 63 72 81 90" y="71.25" fill="#f9f1a5">REATE</text>
@@ -22,47 +40,61 @@
 <text x="216 225 234 243 252 261 270 279 288" y="71.25" fill="#cccccc">view_name</text>
 <text x="297" y="71.25" fill="#f2f2f2">]</text>
 <text x="315 324" y="71.25" fill="#f9f1a5">AS</text>
-<text x="783" y="71.25" fill="#cccccc">║</text>
-<text x="0" y="90.25" fill="#cccccc">║</text>
+<rect x="784.9" y="57" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="57" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="76" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="76" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="27" y="90.25" fill="#3a96dd">2</text>
 <text x="45 54 63 72 81 90" y="90.25" fill="#f9f1a5">SELECT</text>
-<text x="783" y="90.25" fill="#cccccc">║</text>
-<text x="0" y="109.25" fill="#cccccc">║</text>
+<rect x="784.9" y="76" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="76" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="95" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="95" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="27" y="109.25" fill="#3a96dd">3</text>
 <text x="81 90" y="109.25" fill="#cccccc">T1</text>
 <text x="99" y="109.25" fill="#f2f2f2">.</text>
 <text x="108 117 126 135 144 153 162 171 180 189 198 207" y="109.25" fill="#cccccc">salesorderid</text>
 <text x="216" y="109.25" fill="#f2f2f2">,</text>
-<text x="783" y="109.25" fill="#cccccc">║</text>
-<text x="0" y="128.25" fill="#cccccc">║</text>
+<rect x="784.9" y="95" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="95" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="114" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="114" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="27" y="128.25" fill="#3a96dd">4</text>
 <text x="81 90" y="128.25" fill="#cccccc">T1</text>
 <text x="99" y="128.25" fill="#f2f2f2">.</text>
 <text x="108 117 126 135 144 153 162 171 180" y="128.25" fill="#cccccc">orderdate</text>
 <text x="189" y="128.25" fill="#f2f2f2">,</text>
-<text x="783" y="128.25" fill="#cccccc">║</text>
-<text x="0" y="147.25" fill="#cccccc">║</text>
+<rect x="784.9" y="114" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="114" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="133" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="133" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="27" y="147.25" fill="#3a96dd">5</text>
 <text x="81 90" y="147.25" fill="#cccccc">T1</text>
 <text x="99" y="147.25" fill="#f2f2f2">.</text>
 <text x="108 117 126 135 144 153 162 171 180 189" y="147.25" fill="#cccccc">customerid</text>
 <text x="198" y="147.25" fill="#f2f2f2">,</text>
-<text x="783" y="147.25" fill="#cccccc">║</text>
-<text x="0" y="166.25" fill="#cccccc">║</text>
+<rect x="784.9" y="133" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="133" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="152" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="152" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="27" y="166.25" fill="#3a96dd">6</text>
 <text x="81 90" y="166.25" fill="#cccccc">T1</text>
 <text x="99" y="166.25" fill="#f2f2f2">.</text>
 <text x="108 117 126 135 144 153 162 171 180 189 198" y="166.25" fill="#cccccc">territoryid</text>
 <text x="207" y="166.25" fill="#f2f2f2">,</text>
-<text x="783" y="166.25" fill="#cccccc">║</text>
-<text x="0" y="185.25" fill="#cccccc">║</text>
+<rect x="784.9" y="152" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="152" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="171" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="171" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="27" y="185.25" fill="#3a96dd">7</text>
 <text x="81 90" y="185.25" fill="#cccccc">T1</text>
 <text x="99" y="185.25" fill="#f2f2f2">.</text>
 <text x="108 117 126 135 144 153 162 171" y="185.25" fill="#cccccc">totaldue</text>
 <text x="180" y="185.25" fill="#f2f2f2">,</text>
-<text x="783" y="185.25" fill="#cccccc">║</text>
-<text x="0" y="204.25" fill="#cccccc">║</text>
+<rect x="784.9" y="171" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="171" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="190" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="190" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="27" y="204.25" fill="#3a96dd">8</text>
 <text x="81 90" y="204.25" fill="#cccccc">T2</text>
 <text x="99" y="204.25" fill="#f2f2f2">.</text>
@@ -70,22 +102,28 @@
 <text x="207 216" y="204.25" fill="#f9f1a5">AS</text>
 <text x="234 243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396" y="204.25" fill="#cccccc">customer_customerid</text>
 <text x="405" y="204.25" fill="#f2f2f2">,</text>
-<text x="783" y="204.25" fill="#cccccc">║</text>
-<text x="0" y="223.25" fill="#cccccc">║</text>
+<rect x="784.9" y="190" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="190" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="209" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="209" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="27" y="223.25" fill="#3a96dd">9</text>
 <text x="81 90" y="223.25" fill="#cccccc">T2</text>
 <text x="99" y="223.25" fill="#f2f2f2">.</text>
 <text x="108 117 126 135 144 153 162 171" y="223.25" fill="#cccccc">personid</text>
 <text x="180" y="223.25" fill="#f2f2f2">,</text>
-<text x="783" y="223.25" fill="#cccccc">║</text>
-<text x="0" y="242.25" fill="#cccccc">║</text>
+<rect x="784.9" y="209" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="209" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="228" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="228" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="18 27" y="242.25" fill="#3a96dd">10</text>
 <text x="81 90" y="242.25" fill="#cccccc">T2</text>
 <text x="99" y="242.25" fill="#f2f2f2">.</text>
 <text x="108 117 126 135 144 153 162" y="242.25" fill="#cccccc">storeid</text>
 <text x="171" y="242.25" fill="#f2f2f2">,</text>
-<text x="783" y="242.25" fill="#cccccc">║</text>
-<text x="0" y="261.25" fill="#cccccc">║</text>
+<rect x="784.9" y="228" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="228" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="247" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="247" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="18 27" y="261.25" fill="#3a96dd">11</text>
 <text x="81 90" y="261.25" fill="#cccccc">T2</text>
 <text x="99" y="261.25" fill="#f2f2f2">.</text>
@@ -93,8 +131,10 @@
 <text x="216 225" y="261.25" fill="#f9f1a5">AS</text>
 <text x="243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414" y="261.25" fill="#cccccc">customer_territoryid</text>
 <text x="423" y="261.25" fill="#f2f2f2">,</text>
-<text x="783" y="261.25" fill="#cccccc">║</text>
-<text x="0" y="280.25" fill="#cccccc">║</text>
+<rect x="784.9" y="247" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="247" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="266" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="266" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="18 27" y="280.25" fill="#3a96dd">12</text>
 <text x="81 90" y="280.25" fill="#cccccc">T3</text>
 <text x="99" y="280.25" fill="#f2f2f2">.</text>
@@ -102,20 +142,26 @@
 <text x="216 225" y="280.25" fill="#f9f1a5">AS</text>
 <text x="243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378 387 396 405 414 423 432 441 450 459 468" y="280.25" fill="#cccccc">salesterritory_territoryid</text>
 <text x="477" y="280.25" fill="#f2f2f2">,</text>
-<text x="783" y="280.25" fill="#cccccc">║</text>
-<text x="0" y="299.25" fill="#cccccc">║</text>
+<rect x="784.9" y="266" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="266" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="285" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="285" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="18 27" y="299.25" fill="#3a96dd">13</text>
 <text x="81 90" y="299.25" fill="#cccccc">T3</text>
 <text x="99" y="299.25" fill="#f2f2f2">.</text>
 <text x="108 117 126 135" y="299.25" fill="#f9f1a5">name</text>
 <text x="144" y="299.25" fill="#f2f2f2">,</text>
-<text x="783" y="299.25" fill="#cccccc">║</text>
-<text x="0" y="318.25" fill="#cccccc">║</text>
+<rect x="784.9" y="285" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="285" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="304" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="304" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="18 27" y="318.25" fill="#3a96dd">14</text>
 <text x="81 90" y="318.25" fill="#cccccc">T3</text>
 <text x="99 108 117 126 135 144 153 162" y="318.25" fill="#f2f2f2">."group"</text>
-<text x="783" y="318.25" fill="#cccccc">║</text>
-<text x="0" y="337.25" fill="#cccccc">║</text>
+<rect x="784.9" y="304" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="304" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="323" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="323" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="18 27" y="337.25" fill="#3a96dd">15</text>
 <text x="45 54 63 72" y="337.25" fill="#f9f1a5">FROM</text>
 <text x="90 99 108 117 126" y="337.25" fill="#cccccc">sales</text>
@@ -123,8 +169,10 @@
 <text x="144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279" y="337.25" fill="#cccccc">salesorderheader</text>
 <text x="297 306" y="337.25" fill="#f9f1a5">AS</text>
 <text x="324 333" y="337.25" fill="#cccccc">T1</text>
-<text x="783" y="337.25" fill="#cccccc">║</text>
-<text x="0" y="356.25" fill="#cccccc">║</text>
+<rect x="784.9" y="323" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="323" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="342" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="342" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="18 27" y="356.25" fill="#3a96dd">16</text>
 <text x="45 54 63 72" y="356.25" fill="#f9f1a5">JOIN</text>
 <text x="90 99 108 117 126" y="356.25" fill="#cccccc">sales</text>
@@ -142,8 +190,10 @@
 <text x="477 486 495 504 513 522 531 540 549 558" y="356.25" fill="#cccccc">customerid</text>
 <text x="711 720" y="356.25" fill="#c19c00">--</text>
 <text x="738 747 756 765 774" y="356.25" fill="#c19c00">FK_Sa</text>
-<text x="783" y="356.25" fill="#cccccc">║</text>
-<text x="0" y="375.25" fill="#cccccc">║</text>
+<rect x="784.9" y="342" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="342" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="361" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="361" width="1.1999998" height="19" fill="#cccccc"/>
 <text x="18 27" y="375.25" fill="#3a96dd">17</text>
 <text x="45 54 63 72" y="375.25" fill="#f9f1a5">LEFT</text>
 <text x="90 99 108 117" y="375.25" fill="#f9f1a5">JOIN</text>
@@ -163,13 +213,22 @@
 <text x="684" y="375.25" fill="#f2f2f2">;</text>
 <text x="711 720" y="375.25" fill="#c19c00">--</text>
 <text x="738 747 756 765 774" y="375.25" fill="#c19c00">FK_Sa</text>
-<text x="783" y="375.25" fill="#cccccc">║</text>
-<text x="0" y="394.25" fill="#cccccc">║</text>
-<text x="783" y="394.25" fill="#cccccc">║</text>
-<text x="0" y="413.25" fill="#cccccc">║</text>
-<text x="783" y="413.25" fill="#cccccc">║</text>
-<text x="0" y="432.25" fill="#cccccc">║</text>
-<text x="783" y="432.25" fill="#cccccc">║</text>
-<text x="0" y="451.25" fill="#cccccc">║</text>
-<text x="783" y="451.25" fill="#cccccc">║</text>
+<rect x="784.9" y="361" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="361" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="380" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="380" width="1.1999998" height="19" fill="#cccccc"/>
+<rect x="784.9" y="380" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="380" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="399" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="399" width="1.1999998" height="19" fill="#cccccc"/>
+<rect x="784.9" y="399" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="399" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="418" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="418" width="1.1999998" height="19" fill="#cccccc"/>
+<rect x="784.9" y="418" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="418" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="1.9" y="437" width="1.1999999" height="19" fill="#cccccc"/>
+<rect x="5.9" y="437" width="1.1999998" height="19" fill="#cccccc"/>
+<rect x="784.9" y="437" width="1.1999512" height="19" fill="#cccccc"/>
+<rect x="788.9" y="437" width="1.1999512" height="19" fill="#cccccc"/>
 </svg>

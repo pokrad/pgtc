@@ -336,13 +336,35 @@ async fn readme_screenshots() {
                 ));
             }
             // every character at its own column, so the grid stays exact
+            let mut next = 0;
             for x in 0..W {
+                if x < next {
+                    continue; // part of a horizontal line drawn already
+                }
                 let cell = &buf[(x, y)];
                 let sym = cell.symbol();
                 if sym.trim().is_empty() {
                     continue;
                 }
                 let (fg, _) = crate::theme_check::shown(cell.style(), palette);
+                // lines and blocks over the whole cell, not as glyphs; a horizontal
+                // line as one shape over its run
+                let mut end = x + 1;
+                if super::svg_cells::stretches(sym) {
+                    while end < W
+                        && buf[(end, y)].symbol() == sym
+                        && crate::theme_check::shown(buf[(end, y)].style(), palette).0 == fg
+                    {
+                        end += 1;
+                    }
+                }
+                let (px, py) = (x as f32 * cw, y as f32 * ch);
+                let w = (end - x) as f32 * cw;
+                if let Some(s) = super::svg_cells::cell_shapes(sym, px, py, w, ch, &hex(fg)) {
+                    out.push_str(&s);
+                    next = end;
+                    continue;
+                }
                 let m = cell.modifier;
                 let bold = if m.contains(ratatui::style::Modifier::BOLD) {
                     " font-weight=\"700\""

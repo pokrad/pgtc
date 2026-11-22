@@ -113,12 +113,49 @@ fn draw(a: &App, crop: Crop) -> (String, String) {
                 x += 1;
                 continue;
             }
+            // lines and blocks over the whole cell, not as glyphs
+            let shape = |x: u16| {
+                let (fg, ..) = style_of(x);
+                super::svg_cells::cell_shapes(
+                    buf[(x, y)].symbol(),
+                    (x - area.x) as f32 * cw,
+                    py,
+                    cw,
+                    ch,
+                    &hex(fg),
+                )
+            };
+            if super::svg_cells::stretches(sym) {
+                // a horizontal line: its run as one shape
+                let mut end = x + 1;
+                while end < area.right()
+                    && buf[(end, y)].symbol() == sym
+                    && style_of(end) == style_of(x)
+                {
+                    text.push_str(sym);
+                    end += 1;
+                }
+                let (fg, ..) = style_of(x);
+                let px = (x - area.x) as f32 * cw;
+                let w = (end - x) as f32 * cw;
+                if let Some(s) = super::svg_cells::cell_shapes(sym, px, py, w, ch, &hex(fg)) {
+                    out.push_str(&s);
+                }
+                x = end;
+                continue;
+            }
+            if let Some(s) = shape(x) {
+                out.push_str(&s);
+                x += 1;
+                continue;
+            }
             let style = style_of(x);
             let (mut xs, mut chars) = (String::new(), String::new());
             let mut end = x;
             while end < area.right()
                 && !buf[(end, y)].symbol().trim().is_empty()
                 && style_of(end) == style
+                && shape(end).is_none()
             {
                 if end > x {
                     xs.push(' ');
