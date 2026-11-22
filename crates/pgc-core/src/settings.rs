@@ -131,6 +131,16 @@ impl Default for SavedConnection {
 }
 
 impl SavedConnection {
+    /// The same saved connection as `other`, though some of its settings may have
+    /// been edited: the name and where it connects to as whom.
+    pub fn same_entry(&self, other: &SavedConnection) -> bool {
+        self.name == other.name
+            && self.host == other.host
+            && self.port == other.port
+            && self.database == other.database
+            && self.username == other.username
+    }
+
     /// Same server, database, user and SSL mode (D-031: "identical" connection).
     pub fn same_target(&self, other: &SavedConnection) -> bool {
         self.host == other.host
@@ -403,6 +413,22 @@ impl Settings {
         })
     }
 
+    /// The connections another pgtc has saved to `path` since this one last read or
+    /// wrote it: those in the file that are neither among `seen` (the connections
+    /// of then) nor among this one's. A second window that saves its settings would
+    /// otherwise write them away (D-035). A file that cannot be read has none.
+    pub fn servers_added_elsewhere(
+        &self,
+        path: &Path,
+        seen: &[SavedConnection],
+    ) -> Vec<SavedConnection> {
+        let Ok(file) = Self::load(path) else {
+            return Vec::new();
+        };
+        let known = |f: &SavedConnection| seen.iter().chain(&self.servers).any(|s| s.same_entry(f));
+        file.servers.into_iter().filter(|f| !known(f)).collect()
+    }
+
     /// Saves settings to `path`, creating the parent directory if needed.
     /// Writes a temporary file first and renames it, so a crash never leaves a
     /// half-written file.
@@ -419,6 +445,37 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Two pgtc with one settings file: a connection the other one saved is found,
+    /// one this pgtc deleted is not taken for new.
+    #[test]
+    fn connections_saved_by_another_pgtc_are_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.toml");
+        let conn = |name: &str| SavedConnection {
+            name: name.into(),
+            host: "db".into(),
+            ..SavedConnection::default()
+        };
+        // both start with a and b
+        let mut mine = Settings {
+            servers: vec![conn("a"), conn("b")],
+            ..Settings::default()
+        };
+        let seen = mine.servers.clone();
+        // the other one adds c and saves; this one has deleted b meanwhile
+        let mut other = mine.clone();
+        other.servers.push(conn("c"));
+        other.save(&path).unwrap();
+        mine.servers.retain(|s| s.name != "b");
+        let added = mine.servers_added_elsewhere(&path, &seen);
+        assert_eq!(added, vec![conn("c")], "c is new; b was deleted here");
+        // no file: nothing
+        assert!(
+            mine.servers_added_elsewhere(&dir.path().join("none"), &seen)
+                .is_empty()
+        );
+    }
 
     #[test]
     fn missing_file_gives_defaults() {

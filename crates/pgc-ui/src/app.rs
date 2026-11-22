@@ -396,6 +396,9 @@ enum Target {
 pub struct App {
     pub paths: Paths,
     pub settings: Settings,
+    /// The saved connections as `settings.toml` had them when this pgtc last read or
+    /// wrote it: what the file has more now, another pgtc has added (D-035).
+    servers_seen: Vec<pgc_core::settings::SavedConnection>,
     pub keymap: Keymap,
     pub themes: ThemeSet,
     pub theme: Theme,
@@ -542,6 +545,7 @@ impl App {
 
         let mut app = Self {
             paths,
+            servers_seen: settings.servers.clone(),
             settings,
             keymap,
             themes,

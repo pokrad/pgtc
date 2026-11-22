@@ -88,7 +88,10 @@ is folded to lower case. Each part becomes an anchored regular expression matche
 <ul>
   <li>As in psql, without a schema part (or without a pattern) only objects <b>visible on the
       <code>search_path</code></b> are listed. Use <code>sales.*</code> or <code>*.*</code> to look outside it.</li>
-  <li>Only <code>*</code> and <code>?</code> are wildcards; other regex characters are escaped.</li>
+  <li>As in psql the rest is a regular expression: outside double quotes <code>|</code>, <code>()</code>,
+      <code>[]</code>, <code>+</code>, <code>{}</code>, <code>^</code> keep their meaning
+      (<code>dt (orders|items)</code>, <code>dt t[0-9]*</code>); <code>$</code> and <code>.</code> are literal.
+      Inside double quotes everything is text. An invalid expression is the server's error.</li>
   <li><code>l</code>, <code>dn</code>, <code>du</code>, <code>dx</code>, <code>db</code> take a name pattern only (a
       dot is part of the name). Elsewhere the database part of <code>db.schema.name</code> is ignored.</li>
 </ul>
@@ -111,7 +114,7 @@ is folded to lower case. Each part becomes an anchored regular expression matche
 <ul>
   <li>An unqualified name must be visible on the <code>search_path</code>; unquoted names are folded to lower
       case. The name is a bind parameter.</li>
-  <li>A pattern (<code>*</code>, <code>?</code>) is refused — use <code>dt</code>, <code>dv</code>, ….</li>
+  <li>A pattern (an unquoted <code>*</code> or <code>?</code>) is refused — use <code>dt</code>, <code>dv</code>, ….</li>
   <li>For the full DDL, select the relation in the tree (<a href="objects.html">Object view</a>).</li>
 </ul>
 

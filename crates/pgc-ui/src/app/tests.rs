@@ -1194,6 +1194,38 @@ fn each_tab_shows_its_own_connection() {
     assert!(screen_text(&a).contains(" read only"));
 }
 
+/// A connection another pgtc has saved to the same settings file is not written
+/// away by a save of this one: it is taken over, into the tree as well (D-035).
+#[test]
+fn a_connection_saved_by_another_pgtc_is_taken_over() {
+    let (mut a, _d) = app();
+    add_server(&mut a, "mine");
+    a.persist_servers();
+    let file = a.paths.settings_file();
+    // the other pgtc: started with the same file, adds a connection
+    let mut other = Settings::load(&file).unwrap();
+    other.servers.push(pgc_core::settings::SavedConnection {
+        name: "theirs".into(),
+        host: "db2".into(),
+        ..Default::default()
+    });
+    other.save(&file).unwrap();
+    // this one saves something else
+    a.settings.ui.color_scheme = "Dark".into();
+    assert!(a.save_settings());
+    let names =
+        |s: &Settings| -> Vec<String> { s.servers.iter().map(|c| c.name.clone()).collect() };
+    let saved = Settings::load(&file).unwrap();
+    assert_eq!(names(&saved), ["mine", "theirs"]);
+    assert_eq!(saved.ui.color_scheme, "Dark");
+    assert_eq!(a.tree.servers.len(), 2, "in the tree here as well");
+    // deleted here afterwards: it stays deleted
+    let uid = a.tree.servers[1].uid;
+    a.tree.remove(uid);
+    a.persist_servers();
+    assert_eq!(names(&Settings::load(&file).unwrap()), ["mine"]);
+}
+
 /// A definition that was asked for on a session that is lost: its tab says so.
 #[test]
 fn a_lost_session_ends_loading_of_its_definitions() {

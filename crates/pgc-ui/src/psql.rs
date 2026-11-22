@@ -623,7 +623,7 @@ pub fn parse(input: &str) -> Result<Cmd, String> {
     Ok(match base {
         "l" => list("list_databases.sql", None, false),
         "d" => match &arg {
-            Some(a) if a.contains(['*', '?']) => {
+            Some(a) if has_wildcard(a) => {
                 return Err(
                     "d describes one name; for a pattern use dt, dv, ... (e.g. dt ord*)".to_owned(),
                 );
@@ -743,6 +743,18 @@ fn split_parts(text: &str) -> Vec<(String, bool)> {
     parts
 }
 
+/// `arg` has a `*` or `?` outside double quotes: it is a pattern, not a name
+/// (`"a*b"` is the name `a*b`).
+fn has_wildcard(arg: &str) -> bool {
+    let mut in_quotes = false;
+    arg.chars().any(|c| {
+        if c == '"' {
+            in_quotes = !in_quotes;
+        }
+        !in_quotes && matches!(c, '*' | '?')
+    })
+}
+
 /// A psql pattern part as an anchored regular expression: `*` → `.*`, `?` → `.`,
 /// unquoted text in lower case, quoted text exact.
 pub fn pattern_regex(part: &str) -> String {
@@ -764,8 +776,12 @@ pub fn pattern_regex(part: &str) -> String {
                 } else {
                     c.to_lowercase().to_string()
                 };
+                // as psql: quoted text is taken as it is; outside quotes the other
+                // characters of a regular expression keep their meaning —
+                // `(a|b)`, `[0-9]`, `+` —, only `$`, `.` and `\` are literal
+                let literal = if in_quotes { "\\.^$|()[]{}+*?" } else { "\\.$" };
                 for ch in c.chars() {
-                    if "\\.^$|()[]{}+*?".contains(ch) {
+                    if literal.contains(ch) {
                         out.push('\\');
                     }
                     out.push(ch);
@@ -2770,6 +2786,9 @@ mod tests {
         );
         assert!(matches!(parse("d"), Ok(Cmd::List { kinds: Some(k), .. }) if k == "rpvmSf"));
         assert!(parse("d ord*").is_err());
+        // a quoted `*` is part of the name
+        assert!(matches!(parse("d \"a*b\""), Ok(Cmd::Describe { .. })));
+        assert!(parse("d \"a\"*").is_err());
         assert!(parse("xyz").unwrap_err().contains("Unknown command xyz"));
         assert_eq!(
             parse("gtu Orders"),
@@ -2788,6 +2807,11 @@ mod tests {
         assert_eq!(pattern_regex("Ord?r"), "^(ord.r)$");
         assert_eq!(pattern_regex("\"My*T\""), "^(My\\*T)$");
         assert_eq!(pattern_regex("a.b"), "^(a\\.b)$");
+        // regular expression syntax passes through, as in psql; quoted it is text
+        assert_eq!(pattern_regex("(orders|items)"), "^((orders|items))$");
+        assert_eq!(pattern_regex("t[0-9]*"), "^(t[0-9].*)$");
+        assert_eq!(pattern_regex("\"a(b\""), "^(a\\(b)$");
+        assert_eq!(pattern_regex("a$b"), "^(a\\$b)$");
         assert_eq!(
             pattern_params("public.*", true),
             (Some("^(public)$".into()), Some("^(.*)$".into()))

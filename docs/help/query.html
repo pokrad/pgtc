@@ -59,7 +59,8 @@ block</b>:</p>
   <li>explicit <code>BEGIN</code> / <code>COMMIT</code> in the script work as written.</li>
 </ul>
 <p>Each statement with a row description is a result set; each completed statement leaves its command tag in
-<i>Messages</i>.</p>
+<i>Messages</i>. A run keeps its newest 10,000 messages: when there are more, the first line says how many
+earlier ones were dropped; errors are never dropped.</p>
 
 <h2 id="results">Results</h2>
 <figure>

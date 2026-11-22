@@ -36,6 +36,11 @@ pub enum MessageKind {
     Time,
 }
 
+/// How many messages of a run are kept (D-019), and how many go at a time when there
+/// are more (dropping one by one would move the whole list for every notice).
+pub const MESSAGES_KEPT: usize = 10_000;
+const MESSAGES_TRIMMED: usize = 1_000;
+
 /// A line (or block) in the Messages tab.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Message {
@@ -184,6 +189,9 @@ pub struct QueryState {
     pub sent: Option<Sent>,
     /// Statements of the run that have completed (the running one is the next).
     pub completed: usize,
+    /// Messages of the run that were dropped to keep [`MESSAGES_KEPT`]; when not 0,
+    /// the first message says so.
+    pub messages_dropped: usize,
     /// `Ctrl+A` in Messages: copy copies all of them (D-019).
     pub messages_all_selected: bool,
     pub after_run: Option<AfterRun>,
@@ -221,6 +229,7 @@ impl QueryState {
             save_next: None,
             sent: None,
             completed: 0,
+            messages_dropped: 0,
             messages_all_selected: false,
             after_run: None,
             binding: None,
@@ -303,6 +312,7 @@ impl QueryState {
         self.results.clear();
         self.active_result = 0;
         self.messages.clear();
+        self.messages_dropped = 0;
         self.message_cursor = 0;
         self.messages_all_selected = false;
         self.completed = 0;
@@ -328,6 +338,55 @@ impl QueryState {
             jump: None,
             exact: false,
         });
+        self.trim_messages();
+    }
+
+    /// Keeps the newest [`MESSAGES_KEPT`] messages of a run (D-019): a statement can
+    /// raise notices without end, and nothing holds them back as rows are held. The
+    /// oldest go, some at a time; errors and the total time never do. The first
+    /// message then says how many were dropped.
+    fn trim_messages(&mut self) {
+        if self.messages.len() < MESSAGES_KEPT + MESSAGES_TRIMMED {
+            return;
+        }
+        // the first message is the note about the dropped ones, once there is one
+        let note = usize::from(self.messages_dropped > 0);
+        let mut drop = self.messages.len() - MESSAGES_KEPT;
+        let (cursor, mut before_cursor, mut dropped) = (self.message_cursor, 0, 0);
+        let mut i = 0;
+        self.messages.retain(|m| {
+            let at = i;
+            i += 1;
+            let goes =
+                at >= note && drop > 0 && !matches!(m.kind, MessageKind::Error | MessageKind::Time);
+            if goes {
+                drop -= 1;
+                dropped += 1;
+                before_cursor += usize::from(at < cursor);
+            }
+            !goes
+        });
+        self.messages_dropped += dropped;
+        self.message_cursor -= before_cursor;
+        let text = format!(
+            "… {} earlier messages dropped (the newest {} are kept)",
+            crate::grid::thousands(self.messages_dropped),
+            crate::grid::thousands(MESSAGES_KEPT)
+        );
+        if note == 1 {
+            self.messages[0].text = text;
+        } else if self.messages_dropped > 0 {
+            self.messages.insert(
+                0,
+                Message {
+                    kind: MessageKind::Info,
+                    text,
+                    jump: None,
+                    exact: false,
+                },
+            );
+            self.message_cursor += 1;
+        }
     }
 
     /// A server message with its editor position and `LINE n:` text (D-019).
@@ -349,6 +408,7 @@ impl QueryState {
             jump,
             exact,
         });
+        self.trim_messages();
     }
 
     /// Applies an event of the running execution. Returns true when it finished.
@@ -720,6 +780,56 @@ mod tests {
         q.apply(QueryEvent::Error(msg(None, Some(&ctx(2)))), &lines);
         assert_eq!(q.messages[1].jump, None);
         assert!(!q.messages[1].text.contains("LINE"));
+    }
+
+    /// A run keeps its newest messages only; an error is never dropped (D-019).
+    #[test]
+    fn a_flood_of_notices_keeps_the_newest() {
+        let mut q = QueryState::new(true, false);
+        q.start_run(1, Sent::new(0, "do"));
+        let line_of = |_: usize| 0;
+        let lines = LineMap { line_of: &line_of };
+        let notice = |n: usize| ServerMessage {
+            severity: "NOTICE".into(),
+            message: format!("n{n}"),
+            ..ServerMessage::default()
+        };
+        q.notice(&notice(0), &lines);
+        q.apply(
+            QueryEvent::Error(ServerMessage {
+                severity: "ERROR".into(),
+                message: "early".into(),
+                ..ServerMessage::default()
+            }),
+            &lines,
+        );
+        assert_eq!(q.message_cursor, 1, "on the error");
+        let total = 3 * MESSAGES_KEPT;
+        for n in 1..=total {
+            q.notice(&notice(n), &lines);
+        }
+        assert!(q.messages.len() < MESSAGES_KEPT + MESSAGES_TRIMMED + 1);
+        assert!(q.messages.len() >= MESSAGES_KEPT);
+        // the note, the error that was kept, and the newest notice at the end
+        assert!(
+            q.messages[0].text.contains("earlier messages dropped"),
+            "{}",
+            q.messages[0].text
+        );
+        assert_eq!(q.messages[1].kind, MessageKind::Error);
+        assert_eq!(q.message_cursor, 1, "the cursor follows its message");
+        assert!(
+            q.messages
+                .last()
+                .unwrap()
+                .text
+                .contains(&format!("n{total}"))
+        );
+        // every message is either there or counted
+        assert_eq!(q.messages_dropped + q.messages.len() - 1, total + 2);
+        // the next run starts with nothing
+        q.start_run(2, Sent::new(0, "do"));
+        assert_eq!((q.messages.len(), q.messages_dropped), (0, 0));
     }
 
     /// A notice of a `DO` in SQL mode jumps to its line in the running `DO` (D-019).

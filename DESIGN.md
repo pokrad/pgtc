@@ -840,6 +840,11 @@ pgtc (binary)
   - errors with DETAIL and HINT, and the line number derived from the error position;
     selecting an error jumps to that line in the editor;
   - total execution time at the end.
+- **A run keeps its newest 10,000 messages.** A statement can raise notices without
+  end, and nothing holds them back as rows are held (batches). When there are more,
+  the oldest are dropped and the first line says how many (*… 123,456 earlier
+  messages dropped*); errors and the total time are never dropped. The next run
+  starts with an empty list, as before.
 - **Positions of messages in the editor** (errors, and notices / warnings the same way;
   not NOTIFY, not `F4` catalog runs):
   - the position in the sent text (`position`) gives line and column;
@@ -1124,6 +1129,11 @@ pgtc (binary)
 - **Status:** Accepted (refines D-008, D-011, D-014)
 - Saved connections live in `settings.toml` (`[[servers]]`): name, host, port,
   maintenance database, user name, SSL mode, root certificate file (D-011, D-033).
+- **Two pgtc with one `settings.toml`:** each writes the whole file when it saves.
+  Before it does, it reads the file: a connection that is there now and was not when
+  this pgtc last read or wrote it — another pgtc has saved it — is taken over, into
+  the file and into this one's tree. A connection deleted here stays deleted; of a
+  connection edited in both, and of every other setting, the last save counts.
   In the New / Edit connection dialog the SSL mode is a combo box (drop-down).
 - **Context menu (`F2` / right click) on a server:** Connect, Disconnect, Refresh,
   Edit connection…, Delete connection (with confirmation) (D-049). `F8` (Drop) on a server
@@ -1802,7 +1812,12 @@ pgtc (binary)
     extensions, `db` tablespaces, `dp` access privileges; `d` without a name lists
     tables, views, materialized views, sequences and foreign tables.
   - Pattern (psql rules): `*` any text, `?` one character, `schema.name`, unquoted
-    parts compared in lower case, `"..."` exact; passed as **bind parameters**. Without
+    parts compared in lower case, `"..."` exact; passed as **bind parameters**. As in
+    psql the rest of a pattern is a regular expression: outside double quotes `|`,
+    `()`, `[]`, `+`, `{}` and `^` keep their meaning (`dt (orders|items)`,
+    `dt t[0-9]*`), `$` and `.` are literal (`.` separates schema and name); inside
+    double quotes everything is text. A pattern that is no regular expression gets
+    the server's error. Without
     a pattern system schemas are left out; `S` (`dtS`) includes them; `+` adds columns
     (size, description, ...). As in psql, without a schema part (and without a
     pattern) relations, functions, types, domains and privileges are limited to what
@@ -3029,3 +3044,4 @@ pgtc (binary)
 | 2026-11-22 | D-048 updated: a view that differs is always dropped and created again, with the chain of views that depend on it or on a dropped function (also views only in the database); tables stay out of the chain. A column's type is changed with `USING`, its default dropped before and set after. New enum labels come first in the script, with a note. |
 | 2026-11-22 | D-052 / D-019 updated: inside an open transaction the automatically opened autocomplete list reads nothing from the server; pgtc's own queries on a query tab's session run in a savepoint there. D-073 updated: the AI answer goes to the place the request was sent from. D-074 updated: `server_version` and `database` are no parameter names. D-033 updated: `sslmode=allow` is read as `prefer`. D-012 updated: a JSON file with nothing of a definition file is refused. D-057 updated: a failed read of the statistics is shown where the graphs are. |
 | 2026-11-22 | D-048 updated: functions are matched by name and argument types, and dropped and created when a parameter's name or mode differs or a default is gone; table parts that use a dropped function are dropped before it and created again after it; `INHERITS` and the options of identity sequences are in the model (new optional fields, the format number stays 1); a new identity on a table with rows continues after them. D-058 updated: a setting that is this session's only is never written back as the server's. |
+| 2026-11-22 | D-019 updated: a run keeps its newest 10,000 messages (the first line says how many earlier ones were dropped; errors and the total time are never dropped). D-035 updated: a connection another pgtc saved to `settings.toml` meanwhile is taken over when this one saves, not written away. D-054 updated: in a pattern, regular expression syntax other than `*`, `?`, `.` and `$` keeps its meaning outside double quotes, as in psql. |

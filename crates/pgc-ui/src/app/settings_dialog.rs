@@ -198,8 +198,20 @@ impl App {
     /// Saves `settings.toml`; shows an error dialog on failure.
     pub(super) fn save_settings(&mut self) -> bool {
         let file = self.paths.settings_file();
+        // connections another pgtc has saved meanwhile are taken over, not written
+        // away: they appear in the tree here as well (D-035)
+        for conn in self
+            .settings
+            .servers_added_elsewhere(&file, &self.servers_seen)
+        {
+            self.tree.add(conn.clone());
+            self.settings.servers.push(conn);
+        }
         match self.settings.save(&file) {
-            Ok(()) => true,
+            Ok(()) => {
+                self.servers_seen = self.settings.servers.clone();
+                true
+            }
             Err(e) => {
                 tracing::error!("saving settings: {e:#}");
                 self.error(&format!("Cannot save {}:\n{e}", file.display()));

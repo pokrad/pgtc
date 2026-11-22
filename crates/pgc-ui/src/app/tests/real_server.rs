@@ -112,6 +112,28 @@ async fn psql_commands_against_a_real_server() {
         "{:?}",
         rs.rows
     );
+    // a pattern is a regular expression, as in psql: alternation, a character class
+    run(&mut a, "dt pg_catalog.(pg_class|pg_type)");
+    pump(&mut a, &mut rx, &hits, idle).await;
+    let rs = &a.query().unwrap().results[0];
+    let mut names: Vec<&str> = rs.rows.iter().filter_map(|r| r[1].as_deref()).collect();
+    names.sort_unstable();
+    assert_eq!(names, ["pg_class", "pg_type"]);
+    run(&mut a, "dt pg_catalog.pg_c[l]ass");
+    pump(&mut a, &mut rx, &hits, idle).await;
+    assert_eq!(a.query().unwrap().results[0].rows.len(), 1);
+    // one that is no regular expression: the server's error, in Messages
+    run(&mut a, "dt pg_catalog.pg_[");
+    pump(&mut a, &mut rx, &hits, idle).await;
+    let q = a.query().unwrap();
+    assert!(q.results.is_empty());
+    assert!(
+        q.messages
+            .iter()
+            .any(|m| m.text.contains("invalid regular expression")),
+        "{:?}",
+        q.messages
+    );
     // describe: sections without rows are left out
     run(&mut a, "d pgtc_psql");
     pump(&mut a, &mut rx, &hits, idle).await;
