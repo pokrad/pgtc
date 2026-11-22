@@ -101,11 +101,7 @@ impl Manager {
                     continue;
                 }
                 for (folder, name, desc) in &self.names[i] {
-                    if !filter.is_empty()
-                        && !name.to_lowercase().contains(filter)
-                        && !desc.to_lowercase().contains(filter)
-                        && !e.rel.to_lowercase().contains(filter)
-                    {
+                    if !super::templates::template_matches(filter, name, desc, &e.rel) {
                         continue;
                     }
                     let version = if folder == "default" {

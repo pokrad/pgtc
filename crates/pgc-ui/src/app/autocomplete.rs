@@ -2,7 +2,7 @@
 //! (D-052): opening, filtering and accepting the list, reading names through the
 //! query tab's connection (the form belongs to a query tab).
 
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::KeyEvent;
 use pgc_editor::{Action, Editor};
 use pgc_sql::RenderContext;
 
@@ -69,27 +69,14 @@ impl App {
     /// Keys while the list is open; true when the key was used. Typed characters go
     /// on into the editor (and refilter the list afterwards).
     pub(super) fn completion_key(&mut self, ev: &KeyEvent, cmd: Option<Command>) -> bool {
-        use crate::completion::LIST_ROWS;
         // a list still waiting for names is not shown: keys work as usual
         if self.completion.as_ref().is_some_and(|p| !p.shown()) {
             return false;
         }
-        let typing = matches!(ev.code, KeyCode::Char(_))
-            && !ev
-                .modifiers
-                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT);
-        if typing {
+        if crate::completion::is_typing(ev) {
             return false;
         }
-        let rows = LIST_ROWS as isize;
-        let step = match cmd {
-            Some(Command::Up) => Some(-1),
-            Some(Command::Down) => Some(1),
-            Some(Command::PageUp) => Some(-rows),
-            Some(Command::PageDown) => Some(rows),
-            _ => None,
-        };
-        if let Some(step) = step {
+        if let Some(step) = crate::completion::list_step(cmd) {
             if let Some(p) = self.completion.as_mut() {
                 p.move_by(step);
             }
@@ -113,6 +100,16 @@ impl App {
                 false
             }
         }
+    }
+
+    /// `ev` is the key that asks for the list (`Ctrl+Space`, `Alt+/` — `complete` of
+    /// the editor's keys), also where the keys are a dialog's: the `F4` line, the
+    /// prompt of the AI assistant.
+    pub(super) fn is_complete_key(&self, ev: &KeyEvent) -> bool {
+        let combo = crate::keys::KeyCombo::from_event(ev);
+        self.keymap
+            .lookup_only(crate::keymap::Context::Editor, combo)
+            == Some(Command::Complete)
     }
 
     /// After a typed character: refilter the open list, or open it after `.` and after

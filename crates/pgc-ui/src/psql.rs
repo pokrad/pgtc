@@ -958,6 +958,42 @@ impl GenColumn {
     }
 }
 
+/// Adds the `WHERE` of a statement that finds a row by its key: a line for each term
+/// — (left side, value, comment) — `AND` (as `and` writes it, with its indentation)
+/// in front of every one but the first, `end` behind the last. Without a key: a
+/// condition for the user to write.
+fn where_by_key(
+    lines: &mut Vec<(String, String)>,
+    indent: &str,
+    and: &str,
+    end: &str,
+    terms: Vec<(String, String, String)>,
+) {
+    if terms.is_empty() {
+        lines.push((
+            format!("{indent}WHERE [condition]{end}"),
+            "no primary key: write a condition".to_owned(),
+        ));
+        return;
+    }
+    let last = terms.len() - 1;
+    for (i, (left, value, comment)) in terms.into_iter().enumerate() {
+        let lead = if i == 0 { "WHERE" } else { and };
+        let end = if i == last { end } else { "" };
+        lines.push((format!("{indent}{lead} {left} = {value}{end}"), comment));
+    }
+}
+
+/// Adds `items` — a line each, with its comment — to `lines`, a comma behind every one
+/// but the last: the column lists, value lists and SET lists of the generators.
+fn listed(lines: &mut Vec<(String, String)>, items: impl IntoIterator<Item = (String, String)>) {
+    let mut items = items.into_iter().peekable();
+    while let Some((text, comment)) = items.next() {
+        let comma = if items.peek().is_some() { "," } else { "" };
+        lines.push((format!("{text}{comma}"), comment));
+    }
+}
+
 /// Comment of an INSERT column: type, NOT NULL and the default, if it has one (the
 /// column can then be left out).
 fn insert_comment(c: &GenColumn) -> String {
@@ -1034,30 +1070,11 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
     let (key, key_kind) = key_of(t);
     let is_key = |c: &GenColumn| key.iter().any(|k| k.name == c.name);
     let where_lines = |out: &mut Vec<(String, String)>, indent: &str, end: &str| {
-        if key.is_empty() {
-            out.push((
-                format!("{indent}WHERE [condition]{end}"),
-                "no primary key: write a condition".to_owned(),
-            ));
-            return;
-        }
-        for (i, c) in key.iter().enumerate() {
-            let lead = if i == 0 {
-                format!("{indent}WHERE")
-            } else {
-                format!("{indent}    AND")
-            };
-            let last = i + 1 == key.len();
-            out.push((
-                format!(
-                    "{lead} {} = {}{}",
-                    quote_ident(&c.name),
-                    ph(c),
-                    if last { end } else { "" }
-                ),
-                format!("{key_kind}: {}", c.type_name),
-            ));
-        }
+        let terms = key.iter().map(|c| {
+            let comment = format!("{key_kind}: {}", c.type_name);
+            (quote_ident(&c.name), ph(c), comment)
+        });
+        where_by_key(out, indent, "    AND", end, terms.collect());
     };
     let writable = |c: &&GenColumn| !c.generated && c.identity != "a";
     // gto / gtm: as INSERT, but the key is always listed (else the row never matches)
@@ -1078,14 +1095,12 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
     match what {
         Gen::Select => {
             lines.push(("SELECT".to_owned(), String::new()));
-            let n = t.columns.len();
-            for (i, c) in t.columns.iter().enumerate() {
-                let comma = if i + 1 < n { "," } else { "" };
-                lines.push((
-                    format!("    {}{comma}", quote_ident(&c.name)),
-                    String::new(),
-                ));
-            }
+            listed(
+                &mut lines,
+                t.columns
+                    .iter()
+                    .map(|c| (format!("    {}", quote_ident(&c.name)), String::new())),
+            );
             lines.push((format!("FROM {table};"), String::new()));
         }
         Gen::Insert => {
@@ -1103,18 +1118,17 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
                 ));
             } else {
                 lines.push((format!("INSERT INTO {table} ("), String::new()));
-                for (i, c) in cols.iter().enumerate() {
-                    let comma = if i + 1 < cols.len() { "," } else { "" };
-                    lines.push((
-                        format!("    {}{comma}", quote_ident(&c.name)),
-                        insert_comment(c),
-                    ));
-                }
+                listed(
+                    &mut lines,
+                    cols.iter()
+                        .map(|c| (format!("    {}", quote_ident(&c.name)), insert_comment(c))),
+                );
                 lines.push((") VALUES (".to_owned(), String::new()));
-                for (i, c) in cols.iter().enumerate() {
-                    let comma = if i + 1 < cols.len() { "," } else { "" };
-                    lines.push((format!("    {}{comma}", ph(c)), String::new()));
-                }
+                listed(
+                    &mut lines,
+                    cols.iter()
+                        .map(|c| (format!("    {}", ph(c)), String::new())),
+                );
                 lines.push((");".to_owned(), String::new()));
             }
         }
@@ -1137,13 +1151,15 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
                 ));
             } else {
                 lines.push((format!("UPDATE {table} SET"), String::new()));
-                for (i, c) in set.iter().enumerate() {
-                    let comma = if i + 1 < set.len() { "," } else { "" };
-                    lines.push((
-                        format!("    {} = {}{comma}", quote_ident(&c.name), ph(c)),
-                        type_comment(c),
-                    ));
-                }
+                listed(
+                    &mut lines,
+                    set.iter().map(|c| {
+                        (
+                            format!("    {} = {}", quote_ident(&c.name), ph(c)),
+                            type_comment(c),
+                        )
+                    }),
+                );
                 where_lines(&mut lines, "", ";");
             }
         }
@@ -1155,23 +1171,22 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
         Gen::Upsert => {
             let cols = &upsert_cols;
             lines.push((format!("INSERT INTO {table} ("), String::new()));
-            for (i, c) in cols.iter().enumerate() {
-                let comma = if i + 1 < cols.len() { "," } else { "" };
-                lines.push((
-                    format!("    {}{comma}", quote_ident(&c.name)),
-                    insert_comment(c),
-                ));
-            }
+            listed(
+                &mut lines,
+                cols.iter()
+                    .map(|c| (format!("    {}", quote_ident(&c.name)), insert_comment(c))),
+            );
             let values = if overriding {
                 ") OVERRIDING SYSTEM VALUE VALUES ("
             } else {
                 ") VALUES ("
             };
             lines.push((values.to_owned(), String::new()));
-            for (i, c) in cols.iter().enumerate() {
-                let comma = if i + 1 < cols.len() { "," } else { "" };
-                lines.push((format!("    {}{comma}", ph(c)), String::new()));
-            }
+            listed(
+                &mut lines,
+                cols.iter()
+                    .map(|c| (format!("    {}", ph(c)), String::new())),
+            );
             lines.push((")".to_owned(), String::new()));
             if key.is_empty() {
                 lines.push((
@@ -1207,13 +1222,11 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
             let cols = &upsert_cols;
             lines.push((format!("MERGE INTO {table} AS t"), String::new()));
             lines.push(("USING (VALUES (".to_owned(), String::new()));
-            for (i, c) in cols.iter().enumerate() {
-                let comma = if i + 1 < cols.len() { "," } else { "" };
-                lines.push((
-                    format!("    {}::{}{comma}", ph(c), c.type_name),
-                    insert_comment(c),
-                ));
-            }
+            listed(
+                &mut lines,
+                cols.iter()
+                    .map(|c| (format!("    {}::{}", ph(c), c.type_name), insert_comment(c))),
+            );
             lines.push((format!(")) AS s ({})", names(cols, "")), String::new()));
             if key.is_empty() {
                 lines.push((
@@ -1238,11 +1251,13 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
                 lines.push(("    DO NOTHING".to_owned(), String::new()));
             } else {
                 lines.push(("    UPDATE SET".to_owned(), String::new()));
-                for (i, c) in set.iter().enumerate() {
-                    let comma = if i + 1 < set.len() { "," } else { "" };
-                    let n = quote_ident(&c.name);
-                    lines.push((format!("        {n} = s.{n}{comma}"), String::new()));
-                }
+                listed(
+                    &mut lines,
+                    set.iter().map(|c| {
+                        let n = quote_ident(&c.name);
+                        (format!("        {n} = s.{n}"), String::new())
+                    }),
+                );
             }
             lines.push(("WHEN NOT MATCHED THEN".to_owned(), String::new()));
             lines.push((format!("    INSERT ({})", names(cols, "")), String::new()));
@@ -1299,19 +1314,17 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
             }
             lines.push(("BEGIN".to_owned(), String::new()));
             lines.push(("    SELECT".to_owned(), String::new()));
-            let n = t.columns.len();
-            for (i, c) in t.columns.iter().enumerate() {
-                let comma = if i + 1 < n { "," } else { "" };
-                lines.push((
-                    format!("        {}{comma}", quote_ident(&c.name)),
-                    String::new(),
-                ));
-            }
+            listed(
+                &mut lines,
+                t.columns
+                    .iter()
+                    .map(|c| (format!("        {}", quote_ident(&c.name)), String::new())),
+            );
             lines.push(("    INTO STRICT".to_owned(), String::new()));
-            for (i, v) in vars.iter().enumerate() {
-                let comma = if i + 1 < n { "," } else { "" };
-                lines.push((format!("        {v}{comma}"), String::new()));
-            }
+            listed(
+                &mut lines,
+                vars.iter().map(|v| (format!("        {v}"), String::new())),
+            );
             lines.push((format!("    FROM {table}"), String::new()));
             where_lines(&mut lines, "    ", ";");
             lines.push(("    --PROCESS THE ROW HERE".to_owned(), String::new()));
@@ -1587,28 +1600,14 @@ fn procedure(what: Gen, p: &ProcTable) -> String {
         lines.push((l.to_owned(), String::new()));
     }
     let list = |lines: &mut Vec<(String, String)>, items: Vec<String>, indent: &str| {
-        let n = items.len();
-        for (i, item) in items.into_iter().enumerate() {
-            let comma = if i + 1 < n { "," } else { "" };
-            lines.push((format!("{indent}{item}{comma}"), String::new()));
-        }
+        let items = items.into_iter().map(|item| format!("{indent}{item}"));
+        listed(lines, items.map(|line| (line, String::new())));
     };
     let where_key = |lines: &mut Vec<(String, String)>| {
-        if key.is_empty() {
-            lines.push((
-                "    WHERE [condition];".to_owned(),
-                "no primary key: write a condition".to_owned(),
-            ));
-            return;
-        }
-        for (i, c) in key.iter().enumerate() {
-            let lead = if i == 0 { "    WHERE" } else { "      AND" };
-            let end = if i + 1 == key.len() { ";" } else { "" };
-            lines.push((
-                format!("{lead} {} = {}{end}", quote_ident(&c.name), name_of(c)),
-                String::new(),
-            ));
-        }
+        let terms = key
+            .iter()
+            .map(|c| (quote_ident(&c.name), name_of(c), String::new()));
+        where_by_key(lines, "    ", "  AND", ";", terms.collect());
     };
     let not_found = |lines: &mut Vec<(String, String)>| {
         let shown = format!("{}.{}", t.schema, t.name).replace('%', "%%");
@@ -1901,30 +1900,22 @@ fn function(what: Gen, p: &ProcTable) -> String {
                 format!("{indent}WHERE [condition]{end}"),
                 comment.to_owned(),
             ));
-        } else if key.is_empty() {
-            lines.push((
-                format!("{indent}WHERE [condition]{end}"),
-                "no primary key: write a condition".to_owned(),
-            ));
         } else {
-            for (i, (c, n)) in key.iter().zip(&names).enumerate() {
-                let lead = if i == 0 {
-                    format!("{indent}WHERE")
-                } else {
-                    format!("{indent}  AND")
-                };
-                let e = if i + 1 == key.len() { end } else { "" };
-                lines.push((format!("{lead} {} = {n}{e}", col(c)), String::new()));
-            }
+            let terms = key
+                .iter()
+                .zip(&names)
+                .map(|(c, n)| (col(c), n.clone(), String::new()));
+            where_by_key(lines, indent, "  AND", end, terms.collect());
         }
     };
     let select_all = |lines: &mut Vec<(String, String)>, indent: &str| {
         lines.push((format!("{indent}SELECT"), String::new()));
-        let n = t.columns.len();
-        for (i, c) in t.columns.iter().enumerate() {
-            let comma = if i + 1 < n { "," } else { "" };
-            lines.push((format!("{indent}    {}{comma}", col(c)), String::new()));
-        }
+        listed(
+            lines,
+            t.columns
+                .iter()
+                .map(|c| (format!("{indent}    {}", col(c)), String::new())),
+        );
     };
     match what {
         Gen::FuncRow => {
@@ -2401,10 +2392,11 @@ fn referencing(table: &str, t: &GenTable, rel: &Related) -> Result<String, Strin
         let mut lines: Vec<(String, String)> = vec![(format!("-- {}", f.name), String::new())];
         lines.push(("SELECT".to_owned(), String::new()));
         let cols = rel.columns_of(&f.schema, &f.table);
-        for (i, c) in cols.iter().enumerate() {
-            let comma = if i + 1 < cols.len() { "," } else { "" };
-            lines.push((format!("    {}{comma}", quote_ident(c)), String::new()));
-        }
+        listed(
+            &mut lines,
+            cols.iter()
+                .map(|c| (format!("    {}", quote_ident(c)), String::new())),
+        );
         lines.push((
             format!("FROM {}.{}", quote_ident(&f.schema), quote_ident(&f.table)),
             String::new(),
@@ -2565,13 +2557,11 @@ fn test_data(table: &str, t: &GenTable, rel: &Related, rows: u32) -> String {
         lines.push(("SELECT".to_owned(), String::new()));
     } else {
         lines.push((format!("INSERT INTO {table} ("), String::new()));
-        for (i, c) in cols.iter().enumerate() {
-            let comma = if i + 1 < cols.len() { "," } else { "" };
-            lines.push((
-                format!("    {}{comma}", quote_ident(&c.name)),
-                String::new(),
-            ));
-        }
+        listed(
+            &mut lines,
+            cols.iter()
+                .map(|c| (format!("    {}", quote_ident(&c.name)), String::new())),
+        );
         lines.push((")".to_owned(), String::new()));
         lines.push(("SELECT".to_owned(), String::new()));
         for (i, c) in cols.iter().enumerate() {

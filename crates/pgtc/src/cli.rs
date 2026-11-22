@@ -87,15 +87,7 @@ pub struct Cli {
 }
 
 /// Connection parameters given on the command line; `None` = not given.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct ConnectionArgs {
-    pub host: Option<String>,
-    pub port: Option<u16>,
-    pub username: Option<String>,
-    pub dbname: Option<String>,
-    pub password_prompt: PasswordPrompt,
-}
-
+pub use pgc_db::conninfo::ConnArgs as ConnectionArgs;
 pub use pgc_db::conninfo::PasswordPrompt;
 
 impl Cli {
@@ -127,13 +119,6 @@ impl Cli {
             dbname,
             password_prompt,
         }
-    }
-}
-
-impl ConnectionArgs {
-    /// True if no connection parameter was given.
-    pub fn is_empty(&self) -> bool {
-        *self == ConnectionArgs::default()
     }
 }
 

@@ -17,6 +17,30 @@ pub const LIST_ROWS: usize = 10;
 /// Letters of a name after which the list opens by itself.
 pub const AUTO_LETTERS: usize = 3;
 
+/// A character typed without `Ctrl` or `Alt`: it goes into the text, the open list
+/// only follows it.
+pub fn is_typing(ev: &crossterm::event::KeyEvent) -> bool {
+    use crossterm::event::{KeyCode, KeyModifiers};
+    matches!(ev.code, KeyCode::Char(_))
+        && !ev
+            .modifiers
+            .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
+}
+
+/// How far a key moves the selection of an open list: the arrows a row, the page
+/// keys a list full. `None`: not a key of the list.
+pub fn list_step(cmd: Option<crate::keymap::Command>) -> Option<isize> {
+    use crate::keymap::Command;
+    let rows = LIST_ROWS as isize;
+    match cmd {
+        Some(Command::Up) => Some(-1),
+        Some(Command::Down) => Some(1),
+        Some(Command::PageUp) => Some(-rows),
+        Some(Command::PageDown) => Some(rows),
+        _ => None,
+    }
+}
+
 /// A schema, relation, function or type of the tab's database.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Obj {

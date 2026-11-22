@@ -59,17 +59,10 @@ async fn run(cli: &Cli, paths: Paths) -> Result<()> {
 
     // D-031: command-line connection (options, PG* variables, URI) — saved and
     // connected at startup.
-    let conn = cli.connection_args();
-    let startup = if conn.is_empty() {
+    let args = cli.connection_args();
+    let startup = if args.is_empty() {
         None
     } else {
-        let args = pgc_db::conninfo::ConnArgs {
-            host: conn.host,
-            port: conn.port,
-            username: conn.username,
-            dbname: conn.dbname,
-            password_prompt: conn.password_prompt,
-        };
         let resolved = pgc_db::conninfo::resolve(&args)
             .map_err(|e| anyhow::anyhow!("invalid connection arguments: {e}"))?;
         tracing::info!(name = %resolved.connection.name, "startup connection");

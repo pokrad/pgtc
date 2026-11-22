@@ -43,11 +43,8 @@ impl App {
                 return;
             }
         };
-        self.new_query_tab(Some((uid, database)));
-        self.focus = super::Focus::Tabs;
+        self.new_query_tab_with((uid, database), &sql);
         let tab = &mut self.tabs[self.active_tab];
-        tab.view.editor.set_text(&sql);
-        tab.view.editor.set_modified(true);
         let id = tab.id;
         let Some(q) = tab.query_mut() else {
             return;

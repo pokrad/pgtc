@@ -389,11 +389,7 @@ impl App {
         let (Some(uid), Some(db)) = (tab.server, tab.database.clone()) else {
             return;
         };
-        self.new_query_tab(Some((uid, db)));
-        let editor = &mut self.tabs[self.active_tab].view.editor;
-        editor.set_text(&text);
-        editor.set_modified(true);
-        self.focus = super::Focus::Tabs;
+        self.new_query_tab_with((uid, db), &text);
     }
 
     /// F3: the selected row in a new object tab (D-009).

@@ -688,6 +688,14 @@ impl Dialog {
 
     // ---- values -------------------------------------------------------------------
 
+    /// The kind of widget `id`, to change its value.
+    fn kind_mut(&mut self, id: &str) -> Option<&mut WidgetKind> {
+        self.widgets
+            .iter_mut()
+            .find(|w| w.id == id)
+            .map(|w| &mut w.kind)
+    }
+
     fn find(&self, id: &str) -> Option<&Widget> {
         self.widgets.iter().find(|w| w.id == id)
     }
@@ -709,12 +717,7 @@ impl Dialog {
 
     /// Replaces the text of memo `id` (cursor at the end).
     pub fn set_memo_text(&mut self, id: &str, text: &str) {
-        if let Some(WidgetKind::Memo { editor, .. }) = self
-            .widgets
-            .iter_mut()
-            .find(|w| w.id == id)
-            .map(|w| &mut w.kind)
-        {
+        if let Some(WidgetKind::Memo { editor, .. }) = self.kind_mut(id) {
             editor.0.set_text(text);
             editor.0.set_cursor(text.chars().count(), false);
         }
@@ -722,12 +725,7 @@ impl Dialog {
 
     /// The editor of memo `id` (autocomplete puts names into it, D-073).
     pub fn memo_editor_mut(&mut self, id: &str) -> Option<&mut Editor> {
-        match self
-            .widgets
-            .iter_mut()
-            .find(|w| w.id == id)
-            .map(|w| &mut w.kind)
-        {
+        match self.kind_mut(id) {
             Some(WidgetKind::Memo { editor, .. }) => Some(&mut editor.0),
             _ => None,
         }
@@ -787,11 +785,7 @@ impl Dialog {
     pub fn set_list_rows(&mut self, id: &str, new_rows: u16) {
         if let Some(WidgetKind::List {
             rows, made_rows, ..
-        }) = self
-            .widgets
-            .iter_mut()
-            .find(|w| w.id == id)
-            .map(|w| &mut w.kind)
+        }) = self.kind_mut(id)
         {
             *rows = new_rows.max(1);
             *made_rows = *rows;
@@ -813,11 +807,7 @@ impl Dialog {
             offset,
             rows,
             ..
-        }) = self
-            .widgets
-            .iter_mut()
-            .find(|w| w.id == id)
-            .map(|w| &mut w.kind)
+        }) = self.kind_mut(id)
         {
             *selected = new_selected.min(new_items.len().saturating_sub(1));
             *offset = selected.saturating_sub(*rows as usize - 1);
@@ -846,12 +836,7 @@ impl Dialog {
 
     /// Replaces the text of an input (cursor at the end).
     pub fn set_text(&mut self, id: &str, text: &str) {
-        if let Some(WidgetKind::Input { value, cursor, .. }) = self
-            .widgets
-            .iter_mut()
-            .find(|w| w.id == id)
-            .map(|w| &mut w.kind)
-        {
+        if let Some(WidgetKind::Input { value, cursor, .. }) = self.kind_mut(id) {
             *value = text.to_owned();
             *cursor = text.chars().count();
         }
@@ -864,11 +849,7 @@ impl Dialog {
             selected,
             open,
             ..
-        }) = self
-            .widgets
-            .iter_mut()
-            .find(|w| w.id == id)
-            .map(|w| &mut w.kind)
+        }) = self.kind_mut(id)
         {
             *selected = index.min(new_items.len().saturating_sub(1));
             *items = new_items;
@@ -880,11 +861,7 @@ impl Dialog {
     pub fn set_combo_selected(&mut self, id: &str, index: usize) {
         if let Some(WidgetKind::Combo {
             items, selected, ..
-        }) = self
-            .widgets
-            .iter_mut()
-            .find(|w| w.id == id)
-            .map(|w| &mut w.kind)
+        }) = self.kind_mut(id)
             && index < items.len()
         {
             *selected = index;

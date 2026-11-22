@@ -619,25 +619,11 @@ impl App {
         ev: &crossterm::event::KeyEvent,
         cmd: Option<crate::keymap::Command>,
     ) -> bool {
-        use crate::completion::LIST_ROWS;
         use crate::keymap::Command;
-        use crossterm::event::{KeyCode, KeyModifiers};
-        let typing = matches!(ev.code, KeyCode::Char(_))
-            && !ev
-                .modifiers
-                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT);
-        if typing || cmd == Some(Command::Backspace) {
+        if crate::completion::is_typing(ev) || cmd == Some(Command::Backspace) {
             return false;
         }
-        let rows = LIST_ROWS as isize;
-        let step = match cmd {
-            Some(Command::Up) => Some(-1),
-            Some(Command::Down) => Some(1),
-            Some(Command::PageUp) => Some(-rows),
-            Some(Command::PageDown) => Some(rows),
-            _ => None,
-        };
-        if let Some(step) = step {
+        if let Some(step) = crate::completion::list_step(cmd) {
             if let Some(p) = self.ai.completion.as_mut() {
                 p.move_by(step);
                 p.auto = false;
@@ -651,12 +637,7 @@ impl App {
             self.accept_ai_completion();
             return true;
         }
-        let combo = crate::keys::KeyCombo::from_event(ev);
-        if self
-            .keymap
-            .lookup_only(crate::keymap::Context::Editor, combo)
-            == Some(Command::Complete)
-        {
+        if self.is_complete_key(ev) {
             return true;
         }
         self.ai.completion = None;

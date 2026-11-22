@@ -138,7 +138,7 @@ pub fn pick_folder<'a>(folders: &[&'a str], version: ServerVersion) -> Option<&'
     folders
         .iter()
         .filter_map(|f| {
-            let n: u32 = f.strip_suffix("_plus")?.parse().ok()?;
+            let n = devtemplate::folder_major(f)?;
             (n <= major).then_some((n, *f))
         })
         .max_by_key(|(n, _)| *n)

@@ -37,6 +37,16 @@ impl App {
         self.bind_query_tab(id);
     }
 
+    /// A new query tab bound to `binding` with `text` in it as unsaved text (closing
+    /// asks to save it), and the keys in its editor (D-049, D-056).
+    pub(super) fn new_query_tab_with(&mut self, binding: (u64, String), text: &str) {
+        self.new_query_tab(Some(binding));
+        let editor = &mut self.tabs[self.active_tab].view.editor;
+        editor.set_text(text);
+        editor.set_modified(true);
+        self.focus = super::Focus::Tabs;
+    }
+
     /// Opens the query tab's own connection (D-011, D-041).
     pub(super) fn bind_query_tab(&mut self, tab: u64) {
         let Some(i) = self.tab_index(tab) else {

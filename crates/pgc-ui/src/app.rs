@@ -1603,11 +1603,7 @@ impl App {
                     DialogKind::TemplateParam { field, .. } => self.param_dialog_cancelled(field),
                     DialogKind::TemplateInsert { .. } => self.templates.insert.clear(),
                     // the next file dialog starts in the folder again (D-070)
-                    DialogKind::OpenFile
-                    | DialogKind::SaveFile
-                    | DialogKind::ExportFile
-                    | DialogKind::SaveDefinition { .. }
-                    | DialogKind::OpenDefinition { .. } => self.file_dialog_closed(),
+                    kind if files::is_file_dialog(&kind) => self.file_dialog_closed(),
                     _ => {}
                 }
             }
@@ -1618,14 +1614,9 @@ impl App {
                 match (dialog.kind.clone(), id) {
                     // Cancel in a file dialog, as Esc: the next one starts in the
                     // folder again (D-070)
-                    (
-                        DialogKind::OpenFile
-                        | DialogKind::SaveFile
-                        | DialogKind::ExportFile
-                        | DialogKind::SaveDefinition { .. }
-                        | DialogKind::OpenDefinition { .. },
-                        Button::Cancel,
-                    ) => self.file_dialog_closed(),
+                    (kind, Button::Cancel) if files::is_file_dialog(&kind) => {
+                        self.file_dialog_closed()
+                    }
                     (DialogKind::ConfirmProfilerRestore { server }, Button::Yes) => {
                         self.run_profiler_restore(server);
                     }
@@ -1694,14 +1685,9 @@ impl App {
                     (DialogKind::ConfirmTerminateBackend { tab }, Button::Yes) => {
                         self.send_signal(tab, crate::dashboard::Signal::Terminate);
                     }
-                    (
-                        DialogKind::OpenFile
-                        | DialogKind::SaveFile
-                        | DialogKind::ExportFile
-                        | DialogKind::SaveDefinition { .. }
-                        | DialogKind::OpenDefinition { .. },
-                        Button::Ok | Button::Places,
-                    ) => self.file_dialog_done(dialog, id),
+                    (kind, Button::Ok | Button::Places) if files::is_file_dialog(&kind) => {
+                        self.file_dialog_done(dialog, id)
+                    }
                     (
                         DialogKind::ConfirmDefinitionOverwrite {
                             server,

@@ -1,7 +1,7 @@
 //! psql-style commands on `F4` (D-054): the command window, running a command,
 //! `\conninfo` and the answers of the generate commands.
 
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::KeyEvent;
 use pgc_editor::Action;
 use pgc_sql::RenderContext;
 
@@ -175,23 +175,10 @@ impl App {
     /// Keys while the F4 list is open; true when the key was used. Typing and
     /// `Backspace` go on into the input (the list follows it afterwards).
     pub(super) fn psql_completion_key(&mut self, ev: &KeyEvent, cmd: Option<Command>) -> bool {
-        use crate::completion::LIST_ROWS;
-        let typing = matches!(ev.code, KeyCode::Char(_))
-            && !ev
-                .modifiers
-                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT);
-        if typing || cmd == Some(Command::Backspace) {
+        if crate::completion::is_typing(ev) || cmd == Some(Command::Backspace) {
             return false;
         }
-        let rows = LIST_ROWS as isize;
-        let step = match cmd {
-            Some(Command::Up) => Some(-1),
-            Some(Command::Down) => Some(1),
-            Some(Command::PageUp) => Some(-rows),
-            Some(Command::PageDown) => Some(rows),
-            _ => None,
-        };
-        if let Some(step) = step {
+        if let Some(step) = crate::completion::list_step(cmd) {
             if let Some(p) = self.psql_completion.as_mut() {
                 p.move_by(step);
             }
@@ -201,12 +188,7 @@ impl App {
             self.accept_psql_completion();
             return true;
         }
-        let combo = crate::keys::KeyCombo::from_event(ev);
-        if self
-            .keymap
-            .lookup_only(crate::keymap::Context::Editor, combo)
-            == Some(Command::Complete)
-        {
+        if self.is_complete_key(ev) {
             return true;
         }
         self.psql_completion = None;

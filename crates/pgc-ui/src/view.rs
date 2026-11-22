@@ -156,18 +156,7 @@ pub fn render(frame: &mut Frame, app: &App, hits: &mut Hits) {
 
     hits.template.clear();
     if let Some(form) = &app.templates.form {
-        let t = &app.theme;
-        let styles = EditorStyles {
-            text: t.get(Role::EditorText),
-            keyword: t.get(Role::EditorKeyword),
-            string: t.get(Role::EditorString),
-            number: t.get(Role::EditorNumber),
-            comment: t.get(Role::EditorComment),
-            quoted_ident: t.get(Role::EditorQuotedIdent),
-            operator: t.get(Role::EditorOperator),
-            selection: t.get(Role::EditorSelection),
-            line_number: t.get(Role::EditorLineNumber),
-        };
+        let styles = editor_styles(&app.theme);
         let editing = app.dialogs.is_empty();
         hits.template = form.render(frame, &app.theme, &styles);
         if !editing {
@@ -552,18 +541,7 @@ fn render_tabs(frame: &mut Frame, app: &App, area: Rect, hits: &mut Hits) {
         );
         return;
     }
-    let t = &app.theme;
-    let styles = EditorStyles {
-        text: t.get(Role::EditorText),
-        keyword: t.get(Role::EditorKeyword),
-        string: t.get(Role::EditorString),
-        number: t.get(Role::EditorNumber),
-        comment: t.get(Role::EditorComment),
-        quoted_ident: t.get(Role::EditorQuotedIdent),
-        operator: t.get(Role::EditorOperator),
-        selection: t.get(Role::EditorSelection),
-        line_number: t.get(Role::EditorLineNumber),
-    };
+    let styles = editor_styles(&app.theme);
     let cursor = pgc_editor::render(
         &view.editor,
         inner,

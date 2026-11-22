@@ -4,7 +4,7 @@
 use pgc_core::settings::{SavedConnection, SslMode};
 
 /// Connection values from the command line (`None` = not given).
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ConnArgs {
     pub host: Option<String>,
     pub port: Option<u16>,
@@ -12,6 +12,13 @@ pub struct ConnArgs {
     /// Database name or a `postgresql://` URI.
     pub dbname: Option<String>,
     pub password_prompt: PasswordPrompt,
+}
+
+impl ConnArgs {
+    /// True if no connection value was given.
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
 }
 
 /// `-w` / `-W` (psql semantics).

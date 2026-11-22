@@ -125,11 +125,7 @@ impl App {
             self.status = "Connect the server first".to_owned();
             return;
         }
-        self.new_query_tab(Some((uid, database)));
-        let editor = &mut self.tabs[self.active_tab].view.editor;
-        editor.set_text(&text);
-        editor.set_modified(true);
-        self.focus = Focus::Tabs;
+        self.new_query_tab_with((uid, database), &text);
     }
 
     /// `Ctrl+E` can run in a list tab.

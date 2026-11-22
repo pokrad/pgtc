@@ -564,6 +564,16 @@ fn sql_of(p: &devtemplate::Param) -> String {
     }
 }
 
+/// A template is shown under `filter` (in lower case; empty: all of them): the
+/// filter is in its name, its description or its path. The picker and the manager
+/// of the templates filter alike.
+pub(super) fn template_matches(filter: &str, name: &str, description: &str, rel: &str) -> bool {
+    filter.is_empty()
+        || [name, description, rel]
+            .iter()
+            .any(|text| text.to_lowercase().contains(filter))
+}
+
 /// Picker rows: folders (indented) with their templates; with a filter only the
 /// matching templates and their folders. Returns rows, labels, highlight marks.
 fn picker_rows(p: &Picker, filter: &str) -> (Vec<Option<usize>>, Vec<String>, Vec<bool>) {
@@ -573,11 +583,7 @@ fn picker_rows(p: &Picker, filter: &str) -> (Vec<Option<usize>>, Vec<String>, Ve
     let mut open: Vec<String> = Vec::new();
     for (i, e) in p.lib.entries.iter().enumerate() {
         let (name, desc) = &p.names[i];
-        if !filter.is_empty()
-            && !name.to_lowercase().contains(filter)
-            && !desc.to_lowercase().contains(filter)
-            && !e.rel.to_lowercase().contains(filter)
-        {
+        if !template_matches(filter, name, desc, &e.rel) {
             continue;
         }
         let folders: Vec<String> = e.folders().into_iter().map(str::to_owned).collect();
