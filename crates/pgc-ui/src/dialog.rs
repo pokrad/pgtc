@@ -474,10 +474,9 @@ impl Widget {
     }
 
     fn button_text(&self) -> (String, String) {
-        match self.kind {
-            WidgetKind::Button { default: true, .. } => ("[< ".into(), " >]".into()),
-            _ => ("[ ".into(), " ]".into()),
-        }
+        let default = matches!(self.kind, WidgetKind::Button { default: true, .. });
+        let (left, right) = button_frame(default);
+        (left.into(), right.into())
     }
 
     fn button_width(&self) -> u16 {
@@ -1022,22 +1021,22 @@ impl Dialog {
                 self.list_move(rows);
             }
             Command::Left => {
-                if !self.input_cursor(|c, _| c.saturating_sub(1)) && !self.choice_move(-1) {
+                if !self.input_cursor(cmd) && !self.choice_move(-1) {
                     self.move_focus(-1);
                 }
             }
             Command::Right => {
-                if !self.input_cursor(|c, len| (c + 1).min(len)) && !self.choice_move(1) {
+                if !self.input_cursor(cmd) && !self.choice_move(1) {
                     self.move_focus(1);
                 }
             }
             Command::Home => {
-                if !self.input_cursor(|_, _| 0) {
+                if !self.input_cursor(cmd) {
                     self.list_move(isize::MIN / 2);
                 }
             }
             Command::End => {
-                if !self.input_cursor(|_, len| len) {
+                if !self.input_cursor(cmd) {
                     self.list_move(isize::MAX / 2);
                 }
             }
@@ -1478,12 +1477,13 @@ impl Dialog {
         true
     }
 
-    /// Moves the cursor of the focused input; false if the focus is not an input.
-    fn input_cursor(&mut self, f: impl Fn(usize, usize) -> usize) -> bool {
+    /// Moves the cursor of the focused input as key `cmd` does; false if the focus is
+    /// not an input.
+    fn input_cursor(&mut self, cmd: Command) -> bool {
         let WidgetKind::Input { value, cursor, .. } = &mut self.widgets[self.focus].kind else {
             return false;
         };
-        *cursor = f(*cursor, value.chars().count());
+        line::step(cmd, value, cursor);
         true
     }
 
@@ -1673,7 +1673,7 @@ impl Dialog {
                     frame.render_widget(Paragraph::new(lines), *area);
                 }
                 WidgetKind::Checkbox { checked } => {
-                    let mut spans = vec![Span::styled(if *checked { "[x] " } else { "[ ] " }, st)];
+                    let mut spans = vec![Span::styled(check_mark(*checked), st)];
                     spans.extend(w.label.spans(st, st_hot));
                     frame.render_widget(Paragraph::new(Line::from(spans)), *area);
                 }
@@ -1702,11 +1702,10 @@ impl Dialog {
                     } else {
                         theme.get(Role::DialogInput)
                     };
-                    let view = input_view(text, *cursor, value.width, *masked);
                     let field = Rect { height: 1, ..value };
-                    frame.render_widget(Paragraph::new(view.shown).style(style), field);
+                    let cursor_x = draw_input(frame, field, text, *cursor, *masked, style);
                     if focused {
-                        let pos = Position::new(field.x + view.cursor_x, field.y);
+                        let pos = Position::new(field.x + cursor_x, field.y);
                         frame.set_cursor_position(pos);
                         show_cursor_cell(frame, pos);
                     }
@@ -1989,6 +1988,40 @@ pub fn show_cursor_cell(frame: &mut Frame, pos: Position) {
     }
 }
 
+// ---- what a field looks like -----------------------------------------------------
+// The pieces every field is made of, here and in the developer template form
+// (crate::template_dialog), which lays its fields out itself.
+
+/// What stands left and right of a button's label; the default button has `< >`.
+pub(crate) fn button_frame(default: bool) -> (&'static str, &'static str) {
+    if default {
+        ("[< ", " >]")
+    } else {
+        ("[ ", " ]")
+    }
+}
+
+/// The box of a check box, before its label.
+pub(crate) fn check_mark(checked: bool) -> &'static str {
+    if checked { "[x] " } else { "[ ] " }
+}
+
+/// Draws the one row `field` of a text input: the part of `text` that is in view with
+/// the cursor at char `cursor`, on the input's colour. Returns the cursor's cell,
+/// from the left edge of `field`.
+pub(crate) fn draw_input(
+    frame: &mut Frame,
+    field: Rect,
+    text: &str,
+    cursor: usize,
+    masked: bool,
+    style: Style,
+) -> u16 {
+    let view = input_view(text, cursor, field.width, masked);
+    frame.render_widget(Paragraph::new(view.shown).style(style), field);
+    view.cursor_x
+}
+
 /// What an input shows of its text.
 pub(crate) struct InputView {
     /// Char index of the first character shown.
@@ -2081,6 +2114,21 @@ pub(crate) mod line {
         if cursor < text.chars().count() {
             text.remove(byte_index(text, cursor));
         }
+    }
+
+    /// Moves the cursor as `cmd` does (`Left`, `Right`, `Home`, `End`); false for any
+    /// other command.
+    pub fn step(cmd: crate::keymap::Command, text: &str, cursor: &mut usize) -> bool {
+        use crate::keymap::Command;
+        let len = text.chars().count();
+        *cursor = match cmd {
+            Command::Left => cursor.saturating_sub(1),
+            Command::Right => (*cursor + 1).min(len),
+            Command::Home => 0,
+            Command::End => len,
+            _ => return false,
+        };
+        true
     }
 }
 

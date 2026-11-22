@@ -441,12 +441,8 @@ impl TemplateForm {
                     line::insert(text, cursor, c.encode_utf8(&mut [0; 4]));
                     return FormEvent::None;
                 }
-                let len = text.chars().count();
                 match cmd {
-                    Some(Command::Left) => *cursor = cursor.saturating_sub(1),
-                    Some(Command::Right) => *cursor = (*cursor + 1).min(len),
-                    Some(Command::Home) => *cursor = 0,
-                    Some(Command::End) => *cursor = len,
+                    Some(c) if line::step(c, text, cursor) => {}
                     Some(Command::Backspace) => line::backspace(text, cursor),
                     Some(Command::Delete) => line::delete(text, *cursor),
                     Some(Command::Up) => self.move_focus(-1),
@@ -928,27 +924,24 @@ impl TemplateForm {
                         put(frame, form.x, yy, &format!("{label}{star}:"), lw, normal);
                         let r = Rect::new(form.x + lw, yy, form.width.saturating_sub(lw), 1);
                         let style = if focused { input_focus } else { input };
-                        // one cell of margin, then the text (in cells, as the dialogs)
-                        let inner = r.width.saturating_sub(1);
-                        let view = crate::dialog::input_view(text, *c, inner, false);
-                        put(
-                            frame,
-                            r.x,
-                            r.y,
-                            &" ".repeat(r.width as usize),
-                            r.width,
-                            style,
-                        );
-                        put(frame, r.x + 1, r.y, &view.shown, inner, style);
+                        // one cell of margin, then the input as the dialogs draw it
+                        put(frame, r.x, r.y, " ", 1, style);
+                        let inner = Rect {
+                            x: r.x + 1,
+                            width: r.width.saturating_sub(1),
+                            ..r
+                        };
+                        let cursor_x =
+                            crate::dialog::draw_input(frame, inner, text, *c, false, style);
                         if focused && self.popup.is_none() {
-                            cursor = Some(Position::new(r.x + 1 + view.cursor_x, r.y));
+                            cursor = Some(Position::new(inner.x + cursor_x, r.y));
                         }
                         hits.push((Stop::Field(i), r));
                     }
                 }
                 FieldValue::Bool(b) => {
                     if let Some(yy) = row_y(0) {
-                        let text = format!("[{}] {label}", if *b { "x" } else { " " });
+                        let text = format!("{}{label}", crate::dialog::check_mark(*b));
                         let style = if focused { focus } else { normal };
                         let w = text.width() as u16;
                         put(frame, form.x, yy, &text, w.min(form.width), style);
@@ -1079,7 +1072,8 @@ impl TemplateForm {
                     if let Some(yy) = row_y(1 + LIST_ROWS) {
                         let mut x = form.x;
                         for (b, name) in LIST_BUTTONS.iter().enumerate() {
-                            let text = format!("[ {name} ]");
+                            let (left, right) = crate::dialog::button_frame(false);
+                            let text = format!("{left}{name}{right}");
                             let w = text.width() as u16;
                             if x + w > form.right() {
                                 break;
@@ -1133,8 +1127,12 @@ impl TemplateForm {
         hits.push((Stop::Preview, pv));
 
         // OK / Cancel
-        let ok = "[< OK >]";
-        let cancel = "[ Cancel ]";
+        let button = |default: bool, label: &str| {
+            let (left, right) = crate::dialog::button_frame(default);
+            format!("{left}{label}{right}")
+        };
+        let (ok, cancel) = (button(true, "OK"), button(false, "Cancel"));
+        let (ok, cancel) = (ok.as_str(), cancel.as_str());
         let total_w = (ok.width() + 1 + cancel.width()) as u16;
         let x = buttons.x + buttons.width.saturating_sub(total_w) / 2;
         let st = |s: Stop| if self.focus == s { focus } else { normal };
@@ -1386,6 +1384,142 @@ CREATE {{ schema|ident }}.{{ name|ident }}({% for c in cols %}{{ c.c }}{% endfor
 
     fn key(f: &mut TemplateForm, cmd: Option<Command>, code: KeyCode) -> FormEvent {
         f.handle_key(cmd, None, &KeyEvent::new(code, KeyModifiers::NONE))
+    }
+
+    /// The keys of the simple fields: a text field, a check box, a choice.
+    #[test]
+    fn keys_of_the_simple_fields() {
+        let mut f = form();
+        let text = |f: &TemplateForm| match &f.fields[1].value {
+            FieldValue::Text { text, cursor } => (text.clone(), *cursor),
+            other => panic!("{other:?}"),
+        };
+        // the text field: typing, the cursor keys, Backspace and Delete
+        f.focus = Stop::Field(1);
+        for c in "abc".chars() {
+            key(&mut f, None, KeyCode::Char(c));
+        }
+        assert_eq!(text(&f), ("abc".to_owned(), 3));
+        key(&mut f, Some(Command::Left), KeyCode::Left);
+        key(&mut f, None, KeyCode::Char('é'));
+        assert_eq!(text(&f), ("abéc".to_owned(), 3));
+        key(&mut f, Some(Command::Home), KeyCode::Home);
+        key(&mut f, Some(Command::Backspace), KeyCode::Backspace);
+        assert_eq!(text(&f), ("abéc".to_owned(), 0), "nothing before the start");
+        key(&mut f, Some(Command::Delete), KeyCode::Delete);
+        assert_eq!(text(&f), ("béc".to_owned(), 0));
+        key(&mut f, Some(Command::End), KeyCode::End);
+        key(&mut f, Some(Command::Delete), KeyCode::Delete);
+        key(&mut f, Some(Command::Right), KeyCode::Right);
+        assert_eq!(text(&f), ("béc".to_owned(), 3), "nothing behind the end");
+        key(&mut f, Some(Command::Backspace), KeyCode::Backspace);
+        assert_eq!(text(&f), ("bé".to_owned(), 2));
+        f.paste("x\ty\n");
+        assert_eq!(text(&f), ("béxy".to_owned(), 4), "no control characters");
+        // Up / Down leave the field; Enter is OK
+        key(&mut f, Some(Command::Up), KeyCode::Up);
+        assert_eq!(f.focus, Stop::Field(0));
+        f.focus = Stop::Field(1);
+        assert_eq!(
+            key(&mut f, Some(Command::Accept), KeyCode::Enter),
+            FormEvent::Ok
+        );
+
+        // the check box
+        f.focus = Stop::Field(4);
+        key(&mut f, Some(Command::Toggle), KeyCode::Char(' '));
+        assert!(matches!(f.fields[4].value, FieldValue::Bool(true)));
+        key(&mut f, Some(Command::Toggle), KeyCode::Char(' '));
+        assert!(matches!(f.fields[4].value, FieldValue::Bool(false)));
+
+        // the choice: Left / Right step through it, Delete empties one that may be
+        f.set_choices(
+            "schema",
+            Ok(choices_from_rows(
+                vec![vec!["public".into()], vec!["sales".into()]],
+                Shape::Name,
+            )),
+        );
+        let chosen = |f: &TemplateForm| match &f.fields[0].value {
+            FieldValue::Choice { selected, .. } => *selected,
+            other => panic!("{other:?}"),
+        };
+        f.focus = Stop::Field(0);
+        assert_eq!(chosen(&f), Some(0), "the default");
+        key(&mut f, Some(Command::Right), KeyCode::Right);
+        assert_eq!(chosen(&f), Some(1));
+        key(&mut f, Some(Command::Left), KeyCode::Left);
+        assert_eq!(chosen(&f), Some(0));
+        key(&mut f, Some(Command::Delete), KeyCode::Delete);
+        assert_eq!(chosen(&f), None, "not required: it can be empty");
+    }
+
+    /// What the simple fields and the buttons look like, and where a click lands.
+    #[test]
+    fn the_simple_fields_are_drawn() {
+        let mut f = form();
+        f.set_choices(
+            "schema",
+            Ok(choices_from_rows(vec![vec!["public".into()]], Shape::Name)),
+        );
+        f.focus = Stop::Field(1);
+        for c in "orders".chars() {
+            key(&mut f, None, KeyCode::Char(c));
+        }
+        f.focus = Stop::Field(4);
+        key(&mut f, Some(Command::Toggle), KeyCode::Char(' '));
+        let theme = crate::theme::ThemeSet::built_in().get("Classic").clone();
+        let styles = EditorStyles::default();
+        let mut terminal =
+            ratatui::Terminal::new(ratatui::backend::TestBackend::new(100, 30)).unwrap();
+        let mut hits = Vec::new();
+        terminal
+            .draw(|frame| hits = f.render(frame, &theme, &styles))
+            .unwrap();
+        let buffer = terminal.backend().buffer().clone();
+        let row = |y: u16| -> String {
+            (0..100)
+                .map(|x| buffer[(x, y)].symbol().to_owned())
+                .collect()
+        };
+        let screen: Vec<String> = (0..30).map(row).collect();
+        let line = |what: &str| -> &str {
+            screen
+                .iter()
+                .find(|l| l.contains(what))
+                .unwrap_or_else(|| panic!("{what} is not drawn in\n{}", screen.join("\n")))
+        };
+        // a required text field with its value, the check box, the choice, the buttons
+        assert!(line("name*:").contains("orders"));
+        assert!(line("flag").contains("[x] flag"));
+        assert!(line("schema:").contains("public     ▼"));
+        assert!(line("[< OK >]").contains("[< OK >] [ Cancel ]"));
+        assert!(line("[ Add ]").contains("[ Add ]"));
+        // every field has a place to click, and so have the buttons
+        for stop in [
+            Stop::Field(0),
+            Stop::Field(1),
+            Stop::Field(4),
+            Stop::Ok,
+            Stop::Cancel,
+        ] {
+            assert!(
+                hits.iter().any(|(s, r)| *s == stop && r.width > 0),
+                "{stop:?}"
+            );
+        }
+        let at =
+            |hits: &[(Stop, Rect)], stop: Stop| hits.iter().find(|(s, _)| *s == stop).unwrap().1;
+        assert_eq!(at(&hits, Stop::Ok).width, 8);
+        assert_eq!(at(&hits, Stop::Cancel).width, 10);
+        // the text cursor is behind the text of the focused text field
+        f.focus = Stop::Field(1);
+        terminal
+            .draw(|frame| hits = f.render(frame, &theme, &styles))
+            .unwrap();
+        let field = at(&hits, Stop::Field(1));
+        let cursor = terminal.get_cursor_position().unwrap();
+        assert_eq!((cursor.x, cursor.y), (field.x + 1 + 6, field.y));
     }
 
     /// `fill` boxes share the free rows of the form; without room they keep 5 rows.
