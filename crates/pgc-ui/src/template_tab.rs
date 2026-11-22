@@ -599,30 +599,17 @@ pub fn render(
             height: 1,
             ..right
         };
-        // the line with its title, joined to what it touches
-        let title = " Preview ";
-        let line = theme.hline().repeat(split.width as usize);
-        let buf = frame.buffer_mut();
-        buf.set_string(split.x, split.y, line, border);
-        if split.x > area.x {
-            buf.set_string(split.x - 1, split.y, theme.plain_junctions().left, border);
+        // a caption bar of its own, not a title on a line (it is also the split's
+        // drag handle)
+        let style = if ctx.focused && t.part == Part::Preview {
+            theme.get(Role::TabsActive)
         } else {
-            buf.set_string(
-                split.x.saturating_sub(1),
-                split.y,
-                theme.separator_ends().0,
-                border,
-            );
-        }
-        buf.set_string(split.right(), split.y, theme.separator_ends().1, border);
-        if split.width as usize > title.chars().count() + 4 {
-            let style = if ctx.focused && t.part == Part::Preview {
-                theme.get(Role::CoreTitleFocused)
-            } else {
-                theme.get(Role::CoreTitle)
-            };
-            buf.set_string(split.x + 2, split.y, title, style);
-        }
+            theme.get(Role::TabsInactive)
+        };
+        frame.render_widget(
+            Paragraph::new(fit(" Preview", split.width as usize)).style(style),
+            split,
+        );
         hits.split = split;
         hits.split_area = right;
         (
@@ -701,17 +688,13 @@ fn render_list(
     if y >= area.bottom() {
         return;
     }
-    // ─ Parameters ───
-    let title = " Parameters ";
-    let line = theme.hline().repeat(width.saturating_sub(2));
-    frame
-        .buffer_mut()
-        .set_string(area.x + 1, y, line, theme.get(Role::CoreBorder));
-    if width > title.len() + 4 {
-        frame
-            .buffer_mut()
-            .set_string(area.x + 2, y, title, theme.get(Role::CoreTitle));
-    }
+    // caption bar of the parameter list
+    put(
+        frame,
+        y,
+        " Parameters".to_owned(),
+        theme.get(Role::TabsInactive),
+    );
     y += 1;
     // the last row is for the buttons
     let list_rows = area.bottom().saturating_sub(y + 1) as usize;

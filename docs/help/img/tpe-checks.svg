@@ -54,9 +54,7 @@
 <text x="729" y="109.25" fill="#f2f2f2">,</text>
 <text x="783" y="109.25" fill="#cccccc">║</text>
 <text x="0" y="128.25" fill="#cccccc">║</text>
-<text x="18" y="128.25" fill="#cccccc">─</text>
-<text x="36 45 54 63 72 81 90 99 108 117" y="128.25" fill="#cccccc">Parameters</text>
-<text x="135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315" y="128.25" fill="#cccccc">─────────────────────</text>
+<text x="18 27 36 45 54 63 72 81 90 99" y="128.25" fill="#cccccc">Parameters</text>
 <text x="333" y="128.25" fill="#cccccc">│</text>
 <text x="360" y="128.25" fill="#3a96dd">3</text>
 <text x="414 423 432 441" y="128.25" fill="#f9f1a5">name</text>
@@ -159,9 +157,9 @@
 <text x="333" y="356.25" fill="#cccccc">│</text>
 <text x="783" y="356.25" fill="#cccccc">║</text>
 <text x="0" y="375.25" fill="#cccccc">║</text>
-<text x="333 342 351" y="375.25" fill="#cccccc">├──</text>
-<text x="369 378 387 396 405 414 423" y="375.25" fill="#cccccc">Preview</text>
-<text x="441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594 603 612 621 630 639 648 657 666 675 684 693 702 711 720 729 738 747 756 765 774 783" y="375.25" fill="#cccccc">──────────────────────────────────────╢</text>
+<text x="333" y="375.25" fill="#cccccc">│</text>
+<text x="351 360 369 378 387 396 405" y="375.25" fill="#cccccc">Preview</text>
+<text x="783" y="375.25" fill="#cccccc">║</text>
 <text x="0" y="394.25" fill="#cccccc">║</text>
 <text x="333" y="394.25" fill="#cccccc">│</text>
 <text x="342 351 360 369 378 387" y="394.25" fill="#f9f1a5">CREATE</text>

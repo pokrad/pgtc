@@ -255,9 +255,9 @@
 <text x="279 288 297 306 315 324 333 342 351 360" y="394.25" fill="#cccccc">║║required</text>
 <text x="378" y="394.25" fill="#f2f2f2">=</text>
 <text x="396 405 414 423" y="394.25" fill="#f9f1a5">true</text>
-<text x="621 630 639" y="394.25" fill="#cccccc">├──</text>
-<text x="657 666 675 684 693 702 711" y="394.25" fill="#cccccc">Preview</text>
-<text x="729 738 747 756 765 774 783 792 801 810 819 828 837 846 855 864 873 882 891 900 909 918 927 936 945 954 963 972 981 990 999 1008 1017 1026 1035 1044 1053 1062 1071" y="394.25" fill="#cccccc">──────────────────────────────────────╢</text>
+<text x="621" y="394.25" fill="#cccccc">│</text>
+<text x="639 648 657 666 675 684 693" y="394.25" fill="#cccccc">Preview</text>
+<text x="1071" y="394.25" fill="#cccccc">║</text>
 <text x="0" y="413.25" fill="#cccccc">║</text>
 <text x="72" y="413.25" fill="#cccccc">►</text>
 <text x="90 99 108 117 126 135 144 153 162 171 180 189 198" y="413.25" fill="#cccccc">Subscriptions</text>

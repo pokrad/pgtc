@@ -221,7 +221,7 @@
 <text x="9" y="394.25" fill="#0c0c0c">│</text>
 <text x="576" y="394.25" fill="#0c0c0c">│</text>
 <text x="1044" y="394.25" fill="#0c0c0c">│</text>
-<text x="1062 1071" y="394.25" fill="#767676">─╢</text>
+<text x="1071" y="394.25" fill="#767676">║</text>
 <rect x="0" y="399" width="585.5" height="19.5" fill="#cccccc"/>
 <rect x="1044" y="399" width="18.5" height="19.5" fill="#cccccc"/>
 <rect x="1062" y="399" width="18.5" height="19.5" fill="#0c0c0c"/>

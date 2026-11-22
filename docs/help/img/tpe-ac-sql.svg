@@ -44,9 +44,7 @@
 <rect x="495" y="114" width="153.5" height="19.5" fill="#0c0c0c"/>
 <rect x="648" y="114" width="9.5" height="19.5" fill="#3a96dd"/>
 <text x="0" y="128.25" fill="#cccccc">║</text>
-<text x="18" y="128.25" fill="#cccccc">─</text>
-<text x="36 45 54 63 72 81 90 99 108 117" y="128.25" fill="#cccccc">Parameters</text>
-<text x="135 144 153 162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315" y="128.25" fill="#cccccc">─────────────────────</text>
+<text x="18 27 36 45 54 63 72 81 90 99" y="128.25" fill="#cccccc">Parameters</text>
 <text x="333" y="128.25" fill="#cccccc">│</text>
 <text x="486" y="128.25" fill="#0c0c0c">│</text>
 <text x="504 513 522 531 540 549" y="128.25" fill="#f2f2f2">schema</text>

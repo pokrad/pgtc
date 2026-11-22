@@ -2676,6 +2676,9 @@ pgtc (binary)
   - **Right:** the body editor (Jinja) above, the **preview** below — resizable split
     and show / hide as editor and results of a query tab (D-019).
   - **Status row:** cursor position, the Jinja error, or the result of the checks.
+  - **Captions** (*Parameters*, *Preview*) are bars of their own row, never titles on
+    a line; the *Preview* bar is the split's drag handle and is highlighted while the
+    preview has the focus.
   - Narrow screens: the left pane is above the body.
 - **Parameters through a dialog:** *Add* / *Edit* open a dialog with name, label, type
   (combo), required, default and help, plus the fields of the chosen type — `options`
@@ -2942,3 +2945,4 @@ pgtc (binary)
 | 2026-11-19 | In-app texts in PostgreSQL terms: a tab or tree connection that is lost or closed is called a *session* in messages; *Transaction aborted – ROLLBACK needed*; *schema* instead of *structure* in the AI and definition messages; *Backends* in the database statistics; the cancel / terminate key descriptions name `pg_cancel_backend` / `pg_terminate_backend`. "Connection" stays the name of a saved server. |
 | 2026-11-19 | D-054 updated: the `F4` autocomplete offers schemas first wherever the argument can be schema-qualified (inserted as `sales.`, the list goes on with that schema's objects); `di`, `df`, `dT`, `dD` offer schemas only. |
 | 2026-11-20 | D-022 updated: release binaries — a tag `v<version>` builds Windows x64, Linux x64 / ARM64 (static musl) and macOS ARM64 / x64 on GitHub Actions and publishes them, unsigned, with checksums as a GitHub Release; CI builds and tests on the three systems. D-025 updated: the source is on GitHub. |
+| 2026-11-22 | D-074 updated: the template tab's *Parameters* and *Preview* captions are bars of their own row instead of titles on the separator lines. |
