@@ -114,6 +114,19 @@ fn obj(kind: ObjKind, schema: &str, name: &str) -> ObjRef {
 /// The script that brings `live` to `want`, or `None` if nothing differs.
 pub fn sync_script(want: &Database, live: &Database) -> Option<String> {
     let mut out = Script::default();
+    // the parts of tables that use a function which is dropped: taken off first, and
+    // from here on the script is made as if the database did not have them
+    let unhooked = unhook_functions(want, live);
+    let (want, live) = match &unhooked {
+        Some(u) => {
+            for (i, sql) in u.drops.iter().enumerate() {
+                let key = Key::Part(obj(ObjKind::Function, "", ""), format!("unhook {i:05}"));
+                out.push(1, key, &[], sql.clone());
+            }
+            (&u.want, &u.live)
+        }
+        None => (want, live),
+    };
     let (rebuilt, dropped) = rebuilt_tables(want, live);
     let mut reown: Vec<Disown> = Vec::new();
     for ws in &want.schemas {
@@ -188,14 +201,7 @@ pub fn sync_script(want: &Database, live: &Database) -> Option<String> {
             );
         }
         for f in &ws.functions {
-            function(
-                &mut out,
-                &ws.name,
-                f,
-                ls.functions
-                    .iter()
-                    .find(|l| l.name == f.name && l.args == f.args),
-            );
+            function(&mut out, &ws.name, f, live_function(ls, f));
         }
         for t in &ws.tables {
             let l = ls.tables.iter().find(|l| l.name == t.name);
@@ -284,14 +290,169 @@ pub fn sync_script(want: &Database, live: &Database) -> Option<String> {
     render(out)
 }
 
-/// A function that differs in what `CREATE OR REPLACE` cannot change: it is dropped
-/// and created again.
+/// The function of the database that `f` of the file is: the same name and argument
+/// types — the names of the parameters do not make another function. (A file from
+/// before the types were written: the same identity arguments.)
+fn live_function<'a>(ls: &'a Schema, f: &Function) -> Option<&'a Function> {
+    ls.functions.iter().find(|l| {
+        l.name == f.name
+            && match (&l.arg_types, &f.arg_types) {
+                (Some(have), Some(want)) => have == want,
+                _ => l.args == f.args,
+            }
+    })
+}
+
+/// A function that differs in what `CREATE OR REPLACE` cannot change — the result
+/// type, the name or mode of a parameter, a default that is no longer there: it is
+/// dropped and created again.
 fn function_dropped(f: &Function, l: &Function) -> bool {
-    l.definition != f.definition && (l.result != f.result || l.procedure != f.procedure)
+    l.definition != f.definition
+        && (l.result != f.result
+            || l.procedure != f.procedure
+            || l.args != f.args
+            || f.defaults < l.defaults)
 }
 
 fn view_changed(v: &View, l: &View) -> bool {
     l.definition != v.definition || l.options != v.options
+}
+
+/// The functions of the database that the script drops (and creates again), as the
+/// database knows them: that is what its views and tables depend on.
+fn dropped_functions(want: &Database, live: &Database) -> Vec<ObjRef> {
+    let mut gone = Vec::new();
+    for ws in &want.schemas {
+        let Some(ls) = live.schema(&ws.name) else {
+            continue;
+        };
+        for f in &ws.functions {
+            if let Some(l) = live_function(ls, f).filter(|l| function_dropped(f, l)) {
+                gone.push(ObjRef {
+                    kind: ObjKind::Function,
+                    schema: ws.name.clone(),
+                    name: l.name.clone(),
+                    args: Some(l.args.clone()),
+                });
+            }
+        }
+    }
+    gone
+}
+
+/// What [`unhook_functions`] found.
+struct Unhooked {
+    /// The statements that take the parts off, before the functions are dropped.
+    drops: Vec<String>,
+    /// The database without those parts, and the file with them where they exist
+    /// only in the database: comparing the two creates every part again.
+    live: Database,
+    want: Database,
+}
+
+/// A function that is dropped cannot be dropped while a table uses it: in a column
+/// default, a generated column, a constraint, an index, a trigger, a rule or a
+/// policy. Those parts — of every table of the database, also of tables that are not
+/// in the file — are dropped before it and created again after it (D-048: whatever
+/// is needed; the tables themselves stay). A part is recognised by the function's
+/// qualified name in its definition, which the server writes that way.
+/// `None`: no function is dropped, or no table uses one.
+fn unhook_functions(want: &Database, live: &Database) -> Option<Unhooked> {
+    let needles: Vec<String> = dropped_functions(want, live)
+        .iter()
+        .map(|f| format!("{}(", qn(&f.schema, &f.name)))
+        .collect();
+    if needles.is_empty() {
+        return None;
+    }
+    let uses = |text: &str| needles.iter().any(|n| text.contains(n.as_str()));
+    let opt = |text: &Option<String>| text.as_deref().is_some_and(uses);
+    let mut drops = Vec::new();
+    let (mut live2, mut want2) = (live.clone(), want.clone());
+    for ls in &mut live2.schemas {
+        for t in &mut ls.tables {
+            let whole = t.clone();
+            let q = qn(&ls.name, &t.name);
+            let before = drops.len();
+            for c in &mut t.columns {
+                if opt(&c.default) {
+                    drops.push(format!(
+                        "ALTER TABLE {q} ALTER COLUMN {} DROP DEFAULT;",
+                        qi(&c.name)
+                    ));
+                    c.default = None;
+                }
+            }
+            t.columns.retain(|c| {
+                let used = opt(&c.generated);
+                if used {
+                    drops.push(format!("ALTER TABLE {q} DROP COLUMN {};", qi(&c.name)));
+                }
+                !used
+            });
+            t.constraints.retain(|c| {
+                let used = uses(&c.definition);
+                if used {
+                    drops.push(format!("ALTER TABLE {q} DROP CONSTRAINT {};", qi(&c.name)));
+                }
+                !used
+            });
+            t.indexes.retain(|i| {
+                let used = uses(&i.definition);
+                if used {
+                    drops.push(format!("DROP INDEX {};", qn(&ls.name, &i.name)));
+                }
+                !used
+            });
+            t.triggers.retain(|g| {
+                let used = uses(&g.definition);
+                if used {
+                    drops.push(format!("DROP TRIGGER {} ON {q};", qi(&g.name)));
+                }
+                !used
+            });
+            t.rules.retain(|r| {
+                let used = uses(&r.definition);
+                if used {
+                    drops.push(format!("DROP RULE {} ON {q};", qi(&r.name)));
+                }
+                !used
+            });
+            t.policies.retain(|p| {
+                let used = opt(&p.using) || opt(&p.with_check);
+                if used {
+                    drops.push(format!("DROP POLICY {} ON {q};", qi(&p.name)));
+                }
+                !used
+            });
+            if drops.len() == before {
+                continue;
+            }
+            // the file's side: with the parts only the database has (as it has them
+            // now), so that they are created again — the whole table when the file
+            // does not have it
+            let ws = match want2.schemas.iter_mut().find(|s| s.name == ls.name) {
+                Some(ws) => ws,
+                None => {
+                    want2.schemas.push(Schema {
+                        name: ls.name.clone(),
+                        comment: ls.comment.clone(),
+                        ..Default::default()
+                    });
+                    want2.schemas.last_mut().expect("just pushed")
+                }
+            };
+            match ws.tables.iter_mut().find(|w| w.name == whole.name) {
+                Some(w) => *w = merge(w, &whole),
+                None => ws.tables.push(whole),
+            }
+        }
+    }
+    (!drops.is_empty()).then_some(Unhooked {
+        drops,
+        live: live2,
+        want: want2,
+    })
 }
 
 /// The views and materialized views that are dropped and created again (D-048): those
@@ -300,25 +461,11 @@ fn view_changed(v: &View, l: &View) -> bool {
 /// drops: a view comes before those it depends on.
 fn replaced_views(want: &Database, live: &Database) -> Vec<ObjRef> {
     // what is dropped: the views, and the functions the chain starts from as well
-    let mut gone: BTreeSet<ObjRef> = BTreeSet::new();
+    let mut gone: BTreeSet<ObjRef> = dropped_functions(want, live).into_iter().collect();
     for ws in &want.schemas {
         let Some(ls) = live.schema(&ws.name) else {
             continue;
         };
-        for f in &ws.functions {
-            let l = ls
-                .functions
-                .iter()
-                .find(|l| l.name == f.name && l.args == f.args);
-            if l.is_some_and(|l| function_dropped(f, l)) {
-                gone.insert(ObjRef {
-                    kind: ObjKind::Function,
-                    schema: ws.name.clone(),
-                    name: f.name.clone(),
-                    args: Some(f.args.clone()),
-                });
-            }
-        }
         for (kind, views, have) in [
             (ObjKind::View, &ws.views, &ls.views),
             (
@@ -1095,6 +1242,9 @@ fn column_def(c: &Column) -> String {
     }
     if let Some(i) = &c.identity {
         s.push_str(&format!(" GENERATED {} AS IDENTITY", i.to_uppercase()));
+        if let Some(o) = c.identity_options.filter(|o| !o.is_default(&c.data_type)) {
+            s.push_str(&format!(" ({})", o.clause("")));
+        }
     }
     if c.not_null {
         s.push_str(" NOT NULL");
@@ -1116,6 +1266,9 @@ fn table(out: &mut Script, schema: &str, t: &Table, live: Option<&Table>) {
     let mut deps = t.depends_on.clone();
     if let Some(p) = &t.partition_of {
         deps.push(obj(ObjKind::Table, &p.parent.schema, &p.parent.name));
+    }
+    for p in &t.inherits {
+        deps.push(obj(ObjKind::Table, &p.schema, &p.name));
     }
     let deps = &deps;
     let unlogged = if t.unlogged { "UNLOGGED " } else { "" };
@@ -1146,6 +1299,11 @@ fn table(out: &mut Script, schema: &str, t: &Table, live: Option<&Table>) {
                     }
                 }
             };
+            if !t.inherits.is_empty() {
+                let parents: Vec<String> =
+                    t.inherits.iter().map(|p| qn(&p.schema, &p.name)).collect();
+                sql.push_str(&format!("\n    INHERITS ({})", parents.join(", ")));
+            }
             if let Some(p) = &t.partition_by {
                 sql.push_str(&format!("\n    PARTITION BY {p}"));
             }
@@ -1207,6 +1365,16 @@ fn table(out: &mut Script, schema: &str, t: &Table, live: Option<&Table>) {
 
 fn alter_table(out: &mut Script, key: &Key, deps: &[ObjRef], q: &str, t: &Table, l: &Table) {
     let mut push = |sql: String| out.push(2, key.clone(), deps, sql);
+    // inheritance: the parents of the file; one only the database has is kept, as
+    // every part that exists only there
+    for p in &t.inherits {
+        if !l.inherits.contains(p) {
+            push(format!(
+                "ALTER TABLE {q} INHERIT {};",
+                qn(&p.schema, &p.name)
+            ));
+        }
+    }
     if t.unlogged != l.unlogged {
         push(format!(
             "ALTER TABLE {q} SET {};",
@@ -1274,16 +1442,40 @@ fn alter_table(out: &mut Script, key: &Key, deps: &[ObjRef], q: &str, t: &Table,
         if c.not_null && !h.not_null {
             push(format!("{col} SET NOT NULL;"));
         }
+        let options = c.identity_options;
         match (&c.identity, &h.identity) {
-            (Some(i), None) => push(format!(
-                "{col} ADD GENERATED {} AS IDENTITY;",
-                i.to_uppercase()
-            )),
-            (None, Some(_)) => push(format!("{col} DROP IDENTITY;")),
-            (Some(i), Some(j)) if i != j => {
-                push(format!("{col} SET GENERATED {};", i.to_uppercase()))
+            (Some(i), None) => {
+                let with = options
+                    .filter(|o| !o.is_default(&c.data_type))
+                    .map(|o| format!(" ({})", o.clause("")))
+                    .unwrap_or_default();
+                push(format!(
+                    "{col} ADD GENERATED {} AS IDENTITY{with};",
+                    i.to_uppercase()
+                ));
+                // the rows that are there: the next value comes after them
+                if options.is_none_or(|o| o.increment > 0) {
+                    push(format!(
+                        "SELECT pg_catalog.setval(pg_catalog.pg_get_serial_sequence({}, {}), \
+                         max({})) FROM {q} HAVING max({}) IS NOT NULL;",
+                        ql(q),
+                        ql(&c.name),
+                        qi(&c.name),
+                        qi(&c.name)
+                    ));
+                }
             }
-            _ => {}
+            (None, Some(_)) => push(format!("{col} DROP IDENTITY;")),
+            (Some(i), Some(j)) => {
+                if i != j {
+                    push(format!("{col} SET GENERATED {};", i.to_uppercase()));
+                }
+                // (a file from before the options were written says nothing of them)
+                if let Some(o) = options.filter(|o| h.identity_options.is_some_and(|x| x != *o)) {
+                    push(format!("{col} {};", o.clause("SET ")));
+                }
+            }
+            (None, None) => {}
         }
         if !c.not_null && h.not_null {
             push(format!("{col} DROP NOT NULL;"));

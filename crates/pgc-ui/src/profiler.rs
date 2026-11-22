@@ -414,6 +414,10 @@ impl Change {
     }
 }
 
+/// `check.sql`'s mark of a setting whose value in this session is not the server's
+/// (`ALTER ROLE` / `ALTER DATABASE … SET`, the command line): Stop resets it.
+const NOT_THE_SERVERS: &str = "other";
+
 /// The answer of `check.sql`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Check {
@@ -481,7 +485,10 @@ impl Check {
             });
             format
         };
-        if self.min_duration.trim() != "0" {
+        // a value of this session only (the role's, the database's) says nothing of
+        // what the other sessions log with: it is set for the server whatever it
+        // is here, and never written back as the server's value
+        if self.min_duration.trim() != "0" || self.min_duration_file == NOT_THE_SERVERS {
             changes.push(Change {
                 name: "log_min_duration_statement",
                 value: "0".to_owned(),
@@ -1045,6 +1052,17 @@ mod tests {
         let (_, c) = from_auto.plan(v15);
         assert_eq!(c.len(), 1);
         assert_eq!(c[0].restore.as_deref(), Some("250"));
+        // the role's own value, not the server's: never written as the server's —
+        // and the server's is set, though this session has 0 already
+        for own in ["500", "0"] {
+            let for_role = Check {
+                min_duration_file: "other".into(),
+                ..check("jsonlog", "", own)
+            };
+            let (_, c) = for_role.plan(v15);
+            assert_eq!(c.len(), 1, "{own}");
+            assert_eq!(c[0].restore, None, "{own}");
+        }
         assert_eq!(
             c[0].restore_sql(),
             "ALTER SYSTEM SET log_min_duration_statement = '250'"

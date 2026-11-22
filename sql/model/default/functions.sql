@@ -5,6 +5,8 @@ SELECT n.nspname AS schema, 'function' AS kind,
     pg_catalog.json_strip_nulls(pg_catalog.json_build_object(
         'name', p.proname,
         'args', pg_catalog.pg_get_function_identity_arguments(p.oid),
+        'arg_types', pg_catalog.oidvectortypes(p.proargtypes),
+        'defaults', NULLIF(p.pronargdefaults, 0),
         'procedure', p.prokind = 'p',
         'result', CASE WHEN p.prokind <> 'p' THEN pg_catalog.pg_get_function_result(p.oid) END,
         'definition', pg_catalog.pg_get_functiondef(p.oid),

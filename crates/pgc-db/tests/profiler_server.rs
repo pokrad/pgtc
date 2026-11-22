@@ -35,6 +35,20 @@ async fn profiler_queries_run_on_a_real_server() {
         row.try_get::<_, Option<String>>(i)
             .unwrap_or_else(|e| panic!("check.sql column {i}: {e}"));
     }
+    // a value of this session only is marked: it is not the server's
+    client
+        .batch_execute("SET log_min_duration_statement = 123")
+        .await
+        .unwrap();
+    let row = client.query_one(&sql, &[]).await.unwrap();
+    assert_eq!(row.get::<_, Option<String>>(3).as_deref(), Some("123"));
+    assert_eq!(row.get::<_, Option<String>>(4).as_deref(), Some("other"));
+    client
+        .batch_execute("RESET log_min_duration_statement")
+        .await
+        .unwrap();
+    let row = client.query_one(&sql, &[]).await.unwrap();
+    assert_ne!(row.get::<_, Option<String>>(4).as_deref(), Some("other"));
     let sql = catalog.render("profiler", "read.sql", ctx).unwrap();
     for format in ["csvlog", "jsonlog"] {
         // only find the current file

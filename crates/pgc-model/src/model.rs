@@ -13,6 +13,10 @@ fn is_false(b: &bool) -> bool {
     !*b
 }
 
+fn is_zero(n: &u32) -> bool {
+    *n == 0
+}
+
 /// A whole database.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Database {
@@ -185,6 +189,10 @@ pub struct Table {
     /// Parent and bound of a partition.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub partition_of: Option<PartitionOf>,
+    /// The tables this one inherits (`INHERITS`), in their order; their columns and
+    /// constraints are not among this table's.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub inherits: Vec<QualName>,
     /// Storage parameters (`fillfactor=70`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub options: Vec<String>,
@@ -228,6 +236,10 @@ pub struct Column {
     /// `always` or `by default`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub identity: Option<String>,
+    /// The sequence of an identity column. Missing in files written before it
+    /// existed: the options are then left as they are.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity_options: Option<IdentityOptions>,
     /// Expression of a generated column (stored unless `virtual`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub generated: Option<String>,
@@ -239,6 +251,55 @@ pub struct Column {
     pub collation: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
+}
+
+/// The options of an identity column's sequence.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IdentityOptions {
+    pub start: i64,
+    pub increment: i64,
+    pub min_value: i64,
+    pub max_value: i64,
+    pub cache: i64,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub cycle: bool,
+}
+
+impl IdentityOptions {
+    /// What a plain `GENERATED … AS IDENTITY` of a column of `data_type` gets: these
+    /// need not be written.
+    pub fn is_default(&self, data_type: &str) -> bool {
+        let max = match data_type {
+            "smallint" => i64::from(i16::MAX),
+            "integer" => i64::from(i32::MAX),
+            "bigint" => i64::MAX,
+            _ => return false,
+        };
+        *self
+            == Self {
+                start: 1,
+                increment: 1,
+                min_value: 1,
+                max_value: max,
+                cache: 1,
+                cycle: false,
+            }
+    }
+
+    /// `START WITH 10 INCREMENT BY 5 …`, each option after `prefix` (`SET ` in an
+    /// `ALTER COLUMN`).
+    pub fn clause(&self, prefix: &str) -> String {
+        format!(
+            "{prefix}START WITH {} {prefix}INCREMENT BY {} {prefix}MINVALUE {} \
+             {prefix}MAXVALUE {} {prefix}CACHE {} {prefix}{}",
+            self.start,
+            self.increment,
+            self.min_value,
+            self.max_value,
+            self.cache,
+            if self.cycle { "CYCLE" } else { "NO CYCLE" }
+        )
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -335,6 +396,14 @@ pub struct Function {
     /// Identity arguments (`pg_get_function_identity_arguments`), part of the identity.
     #[serde(default)]
     pub args: String,
+    /// The types of the input arguments alone (`integer, text`): what makes two
+    /// functions of one name the same function, whatever their parameters are
+    /// called. Missing in files written before it existed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub arg_types: Option<String>,
+    /// How many arguments have a default.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub defaults: u32,
     #[serde(default, skip_serializing_if = "is_false")]
     pub procedure: bool,
     /// Result type (`pg_get_function_result`); functions only.

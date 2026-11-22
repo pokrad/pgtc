@@ -1500,6 +1500,26 @@ pgtc (binary)
     depends on nothing replaced is not touched. Tables are never part of the chain:
     they are dropped only by the rule below. Privileges on a dropped view are not
     restored (the load never sets them).
+  - **Functions:** a function of the file is the function of the database with the
+    same name and **argument types** (the names of its parameters do not make another
+    function). `CREATE OR REPLACE` when only the body or an attribute differs; drop
+    and create when the result type differs, a parameter has another name or mode,
+    or a default is no longer there.
+  - **A dropped function that tables use** — in a column default, a generated
+    column, a constraint, an index, a trigger, a rule or a policy: those parts are
+    dropped before the function and created again after it, also parts and whole
+    tables that exist only in the database; a generated column is computed again.
+    The tables and their rows stay. A part is recognised by the function's qualified
+    name in its definition.
+  - **Inheritance:** a table's `INHERITS` list is in the model; its inherited columns
+    and constraints are not among its own. A new table is created with `INHERITS`;
+    an existing one gets `ALTER TABLE … INHERIT`. A parent only the database has is
+    kept.
+  - **Identity columns:** the options of the identity's sequence (start, increment,
+    minimum, maximum, cache, cycle) are in the model and written when they are not
+    the usual ones; differing options are set with `ALTER COLUMN … SET …`. A column
+    of an existing table that becomes an identity continues after the rows that are
+    there (`setval`).
   - **A column's type:** `ALTER COLUMN … TYPE … USING column::type`; a default is
     dropped before the change and set again after it.
   - **New enum labels** are added at the start of the script, with a note: a label
@@ -2200,7 +2220,10 @@ pgtc (binary)
 - **Stop** (`F5` again), closing the tab, disconnecting the server, quitting pgtc: the
   changed settings are **put back** — a value that came from `postgresql.auto.conf` is
   set again with `ALTER SYSTEM SET`, any other with `ALTER SYSTEM RESET` — and the
-  configuration reloaded. Quitting waits for that (status line *Restoring logging
+  configuration reloaded. A value that is this session's only (`ALTER ROLE` /
+  `ALTER DATABASE … SET`) is not the server's: it is never written back as the
+  server's value (Stop resets), and Start sets `log_min_duration_statement` for the
+  server even when this session has `0` already. Quitting waits for that (status line *Restoring logging
   settings…*); a lost connection cannot restore and is reported.
 - **Reading:** once a second, the new part of the current log file (at most 1 MB per
   read, as hex); a partial last line waits for the next read; a new log file (rotation)
@@ -3005,3 +3028,4 @@ pgtc (binary)
 | 2026-11-22 | D-033 updated: `require` with a root certificate file checks the chain against it, as `verify-ca` (libpq). D-073 updated: the saved AI key belongs to the saved base URL — another URL in the settings dialog takes the stars away, the saved URL brings them back. D-064 updated: the editor's text has LF line ends only; a file read with CR LF is saved with CR LF. D-048 updated: an ordinary column is not replaced by a generated one (or the reverse) — a note instead; `CREATE EXTENSION … CASCADE`; `check_function_bodies` is reset at the end of the script. |
 | 2026-11-22 | D-048 updated: a view that differs is always dropped and created again, with the chain of views that depend on it or on a dropped function (also views only in the database); tables stay out of the chain. A column's type is changed with `USING`, its default dropped before and set after. New enum labels come first in the script, with a note. |
 | 2026-11-22 | D-052 / D-019 updated: inside an open transaction the automatically opened autocomplete list reads nothing from the server; pgtc's own queries on a query tab's session run in a savepoint there. D-073 updated: the AI answer goes to the place the request was sent from. D-074 updated: `server_version` and `database` are no parameter names. D-033 updated: `sslmode=allow` is read as `prefer`. D-012 updated: a JSON file with nothing of a definition file is refused. D-057 updated: a failed read of the statistics is shown where the graphs are. |
+| 2026-11-22 | D-048 updated: functions are matched by name and argument types, and dropped and created when a parameter's name or mode differs or a default is gone; table parts that use a dropped function are dropped before it and created again after it; `INHERITS` and the options of identity sequences are in the model (new optional fields, the format number stays 1); a new identity on a table with rows continues after them. D-058 updated: a setting that is this session's only is never written back as the server's. |

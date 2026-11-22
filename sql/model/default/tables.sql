@@ -1,7 +1,7 @@
 -- Structure model (D-048): tables and partitions with their columns, constraints,
 -- indexes, triggers, rules and policies. Only what is defined in the table itself is
--- read (columns, constraints, indexes and triggers a partition gets from its parent
--- are left out).
+-- read (columns, constraints, indexes and triggers a partition gets from its parent,
+-- or a table from the tables it inherits, are left out).
 -- Rows: schema, kind ('table'), data (JSON of `Table`). Runs with search_path = ''.
 {% import "macros/model.sql" as m %}
 SELECT n.nspname AS schema, 'table' AS kind,
@@ -21,6 +21,18 @@ SELECT n.nspname AS schema, 'table' AS kind,
                     'default', pg_catalog.pg_get_expr(ad.adbin, ad.adrelid),
 {% endif %}
                     'identity', CASE a.attidentity WHEN 'a' THEN 'always' WHEN 'd' THEN 'by default' END,
+                    'identity_options', CASE WHEN a.attidentity <> '' THEN (
+                        SELECT pg_catalog.json_build_object(
+                            'start', sq.seqstart, 'increment', sq.seqincrement,
+                            'min_value', sq.seqmin, 'max_value', sq.seqmax,
+                            'cache', sq.seqcache, 'cycle', sq.seqcycle)
+                        FROM pg_catalog.pg_depend sd
+                            JOIN pg_catalog.pg_sequence sq ON sq.seqrelid = sd.objid
+                        WHERE sd.classid = 'pg_catalog.pg_class'::pg_catalog.regclass
+                            AND sd.refclassid = 'pg_catalog.pg_class'::pg_catalog.regclass
+                            AND sd.refobjid = a.attrelid AND sd.refobjsubid = a.attnum
+                            AND sd.deptype = 'i'
+                        LIMIT 1) END,
                     'collation', CASE WHEN a.attcollation <> 0 AND a.attcollation <> ty.typcollation
                                       THEN {{ m.collation("co", "cn") }} END,
                     'comment', pg_catalog.col_description(a.attrelid, a.attnum)))
@@ -36,6 +48,14 @@ SELECT n.nspname AS schema, 'table' AS kind,
             SELECT pg_catalog.json_build_object(
                 'parent', pg_catalog.json_build_object('schema', pn.nspname, 'name', pc.relname),
                 'bound', pg_catalog.pg_get_expr(c.relpartbound, c.oid))
+            FROM pg_catalog.pg_inherits ih
+                JOIN pg_catalog.pg_class pc ON pc.oid = ih.inhparent
+                JOIN pg_catalog.pg_namespace pn ON pn.oid = pc.relnamespace
+            WHERE ih.inhrelid = c.oid) END,
+        'inherits', CASE WHEN NOT c.relispartition THEN (
+            SELECT pg_catalog.json_agg(
+                    pg_catalog.json_build_object('schema', pn.nspname, 'name', pc.relname)
+                    ORDER BY ih.inhseqno)
             FROM pg_catalog.pg_inherits ih
                 JOIN pg_catalog.pg_class pc ON pc.oid = ih.inhparent
                 JOIN pg_catalog.pg_namespace pn ON pn.oid = pc.relnamespace
