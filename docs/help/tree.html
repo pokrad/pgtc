@@ -29,7 +29,8 @@ from the system catalogs.</p>
   <li>Expanding a group runs one catalog query for that group, with the parent OID as bind parameter. A loaded group
       shows its count: <code>Tables (19)</code>.</li>
   <li>Cluster-wide groups are read through the server session on the maintenance database. Expanding a database
-      opens a session on it (<i>(connected)</i>) — see
+      opens a session on it (<i>(connected)</i>); collapsing it terminates that session and drops what was loaded
+      below it, so the database can be dropped from a query tab on another database — see
       <a href="connections.html#many">The sessions pgtc opens on the server</a>.</li>
   <li>Mouse: right click opens the context menu; drag the border to resize the tree.</li>
 </ul>

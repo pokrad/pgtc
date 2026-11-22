@@ -346,7 +346,7 @@ impl App {
             if Some(nid) == keep {
                 continue;
             }
-            self.close_find_database(nid);
+            self.close_database(nid);
         }
     }
 
@@ -478,21 +478,7 @@ impl App {
         if let Some(f) = self.find.as_mut() {
             f.opened.remove(&nid);
         }
-        self.close_find_database(nid);
-    }
-
-    /// Closes the tree connection of database `nid` that a search had opened.
-    fn close_find_database(&mut self, nid: u64) {
-        let handle = self
-            .tree
-            .node_mut(nid)
-            .and_then(|n| n.conn.as_mut())
-            .and_then(|c| c.handle.take());
-        if let Some(h) = handle {
-            self.connections.remove(&h.id);
-            h.close();
-        }
-        self.database_reset(nid);
+        self.close_database(nid);
     }
 
     /// A database opened for the search could not be connected: listed as not

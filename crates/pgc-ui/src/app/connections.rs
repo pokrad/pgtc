@@ -356,6 +356,22 @@ impl App {
         }
     }
 
+    /// Closes the tree connection of database `nid` (D-011): on collapse, or one a
+    /// search had opened (D-055). The database row is left collapsed and not loaded.
+    pub(super) fn close_database(&mut self, nid: u64) {
+        let handle = self
+            .tree
+            .node_mut(nid)
+            .and_then(|n| n.conn.as_mut())
+            .and_then(|c| c.handle.take());
+        if let Some(h) = handle {
+            self.connections.remove(&h.id);
+            self.definitions_lost(h.id);
+            h.close();
+        }
+        self.database_reset(nid);
+    }
+
     pub(super) fn database_reset(&mut self, nid: u64) {
         if let Some(n) = self.tree.node_mut(nid) {
             n.conn = Some(DbConn {

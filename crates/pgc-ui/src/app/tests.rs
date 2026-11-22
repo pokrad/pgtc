@@ -5651,3 +5651,60 @@ async fn ask_ai_progress_goes_to_messages() {
         "{last}"
     );
 }
+
+/// Collapsing a database closes its tree connection (D-011): it can be dropped from
+/// another session; expanding it again connects again.
+#[tokio::test]
+async fn collapsing_a_database_closes_its_connection() {
+    use crate::objects::ObjType;
+    use crate::tree::{DbConn, NodeKind, RowKind};
+    use pgc_db::NodeRow;
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "srv");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    let dbs = a.tree.servers[0]
+        .children
+        .iter()
+        .find(|n| n.kind == NodeKind::Group(ObjType::Database))
+        .unwrap()
+        .nid;
+    a.tree.set_children(
+        dbs,
+        vec![NodeRow {
+            oid: 5,
+            name: "shop".into(),
+            label: None,
+            partitioned: false,
+        }],
+    );
+    let db = a.tree.node(dbs).unwrap().children.as_ref().unwrap()[0].nid;
+    let groups = a.tree.groups(&ObjType::Database.children(false));
+    {
+        let n = a.tree.node_mut(db).unwrap();
+        n.conn = Some(DbConn {
+            state: ConnState::Connected,
+            handle: Some(pgc_db::ConnectionHandle::detached(51)),
+        });
+        n.children = Some(groups);
+        n.expanded = true;
+    }
+    a.connections.insert(51, Target::Database(uid, db));
+    a.tree.select_kind(RowKind::Node(db));
+    a.focus = Focus::Tree;
+
+    a.run(Command::Left);
+    let n = a.tree.node(db).unwrap();
+    assert!(!n.expanded);
+    assert!(n.children.is_none());
+    let c = n.conn.as_ref().unwrap();
+    assert_eq!(c.state, ConnState::Disconnected);
+    assert!(c.handle.is_none());
+    assert!(!a.connections.contains_key(&51));
+    // the cursor stays on the database row
+    assert_eq!(a.tree.selected().map(|r| r.kind), Some(RowKind::Node(db)));
+
+    // a second Left moves to the parent and closes nothing more
+    a.run(Command::Left);
+    assert_eq!(a.tree.selected().map(|r| r.kind), Some(RowKind::Node(dbs)));
+}

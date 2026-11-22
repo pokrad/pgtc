@@ -138,6 +138,14 @@ impl App {
         };
         if !was_expanded {
             self.tree.select_parent();
+            return;
+        }
+        // a collapsed database lets its connection go (D-011): nothing of pgtc's tree
+        // keeps a session in it, so it can be dropped
+        if let RowKind::Node(nid) = row.kind
+            && self.tree.node(nid).is_some_and(|n| n.is_database())
+        {
+            self.close_database(nid);
         }
     }
 
