@@ -73,7 +73,8 @@ control (stable order, clean diffs), and comparing two states. For data, use <co
       stored as <code>pg_get_constraintdef()</code>, <code>pg_get_indexdef()</code>, <code>pg_get_viewdef()</code>,
       <code>pg_get_functiondef()</code> and <code>pg_get_expr()</code> print them, and compared as text.</li>
   <li><code>"format"</code> is the layout version; a higher one is refused (<i>This definition file was written by a
-      newer pgtc (format N).</i>).</li>
+      newer pgtc (format N).</i>). Unknown keys are ignored, but a JSON file with none of <code>format</code>,
+      <code>extensions</code>, <code>schemas</code> is refused as not a definition file.</li>
 </ul>
 
 <h3 id="covered">What is in the file — and what is not</h3>
@@ -83,9 +84,9 @@ control (stable order, clean diffs), and comparing two states. For data, use <co
 <tr><td>Schemas</td><td></td></tr>
 <tr><td>Types</td><td>Enum, composite, domain, range.</td></tr>
 <tr><td>Sequences</td><td>All parameters and <code>OWNED BY</code>.</td></tr>
-<tr><td>Tables</td><td>Columns (type, <code>NOT NULL</code>, default, identity, generated); constraints; indexes that do not back a constraint; triggers; rules; policies; partition key and partitions with bounds; storage parameters.</td></tr>
+<tr><td>Tables</td><td>Columns (type, <code>NOT NULL</code>, default, identity with its sequence options, generated); constraints; indexes that do not back a constraint; triggers; rules; policies; partition key and partitions with bounds; <code>INHERITS</code> parents; storage parameters.</td></tr>
 <tr><td>Views, materialized views</td><td>Query, options; indexes of materialized views.</td></tr>
-<tr><td>Functions, procedures</td><td>Identity arguments, result type, <code>pg_get_functiondef()</code> text.</td></tr>
+<tr><td>Functions, procedures</td><td>Identity arguments, argument types, number of defaults, result type, <code>pg_get_functiondef()</code> text.</td></tr>
 <tr><td>Comments</td><td>On all of the above.</td></tr>
 </table></div>
 <div class="tablewrap"><table>

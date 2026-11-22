@@ -89,7 +89,8 @@ privileges.</p>
       statement is not executed again (same snapshot as the grid) and the rows are not held in memory.</li>
   <li>Afterwards the grid keeps its loaded rows, labelled e.g. <code>1,000 of 1,234,567 rows (rest exported)</code>;
       the statement has completed on the server.</li>
-  <li><kbd>Alt+Shift+C</kbd> cancels. A cancelled or failed export <b>removes its incomplete file</b>.</li>
+  <li><kbd>Alt+Shift+C</kbd> cancels. A cancelled or failed export <b>removes its incomplete file</b>; a file it
+      could not create (read-only, locked) is left as it is.</li>
   <li>While an export runs, nothing else can be executed in the tab.</li>
   <li>Values are the server's text output (<code>DateStyle</code>, <code>IntervalStyle</code>,
       <code>bytea_output</code>, <code>extra_float_digits</code>).</li>

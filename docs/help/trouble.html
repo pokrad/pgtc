@@ -91,6 +91,7 @@ specific to pgtc:</p>
 <tr><td>Cancel or terminate is refused in the dashboard</td><td><code>pg_cancel_backend()</code> / <code>pg_terminate_backend()</code> on other roles' backends need <code>pg_signal_backend</code>; on superusers' backends, a superuser.</td></tr>
 <tr><td>Altering or dropping an object from a dialog</td><td>Not offered; pgtc generates DDL for review: <kbd>Ctrl+E</kbd> (<a href="objects.html#edit">Edit in new query tab</a>), <kbd>F7</kbd> (<a href="templates.html">developer templates</a>), <kbd>F4</kbd> (<a href="psql.html#generate">generate commands</a>).</td></tr>
 <tr><td>Editing rows in the result grid</td><td>The grid is read-only; <code>gtu table</code> on <kbd>F4</kbd> generates the <code>UPDATE</code>.</td></tr>
+<tr><td>The SSH connection dropped while pgtc ran</td><td>pgtc ends when its terminal is gone; its sessions close, so open transactions are rolled back.</td></tr>
 <tr><td>Moving the setup to another machine</td><td><code>settings.toml</code>, <code>keymap.toml</code>, the <code>themes</code> and <code>developer_templates</code> folders (<a href="reference.html#files">Files and folders</a>), and <code>.pgpass</code>.</td></tr>
 </table></div>
 

@@ -105,7 +105,7 @@ is folded to lower case. Each part becomes an anchored regular expression matche
 <div class="tablewrap"><table>
 <tr><th>Result set</th><th>Columns</th></tr>
 <tr><td><i>Relation</i></td><td>Schema, name, type, owner, description.</td></tr>
-<tr><td><i>Columns</i></td><td>Column, type, collation when not the type's default, <code>not null</code>, default or identity. <code>d+</code>: storage and description.</td></tr>
+<tr><td><i>Columns</i></td><td>Column, type, collation when not the type's default, <code>not null</code>, default, identity or <code>generated always as (…) stored</code>. <code>d+</code>: storage and description.</td></tr>
 <tr><td><i>Indexes</i></td><td>Name, kind (<i>primary key</i>, <i>unique</i> or empty), <code>pg_get_indexdef</code>.</td></tr>
 <tr><td><i>Constraints</i></td><td>Name, type, <code>pg_get_constraintdef</code>.</td></tr>
 <tr><td><i>Triggers</i></td><td>Name and <code>pg_get_triggerdef</code>; no internal triggers.</td></tr>
@@ -201,7 +201,8 @@ with any other default are listed. Nothing left: <code>INSERT INTO … DEFAULT V
 
 <h3 id="gtu">gtu — UPDATE, gtd — DELETE</h3>
 <p><code>WHERE</code> on the key. <code>UPDATE</code> sets every non-key column except generated and
-<code>GENERATED ALWAYS</code> identity columns.</p>
+<code>GENERATED ALWAYS</code> identity columns; with none left, the key columns. A table with nothing that can be set
+gets a comment instead.</p>
 
 <h3 id="gto">gto — upsert (INSERT … ON CONFLICT)</h3>
 <ul>

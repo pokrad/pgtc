@@ -167,7 +167,9 @@ drop_object = []                   # no key at all</code></pre>
 
 <h2 id="file">The settings file</h2>
 <p><code>settings.toml</code>, next to <code>keymap.toml</code>, holds the dialog's values and the saved connections.
-Settings that exist only in the file:</p>
+With two pgtc open, each writes the whole file; a connection the other one saved meanwhile is taken over, not
+lost. For everything else the last save counts.</p>
+<p>Settings that exist only in the file:</p>
 <div class="tablewrap"><table>
 <tr><th>Section and key</th><th>Default</th><th>Meaning</th></tr>
 <tr><td class="k"><code>[editor]</code> <code>tab_width</code></td><td><code>4</code></td><td>Display width of a tab character.</td></tr>

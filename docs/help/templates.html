@@ -74,8 +74,8 @@ where the terminal reports it). The SQL replaces the selection or goes in at the
       <code>help</code>.</li>
   <li>If validation or rendering fails, the preview shows the error and <span class="ui">OK</span> inserts
       nothing.</li>
-  <li>An <code>identifier</code> is typed unquoted (at most 63 bytes); the body quotes it. A <code>number</code> must
-      parse as one.</li>
+  <li>An <code>identifier</code> is typed unquoted (at most 63 bytes); the body quotes it. A <code>number</code> is
+      written as SQL writes one (no <code>inf</code>, <code>NaN</code>) and reaches the body exactly as typed.</li>
   <li>On a narrow terminal the preview is below the fields.</li>
 </ul>
 
@@ -216,7 +216,7 @@ CREATE TABLE {{ schema|ident }}.{{ name|ident }} (
 <tr><th><code>type</code></th><th>Additional keys</th><th>Value in the body</th></tr>
 <tr><td class="k"><code>text</code></td><td></td><td>String, as typed.</td></tr>
 <tr><td class="k"><code>identifier</code></td><td></td><td>The unquoted identifier (at most 63 bytes); quote it with <code>|ident</code>.</td></tr>
-<tr><td class="k"><code>number</code></td><td></td><td>Integer or float (a string inside a list row).</td></tr>
+<tr><td class="k"><code>number</code></td><td></td><td>Integer or float, also inside a list row; a value the template language would print differently (<code>1e3</code>, a long numeric) stays the typed text.</td></tr>
 <tr><td class="k"><code>bool</code></td><td></td><td>Boolean.</td></tr>
 <tr><td class="k"><code>choice</code></td><td>Exactly one of <code>options = ["a", "b"]</code>, <code>source = "tables"</code>, <code>query = "SELECT …"</code></td><td>String, or an object for a schema-qualified <code>source</code> (below).</td></tr>
 <tr><td class="k"><code>sql</code></td><td><code>fill = true</code>: the box takes the form's free rows (not in a list row); otherwise 5 rows</td><td>String, with its line breaks.</td></tr>

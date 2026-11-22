@@ -33,7 +33,7 @@ with duration, PID, role, database, bind parameters and errors.</p>
 <div class="tablewrap"><table>
 <tr><th>Requirement</th><th></th></tr>
 <tr><td><code>logging_collector = on</code></td><td>If it is off, Start only reports it; pgtc never restarts a server.</td></tr>
-<tr><td>Privileges</td><td>Superuser, or <code>pg_read_server_files</code> plus the right to run <code>ALTER SYSTEM</code> for the two settings and <code>pg_reload_conf()</code>. Nothing is checked in advance: Start or the first read shows the server's error. Managed services usually grant neither.</td></tr>
+<tr><td>Privileges</td><td>Superuser, or <code>pg_read_server_files</code> plus the right to run <code>ALTER SYSTEM</code> for the two settings and <code>pg_reload_conf()</code>. Nothing is checked in advance: Start or the first read shows the server's error. A Start whose <code>ALTER SYSTEM</code> statements all fail changed nothing and leaves nothing to restore. Managed services usually grant neither.</td></tr>
 <tr><td>Scope</td><td>Both settings are cluster-wide: all databases and roles are logged while it runs. See <a href="#filter">Filtering</a>.</td></tr>
 </table></div>
 <div class="warn">
@@ -117,9 +117,11 @@ something has to change, pgtc lists it and asks:</p>
 <h2 id="stop">Stop</h2>
 <p><kbd>F5</kbd> again. A value that came from <code>postgresql.auto.conf</code> before Start is set back with
 <code>ALTER SYSTEM SET</code>; any other is removed with <code>ALTER SYSTEM RESET</code>; then
-<code>pg_reload_conf()</code>. The entries stay in the list.</p>
+<code>pg_reload_conf()</code>. The entries stay in the list. A value the session saw from <code>ALTER ROLE</code> /
+<code>ALTER DATABASE … SET</code> is not the server's: it is never written back with <code>ALTER SYSTEM</code>, and
+Start sets <code>log_min_duration_statement = 0</code> cluster-wide even when the session already has <code>0</code>.</p>
 <p>The same happens when the tab is closed, the server is disconnected, or pgtc quits (it waits: <i>Restoring logging
-settings…</i>).</p>
+settings…</i>) — also right after <span class="ui">Yes</span>, before the server has answered.</p>
 
 <h3 id="restore">If pgtc could not put the settings back</h3>
 <p>After a kill, a crash or a lost session the changed values stay in <code>postgresql.auto.conf</code>.</p>

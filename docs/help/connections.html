@@ -65,7 +65,9 @@ server.</p>
   <li>Every session sets <code>application_name = 'pgtc'</code>.</li>
   <li><b>Authentication:</b> <code>scram-sha-256</code>, <code>md5</code>, <code>password</code>, and methods without
       client credentials (<code>trust</code>, <code>peer</code>). No GSSAPI, SSPI or client certificates.</li>
-  <li><b>Connect timeout:</b> 10 s by default (<a href="settings.html">Settings</a>).</li>
+  <li><b>Connect timeout:</b> 10 s by default (<a href="settings.html">Settings</a>) for the TCP connect of each
+      address; TLS handshake and authentication together get twice that, so a host that accepts and then stays
+      silent fails instead of hanging.</li>
   <li><b>Versions:</b> PostgreSQL 11+; older is refused. Newer than 18 connects with <i>“PostgreSQL N – not yet
       verified with pgtc”</i> and the catalog queries of the newest known version.</li>
 </ul>

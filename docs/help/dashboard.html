@@ -56,7 +56,8 @@ on its PID.</p>
 <tr><td><b>Block I/O</b></td><td><code>blks_read</code>, <code>blks_hit</code>.</td></tr>
 </table></div>
 <p>Rates are the difference of two samples of <code>pg_stat_database</code> (summed on a cluster dashboard) divided
-by the difference of the server's <code>clock_timestamp()</code>. On a low window the graphs are dropped first.</p>
+by the difference of the server's <code>clock_timestamp()</code>. On a low window the graphs are dropped first. If
+the statistics query fails, its error is shown where the graphs are; the list below goes on.</p>
 
 <h2 id="summary">The summary</h2>
 <div class="tablewrap"><table>
