@@ -173,6 +173,34 @@ fn lex_lines(rope: &Rope, start: usize, end: usize, mut state: LexState) -> LexS
     state
 }
 
+/// Char indices of byte offsets in a text, asked for in rising order: each answer
+/// counts on from the one before, so the matches of one long line cost its length
+/// once, not once per match.
+struct CharCounter<'a> {
+    text: &'a str,
+    byte: usize,
+    chars: usize,
+}
+
+impl<'a> CharCounter<'a> {
+    fn new(text: &'a str) -> Self {
+        Self {
+            text,
+            byte: 0,
+            chars: 0,
+        }
+    }
+
+    fn at(&mut self, byte: usize) -> usize {
+        if byte < self.byte {
+            (self.byte, self.chars) = (0, 0);
+        }
+        self.chars += self.text[self.byte..byte].chars().count();
+        self.byte = byte;
+        self.chars
+    }
+}
+
 /// `text` with LF as its only line end: CR LF and a lone CR become LF. The editor's
 /// text has no other line ends — every movement and deletion counts on that; a file's
 /// CR LF is put back when it is saved (D-064).
@@ -940,14 +968,10 @@ impl Editor {
     fn matches_in_line(&self, re: &Regex, line: usize) -> Vec<(usize, usize)> {
         let start = self.rope.line_to_char(line);
         let text = self.line(line);
+        let mut chars = CharCounter::new(&text);
         re.find_iter(&text)
             .filter(|m| m.end() > m.start())
-            .map(|m| {
-                (
-                    start + text[..m.start()].chars().count(),
-                    start + text[..m.end()].chars().count(),
-                )
-            })
+            .map(|m| (start + chars.at(m.start()), start + chars.at(m.end())))
             .collect()
     }
 
@@ -964,6 +988,7 @@ impl Editor {
     ) -> Vec<((usize, usize), String)> {
         let start = self.rope.line_to_char(line);
         let text = self.line(line);
+        let mut chars = CharCounter::new(&text);
         re.captures_iter(&text)
             .filter_map(|caps| {
                 let m = caps.get(0)?;
@@ -977,10 +1002,7 @@ impl Editor {
                     new.push_str(replacement);
                 }
                 Some((
-                    (
-                        start + text[..m.start()].chars().count(),
-                        start + text[..m.end()].chars().count(),
-                    ),
+                    (start + chars.at(m.start()), start + chars.at(m.end())),
                     new,
                 ))
             })

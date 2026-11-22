@@ -238,7 +238,16 @@ impl App {
 
     /// Requests the definition of object `nid` for tab `tab`.
     pub(super) fn request_definition(&mut self, tab: u64, nid: u64) {
+        // nothing can be asked for: a tab that shows "loading…" must not stay so
+        let nothing = |app: &mut Self, why: &str| {
+            if let Some(t) = app.tab_mut(tab)
+                && t.view.loading
+            {
+                t.view.load(format!("-- {why}\n"));
+            }
+        };
         let Some(ctx) = self.tree.definition_context(nid) else {
+            nothing(self, "This object has no definition to show.");
             return;
         };
         let server = &self.tree.servers[ctx.server];
@@ -252,6 +261,7 @@ impl App {
             None => server.handle.clone(),
         };
         let (Some(version), Some(handle)) = (server.version, handle) else {
+            nothing(self, "Not connected: the definition cannot be read.");
             return;
         };
         let render = RenderContext {
@@ -274,6 +284,7 @@ impl App {
         let mut params = vec![ctx.oid];
         if ctx.obj.definition_needs_parent() {
             let Some(parent) = ctx.parent_oid else {
+                nothing(self, "The object this one belongs to is not known.");
                 return;
             };
             params.push(parent);

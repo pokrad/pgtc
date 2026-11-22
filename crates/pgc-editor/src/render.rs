@@ -75,14 +75,30 @@ pub fn render(
         let line_start = editor.line_to_char(line_no);
         let mut col = 0usize; // display column
         let mut char_idx = line_start;
-        for tok in tokens {
+        // the cell of the character drawn last: a combining mark joins it
+        let mut last_cell: Option<u16> = None;
+        'line: for tok in tokens {
             let style = styles.token(tok.kind);
             for c in text[tok.start..tok.end].chars() {
+                // right of the window: nothing more of this line is drawn (a line
+                // may be megabytes long)
+                if col >= editor.left + text_w as usize {
+                    break 'line;
+                }
                 let w = if c == '\t' {
                     tab - col % tab
                 } else {
                     c.width().unwrap_or(0)
                 };
+                if w == 0 {
+                    // a combining mark: part of the character before it
+                    if let Some(x) = last_cell.filter(|_| !c.is_control()) {
+                        let joined = format!("{}{c}", buf[(x, y)].symbol());
+                        buf[(x, y)].set_symbol(&joined);
+                    }
+                    char_idx += 1;
+                    continue;
+                }
                 let selected = selection.is_some_and(|(a, b)| char_idx >= a && char_idx < b);
                 let style = if selected { styles.selection } else { style };
                 if w > 0 && col + w > editor.left && col < editor.left + text_w as usize {
@@ -96,7 +112,10 @@ pub fn render(
                         }
                     } else if col + w <= editor.left + text_w as usize {
                         buf[(x, y)].set_char(c).set_style(style);
+                        last_cell = Some(x);
                     }
+                } else {
+                    last_cell = None;
                 }
                 col += w;
                 char_idx += 1;
@@ -144,6 +163,12 @@ mod tests {
                 .collect::<String>()
         };
         assert!(row(0).starts_with("  1 select 'x'"), "{:?}", row(0));
+        // a combining mark is drawn with its letter, in the letter's cell
+        let e2 = Editor::new("e\u{301}x", false, 4);
+        let mut buf2 = Buffer::empty(area);
+        render(&e2, area, &mut buf2, &styles, false);
+        assert_eq!(buf2[(0, 0)].symbol(), "e\u{301}");
+        assert_eq!(buf2[(1, 0)].symbol(), "x");
         assert!(row(1).starts_with("  2     from t"), "{:?}", row(1));
         assert_eq!(buf[(4, 0)].fg, Color::Yellow);
         assert_eq!(buf[(11, 0)].fg, Color::Green);

@@ -1164,18 +1164,26 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
                 .filter(|c| !is_key(c))
                 .collect();
             if set.is_empty() {
-                // only key columns: they are what can be set
-                set = key.clone();
+                // only key columns: they are what can be set — those that can be
+                set = key.iter().copied().filter(writable).collect();
             }
-            lines.push((format!("UPDATE {table} SET"), String::new()));
-            for (i, c) in set.iter().enumerate() {
-                let comma = if i + 1 < set.len() { "," } else { "" };
+            if set.is_empty() {
+                // (an UPDATE that sets a GENERATED ALWAYS column is refused)
                 lines.push((
-                    format!("    {} = {}{comma}", quote_ident(&c.name), ph(c)),
-                    type_comment(c),
+                    format!("-- {table} has no column that can be set: nothing to update"),
+                    String::new(),
                 ));
+            } else {
+                lines.push((format!("UPDATE {table} SET"), String::new()));
+                for (i, c) in set.iter().enumerate() {
+                    let comma = if i + 1 < set.len() { "," } else { "" };
+                    lines.push((
+                        format!("    {} = {}{comma}", quote_ident(&c.name), ph(c)),
+                        type_comment(c),
+                    ));
+                }
+                where_lines(&mut lines, "", ";");
             }
-            where_lines(&mut lines, "", ";");
         }
         Gen::Delete => {
             lines.push((format!("DELETE FROM {table}"), String::new()));
@@ -2865,6 +2873,19 @@ mod tests {
         let m: Vec<&str> = matching("gf").iter().map(|c| c.0).collect();
         assert_eq!(m, ["gf", "gfr", "gfs", "gft", "gfe", "gfj"]);
         assert_eq!(matching("dt+ x").len(), 1);
+    }
+
+    #[test]
+    fn update_of_a_table_with_nothing_to_set() {
+        // only a GENERATED ALWAYS identity key and a generated column
+        let mut t = orders();
+        t.columns.retain(|c| c.name == "id" || c.name == "total");
+        t.columns[0].default = None;
+        t.columns[0].identity = "a".into();
+        assert_eq!(
+            generate(Gen::Update, &t),
+            "-- public.orders has no column that can be set: nothing to update"
+        );
     }
 
     #[test]

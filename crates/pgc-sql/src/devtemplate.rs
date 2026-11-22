@@ -563,17 +563,10 @@ pub enum ParamValue {
 }
 
 impl ParamValue {
-    fn to_jinja(&self, kind: ParamType) -> Value {
+    /// The value a template sees for parameter `p`.
+    fn to_jinja(&self, p: &Param) -> Value {
         match self {
-            ParamValue::Text(s) if kind == ParamType::Number => {
-                if let Ok(i) = s.trim().parse::<i64>() {
-                    Value::from(i)
-                } else if let Ok(f) = s.trim().parse::<f64>() {
-                    Value::from(f)
-                } else {
-                    Value::from(s.clone())
-                }
-            }
+            ParamValue::Text(s) if p.kind == ParamType::Number => number_value(s.trim()),
             ParamValue::Text(s) => Value::from(s.clone()),
             ParamValue::Bool(b) => Value::from(*b),
             ParamValue::Object(q) => Value::from_object(q.clone()),
@@ -582,7 +575,17 @@ impl ParamValue {
                     .map(|row| {
                         Value::from(
                             row.iter()
-                                .map(|(k, v)| (k.clone(), v.to_jinja(ParamType::Text)))
+                                .map(|(k, v)| {
+                                    // by the kind of the row's field: a number is a
+                                    // number in a row as well
+                                    let value = match p.fields.iter().find(|f| f.name == *k) {
+                                        Some(field) => v.to_jinja(field),
+                                        None => {
+                                            v.to_jinja(&Param::new(k.as_str(), ParamType::Text))
+                                        }
+                                    };
+                                    (k.clone(), value)
+                                })
                                 .collect::<BTreeMap<_, _>>(),
                         )
                     })
@@ -601,6 +604,28 @@ impl ParamValue {
     }
 }
 
+/// A number as it was typed: the SQL must get exactly that text. An integer is an
+/// integer; another number is a number of the template language only when that
+/// writes it the same way (`1.5`) — `1e3` or a long numeric would come out as another
+/// text (`1000.0`, digits lost) and stay text.
+fn number_value(s: &str) -> Value {
+    if let Ok(i) = s.parse::<i64>() {
+        return Value::from(i);
+    }
+    match s.parse::<f64>() {
+        Ok(f) if Value::from(f).to_string() == s => Value::from(f),
+        _ => Value::from(s),
+    }
+}
+
+/// `s` is a number as SQL writes one: digits with an optional sign, fraction and
+/// exponent (not `inf`, `nan`, which Rust would read as numbers too).
+fn is_number(s: &str) -> bool {
+    s.parse::<f64>().is_ok_and(f64::is_finite)
+        && s.chars()
+            .all(|c| c.is_ascii_digit() || matches!(c, '+' | '-' | '.' | 'e' | 'E'))
+}
+
 /// Checks required values, identifiers and numbers; the message names the field.
 pub fn validate(params: &[Param], values: &BTreeMap<String, ParamValue>) -> Result<(), String> {
     for p in params {
@@ -614,7 +639,7 @@ pub fn validate(params: &[Param], values: &BTreeMap<String, ParamValue>) -> Resu
                 check_identifier(s).map_err(|e| format!("{}: {e}", p.label()))?;
             }
             (ParamType::Number, Some(ParamValue::Text(s)))
-                if !s.trim().is_empty() && s.trim().parse::<f64>().is_err() =>
+                if !s.trim().is_empty() && !is_number(s.trim()) =>
             {
                 return Err(format!("{}: not a number", p.label()));
             }
@@ -663,7 +688,7 @@ pub fn render(
     let mut vars: BTreeMap<String, Value> = BTreeMap::new();
     for p in &template.params {
         let value = match values.get(&p.name) {
-            Some(v) => v.to_jinja(p.kind),
+            Some(v) => v.to_jinja(p),
             None if p.kind == ParamType::List => Value::from(Vec::<Value>::new()),
             None if p.kind == ParamType::Bool => Value::from(false),
             None => Value::from(""),
@@ -1434,6 +1459,29 @@ CREATE FUNCTION {{ schema|ident }}.{{ name|ident }}(
             "DROP FUNCTION s.\"My Fn\"(n integer, text); n integer, text\n\
              DROP TRIGGER trg ON s.\"Orders\"; Orders\n"
         );
+    }
+
+    /// A number reaches the SQL as it was typed.
+    #[test]
+    fn numbers_are_written_as_typed() {
+        for typed in [
+            "42",
+            "-7",
+            "1.5",
+            "1e3",
+            "12345678901234567890",
+            "0.10",
+            "1.0",
+        ] {
+            assert!(is_number(typed), "{typed}");
+            assert_eq!(number_value(typed).to_string(), typed);
+        }
+        // numbers of the template language where that changes nothing
+        assert!(number_value("42").is_number() && number_value("1.5").is_number());
+        assert!(!number_value("1e3").is_number());
+        for typed in ["inf", "NaN", "infinity", "1 2", "abc", ""] {
+            assert!(!is_number(typed), "{typed}");
+        }
     }
 
     #[test]

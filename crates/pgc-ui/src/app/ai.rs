@@ -255,7 +255,8 @@ impl App {
                 Some(e) if e.cut => {
                     "The editor text is long: only the part around the cursor is sent."
                 }
-                Some(_) => "",
+                // said every time: the text may hold what should not leave the house
+                Some(_) => "The schema, the editor text and the prompt are sent.",
             };
             self.ai.size = Some((scope, ai::request_chars(&ask), note));
         }
