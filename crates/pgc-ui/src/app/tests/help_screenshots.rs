@@ -926,11 +926,11 @@ fn dashboard(a: &mut App) {
     a.settings.ui.tree_width = Some(26);
     a.run(Command::Dashboard);
     let d = a.tabs[a.active_tab].dashboard_mut().unwrap();
-    let c = d.conn.as_mut().unwrap();
+    let c = d.own.conn.as_mut().unwrap();
     c.handle.abort();
     c.handle = pgc_db::ConnectionHandle::detached(c.id);
     c.connected = true;
-    d.version = Some(pgc_core::ServerVersion(170002));
+    d.own.version = Some(pgc_core::ServerVersion(170002));
     let (mut commits, mut tuples, mut blocks) = (9_000_000u64, 40_000_000u64, 7_000_000u64);
     for i in 0..60u64 {
         let wave = (i as f64 / 6.0).sin().abs();
@@ -1110,11 +1110,11 @@ fn profiler(a: &mut App) -> (u64, pgc_db::ConnId) {
     a.run(Command::SqlProfiler);
     let tab = a.tabs[a.active_tab].id;
     let p = a.tabs[a.active_tab].profiler_mut().unwrap();
-    let c = p.conn.as_mut().unwrap();
+    let c = p.own.conn.as_mut().unwrap();
     c.handle.abort();
     c.handle = pgc_db::ConnectionHandle::detached(c.id);
     c.connected = true;
-    p.version = Some(pgc_core::ServerVersion(170002));
+    p.own.version = Some(pgc_core::ServerVersion(170002));
     let id = c.id;
     a.status.clear();
     (tab, id)
@@ -2770,11 +2770,11 @@ async fn help_screenshots() {
     a.run(Command::DbStats);
     {
         let s = a.tabs[a.active_tab].db_stats_mut().unwrap();
-        let c = s.conn.as_mut().unwrap();
+        let c = s.own.conn.as_mut().unwrap();
         c.handle.abort();
         c.handle = pgc_db::ConnectionHandle::detached(c.id);
         c.connected = true;
-        s.version = Some(pgc_core::ServerVersion(170002));
+        s.own.version = Some(pgc_core::ServerVersion(170002));
         s.key = None;
         s.apply_rows(&to_rows(&[
             &[

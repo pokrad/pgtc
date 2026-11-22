@@ -1,14 +1,12 @@
 //! Database statistics tab (D-062): its state (the statistics as last read) and its
 //! drawing. The app side (connection, refresh, commands) is in `app/db_stats.rs`.
 
-use pgc_core::ServerVersion;
 use pgc_db::Column;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
-use crate::dashboard::DashConn;
 use crate::grid::{ResultSet, thousands};
 use crate::theme::{Role, Theme};
 
@@ -97,14 +95,10 @@ pub fn millis(ms: f64) -> String {
 #[derive(Debug)]
 pub struct DbStats {
     /// Server uid; the database (connected to).
-    pub uid: u64,
-    pub database: String,
+    /// The tab's own connection, to the database whose statistics are shown.
+    pub own: crate::monitor::OwnConn,
     /// Tab label.
     pub label: String,
-    pub conn: Option<DashConn>,
-    /// Why there is no connection (failed / lost).
-    pub problem: Option<String>,
-    pub version: Option<ServerVersion>,
     /// The statistics as last read (`None` until the first answer).
     pub stats: Option<Vec<Stat>>,
     pub grid: ResultSet,
@@ -117,21 +111,13 @@ pub struct DbStats {
 impl DbStats {
     pub fn new(uid: u64, database: String, label: String) -> Self {
         Self {
-            uid,
-            database,
+            own: crate::monitor::OwnConn::new(uid, database),
             label,
-            conn: None,
-            problem: None,
-            version: None,
             stats: None,
             grid: empty_grid(),
             key: None,
             error: None,
         }
-    }
-
-    pub fn connected(&self) -> bool {
-        self.conn.as_ref().is_some_and(|c| c.connected)
     }
 
     /// New rows of `stats.sql`; the cursor stays on the same statistic.
@@ -271,12 +257,8 @@ pub fn render(
             .collect();
         frame.render_widget(Paragraph::new(lines).style(normal), area);
     };
-    if !s.connected() && s.stats.is_none() {
-        let text = match (&s.problem, &s.conn) {
-            (Some(p), _) => format!("{p}\n\nF5 connects again."),
-            (None, Some(_)) => "Connecting…".to_owned(),
-            (None, None) => "Not connected — F5 connects.".to_owned(),
-        };
+    // (statistics read before the connection was lost stay on the screen)
+    if let Some(text) = s.own.offline_text(false).filter(|_| s.stats.is_none()) {
         message(frame, text, hint);
         return hits;
     }
@@ -361,22 +343,12 @@ fn render_boxes(frame: &mut Frame, s: &DbStats, area: Rect, rows: u16, t: &Theme
 }
 
 impl crate::monitor::MonitorTab for DbStats {
-    fn own_conn(&mut self) -> crate::dashboard::OwnConn<'_> {
-        crate::dashboard::OwnConn {
-            uid: self.uid,
-            database: &self.database,
-            conn: &mut self.conn,
-            version: &mut self.version,
-            problem: &mut self.problem,
-        }
+    fn own(&self) -> &crate::monitor::OwnConn {
+        &self.own
     }
 
-    fn place(&self) -> (u64, &str, Option<bool>) {
-        (
-            self.uid,
-            &self.database,
-            self.conn.as_ref().map(|c| c.connected),
-        )
+    fn own_mut(&mut self) -> &mut crate::monitor::OwnConn {
+        &mut self.own
     }
 
     fn list(&self) -> &ResultSet {

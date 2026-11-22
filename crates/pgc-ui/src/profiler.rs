@@ -12,7 +12,6 @@ use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
-use crate::dashboard::DashConn;
 use crate::grid::{ResultSet, thousands};
 use crate::theme::{Role, Theme};
 
@@ -526,12 +525,9 @@ pub enum AfterRestore {
 pub struct Profiler {
     /// The statement pane below the list (D-059).
     pub pane: crate::dashboard::Pane,
-    pub uid: u64,
-    pub conn_database: String,
+    /// The tab's own connection.
+    pub own: crate::monitor::OwnConn,
     pub label: String,
-    pub conn: Option<DashConn>,
-    pub problem: Option<String>,
-    pub version: Option<ServerVersion>,
     pub phase: Phase,
     pub own_pid: Option<String>,
     pub reader: Option<LogReader>,
@@ -566,12 +562,8 @@ pub struct Profiler {
 impl Profiler {
     pub fn new(uid: u64, conn_database: String, label: String, database: Option<String>) -> Self {
         Self {
-            uid,
-            conn_database,
+            own: crate::monitor::OwnConn::new(uid, conn_database),
             label,
-            conn: None,
-            problem: None,
-            version: None,
             phase: Phase::Stopped,
             own_pid: None,
             reader: None,
@@ -598,10 +590,6 @@ impl Profiler {
             error: None,
             pane: crate::dashboard::Pane::default(),
         }
-    }
-
-    pub fn connected(&self) -> bool {
-        self.conn.as_ref().is_some_and(|c| c.connected)
     }
 
     /// Settings changed by Start must still be put back.
@@ -729,15 +717,18 @@ pub fn render(
         Constraint::Fill(1),
     ])
     .areas(area);
-    let state_text = match (&p.problem, p.connected(), &p.conn) {
-        (Some(problem), _, _) => format!(" {problem} — F5 connects again."),
-        (None, false, Some(_)) => " Connecting…".to_owned(),
-        (None, false, None) => " Not connected — F5 connects.".to_owned(),
-        (None, true, _) if p.phase == Phase::Stopped && p.read == 0 => format!(
+    // (a problem is shown while there is one, also with a connection)
+    let offline = match &p.own.problem {
+        Some(problem) => Some(format!("{problem} — F5 connects again.")),
+        None => p.own.offline_text(true),
+    };
+    let state_text = match offline {
+        Some(text) => format!(" {text}"),
+        None if p.phase == Phase::Stopped && p.read == 0 => format!(
             " {} — F5 starts: every statement on the server is shown from then on.",
             p.state_text()
         ),
-        _ => format!(" {}", p.state_text()),
+        None => format!(" {}", p.state_text()),
     };
     frame.render_widget(Paragraph::new(state_text).style(normal), state);
     let filter_line = if p.filter.is_empty() {
@@ -787,22 +778,12 @@ pub fn render(
 }
 
 impl crate::monitor::MonitorTab for Profiler {
-    fn own_conn(&mut self) -> crate::dashboard::OwnConn<'_> {
-        crate::dashboard::OwnConn {
-            uid: self.uid,
-            database: &self.conn_database,
-            conn: &mut self.conn,
-            version: &mut self.version,
-            problem: &mut self.problem,
-        }
+    fn own(&self) -> &crate::monitor::OwnConn {
+        &self.own
     }
 
-    fn place(&self) -> (u64, &str, Option<bool>) {
-        (
-            self.uid,
-            &self.conn_database,
-            self.conn.as_ref().map(|c| c.connected),
-        )
+    fn own_mut(&mut self) -> &mut crate::monitor::OwnConn {
+        &mut self.own
     }
 
     fn list(&self) -> &ResultSet {

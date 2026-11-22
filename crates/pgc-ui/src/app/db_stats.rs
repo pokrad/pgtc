@@ -43,7 +43,7 @@ impl App {
         let uid = server.uid;
         if let Some(i) = self.tabs.iter().position(|t| {
             t.db_stats()
-                .is_some_and(|s| s.uid == uid && s.database == db)
+                .is_some_and(|s| s.own.uid == uid && s.own.database == db)
         }) {
             self.active_tab = i;
             self.focus = Focus::Results;
@@ -96,7 +96,7 @@ impl App {
         let Some(s) = self.tabs[i].db_stats() else {
             return;
         };
-        let (Some(version), true, None) = (s.version, s.connected(), s.key) else {
+        let (Some(version), true, None) = (s.own.version, s.own.connected(), s.key) else {
             return;
         };
         let sql = self.render_monitor_sql(SQL_FOLDER, version, "stats.sql");
@@ -107,7 +107,7 @@ impl App {
         };
         match sql {
             Ok(sql) => {
-                if let Some(conn) = s.conn.as_ref() {
+                if let Some(conn) = s.own.conn.as_ref() {
                     conn.handle.lookup(key, sql);
                     s.key = Some(key);
                 }
@@ -145,7 +145,7 @@ impl App {
         }
         match cmd {
             Command::DbStatsRefresh => {
-                if self.db_stats().is_some_and(|s| s.conn.is_none()) {
+                if self.db_stats().is_some_and(|s| s.own.conn.is_none()) {
                     self.db_stats_connect(tab);
                     self.status = "Connecting…".to_owned();
                 } else {

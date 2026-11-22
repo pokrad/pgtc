@@ -108,8 +108,8 @@ impl App {
                 let busy = q.busy();
                 q.conn.map(|c| (c.id, end_query_conn(busy, c)))
             }
-            TabBody::Dashboard(d) => d.conn.map(|c| (c.id, c.handle)),
-            TabBody::DbStats(s) => s.conn.map(|c| (c.id, c.handle)),
+            TabBody::Dashboard(d) => d.own.conn.map(|c| (c.id, c.handle)),
+            TabBody::DbStats(s) => s.own.conn.map(|c| (c.id, c.handle)),
             // changed logging settings are put back first (D-058)
             TabBody::Profiler(p) => {
                 self.close_profiler_conn(*p);
@@ -275,9 +275,9 @@ impl App {
                     let busy = q.busy();
                     q.conn.take().map(|c| end_query_conn(busy, c))
                 }
-                TabBody::Dashboard(d) => d.conn.take().map(|c| c.handle),
-                TabBody::DbStats(s) => s.conn.take().map(|c| c.handle),
-                TabBody::Profiler(p) => p.conn.take().map(|c| c.handle),
+                TabBody::Dashboard(d) => d.own.conn.take().map(|c| c.handle),
+                TabBody::DbStats(s) => s.own.conn.take().map(|c| c.handle),
+                TabBody::Profiler(p) => p.own.conn.take().map(|c| c.handle),
             };
             handles.extend(handle);
         }

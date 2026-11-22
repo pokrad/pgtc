@@ -4,7 +4,6 @@
 
 use std::collections::{BTreeSet, HashSet, VecDeque};
 
-use pgc_core::ServerVersion;
 use pgc_db::{Column, ConnId, ConnectionHandle};
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
@@ -13,6 +12,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Paragraph, Sparkline};
 
 use crate::grid::{GridStyles, ResultSet, thousands};
+use crate::monitor::OwnConn;
 use crate::theme::{Role, Theme};
 
 /// Refresh intervals in milliseconds, cycled by `dashboard_interval`; 2 s is the
@@ -467,18 +467,6 @@ pub struct DashConn {
     pub connected: bool,
 }
 
-/// What the dashboard, profiler and database statistics tabs have in common: their own
-/// connection (D-057, D-058, D-062).
-pub struct OwnConn<'a> {
-    /// Server uid and the database the connection goes to.
-    pub uid: u64,
-    pub database: &'a str,
-    pub conn: &'a mut Option<DashConn>,
-    pub version: &'a mut Option<ServerVersion>,
-    /// Why the tab has no connection.
-    pub problem: &'a mut Option<String>,
-}
-
 /// Cancel query / terminate session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Signal {
@@ -531,16 +519,12 @@ pub struct Signals {
 pub struct Dashboard {
     /// The statement pane below the list (D-059).
     pub pane: Pane,
-    /// Server uid; database filter (`None` = the whole server); database connected to.
-    pub uid: u64,
+    /// The tab's own connection: the server and the database connected to.
+    pub own: OwnConn,
+    /// Database filter (`None` = the whole server).
     pub database: Option<String>,
-    pub conn_database: String,
     /// Tab label.
     pub label: String,
-    pub conn: Option<DashConn>,
-    /// Why there is no connection (failed / lost).
-    pub problem: Option<String>,
-    pub version: Option<ServerVersion>,
     pub list: List,
     /// One grid per list; rows as last read (before the idle filter).
     pub grids: Vec<ResultSet>,
@@ -586,13 +570,9 @@ impl Dashboard {
     pub fn new(uid: u64, database: Option<String>, conn_database: String, label: String) -> Self {
         let mode = DurationMode::Query;
         Self {
-            uid,
+            own: OwnConn::new(uid, conn_database),
             database,
-            conn_database,
             label,
-            conn: None,
-            problem: None,
-            version: None,
             list: List::Sessions,
             grids: List::ALL.iter().map(|l| grid_for(*l, mode)).collect(),
             raw: vec![None; List::ALL.len()],
@@ -630,10 +610,6 @@ impl Dashboard {
             stats_error: None,
             pane: Pane::default(),
         }
-    }
-
-    pub fn connected(&self) -> bool {
-        self.conn.as_ref().is_some_and(|c| c.connected)
     }
 
     pub fn interval_ms(&self) -> u64 {
@@ -1284,15 +1260,10 @@ pub fn render(
     if area.height < 4 {
         return hits;
     }
-    if !d.connected() {
-        let text = match (&d.problem, &d.conn) {
-            (Some(p), _) => format!(" {p}\n\n F5 connects again."),
-            (None, Some(_)) => " Connecting…".to_owned(),
-            (None, None) => " Not connected — F5 connects.".to_owned(),
-        };
+    if let Some(text) = d.own.offline_text(false) {
         let lines: Vec<Line> = text
             .lines()
-            .map(|l| Line::from(Span::styled(l.to_owned(), hint)))
+            .map(|l| Line::from(Span::styled(format!(" {l}"), hint)))
             .collect();
         frame.render_widget(Paragraph::new(lines).style(normal), area);
         return hits;
@@ -1543,22 +1514,12 @@ fn render_graphs(frame: &mut Frame, d: &Dashboard, area: Rect, rows: u16, spark:
 }
 
 impl crate::monitor::MonitorTab for Dashboard {
-    fn own_conn(&mut self) -> crate::dashboard::OwnConn<'_> {
-        crate::dashboard::OwnConn {
-            uid: self.uid,
-            database: &self.conn_database,
-            conn: &mut self.conn,
-            version: &mut self.version,
-            problem: &mut self.problem,
-        }
+    fn own(&self) -> &OwnConn {
+        &self.own
     }
 
-    fn place(&self) -> (u64, &str, Option<bool>) {
-        (
-            self.uid,
-            &self.conn_database,
-            self.conn.as_ref().map(|c| c.connected),
-        )
+    fn own_mut(&mut self) -> &mut OwnConn {
+        &mut self.own
     }
 
     fn list(&self) -> &ResultSet {
@@ -1570,7 +1531,7 @@ impl crate::monitor::MonitorTab for Dashboard {
     }
 
     fn status_text(&self) -> String {
-        if !self.connected() {
+        if !self.own.connected() {
             String::new()
         } else if self.paused {
             "Paused (Ctrl+P resumes)".to_owned()

@@ -96,7 +96,7 @@ impl App {
         // puts them back itself
         if self.tabs.iter().any(|t| {
             t.profiler()
-                .is_some_and(|p| p.uid == uid && p.needs_restore())
+                .is_some_and(|p| p.own.uid == uid && p.needs_restore())
         }) {
             return;
         }

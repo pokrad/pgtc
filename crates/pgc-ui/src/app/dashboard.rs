@@ -55,7 +55,7 @@ impl App {
         let uid = server.uid;
         if let Some(i) = self.tabs.iter().position(|t| {
             t.dashboard()
-                .is_some_and(|d| d.uid == uid && d.database == db)
+                .is_some_and(|d| d.own.uid == uid && d.database == db)
         }) {
             self.active_tab = i;
             // the list first (D-059)
@@ -121,7 +121,7 @@ impl App {
         let Some(d) = self.tabs[i].dashboard() else {
             return;
         };
-        let (Some(version), true) = (d.version, d.connected()) else {
+        let (Some(version), true) = (d.own.version, d.own.connected()) else {
             return;
         };
         let list = d.list;
@@ -165,7 +165,7 @@ impl App {
         let Some(d) = self.tabs[i].dashboard_mut() else {
             return;
         };
-        let Some(conn) = d.conn.as_ref() else {
+        let Some(conn) = d.own.conn.as_ref() else {
             return;
         };
         if let Some((key, sql)) = keys.0 {
@@ -274,7 +274,7 @@ impl App {
         let Some(d) = self.dashboard_of(tab) else {
             return;
         };
-        if d.paused || !d.idle() || !d.connected() {
+        if d.paused || !d.idle() || !d.own.connected() {
             return;
         }
         d.timer_seq += 1;
@@ -312,7 +312,7 @@ impl App {
         }
         match cmd {
             Command::DashboardRefresh => {
-                if self.dashboard().is_some_and(|d| d.conn.is_none()) {
+                if self.dashboard().is_some_and(|d| d.own.conn.is_none()) {
                     self.dashboard_connect(tab);
                     self.status = "Connecting…".to_owned();
                 } else {
@@ -431,7 +431,7 @@ impl App {
         let Some(d) = self.dashboard_mut() else {
             return;
         };
-        if !d.connected() {
+        if !d.own.connected() {
             self.status = "The dashboard is not connected".to_owned();
             return;
         }
@@ -477,7 +477,7 @@ impl App {
         let Some(i) = self.tab_index(tab) else {
             return;
         };
-        let Some(version) = self.tabs[i].dashboard().and_then(|d| d.version) else {
+        let Some(version) = self.tabs[i].dashboard().and_then(|d| d.own.version) else {
             return;
         };
         let sql = match self.render_dashboard_sql(version, signal.file()) {
@@ -494,7 +494,7 @@ impl App {
         let Some((asked, sessions)) = d.asking.take().filter(|(s, _)| *s == signal) else {
             return;
         };
-        let Some(conn) = d.conn.as_ref().filter(|c| c.connected) else {
+        let Some(conn) = d.own.conn.as_ref().filter(|c| c.connected) else {
             self.status = "The dashboard is not connected".to_owned();
             return;
         };
@@ -585,7 +585,7 @@ impl App {
         };
         match cmd {
             Command::CancelBackend | Command::TerminateBackend => {
-                d.connected() && !d.signal_targets().is_empty()
+                d.own.connected() && !d.signal_targets().is_empty()
             }
             Command::TagSession => d.list == List::Sessions && d.selected_session().is_some(),
             Command::ClearTags => !d.tags.is_empty(),

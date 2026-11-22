@@ -150,7 +150,7 @@ impl App {
         let Some(c) = self.own_conn(tab) else {
             return false;
         };
-        let (uid, database) = (c.uid, c.database.to_owned());
+        let (uid, database) = (c.uid, c.database.clone());
         let server = self
             .tree
             .servers
@@ -158,18 +158,18 @@ impl App {
             .position(|s| s.uid == uid && s.state == ConnState::Connected);
         let Some(si) = server else {
             if let Some(c) = self.own_conn(tab) {
-                *c.problem = Some("The server is not connected.".to_owned());
+                c.problem = Some("The server is not connected.".to_owned());
             }
             return false;
         };
         let handle = self.open_connection(si, &database, target);
         if let Some(c) = self.own_conn(tab) {
-            *c.conn = Some(DashConn {
+            c.conn = Some(DashConn {
                 id: handle.id,
                 handle,
                 connected: false,
             });
-            *c.problem = None;
+            c.problem = None;
         }
         true
     }
@@ -188,21 +188,21 @@ impl App {
         };
         match event {
             DbEvent::Connected { version, .. } => {
-                *c.version = Some(*version);
+                c.version = Some(*version);
                 if let Some(conn) = c.conn.as_mut() {
                     conn.connected = true;
                 }
                 MonitorEvent::Connected
             }
             DbEvent::ConnectFailed { error, .. } => {
-                *c.conn = None;
-                *c.problem = Some(format!("Cannot connect: {error}"));
+                c.conn = None;
+                c.problem = Some(format!("Cannot connect: {error}"));
                 self.connections.remove(&conn);
                 MonitorEvent::Failed
             }
             DbEvent::Closed { error, .. } => {
-                *c.conn = None;
-                *c.problem = Some(match error {
+                c.conn = None;
+                c.problem = Some(match error {
                     Some(e) => format!("Session lost: {e}"),
                     None => "Session closed".to_owned(),
                 });

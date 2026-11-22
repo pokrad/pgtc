@@ -2556,11 +2556,11 @@ async fn alt_i_opens_the_database_statistics() {
     // pretend the connection is open (a detached handle keeps the requests)
     let conn = {
         let s = a.tabs[1].db_stats_mut().unwrap();
-        let c = s.conn.as_mut().unwrap();
+        let c = s.own.conn.as_mut().unwrap();
         c.handle.abort();
         c.handle = pgc_db::ConnectionHandle::detached(c.id);
         c.connected = true;
-        s.version = Some(pgc_core::ServerVersion(170002));
+        s.own.version = Some(pgc_core::ServerVersion(170002));
         c.id
     };
     a.db_stats_refresh(tab);
@@ -3176,11 +3176,11 @@ async fn dashboard_tab_refreshes_and_cancels() {
     // pretend the connection is open (a detached handle keeps the requests)
     let conn = {
         let d = a.tabs[1].dashboard_mut().unwrap();
-        let c = d.conn.as_mut().unwrap();
+        let c = d.own.conn.as_mut().unwrap();
         c.handle.abort();
         c.handle = pgc_db::ConnectionHandle::detached(c.id);
         c.connected = true;
-        d.version = Some(pgc_core::ServerVersion(170002));
+        d.own.version = Some(pgc_core::ServerVersion(170002));
         c.id
     };
     a.dashboard_refresh(tab, true);
@@ -3356,11 +3356,11 @@ async fn profiler_asks_reads_and_restores() {
     let tab = a.tabs[1].id;
     let conn = {
         let p = a.tabs[1].profiler_mut().unwrap();
-        let c = p.conn.as_mut().unwrap();
+        let c = p.own.conn.as_mut().unwrap();
         c.handle.abort();
         c.handle = pgc_db::ConnectionHandle::detached(c.id);
         c.connected = true;
-        p.version = Some(pgc_core::ServerVersion(170002));
+        p.own.version = Some(pgc_core::ServerVersion(170002));
         c.id
     };
     fn prof(a: &App) -> &crate::profiler::Profiler {
@@ -3914,11 +3914,11 @@ async fn profiler_restore_failure_stops_the_quit() {
     let tab = a.tabs[1].id;
     let conn = {
         let p = a.tabs[1].profiler_mut().unwrap();
-        let c = p.conn.as_mut().unwrap();
+        let c = p.own.conn.as_mut().unwrap();
         c.handle.abort();
         c.handle = pgc_db::ConnectionHandle::detached(c.id);
         c.connected = true;
-        p.version = Some(pgc_core::ServerVersion(170002));
+        p.own.version = Some(pgc_core::ServerVersion(170002));
         c.id
     };
     fn prof(a: &App) -> &crate::profiler::Profiler {
@@ -4222,11 +4222,11 @@ async fn profiler_start_without_rights_changes_and_notes_nothing() {
     let tab = a.tabs[1].id;
     let conn = {
         let p = a.tabs[1].profiler_mut().unwrap();
-        let c = p.conn.as_mut().unwrap();
+        let c = p.own.conn.as_mut().unwrap();
         c.handle.abort();
         c.handle = pgc_db::ConnectionHandle::detached(c.id);
         c.connected = true;
-        p.version = Some(pgc_core::ServerVersion(170002));
+        p.own.version = Some(pgc_core::ServerVersion(170002));
         c.id
     };
     fn prof(a: &App) -> &crate::profiler::Profiler {
@@ -4280,11 +4280,11 @@ async fn profiler_notes_its_changes_until_they_are_restored() {
     let tab = a.tabs[1].id;
     let conn = {
         let p = a.tabs[1].profiler_mut().unwrap();
-        let c = p.conn.as_mut().unwrap();
+        let c = p.own.conn.as_mut().unwrap();
         c.handle.abort();
         c.handle = pgc_db::ConnectionHandle::detached(c.id);
         c.connected = true;
-        p.version = Some(pgc_core::ServerVersion(170002));
+        p.own.version = Some(pgc_core::ServerVersion(170002));
         c.id
     };
     fn prof(a: &App) -> &crate::profiler::Profiler {
@@ -4439,11 +4439,11 @@ async fn profiler_follows_a_log_file_that_starts_again() {
     let tab = a.tabs[1].id;
     let conn = {
         let p = a.tabs[1].profiler_mut().unwrap();
-        let c = p.conn.as_mut().unwrap();
+        let c = p.own.conn.as_mut().unwrap();
         c.handle.abort();
         c.handle = pgc_db::ConnectionHandle::detached(c.id);
         c.connected = true;
-        p.version = Some(pgc_core::ServerVersion(170002));
+        p.own.version = Some(pgc_core::ServerVersion(170002));
         c.id
     };
     fn prof(a: &App) -> &crate::profiler::Profiler {

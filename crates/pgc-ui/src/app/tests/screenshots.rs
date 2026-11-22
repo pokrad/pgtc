@@ -624,11 +624,11 @@ async fn readme_screenshots() {
     a.run(Command::Dashboard);
     {
         let d = a.tabs[a.active_tab].dashboard_mut().unwrap();
-        let c = d.conn.as_mut().unwrap();
+        let c = d.own.conn.as_mut().unwrap();
         c.handle.abort();
         c.handle = pgc_db::ConnectionHandle::detached(c.id);
         c.connected = true;
-        d.version = Some(pgc_core::ServerVersion(170002));
+        d.own.version = Some(pgc_core::ServerVersion(170002));
         // two minutes of samples every 2 s: a working day's wave
         let (mut commits, mut tuples, mut blocks) = (9_000_000u64, 40_000_000u64, 7_000_000u64);
         for i in 0..60u64 {
@@ -809,11 +809,11 @@ async fn readme_screenshots() {
     a.run(Command::SqlProfiler);
     {
         let p = a.tabs[a.active_tab].profiler_mut().unwrap();
-        let c = p.conn.as_mut().unwrap();
+        let c = p.own.conn.as_mut().unwrap();
         c.handle.abort();
         c.handle = pgc_db::ConnectionHandle::detached(c.id);
         c.connected = true;
-        p.version = Some(pgc_core::ServerVersion(170002));
+        p.own.version = Some(pgc_core::ServerVersion(170002));
         p.phase = crate::profiler::Phase::Running;
         let r = |time: &str, pid: &str, app: &str, ms: &str, kind: &str, sql: &str| {
             crate::profiler::Record {

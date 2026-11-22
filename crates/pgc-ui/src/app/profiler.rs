@@ -60,7 +60,7 @@ impl App {
         if let Some(i) = self
             .tabs
             .iter()
-            .position(|t| t.profiler().is_some_and(|p| p.uid == uid))
+            .position(|t| t.profiler().is_some_and(|p| p.own.uid == uid))
         {
             self.active_tab = i;
             // the list first (D-059)
@@ -130,12 +130,12 @@ impl App {
         let Some(p) = self.profiler_of(tab) else {
             return;
         };
-        if p.conn.is_none() {
+        if p.own.conn.is_none() {
             self.profiler_connect(tab);
             self.status = "Connecting…".to_owned();
             return;
         }
-        if !p.connected() {
+        if !p.own.connected() {
             self.status = "Still connecting…".to_owned();
             return;
         }
@@ -148,7 +148,7 @@ impl App {
 
     /// Start: reads the logging settings (`check.sql`).
     fn profiler_check(&mut self, tab: u64) {
-        let Some(version) = self.profiler_of(tab).and_then(|p| p.version) else {
+        let Some(version) = self.profiler_of(tab).and_then(|p| p.own.version) else {
             return;
         };
         let sql = match self.render_profiler_sql(version, "check.sql") {
@@ -163,7 +163,7 @@ impl App {
         let Some(p) = self.profiler_of(tab) else {
             return;
         };
-        if let Some(c) = p.conn.as_ref() {
+        if let Some(c) = p.own.conn.as_ref() {
             c.handle.lookup(key, sql);
             p.step_keys = vec![key];
             p.step_error = None;
@@ -184,7 +184,7 @@ impl App {
                 return;
             }
         };
-        let (Some(check), Some(version)) = (check, p.version) else {
+        let (Some(check), Some(version)) = (check, p.own.version) else {
             return;
         };
         if !check.logging_collector {
@@ -247,7 +247,7 @@ impl App {
         // session before the answers puts them back as well, and they are noted in
         // case pgtc ends without that (D-058)
         p.applied = std::mem::take(&mut p.planned);
-        let (uid, applied) = (p.uid, p.applied.clone());
+        let (uid, applied) = (p.own.uid, p.applied.clone());
         self.record_profiler_changes(uid, &applied);
         self.profiler_step(tab, statements);
     }
@@ -257,7 +257,7 @@ impl App {
     fn profiler_step(&mut self, tab: u64, statements: Vec<String>) {
         let reload = self
             .profiler_of(tab)
-            .and_then(|p| p.version)
+            .and_then(|p| p.own.version)
             .map(|v| self.render_profiler_sql(v, "reload.sql"));
         let mut keys = Vec::new();
         let settings = statements.len();
@@ -274,7 +274,7 @@ impl App {
         let Some(p) = self.profiler_of(tab) else {
             return;
         };
-        let Some(c) = p.conn.as_ref() else {
+        let Some(c) = p.own.conn.as_ref() else {
             return;
         };
         for (key, sql) in keys.iter().zip(sqls) {
@@ -336,7 +336,7 @@ impl App {
                     if p.step_settings_failed >= p.step_settings.len() {
                         p.applied.clear();
                         p.phase = Phase::Stopped;
-                        let uid = p.uid;
+                        let uid = p.own.uid;
                         self.forget_profiler_changes(uid);
                         self.status = "Profiler not started".to_owned();
                     }
@@ -354,7 +354,7 @@ impl App {
                 let restore: Vec<String> = p.applied.drain(..).map(|c| c.restore_sql()).collect();
                 p.phase = Phase::Stopped;
                 let quitting = p.after_restore == AfterRestore::Quit;
-                let uid = p.uid;
+                let uid = p.own.uid;
                 if let Some(e) = error {
                     self.restore_failed(&restore, &e);
                 } else {
@@ -385,10 +385,11 @@ impl App {
         let Some(p) = self.profiler_of(tab) else {
             return;
         };
-        if p.phase != Phase::Running || p.paused || p.read_key.is_some() || !p.connected() {
+        if p.phase != Phase::Running || p.paused || p.read_key.is_some() || !p.own.connected() {
             return;
         }
-        let (Some(version), Some(format)) = (p.version, p.reader.as_ref().map(|r| r.format)) else {
+        let (Some(version), Some(format)) = (p.own.version, p.reader.as_ref().map(|r| r.format))
+        else {
             return;
         };
         let params = vec![
@@ -409,7 +410,7 @@ impl App {
         let Some(p) = self.profiler_of(tab) else {
             return;
         };
-        if let Some(c) = p.conn.as_ref() {
+        if let Some(c) = p.own.conn.as_ref() {
             c.handle.lookup_with(key, sql, params);
             p.read_key = Some(key);
         }
@@ -665,7 +666,7 @@ impl App {
     /// Closing a profiler tab: changed settings are put back on its connection, which
     /// then closes (the answers are not waited for).
     pub(super) fn close_profiler_conn(&mut self, p: Profiler) {
-        let Some(conn) = p.conn else {
+        let Some(conn) = p.own.conn else {
             return;
         };
         self.connections.remove(&conn.id);
@@ -673,7 +674,11 @@ impl App {
             for c in &p.applied {
                 conn.handle.lookup(0, c.restore_sql());
             }
-            if let Some(Ok(sql)) = p.version.map(|v| self.render_profiler_sql(v, "reload.sql")) {
+            if let Some(Ok(sql)) = p
+                .own
+                .version
+                .map(|v| self.render_profiler_sql(v, "reload.sql"))
+            {
                 conn.handle.lookup(0, sql);
             }
         }
@@ -693,7 +698,7 @@ impl App {
             .iter()
             .filter(|t| {
                 t.profiler()
-                    .is_some_and(|p| p.needs_restore() && p.connected())
+                    .is_some_and(|p| p.needs_restore() && p.own.connected())
             })
             .map(|t| t.id)
             .collect();

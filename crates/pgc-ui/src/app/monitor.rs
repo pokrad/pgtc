@@ -6,7 +6,6 @@ use ratatui::layout::{Position, Rect};
 
 use super::query::connection_label;
 use super::{App, Effect, Focus, Tab, TabBody};
-use crate::dashboard::OwnConn;
 use crate::grid::CellArea;
 use crate::keymap::Command;
 use crate::monitor::MonitorTab;
@@ -18,8 +17,8 @@ impl App {
     }
 
     /// The own connection of the dashboard, profiler or database statistics tab `tab`.
-    pub(super) fn own_conn(&mut self, tab: u64) -> Option<OwnConn<'_>> {
-        self.tab_mut(tab)?.monitor_mut().map(|m| m.own_conn())
+    pub(super) fn own_conn(&mut self, tab: u64) -> Option<&mut crate::monitor::OwnConn> {
+        self.tab_mut(tab)?.monitor_mut().map(|m| m.own_mut())
     }
 
     /// The SQL of `file` in `folder` (`dashboard`, `profiler`, `db_stats`) for a

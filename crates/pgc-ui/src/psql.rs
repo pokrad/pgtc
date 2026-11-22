@@ -629,43 +629,63 @@ pub fn parse(input: &str) -> Result<Cmd, String> {
     })
 }
 
-/// Arguments separated by unquoted white space (`orders "Order Items" s.x`).
-fn split_args(text: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    let mut cur = String::new();
-    let mut in_quotes = false;
-    for c in text.chars() {
-        match c {
-            '"' => {
-                in_quotes = !in_quotes;
-                cur.push(c);
-            }
-            c if c.is_whitespace() && !in_quotes => {
-                if !cur.is_empty() {
-                    out.push(std::mem::take(&mut cur));
-                }
-            }
-            c => cur.push(c),
+// ---- double quotes --------------------------------------------------------------
+// Two readings of a text with double quotes, which everything below goes by: where it
+// is cut (`split_unquoted`, the text of the pieces stays as typed) and what it says
+// (`dequote`, the quote marks gone).
+
+/// The pieces of `text` between the characters `cut` picks, those inside double
+/// quotes not counted; a piece keeps its quote marks. (`""` inside quotes leaves and
+/// enters them again at once, which comes to the same.)
+fn split_unquoted(text: &str, cut: impl Fn(char) -> bool) -> Vec<&str> {
+    let mut pieces = Vec::new();
+    let (mut in_quotes, mut start) = (false, 0);
+    for (i, c) in text.char_indices() {
+        if c == '"' {
+            in_quotes = !in_quotes;
+        } else if !in_quotes && cut(c) {
+            pieces.push(&text[start..i]);
+            start = i + c.len_utf8();
         }
     }
-    if !cur.is_empty() {
-        out.push(cur);
+    pieces.push(&text[start..]);
+    pieces
+}
+
+/// The characters `text` stands for, each with whether it was inside double quotes:
+/// the quote marks are gone, `""` inside quotes is one `"`.
+fn dequote(text: &str) -> Vec<(char, bool)> {
+    let mut out = Vec::new();
+    let mut chars = text.chars().peekable();
+    let mut in_quotes = false;
+    while let Some(c) = chars.next() {
+        match c {
+            '"' if in_quotes && chars.peek() == Some(&'"') => {
+                chars.next();
+                out.push(('"', true));
+            }
+            '"' => in_quotes = !in_quotes,
+            c => out.push((c, in_quotes)),
+        }
     }
     out
 }
 
+/// Arguments separated by unquoted white space (`orders "Order Items" s.x`).
+fn split_args(text: &str) -> Vec<String> {
+    split_unquoted(text, char::is_whitespace)
+        .into_iter()
+        .filter(|a| !a.is_empty())
+        .map(str::to_owned)
+        .collect()
+}
+
 /// The last argument of `text`: what follows its last unquoted white space.
 fn last_arg(text: &str) -> &str {
-    let mut in_quotes = false;
-    let mut start = 0;
-    for (i, c) in text.char_indices() {
-        match c {
-            '"' => in_quotes = !in_quotes,
-            c if c.is_whitespace() && !in_quotes => start = i + c.len_utf8(),
-            _ => {}
-        }
-    }
-    &text[start..]
+    split_unquoted(text, char::is_whitespace)
+        .last()
+        .copied()
+        .unwrap_or("")
 }
 
 /// `schema.name`, `name`, `"Quoted Name"` → folded parts.
@@ -684,52 +704,29 @@ pub fn parse_name(text: &str) -> Result<Name, String> {
 
 /// Splits on unquoted dots; each part with "contained quoted text".
 fn split_parts(text: &str) -> Vec<(String, bool)> {
-    let mut parts = vec![(String::new(), false)];
-    let mut chars = text.chars().peekable();
-    let mut in_quotes = false;
-    while let Some(c) = chars.next() {
-        let cur = parts.last_mut().expect("one part");
-        match c {
-            '"' if in_quotes && chars.peek() == Some(&'"') => {
-                chars.next();
-                cur.0.push('"');
-            }
-            '"' => {
-                in_quotes = !in_quotes;
-                cur.1 = true;
-            }
-            '.' if !in_quotes => parts.push((String::new(), false)),
-            c => cur.0.push(c),
-        }
-    }
-    parts
+    split_unquoted(text, |c| c == '.')
+        .into_iter()
+        .map(|part| {
+            let name = dequote(part).into_iter().map(|(c, _)| c).collect();
+            (name, part.contains('"'))
+        })
+        .collect()
 }
 
 /// `arg` has a `*` or `?` outside double quotes: it is a pattern, not a name
 /// (`"a*b"` is the name `a*b`).
 fn has_wildcard(arg: &str) -> bool {
-    let mut in_quotes = false;
-    arg.chars().any(|c| {
-        if c == '"' {
-            in_quotes = !in_quotes;
-        }
-        !in_quotes && matches!(c, '*' | '?')
-    })
+    dequote(arg)
+        .into_iter()
+        .any(|(c, quoted)| !quoted && matches!(c, '*' | '?'))
 }
 
 /// A psql pattern part as an anchored regular expression: `*` → `.*`, `?` → `.`,
 /// unquoted text in lower case, quoted text exact.
 pub fn pattern_regex(part: &str) -> String {
     let mut out = String::from("^(");
-    let mut chars = part.chars().peekable();
-    let mut in_quotes = false;
-    while let Some(c) = chars.next() {
+    for (c, in_quotes) in dequote(part) {
         match c {
-            '"' if in_quotes && chars.peek() == Some(&'"') => {
-                chars.next();
-                out.push('"');
-            }
-            '"' => in_quotes = !in_quotes,
             '*' if !in_quotes => out.push_str(".*"),
             '?' if !in_quotes => out.push('.'),
             c => {
@@ -757,20 +754,7 @@ pub fn pattern_regex(part: &str) -> String {
 
 /// (schema regex, name regex) of a pattern; a pattern without a dot only names.
 fn pattern_params(pattern: &str, qualified: bool) -> (Option<String>, Option<String>) {
-    let mut parts: Vec<String> = Vec::new();
-    let mut cur = String::new();
-    let mut in_quotes = false;
-    for c in pattern.chars() {
-        match c {
-            '"' => {
-                in_quotes = !in_quotes;
-                cur.push(c);
-            }
-            '.' if !in_quotes && qualified => parts.push(std::mem::take(&mut cur)),
-            c => cur.push(c),
-        }
-    }
-    parts.push(cur);
+    let parts = split_unquoted(pattern, |c| qualified && c == '.');
     let re = |p: &str| (!p.is_empty()).then(|| pattern_regex(p));
     match parts.as_slice() {
         [n] => (None, re(n)),
@@ -2761,6 +2745,44 @@ mod tests {
         );
         assert!(parse("gti").is_err());
         assert!(parse("gti a.b.c").is_err());
+    }
+
+    #[test]
+    fn double_quotes_are_read_one_way() {
+        // where a text is cut: not inside quotes, a doubled quote does not end them
+        assert_eq!(
+            split_unquoted("a \"b c\"  d", char::is_whitespace),
+            ["a", "\"b c\"", "", "d"]
+        );
+        assert_eq!(
+            split_unquoted("s.\"a.\"\"b\".c", |c| c == '.'),
+            ["s", "\"a.\"\"b\"", "c"]
+        );
+        // what it says: the marks gone, a doubled quote one quote
+        let said: String = dequote("x\"a.\"\"b\"")
+            .into_iter()
+            .map(|(c, _)| c)
+            .collect();
+        assert_eq!(said, "xa.\"b");
+        assert_eq!(dequote("a\"b\""), [('a', false), ('b', true)]);
+        // and what is built on the two
+        assert_eq!(
+            split_args("  orders \"Order Items\" s.x "),
+            ["orders", "\"Order Items\"", "s.x"]
+        );
+        assert_eq!(last_arg("gtv a \"b c\""), "\"b c\"");
+        assert_eq!(last_arg("gtv a "), "");
+        assert_eq!(
+            split_parts("Sales.\"Order \"\"A\"\"\""),
+            [
+                ("Sales".to_owned(), false),
+                ("Order \"A\"".to_owned(), true)
+            ]
+        );
+        assert_eq!(
+            parse_name("Sales.\"My.Table\""),
+            Ok((Some("sales".into()), "My.Table".into()))
+        );
     }
 
     #[test]
