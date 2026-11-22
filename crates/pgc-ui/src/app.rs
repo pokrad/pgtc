@@ -324,6 +324,28 @@ impl Tab {
         }
     }
 
+    /// The editor of the tab that has the keys: its text — in a template tab the raw
+    /// header or the preview while they are focused (D-074).
+    pub fn focused_editor(&self) -> &Editor {
+        use crate::template_tab::Part;
+        match self.template() {
+            Some(t) if t.raw && t.part == Part::Header => &t.header,
+            Some(t) if t.part == Part::Preview => &t.preview,
+            _ => &self.view.editor,
+        }
+    }
+
+    /// [`Self::focused_editor`], to edit.
+    pub fn focused_editor_mut(&mut self) -> &mut Editor {
+        use crate::template_tab::Part;
+        let part = self.template().map(|t| (t.part, t.raw));
+        match (part, &mut self.body) {
+            (Some((Part::Header, true)), TabBody::Template(t)) => &mut t.header,
+            (Some((Part::Preview, _)), TabBody::Template(t)) => &mut t.preview,
+            _ => &mut self.view.editor,
+        }
+    }
+
     /// The text of the tab differs from its file (query and template tabs).
     pub fn modified(&self) -> bool {
         match &self.body {

@@ -1484,45 +1484,46 @@ impl App {
                 read_param(&dialog, &mut edit.draft, false);
                 let fields = &mut edit.draft.param.fields;
                 let at = dialog.selected("fields").filter(|i| *i < fields.len());
-                match (button, at) {
+                // what follows once the dialog is back: a field's own dialog over it,
+                // or its list of fields made again with a row selected
+                enum Then {
+                    Open(Dialog),
+                    Rebuild(usize),
+                    Nothing,
+                }
+                let then = match (button, at) {
                     (Button::New, _) => {
                         let mut draft = Draft::new(Param::new("", ParamType::Text));
                         let d = param_dialog(tab, true, "New field", &mut draft);
                         edit.field = Some((None, draft));
-                        self.templates.param_edit = Some(edit);
-                        self.dialogs.push(dialog);
-                        self.dialogs.push(d);
+                        Then::Open(d)
                     }
                     (Button::Edit, Some(i)) => {
                         let mut draft = Draft::new(fields[i].clone());
                         let d = param_dialog(tab, true, "Field", &mut draft);
                         edit.field = Some((Some(i), draft));
-                        self.templates.param_edit = Some(edit);
-                        self.dialogs.push(dialog);
-                        self.dialogs.push(d);
+                        Then::Open(d)
                     }
                     (Button::Delete, Some(i)) => {
                         fields.remove(i);
-                        self.templates.param_edit = Some(edit);
-                        self.dialogs.push(dialog);
-                        self.rebuild_param_dialog(tab, i);
+                        Then::Rebuild(i)
                     }
                     (Button::Up, Some(i)) if i > 0 => {
                         fields.swap(i, i - 1);
-                        self.templates.param_edit = Some(edit);
-                        self.dialogs.push(dialog);
-                        self.rebuild_param_dialog(tab, i - 1);
+                        Then::Rebuild(i - 1)
                     }
                     (Button::Down, Some(i)) if i + 1 < fields.len() => {
                         fields.swap(i, i + 1);
-                        self.templates.param_edit = Some(edit);
-                        self.dialogs.push(dialog);
-                        self.rebuild_param_dialog(tab, i + 1);
+                        Then::Rebuild(i + 1)
                     }
-                    _ => {
-                        self.templates.param_edit = Some(edit);
-                        self.dialogs.push(dialog);
-                    }
+                    _ => Then::Nothing,
+                };
+                self.templates.param_edit = Some(edit);
+                self.dialogs.push(dialog);
+                match then {
+                    Then::Open(d) => self.dialogs.push(d),
+                    Then::Rebuild(at) => self.rebuild_param_dialog(tab, at),
+                    Then::Nothing => {}
                 }
             }
             // Cancel: the draft is dropped

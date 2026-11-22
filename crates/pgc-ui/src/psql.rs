@@ -958,6 +958,49 @@ impl GenColumn {
     }
 }
 
+/// Adds the `ON CONFLICT` of an upsert, each line after `indent`: by the columns of
+/// `key`, the row that is there gets the columns `set` — or stays as it is when
+/// there are none. Without a key nothing can be named to update.
+fn on_conflict(
+    lines: &mut Vec<(String, String)>,
+    indent: &str,
+    key: &[&GenColumn],
+    key_kind: &str,
+    set: &[&GenColumn],
+) {
+    if key.is_empty() {
+        lines.push((
+            format!("{indent}ON CONFLICT DO NOTHING;"),
+            "no primary key: write a conflict target to update".to_owned(),
+        ));
+        return;
+    }
+    let target = key
+        .iter()
+        .map(|c| quote_ident(&c.name))
+        .collect::<Vec<_>>()
+        .join(", ");
+    if set.is_empty() {
+        lines.push((
+            format!("{indent}ON CONFLICT ({target}) DO NOTHING;"),
+            key_kind.to_owned(),
+        ));
+        return;
+    }
+    lines.push((
+        format!("{indent}ON CONFLICT ({target}) DO UPDATE SET"),
+        key_kind.to_owned(),
+    ));
+    for (i, c) in set.iter().enumerate() {
+        let end = if i + 1 < set.len() { "," } else { ";" };
+        let n = quote_ident(&c.name);
+        lines.push((
+            format!("{indent}    {n} = EXCLUDED.{n}{end}"),
+            String::new(),
+        ));
+    }
+}
+
 /// Adds the `WHERE` of a statement that finds a row by its key: a line for each term
 /// — (left side, value, comment) — `AND` (as `and` writes it, with its indentation)
 /// in front of every one but the first, `end` behind the last. Without a key: a
@@ -1188,35 +1231,8 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
                     .map(|c| (format!("    {}", ph(c)), String::new())),
             );
             lines.push((")".to_owned(), String::new()));
-            if key.is_empty() {
-                lines.push((
-                    "ON CONFLICT DO NOTHING;".to_owned(),
-                    "no primary key: write a conflict target to update".to_owned(),
-                ));
-            } else {
-                let target = key
-                    .iter()
-                    .map(|c| quote_ident(&c.name))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let set: Vec<&&GenColumn> = cols.iter().filter(|c| !is_key(c)).collect();
-                if set.is_empty() {
-                    lines.push((
-                        format!("ON CONFLICT ({target}) DO NOTHING;"),
-                        key_kind.clone(),
-                    ));
-                } else {
-                    lines.push((
-                        format!("ON CONFLICT ({target}) DO UPDATE SET"),
-                        key_kind.clone(),
-                    ));
-                    for (i, c) in set.iter().enumerate() {
-                        let end = if i + 1 < set.len() { "," } else { ";" };
-                        let n = quote_ident(&c.name);
-                        lines.push((format!("    {n} = EXCLUDED.{n}{end}"), String::new()));
-                    }
-                }
-            }
+            let set: Vec<&GenColumn> = cols.iter().copied().filter(|c| !is_key(c)).collect();
+            on_conflict(&mut lines, "", &key, &key_kind, &set);
         }
         Gen::Merge => {
             let cols = &upsert_cols;
@@ -1339,13 +1355,8 @@ pub fn generate(what: Gen, t: &GenTable) -> String {
 /// the script does not run until it is named.
 fn trigger(table: &str, t: &GenTable, row: bool, before: bool) -> String {
     let function = format!("{}.[function_name]", quote_ident(&t.schema));
-    let mut out = vec![
-        format!("CREATE OR REPLACE FUNCTION {function}()"),
-        "RETURNS trigger".to_owned(),
-        "LANGUAGE plpgsql".to_owned(),
-        "AS $$".to_owned(),
-        "BEGIN".to_owned(),
-    ];
+    // the body of the trigger function
+    let mut out = Vec::new();
     let push = |out: &mut Vec<String>, lines: &[&str]| {
         out.extend(lines.iter().map(|l| (*l).to_owned()));
     };
@@ -1407,32 +1418,54 @@ fn trigger(table: &str, t: &GenTable, row: bool, before: bool) -> String {
             ],
         ),
     }
-    push(&mut out, &["END;", "$$;", ""]);
+    let mut out = trigger_function(&function, out);
     let suffix = match (row, before) {
         (true, true) => "rb",
         (true, false) => "ra",
         (false, true) => "sb",
         (false, false) => "sa",
     };
-    out.push(format!(
-        "CREATE TRIGGER {}",
-        quote_ident(&format!("{}_{suffix}_trg", t.name))
-    ));
+    let name = quote_ident(&format!("{}_{suffix}_trg", t.name));
     let when = if before { "BEFORE" } else { "AFTER" };
     let events = if row {
         "INSERT OR UPDATE OR DELETE"
     } else {
         "INSERT OR UPDATE OR DELETE OR TRUNCATE"
     };
-    out.push(format!("    {when} {events} ON {table}"));
     let each = if row { "ROW" } else { "STATEMENT" };
-    out.push(format!(
-        "    FOR EACH {each} EXECUTE FUNCTION {function}();"
+    out.extend(create_trigger(
+        &name,
+        &format!("{when} {events}"),
+        table,
+        each,
+        &function,
     ));
-    out.join(
-        "
-",
-    )
+    out.join("\n")
+}
+
+/// The statement of trigger function `function` with `body` between `BEGIN` and
+/// `END`, and the empty line behind it.
+fn trigger_function(function: &str, body: Vec<String>) -> Vec<String> {
+    let mut out = vec![
+        format!("CREATE OR REPLACE FUNCTION {function}()"),
+        "RETURNS trigger".to_owned(),
+        "LANGUAGE plpgsql".to_owned(),
+        "AS $$".to_owned(),
+        "BEGIN".to_owned(),
+    ];
+    out.extend(body);
+    out.extend(["END;", "$$;", ""].map(str::to_owned));
+    out
+}
+
+/// `CREATE TRIGGER name` on `table`: `when` (`AFTER INSERT OR UPDATE`), for each
+/// `each` (`ROW`, `STATEMENT`), running `function`.
+fn create_trigger(name: &str, when: &str, table: &str, each: &str, function: &str) -> [String; 3] {
+    [
+        format!("CREATE TRIGGER {name}"),
+        format!("    {when} ON {table}"),
+        format!("    FOR EACH {each} EXECUTE FUNCTION {function}();"),
+    ]
 }
 
 /// `gtsi` variable names: `v_` + the column name in lower case, every character other
@@ -1715,35 +1748,12 @@ fn procedure(what: Gen, p: &ProcTable) -> String {
                 "        ",
             );
             lines.push(("    )".to_owned(), String::new()));
-            let set: Vec<&Param> = params.iter().filter(|q| !is_key(q.col)).collect();
-            if key.is_empty() {
-                lines.push((
-                    "    ON CONFLICT DO NOTHING;".to_owned(),
-                    "no primary key: write a conflict target to update".to_owned(),
-                ));
-            } else {
-                let target = key
-                    .iter()
-                    .map(|c| quote_ident(&c.name))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                if set.is_empty() {
-                    lines.push((
-                        format!("    ON CONFLICT ({target}) DO NOTHING;"),
-                        p.key_kind.to_owned(),
-                    ));
-                } else {
-                    lines.push((
-                        format!("    ON CONFLICT ({target}) DO UPDATE SET"),
-                        p.key_kind.to_owned(),
-                    ));
-                    for (i, q) in set.iter().enumerate() {
-                        let end = if i + 1 < set.len() { "," } else { ";" };
-                        let n = quote_ident(&q.col.name);
-                        lines.push((format!("        {n} = EXCLUDED.{n}{end}"), String::new()));
-                    }
-                }
-            }
+            let set: Vec<&GenColumn> = params
+                .iter()
+                .map(|q| q.col)
+                .filter(|c| !is_key(c))
+                .collect();
+            on_conflict(&mut lines, "    ", key, p.key_kind, &set);
         }
     }
     lines.push(("END;".to_owned(), String::new()));
@@ -2038,15 +2048,30 @@ pub fn view_params(tables: &[Name]) -> Vec<Option<String>> {
     ]
 }
 
-/// A foreign key column pair row of `view.sql`.
-struct FkRow {
-    from: usize,
-    to: usize,
-    name: String,
-    ord: i64,
-    col: String,
-    rcol: String,
-    nullable: bool,
+/// One column pair of a foreign key, as the catalog queries return them a row each:
+/// the key it belongs to, its number in the key, the pair, and whether the
+/// referencing column allows NULL.
+type FkPairRow<K> = (K, i64, (String, String), bool);
+
+/// A foreign key: what it is, its column pairs in key order, and whether a
+/// referencing column allows NULL.
+type FkGroup<K> = (K, Vec<(String, String)>, bool);
+
+/// The rows of column pairs as one entry per foreign key, in the order of the keys:
+/// each with its pairs in key order, and whether any referencing column allows NULL.
+fn fk_groups<K: Ord>(mut rows: Vec<FkPairRow<K>>) -> Vec<FkGroup<K>> {
+    rows.sort_by(|a, b| (&a.0, a.1).cmp(&(&b.0, b.1)));
+    let mut out: Vec<FkGroup<K>> = Vec::new();
+    for (key, _, pair, nullable) in rows {
+        match out.last_mut() {
+            Some((last, pairs, any_null)) if *last == key => {
+                pairs.push(pair);
+                *any_null |= nullable;
+            }
+            _ => out.push((key, vec![pair], nullable)),
+        }
+    }
+    out
 }
 
 /// `view.sql` rows → the tables in the typed order and the foreign keys between
@@ -2057,7 +2082,8 @@ pub fn view_tables(
 ) -> Result<(Vec<ViewTable>, Vec<ViewFk>), usize> {
     let mut tables: Vec<Option<ViewTable>> = vec![None; count];
     let mut columns: Vec<Vec<(i64, String)>> = vec![Vec::new(); count];
-    let mut pairs: Vec<FkRow> = Vec::new();
+    // by (from, to, constraint name)
+    let mut pairs: Vec<FkPairRow<(usize, usize, String)>> = Vec::new();
     let pos = |s: &str| {
         s.parse::<usize>()
             .ok()
@@ -2081,15 +2107,12 @@ pub fn view_tables(
             }
             Some("f") if r.len() >= 8 => {
                 if let Some(j) = pos(&r[2]) {
-                    pairs.push(FkRow {
-                        from: i,
-                        to: j,
-                        name: r[3].clone(),
-                        ord: r[4].parse().unwrap_or(0),
-                        col: r[5].clone(),
-                        rcol: r[6].clone(),
-                        nullable: r[7] != "true",
-                    });
+                    pairs.push((
+                        (i, j, r[3].clone()),
+                        r[4].parse().unwrap_or(0),
+                        (r[5].clone(), r[6].clone()),
+                        r[7] != "true",
+                    ));
                 }
             }
             _ => {}
@@ -2102,23 +2125,16 @@ pub fn view_tables(
         t.columns = columns[i].drain(..).map(|(_, c)| c).collect();
         out.push(t);
     }
-    pairs.sort_by(|a, b| (a.from, a.to, &a.name, a.ord).cmp(&(b.from, b.to, &b.name, b.ord)));
-    let mut fks: Vec<ViewFk> = Vec::new();
-    for p in pairs {
-        match fks.last_mut() {
-            Some(f) if f.from == p.from && f.to == p.to && f.name == p.name => {
-                f.pairs.push((p.col, p.rcol));
-                f.nullable |= p.nullable;
-            }
-            _ => fks.push(ViewFk {
-                from: p.from,
-                to: p.to,
-                name: p.name,
-                pairs: vec![(p.col, p.rcol)],
-                nullable: p.nullable,
-            }),
-        }
-    }
+    let fks = fk_groups(pairs)
+        .into_iter()
+        .map(|((from, to, name), pairs, nullable)| ViewFk {
+            from,
+            to,
+            name,
+            pairs,
+            nullable,
+        })
+        .collect();
     Ok((out, fks))
 }
 
@@ -2259,32 +2275,19 @@ impl Related {
 
 /// `foreign_keys.sql` rows → the foreign keys and the other tables' columns.
 pub fn related(rows: Vec<Vec<String>>) -> Related {
-    struct Pair {
-        outgoing: bool,
-        name: String,
-        ord: i64,
-        schema: String,
-        table: String,
-        this: String,
-        other: String,
-        nullable: bool,
-    }
-    let mut pairs: Vec<Pair> = Vec::new();
+    // outgoing first (`false` sorts first); then by constraint name and other table
+    let mut pairs: Vec<FkPairRow<(bool, String, String, String)>> = Vec::new();
     // (schema, table) → (attnum, column)
     type Columns = Vec<((String, String), Vec<(i64, String)>)>;
     let mut columns: Columns = Vec::new();
     for r in rows {
         match r.first().map(String::as_str) {
-            Some("k") if r.len() >= 9 => pairs.push(Pair {
-                outgoing: r[1] == "o",
-                name: r[2].clone(),
-                ord: r[3].parse().unwrap_or(0),
-                schema: r[4].clone(),
-                table: r[5].clone(),
-                this: r[6].clone(),
-                other: r[7].clone(),
-                nullable: r[8] != "true",
-            }),
+            Some("k") if r.len() >= 9 => pairs.push((
+                (r[1] != "o", r[2].clone(), r[4].clone(), r[5].clone()),
+                r[3].parse().unwrap_or(0),
+                (r[6].clone(), r[7].clone()),
+                r[8] != "true",
+            )),
             Some("c") if r.len() >= 5 => {
                 let key = (r[1].clone(), r[2].clone());
                 let entry = (r[3].parse().unwrap_or(0), r[4].clone());
@@ -2296,38 +2299,17 @@ pub fn related(rows: Vec<Vec<String>>) -> Related {
             _ => {}
         }
     }
-    // outgoing first; then by constraint name, other table, pair number
-    pairs.sort_by(|a, b| {
-        (!a.outgoing, &a.name, &a.schema, &a.table, a.ord).cmp(&(
-            !b.outgoing,
-            &b.name,
-            &b.schema,
-            &b.table,
-            b.ord,
-        ))
-    });
-    let mut fks: Vec<RelFk> = Vec::new();
-    for p in pairs {
-        match fks.last_mut() {
-            Some(f)
-                if f.outgoing == p.outgoing
-                    && f.name == p.name
-                    && f.schema == p.schema
-                    && f.table == p.table =>
-            {
-                f.pairs.push((p.this, p.other));
-                f.nullable |= p.nullable;
-            }
-            _ => fks.push(RelFk {
-                outgoing: p.outgoing,
-                name: p.name,
-                schema: p.schema,
-                table: p.table,
-                pairs: vec![(p.this, p.other)],
-                nullable: p.nullable,
-            }),
-        }
-    }
+    let fks = fk_groups(pairs)
+        .into_iter()
+        .map(|((incoming, name, schema, table), pairs, nullable)| RelFk {
+            outgoing: !incoming,
+            name,
+            schema,
+            table,
+            pairs,
+            nullable,
+        })
+        .collect();
     let columns = columns
         .into_iter()
         .map(|(k, mut cols)| {
@@ -2620,7 +2602,7 @@ fn audit(table: &str, t: &GenTable) -> String {
     let audit = format!("{schema}.{}", quote_ident(&format!("{}_audit", t.name)));
     let function = format!("{schema}.[function_name]");
     let trigger = quote_ident(&format!("{}_audit_trg", t.name));
-    [
+    let mut out = vec![
         format!("CREATE TABLE {audit} ("),
         "    audit_id    bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,".to_owned(),
         "    changed_at  timestamp with time zone NOT NULL DEFAULT now(),".to_owned(),
@@ -2630,11 +2612,8 @@ fn audit(table: &str, t: &GenTable) -> String {
         "    new_row     jsonb           -- INSERT, UPDATE".to_owned(),
         ");".to_owned(),
         String::new(),
-        format!("CREATE OR REPLACE FUNCTION {function}()"),
-        "RETURNS trigger".to_owned(),
-        "LANGUAGE plpgsql".to_owned(),
-        "AS $$".to_owned(),
-        "BEGIN".to_owned(),
+    ];
+    let body = vec![
         format!("    INSERT INTO {audit} (operation, old_row, new_row)"),
         "    VALUES (".to_owned(),
         "        TG_OP,".to_owned(),
@@ -2642,14 +2621,16 @@ fn audit(table: &str, t: &GenTable) -> String {
         "        CASE WHEN TG_OP IN ('INSERT', 'UPDATE') THEN to_jsonb(NEW) END".to_owned(),
         "    );".to_owned(),
         "    RETURN NULL;  -- ignored for AFTER triggers".to_owned(),
-        "END;".to_owned(),
-        "$$;".to_owned(),
-        String::new(),
-        format!("CREATE TRIGGER {trigger}"),
-        format!("    AFTER INSERT OR UPDATE OR DELETE ON {table}"),
-        format!("    FOR EACH ROW EXECUTE FUNCTION {function}();"),
-    ]
-    .join("\n")
+    ];
+    out.extend(trigger_function(&function, body));
+    out.extend(create_trigger(
+        &trigger,
+        "AFTER INSERT OR UPDATE OR DELETE",
+        table,
+        "ROW",
+        &function,
+    ));
+    out.join("\n")
 }
 
 #[cfg(test)]

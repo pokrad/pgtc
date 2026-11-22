@@ -811,13 +811,7 @@ fn render_tab_status(frame: &mut Frame, app: &App, tab: &crate::app::Tab, area: 
         }
     }
     if tab.dashboard().is_none() && tab.profiler().is_none() {
-        use crate::template_tab::Part;
-        let editor = match tab.template() {
-            Some(t) if t.raw && t.part == Part::Header => &t.header,
-            Some(t) if t.part == Part::Preview => &t.preview,
-            _ => &tab.view.editor,
-        };
-        let (line, col) = editor.cursor_line_col();
+        let (line, col) = tab.focused_editor().cursor_line_col();
         right.push_str(&format!("Ln {}, Col {} ", line + 1, col + 1));
     }
     if !right.starts_with(' ') {

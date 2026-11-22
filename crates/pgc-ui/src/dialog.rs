@@ -593,7 +593,7 @@ impl Dialog {
 
     /// A message box with an OK button.
     pub fn message(title: &str, text: &str, error: bool) -> Self {
-        let width = text.lines().map(|l| l.chars().count()).max().unwrap_or(0) as u16;
+        let width = widest_line(text);
         let width = width.max(title.chars().count() as u16 + 4).max(20) + CHROME_X;
         let mut d = Self::new(
             DialogKind::Message,
@@ -607,20 +607,9 @@ impl Dialog {
 
     /// A question with Yes / No buttons (`yes` / `no`).
     pub fn confirm(kind: DialogKind, title: &str, text: &str) -> Self {
-        let width = text.lines().map(|l| l.chars().count()).max().unwrap_or(0) as u16;
-        let width = width.max(24) + CHROME_X;
-        let mut d = Self::new(
-            kind,
-            title,
-            width,
-            vec![
-                Widget::label(text),
-                Widget::button(Button::Yes, "&Yes", true),
-                Widget::button(Button::No, "&No", false),
-            ],
-        );
+        let buttons = [(Button::Yes, "&Yes"), (Button::No, "&No")];
+        let mut d = Self::confirm_buttons(kind, title, text, &buttons);
         d.error = true;
-        d.focus = 1;
         d
     }
 
@@ -631,7 +620,7 @@ impl Dialog {
         text: &str,
         buttons: &[(Button, &str)],
     ) -> Self {
-        let width = text.lines().map(|l| l.chars().count()).max().unwrap_or(0) as u16;
+        let width = widest_line(text);
         let buttons_width: u16 = buttons
             .iter()
             .map(|(_, l)| l.chars().count() as u16 + 5)
@@ -1241,38 +1230,31 @@ impl Dialog {
 
     /// Selects row `index` of the list `id` (scrolled into view).
     pub fn list_select(&mut self, id: &str, index: usize) {
-        if let Some(i) = self.widgets.iter().position(|w| w.id == id) {
-            let focus = std::mem::replace(&mut self.focus, i);
-            if let WidgetKind::List { selected, .. } = &self.widgets[i].kind {
-                let delta = index as isize - *selected as isize;
-                self.list_move(delta);
-            }
-            self.focus = focus;
+        if let Some(i) = self.widgets.iter().position(|w| w.id == id)
+            && let WidgetKind::List { selected, .. } = &self.widgets[i].kind
+        {
+            let delta = index as isize - *selected as isize;
+            self.list_move_at(i, delta);
         }
     }
 
     /// Moves the selection of the list `id` by `delta` rows, whatever has the focus.
     pub fn list_step(&mut self, id: &str, delta: isize) {
         if let Some(i) = self.widgets.iter().position(|w| w.id == id) {
-            let focus = std::mem::replace(&mut self.focus, i);
-            self.list_move(delta);
-            self.focus = focus;
+            self.list_move_at(i, delta);
         }
     }
 
     /// Mouse wheel: scrolls the selection of the (first) list; false if there is none.
     pub fn list_wheel(&mut self, delta: isize) -> bool {
-        let Some(i) = self
+        let list = self
             .widgets
             .iter()
-            .position(|w| matches!(w.kind, WidgetKind::List { .. }))
-        else {
-            return false;
-        };
-        let focus = std::mem::replace(&mut self.focus, i);
-        self.list_move(delta);
-        self.focus = focus;
-        true
+            .position(|w| matches!(w.kind, WidgetKind::List { .. }));
+        if let Some(i) = list {
+            self.list_move_at(i, delta);
+        }
+        list.is_some()
     }
 
     /// Visible rows of the list `id`.
@@ -1308,8 +1290,13 @@ impl Dialog {
     /// Moves the selection of the focused list (or scrolls the focused text); false if
     /// the focus is neither.
     fn list_move(&mut self, delta: isize) -> bool {
-        if matches!(self.widgets[self.focus].kind, WidgetKind::Text { .. }) {
-            scroll_text(&mut self.widgets[self.focus].kind, delta);
+        self.list_move_at(self.focus, delta)
+    }
+
+    /// [`Self::list_move`] for widget `i`, whatever has the focus.
+    fn list_move_at(&mut self, i: usize, delta: isize) -> bool {
+        if matches!(self.widgets[i].kind, WidgetKind::Text { .. }) {
+            scroll_text(&mut self.widgets[i].kind, delta);
             return true;
         }
         let WidgetKind::List {
@@ -1318,7 +1305,7 @@ impl Dialog {
             offset,
             rows,
             ..
-        } = &mut self.widgets[self.focus].kind
+        } = &mut self.widgets[i].kind
         else {
             return false;
         };
@@ -1963,6 +1950,11 @@ pub fn show_cursor_cell(frame: &mut Frame, pos: Position) {
             .modifier
             .toggle(ratatui::style::Modifier::REVERSED);
     }
+}
+
+/// The width of the widest line of `text`, in characters.
+fn widest_line(text: &str) -> u16 {
+    text.lines().map(|l| l.chars().count()).max().unwrap_or(0) as u16
 }
 
 // ---- what a field looks like -----------------------------------------------------
