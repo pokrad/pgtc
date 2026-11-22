@@ -5652,8 +5652,8 @@ async fn ask_ai_progress_goes_to_messages() {
     );
 }
 
-/// Collapsing a database closes its tree connection (D-011): it can be dropped from
-/// another session; expanding it again connects again.
+/// Collapsing a database closes its tree connection, collapsing the server those of
+/// all its databases (D-011): they can be dropped from another session.
 #[tokio::test]
 async fn collapsing_a_database_closes_its_connection() {
     use crate::objects::ObjType;
@@ -5707,4 +5707,26 @@ async fn collapsing_a_database_closes_its_connection() {
     // a second Left moves to the parent and closes nothing more
     a.run(Command::Left);
     assert_eq!(a.tree.selected().map(|r| r.kind), Some(RowKind::Node(dbs)));
+
+    // collapsing the server closes the connections of its databases, not its own
+    let groups = a.tree.groups(&ObjType::Database.children(false));
+    {
+        let n = a.tree.node_mut(db).unwrap();
+        n.conn = Some(DbConn {
+            state: ConnState::Connected,
+            handle: Some(pgc_db::ConnectionHandle::detached(52)),
+        });
+        n.children = Some(groups);
+        n.expanded = true;
+    }
+    a.connections.insert(52, Target::Database(uid, db));
+    a.tree.select_server(uid);
+    a.run(Command::Left);
+    let c = a.tree.node(db).unwrap().conn.as_ref().unwrap();
+    assert_eq!(c.state, ConnState::Disconnected);
+    assert!(c.handle.is_none());
+    assert!(!a.connections.contains_key(&52));
+    let s = &a.tree.servers[0];
+    assert!(!s.expanded);
+    assert_eq!(s.state, ConnState::Connected);
 }

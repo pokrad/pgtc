@@ -286,6 +286,8 @@ desktop dependency.
     - one per database expanded in the object tree; collapsing the database closes
       it and drops what was loaded below it (expanding again connects and loads
       again), so no session of the tree keeps a database from being dropped;
+      collapsing the server row does the same for all its databases (the server
+      connection stays);
     - one per query tab — a long-running query does not block the tree and can be
       cancelled independently.
   - Each connection runs in its own async task (tokio, D-006). The UI communicates with
@@ -3079,3 +3081,4 @@ pgtc (binary)
 | 2026-11-22 | D-048 / D-012 updated: the definition file carries owners, privileges, default privileges and the roles the database needs; the load creates missing roles first and sets owners and missing privileges last; it never revokes and never writes a password or `SUPERUSER`. Replaces "a load never sets owners or privileges". |
 | 2026-11-22 | D-019 updated: a run keeps its newest 10,000 messages (the first line says how many earlier ones were dropped; errors and the total time are never dropped). D-035 updated: a connection another pgtc saved to `settings.toml` meanwhile is taken over when this one saves, not written away. D-054 updated: in a pattern, regular expression syntax other than `*`, `?`, `.` and `$` keeps its meaning outside double quotes, as in psql. |
 | 2026-11-22 | D-011 updated: collapsing a database in the object tree closes its connection and drops what was loaded below it; expanding it again connects again. |
+| 2026-11-22 | D-011 updated: collapsing a server row closes the connections of all its databases the same way; the server connection stays. |

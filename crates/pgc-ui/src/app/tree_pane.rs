@@ -140,11 +140,17 @@ impl App {
             self.tree.select_parent();
             return;
         }
-        // a collapsed database lets its connection go (D-011): nothing of pgtc's tree
-        // keeps a session in it, so it can be dropped
-        if let RowKind::Node(nid) = row.kind
-            && self.tree.node(nid).is_some_and(|n| n.is_database())
-        {
+        // a collapsed database lets its connection go, a collapsed server those of all
+        // its databases (D-011): nothing of pgtc's tree keeps a session in them, so
+        // they can be dropped; the server session stays
+        let databases = match row.kind {
+            RowKind::Server => self.tree.servers[row.server].connected_databases(),
+            RowKind::Node(nid) if self.tree.node(nid).is_some_and(|n| n.is_database()) => {
+                vec![nid]
+            }
+            _ => Vec::new(),
+        };
+        for nid in databases {
             self.close_database(nid);
         }
     }

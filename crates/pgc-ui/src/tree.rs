@@ -134,6 +134,17 @@ impl ServerNode {
         }
     }
 
+    /// The databases of this server that have a tree connection (open or opening).
+    pub fn connected_databases(&self) -> Vec<u64> {
+        self.children
+            .iter()
+            .filter_map(|g| g.children.as_ref())
+            .flatten()
+            .filter(|n| n.is_database() && n.conn.as_ref().is_some_and(|c| c.handle.is_some()))
+            .map(|n| n.nid)
+            .collect()
+    }
+
     /// Back to the disconnected state; returns the handles that must be closed
     /// (server and all database connections).
     pub fn reset(&mut self) -> Vec<ConnectionHandle> {
