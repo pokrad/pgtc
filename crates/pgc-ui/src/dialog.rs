@@ -830,13 +830,19 @@ impl Dialog {
     /// Where [`Self::render`] puts the text cursor of input `id` on `screen`.
     pub fn input_cursor_at(&self, id: &str, screen: Rect) -> Option<Position> {
         let i = self.widgets.iter().position(|w| w.id == id)?;
-        let WidgetKind::Input { cursor, .. } = &self.widgets[i].kind else {
+        let WidgetKind::Input {
+            value: text,
+            cursor,
+            masked,
+            ..
+        } = &self.widgets[i].kind
+        else {
             return None;
         };
         let area = *self.widget_areas(self.area(screen)).get(i)?;
         let value = self.widgets[i].value_rect(area);
-        let from = input_offset(*cursor, value.width);
-        Some(Position::new(value.x + (*cursor - from) as u16, value.y))
+        let view = input_view(text, *cursor, value.width, *masked);
+        Some(Position::new(value.x + view.cursor_x, value.y))
     }
 
     /// Replaces the text of an input (cursor at the end).
@@ -1541,12 +1547,12 @@ impl Dialog {
             WidgetKind::Input {
                 value: text,
                 cursor,
+                masked,
                 ..
             } => {
                 self.focus = i;
-                let len = text.chars().count();
-                let visible_from = input_offset(*cursor, value.width);
-                *cursor = (visible_from + x.saturating_sub(value.x) as usize).min(len);
+                let view = input_view(text, *cursor, value.width, *masked);
+                *cursor = input_char_at(text, view.from, x.saturating_sub(value.x), *masked);
                 DialogEvent::None
             }
             WidgetKind::Combo { open, .. } => {
@@ -1706,17 +1712,11 @@ impl Dialog {
                     } else {
                         theme.get(Role::DialogInput)
                     };
-                    let from = input_offset(*cursor, value.width);
-                    let shown: String = text
-                        .chars()
-                        .skip(from)
-                        .take(value.width as usize)
-                        .map(|c| if *masked { '*' } else { c })
-                        .collect();
+                    let view = input_view(text, *cursor, value.width, *masked);
                     let field = Rect { height: 1, ..value };
-                    frame.render_widget(Paragraph::new(shown).style(style), field);
+                    frame.render_widget(Paragraph::new(view.shown).style(style), field);
                     if focused {
-                        let pos = Position::new(field.x + (*cursor - from) as u16, field.y);
+                        let pos = Position::new(field.x + view.cursor_x, field.y);
                         frame.set_cursor_position(pos);
                         show_cursor_cell(frame, pos);
                     }
@@ -1999,9 +1999,70 @@ pub fn show_cursor_cell(frame: &mut Frame, pos: Position) {
     }
 }
 
-/// First visible char of an input `width` wide with the cursor at `cursor`.
-fn input_offset(cursor: usize, width: u16) -> usize {
-    cursor.saturating_sub((width as usize).saturating_sub(1))
+/// What an input shows of its text.
+pub(crate) struct InputView {
+    /// Char index of the first character shown.
+    pub from: usize,
+    pub shown: String,
+    /// The cell of the cursor, from the left edge of the input.
+    pub cursor_x: u16,
+}
+
+/// The cells a character takes in an input (`masked`: it is drawn as `*`).
+fn input_cells(c: char, masked: bool) -> usize {
+    if masked {
+        1
+    } else {
+        unicode_width::UnicodeWidthChar::width(c).unwrap_or(0)
+    }
+}
+
+/// What an input `width` cells wide shows of `text` with the cursor at char `cursor`,
+/// counted in cells: a wide character (CJK, emoji) takes two, a combining one none.
+/// The text scrolls so that the cursor has a cell.
+pub(crate) fn input_view(text: &str, cursor: usize, width: u16, masked: bool) -> InputView {
+    let chars: Vec<char> = text.chars().collect();
+    let cursor = cursor.min(chars.len());
+    let cells = |from: usize, to: usize| -> usize {
+        chars[from..to]
+            .iter()
+            .map(|c| input_cells(*c, masked))
+            .sum()
+    };
+    let width = width as usize;
+    // as few characters hidden on the left as leave the cursor a cell
+    let mut from = cursor.saturating_sub(width.saturating_sub(1));
+    while from < cursor && cells(from, cursor) + 1 > width {
+        from += 1;
+    }
+    let mut shown = String::new();
+    let mut used = 0;
+    for c in &chars[from..] {
+        let w = input_cells(*c, masked);
+        if used + w > width {
+            break;
+        }
+        used += w;
+        shown.push(if masked { '*' } else { *c });
+    }
+    InputView {
+        from,
+        shown,
+        cursor_x: cells(from, cursor) as u16,
+    }
+}
+
+/// The char index of the character at cell `x` of an input that shows `text` from
+/// char `from` (a click); behind the text: its end.
+pub(crate) fn input_char_at(text: &str, from: usize, x: u16, masked: bool) -> usize {
+    let mut used = 0;
+    for (i, c) in text.chars().enumerate().skip(from) {
+        used += input_cells(c, masked);
+        if used > x as usize {
+            return i;
+        }
+    }
+    text.chars().count()
 }
 
 fn byte_index(s: &str, char_index: usize) -> usize {
@@ -2032,6 +2093,33 @@ pub(crate) fn draw_shadow(frame: &mut Frame, area: Rect, style: Style) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// An input counts in cells: wide characters take two, combining ones none.
+    #[test]
+    fn inputs_count_display_cells() {
+        // latin: as before
+        let v = input_view("hello", 5, 10, false);
+        assert_eq!((v.from, v.shown.as_str(), v.cursor_x), (0, "hello", 5));
+        // wide characters: the cursor is two cells further for each
+        let v = input_view("日本語", 2, 10, false);
+        assert_eq!((v.shown.as_str(), v.cursor_x), ("日本語", 4));
+        // only what fits whole is shown, and the cursor keeps a cell
+        let v = input_view("日本語abc", 6, 5, false);
+        assert_eq!((v.from, v.shown.as_str(), v.cursor_x), (3, "abc", 3));
+        let v = input_view("日本語abc", 3, 5, false);
+        assert_eq!((v.from, v.shown.as_str(), v.cursor_x), (1, "本語a", 4));
+        // a combining mark takes no cell
+        let v = input_view("e\u{301}x", 3, 10, false);
+        assert_eq!(v.cursor_x, 2);
+        // masked: one star a character
+        let v = input_view("日本", 2, 10, true);
+        assert_eq!((v.shown.as_str(), v.cursor_x), ("**", 2));
+        // a click: the character at that cell
+        assert_eq!(input_char_at("日本語", 0, 0, false), 0);
+        assert_eq!(input_char_at("日本語", 0, 1, false), 0);
+        assert_eq!(input_char_at("日本語", 0, 2, false), 1);
+        assert_eq!(input_char_at("abc", 0, 9, false), 3);
+    }
     use crate::keymap::{Context, Keymap};
     use crate::keys::KeyCombo;
 

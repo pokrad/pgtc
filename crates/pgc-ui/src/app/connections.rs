@@ -217,9 +217,17 @@ impl App {
         let Some(node) = self.tree.by_uid(uid) else {
             return;
         };
-        for handle in node.reset() {
-            handle.close();
-            self.connections.remove(&handle.id);
+        let closed: Vec<ConnId> = node
+            .reset()
+            .into_iter()
+            .map(|handle| {
+                handle.close();
+                handle.id
+            })
+            .collect();
+        for id in closed {
+            self.connections.remove(&id);
+            self.definitions_lost(id);
         }
     }
 
@@ -287,16 +295,21 @@ impl App {
             }
             (Target::Server(uid), DbEvent::Closed { error, .. }) => {
                 self.connections.remove(&id);
+                let mut closed = vec![id];
                 if let Some(node) = self.tree.by_uid(uid) {
                     let name = node.conn.name.clone();
                     for handle in node.reset() {
                         handle.close();
-                        self.connections.remove(&handle.id);
+                        closed.push(handle.id);
                     }
                     self.status = match error {
                         Some(e) => format!("Session on {name} lost: {e}"),
                         None => format!("Disconnected from {name}"),
                     };
+                }
+                for id in closed {
+                    self.connections.remove(&id);
+                    self.definitions_lost(id);
                 }
             }
             (Target::Database(_, nid), event) => {
@@ -327,6 +340,7 @@ impl App {
                     DbEvent::Closed { error, .. } => {
                         self.connections.remove(&id);
                         self.database_reset(nid);
+                        self.definitions_lost(id);
                         if let Some(e) = error {
                             self.status = format!("Session on database {name} lost: {e}");
                         }

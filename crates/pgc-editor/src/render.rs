@@ -61,7 +61,7 @@ pub fn render(
 
     let selection = editor.selection();
     let tab = editor.tab_width();
-    let lines = editor.highlighted_lines(editor.top, area.height as usize);
+    let lines = editor.visible_lines(editor.top, area.height as usize);
     let mut cursor = None;
     let (cur_line, cur_col) = editor.cursor_line_col();
 

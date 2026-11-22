@@ -1194,6 +1194,27 @@ fn each_tab_shows_its_own_connection() {
     assert!(screen_text(&a).contains(" read only"));
 }
 
+/// A definition that was asked for on a session that is lost: its tab says so.
+#[test]
+fn a_lost_session_ends_loading_of_its_definitions() {
+    let (mut a, _d) = app();
+    a.pending_defs.insert(7, 0);
+    a.def_sessions.insert(7, 41);
+    a.default_key = 7;
+    a.tabs[0].view.loading = true;
+    // another session: not this one's definitions
+    a.definitions_lost(40);
+    assert!(a.tabs[0].view.loading);
+    a.definitions_lost(41);
+    assert!(!a.tabs[0].view.loading);
+    assert!(
+        a.tabs[0].view.editor.text().contains("session was lost"),
+        "{}",
+        a.tabs[0].view.editor.text()
+    );
+    assert!(a.pending_defs.is_empty() && a.def_sessions.is_empty());
+}
+
 #[test]
 fn closing_a_tab_left_of_the_active_one_keeps_the_active_tab() {
     let (mut a, _d) = app();

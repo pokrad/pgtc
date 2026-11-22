@@ -938,12 +938,20 @@ impl TemplateForm {
                         put(frame, form.x, yy, &format!("{label}{star}:"), lw, normal);
                         let r = Rect::new(form.x + lw, yy, form.width.saturating_sub(lw), 1);
                         let style = if focused { input_focus } else { input };
-                        let w = (r.width as usize).saturating_sub(1);
-                        let skip = c.saturating_sub(w.saturating_sub(1));
-                        let shown: String = text.chars().skip(skip).collect();
-                        put(frame, r.x, r.y, &format!(" {shown:<w$}"), r.width, style);
+                        // one cell of margin, then the text (in cells, as the dialogs)
+                        let inner = r.width.saturating_sub(1);
+                        let view = crate::dialog::input_view(text, *c, inner, false);
+                        put(
+                            frame,
+                            r.x,
+                            r.y,
+                            &" ".repeat(r.width as usize),
+                            r.width,
+                            style,
+                        );
+                        put(frame, r.x + 1, r.y, &view.shown, inner, style);
                         if focused && self.popup.is_none() {
-                            cursor = Some(Position::new(r.x + 1 + (c - skip) as u16, r.y));
+                            cursor = Some(Position::new(r.x + 1 + view.cursor_x, r.y));
                         }
                         hits.push((Stop::Field(i), r));
                     }

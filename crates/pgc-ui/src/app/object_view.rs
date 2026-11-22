@@ -292,6 +292,7 @@ impl App {
         self.next_key += 1;
         let key = self.next_key;
         self.pending_defs.insert(key, tab);
+        self.def_sessions.insert(key, handle.id);
         if tab == 0 {
             self.default_key = key;
         }
@@ -301,7 +302,23 @@ impl App {
         handle.load_definition(key, sql, params);
     }
 
+    /// Session `conn` is gone: the definitions asked for on it will not come — their
+    /// tabs say so instead of showing "loading…" for ever.
+    pub(super) fn definitions_lost(&mut self, conn: pgc_db::ConnId) {
+        let keys: Vec<u64> = self
+            .def_sessions
+            .iter()
+            .filter(|(_, c)| **c == conn)
+            .map(|(k, _)| *k)
+            .collect();
+        for key in keys {
+            let lost = DbError::Other("The session was lost before the definition came.".into());
+            self.definition_loaded(key, Err(lost));
+        }
+    }
+
     pub(super) fn definition_loaded(&mut self, key: u64, result: Result<String, DbError>) {
+        self.def_sessions.remove(&key);
         let Some(tab) = self.pending_defs.remove(&key) else {
             return;
         };

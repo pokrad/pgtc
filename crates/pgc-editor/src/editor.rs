@@ -173,6 +173,12 @@ fn lex_lines(rope: &Rope, start: usize, end: usize, mut state: LexState) -> LexS
     state
 }
 
+/// A combining mark: it takes no cell of its own and is drawn with the character
+/// before it.
+fn is_mark(c: char) -> bool {
+    !c.is_control() && c.width() == Some(0)
+}
+
 /// Char indices of byte offsets in a text, asked for in rising order: each answer
 /// counts on from the one before, so the matches of one long line cost its length
 /// once, not once per match.
@@ -252,6 +258,20 @@ pub struct Editor {
     /// Counts the changes of the text (edits, undo, redo, a new text).
     revision: u64,
     lex: RefCell<LexCache>,
+    /// The lines last drawn ([`Self::visible_lines`]).
+    drawn: RefCell<Option<Drawn>>,
+}
+
+/// Lines with their tokens.
+pub type Lines = Vec<(String, Vec<Token>)>;
+
+/// The visible lines as they were lexed for a frame, and what they were lexed of.
+#[derive(Debug)]
+struct Drawn {
+    revision: u64,
+    first: usize,
+    count: usize,
+    lines: std::sync::Arc<Lines>,
 }
 
 impl Default for Editor {
@@ -278,6 +298,7 @@ impl Editor {
             next_group: 0,
             revision: 0,
             lex: RefCell::new(LexCache::default()),
+            drawn: RefCell::new(None),
         }
     }
 
@@ -616,6 +637,16 @@ impl Editor {
             }
             Motion::DocStart => self.cursor = 0,
             Motion::DocEnd => self.cursor = len,
+        }
+        // not between a letter and its combining marks: they are one character on
+        // the screen, and the cursor would seem not to move
+        let back = motion == Motion::Left;
+        while self.cursor > 0 && self.cursor < len && is_mark(self.rope.char(self.cursor)) {
+            if back {
+                self.cursor -= 1;
+            } else {
+                self.cursor += 1;
+            }
         }
     }
 
@@ -1069,8 +1100,28 @@ impl Editor {
 
     // ---- highlighting -------------------------------------------------------------
 
+    /// [`Self::highlighted_lines`] for drawing: kept from frame to frame while the
+    /// text and the window are the same. Most frames are drawn for something else (a
+    /// tick, an event of a session, the cursor), and a line may be megabytes long.
+    pub fn visible_lines(&self, first: usize, count: usize) -> std::sync::Arc<Lines> {
+        let mut drawn = self.drawn.borrow_mut();
+        if let Some(d) = drawn.as_ref()
+            && (d.revision, d.first, d.count) == (self.revision, first, count)
+        {
+            return d.lines.clone();
+        }
+        let lines = std::sync::Arc::new(self.highlighted_lines(first, count));
+        *drawn = Some(Drawn {
+            revision: self.revision,
+            first,
+            count,
+            lines: lines.clone(),
+        });
+        lines
+    }
+
     /// Tokens of the visible lines `first..first+count`, with each line's text.
-    pub fn highlighted_lines(&self, first: usize, count: usize) -> Vec<(String, Vec<Token>)> {
+    pub fn highlighted_lines(&self, first: usize, count: usize) -> Lines {
         let last = (first + count).min(self.rope.len_lines());
         if first >= last {
             return Vec::new();
@@ -1104,6 +1155,36 @@ mod tests {
 
     fn ed(text: &str) -> Editor {
         Editor::new(text, false, 4)
+    }
+
+    /// The lines of a frame are lexed once for a text and a window.
+    #[test]
+    fn visible_lines_are_kept_between_frames() {
+        let mut e = ed("select 1;\nselect 2;\n");
+        let first = e.visible_lines(0, 2);
+        assert!(std::sync::Arc::ptr_eq(&first, &e.visible_lines(0, 2)));
+        // another window, or another text: lexed again
+        assert!(!std::sync::Arc::ptr_eq(&first, &e.visible_lines(1, 2)));
+        let again = e.visible_lines(0, 2);
+        type_str(&mut e, "x");
+        let edited = e.visible_lines(0, 2);
+        assert!(!std::sync::Arc::ptr_eq(&again, &edited));
+        assert_eq!(edited[0].0, "xselect 1;");
+    }
+
+    /// Left and Right take a letter and its combining marks as one.
+    #[test]
+    fn the_cursor_does_not_stop_inside_a_combined_character() {
+        // a, e + acute, b
+        let mut e = ed("ae\u{301}b");
+        e.apply(Action::Move(Motion::Right, false));
+        assert_eq!(e.cursor(), 1);
+        e.apply(Action::Move(Motion::Right, false));
+        assert_eq!(e.cursor(), 3, "over the letter and its mark");
+        e.apply(Action::Move(Motion::Left, false));
+        assert_eq!(e.cursor(), 1);
+        e.apply(Action::Move(Motion::DocEnd, false));
+        assert_eq!(e.cursor(), 4);
     }
 
     /// Shift+Tab or Ctrl+Y that changes nothing leaves the step before it alone.

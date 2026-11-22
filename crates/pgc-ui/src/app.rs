@@ -427,6 +427,8 @@ pub struct App {
     pending: HashMap<u64, u64>,
     /// Definition queries in flight: request key → tab id.
     pending_defs: HashMap<u64, u64>,
+    /// ... and the session each was sent on: when that is lost, there is no answer.
+    def_sessions: HashMap<u64, ConnId>,
     /// Latest definition request of the default tab (older answers are dropped).
     default_key: u64,
     /// Row the default tab shows; `def_seq` invalidates older timers.
@@ -570,6 +572,7 @@ impl App {
             sql: SqlCatalog::new(),
             pending: HashMap::new(),
             pending_defs: HashMap::new(),
+            def_sessions: HashMap::new(),
             default_key: 0,
             followed: None,
             followed_info: None,
