@@ -840,9 +840,11 @@ fn variant_for_a_server_version() {
     key(&mut a, "Ctrl+S");
     assert!(a.dialogs.is_empty(), "{}", message(&a));
     assert!(variant.is_file());
+    // the same template; the editor writes LF, a checkout on Windows may have CRLF
+    let read = |p: &std::path::Path| std::fs::read_to_string(p).unwrap().replace("\r\n", "\n");
     assert_eq!(
-        devtemplate::parse(&std::fs::read_to_string(&variant).unwrap()).unwrap(),
-        devtemplate::parse(&std::fs::read_to_string(&path).unwrap()).unwrap()
+        devtemplate::parse(&read(&variant)).unwrap(),
+        devtemplate::parse(&read(&path)).unwrap()
     );
     // asked again from the first tab: the tab of the variant is shown
     a.active_tab = tabs - 1;
