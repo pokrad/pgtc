@@ -1508,8 +1508,8 @@ pgtc (binary)
     created again in dependency order, with their indexes, triggers and rules,
     including those that exist only in the database. A view that is the same and
     depends on nothing replaced is not touched. Tables are never part of the chain:
-    they are dropped only by the rule below. Privileges on a dropped view are not
-    restored (the load never sets them).
+    they are dropped only by the rule below. A view that is created again gets its
+    owner and privileges from the file (below).
   - **Functions:** a function of the file is the function of the database with the
     same name and **argument types** (the names of its parameters do not make another
     function). `CREATE OR REPLACE` when only the body or an attribute differs; drop
@@ -1557,14 +1557,44 @@ pgtc (binary)
   generated; constraints PK / unique / FK / check / exclude; indexes; partitioning),
   views, materialized views, functions and procedures, triggers, rules, policies,
   comments. Objects belonging to an extension are covered by its `CREATE EXTENSION`.
-  Not included for now: roles, tablespaces, foreign data wrappers / foreign tables,
+  Roles: only those the database needs (below). Not included for now:
+  tablespaces, foreign data wrappers / foreign tables,
   publications, subscriptions, event triggers, casts, operators, aggregates,
   collations, full-text search objects.
 - **Structured vs. definition text:** tables, sequences and types are fully structured;
   views, functions, triggers, rules and policies keep name and key properties plus the
   server's definition text (`pg_get_*`), and are replaced as a whole when it differs.
-- **Not in the file:** owners and privileges (never set by the load), server version,
-  pgtc version, timestamps or any other header — only the structure.
+- **Roles, owners and privileges** (agreed 2026-11-22, replaces "never set by the
+  load"):
+  - **In the file:** the owner and the privileges (ACL) of every schema, type,
+    sequence, table, view, materialized view and function; column privileges; the
+    database's own privileges (`CONNECT`, `TEMPORARY`, `CREATE`); default privileges
+    (`ALTER DEFAULT PRIVILEGES`). Privileges are stored as PostgreSQL has them, a
+    missing ACL as its built-in default; the owner's own privileges are not listed.
+  - **The roles the database needs:** every role that owns an object, is granted a
+    privilege, is named by a policy or by default privileges — and the roles those
+    are members of. Per role: `LOGIN`, `INHERIT`, `CREATEDB`, `CREATEROLE`,
+    `REPLICATION`, `BYPASSRLS`, `SUPERUSER`, connection limit, `VALID UNTIL`,
+    memberships, comment. Never a password. Predefined `pg_*` roles are not listed.
+  - **Load, first section — roles:** `CREATE ROLE` for every role of the file that
+    the target's cluster does not have, then the missing memberships
+    (`GRANT role TO role`). A role that exists is left as it is (roles are
+    cluster-wide); attributes that differ get a `-- NOTE:`. A `LOGIN` role is created
+    without a password, with a note to set one. `SUPERUSER` is never written: such a
+    role is created without it, with a note.
+  - **Load, last section — owners and privileges** (before the list of table
+    copies): `ALTER … OWNER TO` where the owner differs (a sequence owned by a column
+    follows its table); then `GRANT` for the privileges the target lacks; then
+    `ALTER DEFAULT PRIVILEGES … GRANT`; the database's privileges through a `DO`
+    block with `current_database()`. An object the script creates, or creates again,
+    counts as owned by the role that read the target, with the built-in privileges.
+  - **Never revoked:** privileges that exist only in the target stay; each gets a
+    `-- NOTE:` to revoke it by hand if it is not wanted.
+  - No switch in the load: the two sections are headed in the script, which is
+    reviewed before it runs. Changing owners needs a superuser or membership in the
+    new owner role; the server's error says so.
+- **Not in the file:** server version, pgtc version, timestamps or any other header —
+  only the structure.
 - **Ordering:** the script is ordered by a dependency graph (topological sort) built
   from `pg_depend` and from references in the model (column types, foreign keys,
   sequences, functions used by defaults, ...); dependency cycles between tables are
@@ -3044,4 +3074,5 @@ pgtc (binary)
 | 2026-11-22 | D-048 updated: a view that differs is always dropped and created again, with the chain of views that depend on it or on a dropped function (also views only in the database); tables stay out of the chain. A column's type is changed with `USING`, its default dropped before and set after. New enum labels come first in the script, with a note. |
 | 2026-11-22 | D-052 / D-019 updated: inside an open transaction the automatically opened autocomplete list reads nothing from the server; pgtc's own queries on a query tab's session run in a savepoint there. D-073 updated: the AI answer goes to the place the request was sent from. D-074 updated: `server_version` and `database` are no parameter names. D-033 updated: `sslmode=allow` is read as `prefer`. D-012 updated: a JSON file with nothing of a definition file is refused. D-057 updated: a failed read of the statistics is shown where the graphs are. |
 | 2026-11-22 | D-048 updated: functions are matched by name and argument types, and dropped and created when a parameter's name or mode differs or a default is gone; table parts that use a dropped function are dropped before it and created again after it; `INHERITS` and the options of identity sequences are in the model (new optional fields, the format number stays 1); a new identity on a table with rows continues after them. D-058 updated: a setting that is this session's only is never written back as the server's. |
+| 2026-11-22 | D-048 / D-012 updated: the definition file carries owners, privileges, default privileges and the roles the database needs; the load creates missing roles first and sets owners and missing privileges last; it never revokes and never writes a password or `SUPERUSER`. Replaces "a load never sets owners or privileges". |
 | 2026-11-22 | D-019 updated: a run keeps its newest 10,000 messages (the first line says how many earlier ones were dropped; errors and the total time are never dropped). D-035 updated: a connection another pgtc saved to `settings.toml` meanwhile is taken over when this one saves, not written away. D-054 updated: in a pattern, regular expression syntax other than `*`, `?`, `.` and `$` keeps its meaning outside double quotes, as in psql. |

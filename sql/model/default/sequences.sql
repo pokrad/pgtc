@@ -20,6 +20,7 @@ SELECT n.nspname AS schema, 'sequence' AS kind,
             WHERE d.classid = 'pg_catalog.pg_class'::pg_catalog.regclass AND d.objid = c.oid
                 AND d.refclassid = 'pg_catalog.pg_class'::pg_catalog.regclass AND d.deptype = 'a'
             LIMIT 1),
+        'access', {{ m.access("c.relacl", "s", "c.relowner") }},
         'comment', pg_catalog.obj_description(c.oid, 'pg_class')))::text AS data
 FROM pg_catalog.pg_class c
     JOIN pg_catalog.pg_sequence s ON s.seqrelid = c.oid

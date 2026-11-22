@@ -56,3 +56,24 @@ pg_catalog.quote_ident({{ n }}.nspname) || '.' || pg_catalog.quote_ident({{ c }}
     FROM pg_catalog.pg_rewrite rw
     WHERE rw.ev_class = {{ oid }} AND rw.rulename <> '_RETURN')
 {%- endmacro %}
+-- grants(acl, owner): JSON array of the privileges of an ACL (NULL: none) —
+-- grantee ('' for PUBLIC), privilege, grantable —, without those of role `owner`.
+{% macro grants(acl, owner) -%}
+(SELECT pg_catalog.json_agg(pg_catalog.json_build_object(
+        'grantee', CASE WHEN g.grantee = 0 THEN '' ELSE pg_catalog.pg_get_userbyid(g.grantee) END,
+        'privilege', g.privilege_type,
+        'grantable', g.is_grantable))
+    FROM pg_catalog.aclexplode({{ acl }}) g
+    WHERE g.grantee <> {{ owner }})
+{%- endmacro %}
+-- access(acl, kind, owner): JSON object of the owner and its privileges; a NULL ACL
+-- is the built-in default of `kind` (acldefault: r, s, f, T, n, d).
+{% macro access(acl, kind, owner) -%}
+pg_catalog.json_build_object('owner', pg_catalog.pg_get_userbyid({{ owner }}),
+    'grants', (SELECT pg_catalog.json_agg(pg_catalog.json_build_object(
+            'grantee', CASE WHEN g.grantee = 0 THEN '' ELSE pg_catalog.pg_get_userbyid(g.grantee) END,
+            'privilege', g.privilege_type,
+            'grantable', g.is_grantable))
+        FROM pg_catalog.aclexplode(COALESCE({{ acl }}, pg_catalog.acldefault('{{ kind }}', {{ owner }}))) g
+        WHERE g.grantee <> {{ owner }}))
+{%- endmacro %}

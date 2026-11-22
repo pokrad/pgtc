@@ -10,6 +10,7 @@ SELECT n.nspname AS schema, 'function' AS kind,
         'procedure', p.prokind = 'p',
         'result', CASE WHEN p.prokind <> 'p' THEN pg_catalog.pg_get_function_result(p.oid) END,
         'definition', pg_catalog.pg_get_functiondef(p.oid),
+        'access', {{ m.access("p.proacl", "f", "p.proowner") }},
         'comment', pg_catalog.obj_description(p.oid, 'pg_proc')))::text AS data
 FROM pg_catalog.pg_proc p
     JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace

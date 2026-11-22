@@ -24,6 +24,96 @@ pub struct Database {
     pub extensions: Vec<Extension>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub schemas: Vec<Schema>,
+    /// The roles the database needs: owners, grantees, policy roles and the roles
+    /// they are members of (D-048). A model read from a database has every role of
+    /// its cluster; the file keeps the needed ones.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub roles: Vec<Role>,
+    /// Privileges on the database itself (`CONNECT`, `TEMPORARY`, `CREATE`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub database_grants: Vec<Grant>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub default_privileges: Vec<DefaultPrivilege>,
+    /// The role that read a live database: what the script creates belongs to it.
+    /// Not in the file.
+    #[serde(skip)]
+    pub reader: String,
+}
+
+/// A role (D-048). Never a password.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Role {
+    pub name: String,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub superuser: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub login: bool,
+    #[serde(default = "yes", skip_serializing_if = "is_true")]
+    pub inherit: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub createdb: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub createrole: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub replication: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub bypassrls: bool,
+    /// `-1`: no limit.
+    #[serde(default = "no_limit", skip_serializing_if = "is_no_limit")]
+    pub connection_limit: i32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub valid_until: Option<String>,
+    /// The roles this one is a member of.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub member_of: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+}
+
+fn yes() -> bool {
+    true
+}
+
+fn is_true(b: &bool) -> bool {
+    *b
+}
+
+fn no_limit() -> i32 {
+    -1
+}
+
+fn is_no_limit(n: &i32) -> bool {
+    *n == -1
+}
+
+/// A privilege: to whom (`""` = `PUBLIC`), which (`SELECT`, `USAGE`, ...), and
+/// whether it may be passed on.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct Grant {
+    pub grantee: String,
+    pub privilege: String,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub grantable: bool,
+}
+
+/// The owner of an object and its privileges — the owner's own not among them.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Access {
+    pub owner: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub grants: Vec<Grant>,
+}
+
+/// `ALTER DEFAULT PRIVILEGES FOR ROLE role [IN SCHEMA schema] GRANT … ON object`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DefaultPrivilege {
+    pub role: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schema: Option<String>,
+    /// `TABLES`, `SEQUENCES`, `FUNCTIONS`, `TYPES` or `SCHEMAS`.
+    pub object: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub grants: Vec<Grant>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -38,6 +128,9 @@ pub struct Schema {
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
+    /// Owner and privileges; missing in files written before they were kept.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub access: Option<Access>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub types: Vec<Type>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -96,6 +189,9 @@ pub struct Type {
     pub kind: TypeKind,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
+    /// Owner and privileges; missing in files written before they were kept.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub access: Option<Access>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub depends_on: Vec<ObjRef>,
 }
@@ -165,6 +261,9 @@ pub struct Sequence {
     pub owned_by: Option<ColumnRef>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
+    /// Owner and privileges; missing in files written before they were kept.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub access: Option<Access>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -213,6 +312,9 @@ pub struct Table {
     pub policies: Vec<Policy>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
+    /// Owner and privileges; missing in files written before they were kept.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub access: Option<Access>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub depends_on: Vec<ObjRef>,
 }
@@ -251,6 +353,9 @@ pub struct Column {
     pub collation: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
+    /// Privileges on this column alone.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub grants: Vec<Grant>,
 }
 
 /// The options of an identity column's sequence.
@@ -386,6 +491,9 @@ pub struct View {
     pub rules: Vec<Rule>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
+    /// Owner and privileges; missing in files written before they were kept.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub access: Option<Access>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub depends_on: Vec<ObjRef>,
 }
@@ -413,6 +521,9 @@ pub struct Function {
     pub definition: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
+    /// Owner and privileges; missing in files written before they were kept.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub access: Option<Access>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub depends_on: Vec<ObjRef>,
 }
@@ -426,6 +537,82 @@ impl Database {
         for s in &mut self.schemas {
             s.normalize();
         }
+        by_name(&mut self.roles, |r| &r.name);
+        for r in &mut self.roles {
+            r.member_of.sort();
+            r.member_of.dedup();
+        }
+        self.database_grants.sort();
+        for d in &mut self.default_privileges {
+            d.grants.sort();
+        }
+        self.default_privileges
+            .sort_by(|a, b| (&a.role, &a.schema, &a.object).cmp(&(&b.role, &b.schema, &b.object)));
+    }
+
+    /// The names of the roles the database needs (D-048): owners, grantees, roles
+    /// of policies and default privileges, and — the closure — the roles these are
+    /// members of; no `PUBLIC`, no predefined `pg_*` role.
+    pub fn needed_roles(&self) -> std::collections::BTreeSet<String> {
+        let mut named: Vec<&str> = Vec::new();
+        for s in &self.schemas {
+            let accesses = std::iter::once(&s.access)
+                .chain(s.types.iter().map(|t| &t.access))
+                .chain(s.sequences.iter().map(|t| &t.access))
+                .chain(s.tables.iter().map(|t| &t.access))
+                .chain(s.views.iter().map(|t| &t.access))
+                .chain(s.materialized_views.iter().map(|t| &t.access))
+                .chain(s.functions.iter().map(|t| &t.access));
+            for a in accesses.flatten() {
+                named.push(&a.owner);
+                named.extend(a.grants.iter().map(|g| g.grantee.as_str()));
+            }
+            for t in &s.tables {
+                for c in &t.columns {
+                    named.extend(c.grants.iter().map(|g| g.grantee.as_str()));
+                }
+                for p in &t.policies {
+                    named.extend(p.roles.iter().map(String::as_str));
+                }
+            }
+        }
+        named.extend(self.database_grants.iter().map(|g| g.grantee.as_str()));
+        for d in &self.default_privileges {
+            named.push(&d.role);
+            named.extend(d.grants.iter().map(|g| g.grantee.as_str()));
+        }
+        let listed = |n: &str| !n.is_empty() && !n.starts_with("pg_") && n != "public";
+        let mut needed: std::collections::BTreeSet<String> = named
+            .into_iter()
+            .filter(|n| listed(n))
+            .map(str::to_owned)
+            .collect();
+        // the groups of the needed roles, and theirs
+        loop {
+            let more: Vec<String> = self
+                .roles
+                .iter()
+                .filter(|r| needed.contains(&r.name))
+                .flat_map(|r| r.member_of.iter())
+                .filter(|g| listed(g) && !needed.contains(*g))
+                .cloned()
+                .collect();
+            if more.is_empty() {
+                break;
+            }
+            needed.extend(more);
+        }
+        needed
+    }
+
+    /// Keeps the roles the database needs, drops the others of the cluster.
+    pub fn keep_needed_roles(&mut self) {
+        let needed = self.needed_roles();
+        self.roles.retain(|r| needed.contains(&r.name));
+    }
+
+    pub fn role(&self, name: &str) -> Option<&Role> {
+        self.roles.iter().find(|r| r.name == name)
     }
 
     pub fn schema(&self, name: &str) -> Option<&Schema> {
@@ -472,6 +659,25 @@ impl Schema {
         }
         for f in &mut self.functions {
             deps(&mut f.depends_on);
+        }
+        let sort = |a: &mut Option<Access>| {
+            if let Some(a) = a {
+                a.grants.sort();
+            }
+        };
+        sort(&mut self.access);
+        self.types.iter_mut().for_each(|t| sort(&mut t.access));
+        self.sequences.iter_mut().for_each(|t| sort(&mut t.access));
+        self.views.iter_mut().for_each(|t| sort(&mut t.access));
+        self.materialized_views
+            .iter_mut()
+            .for_each(|t| sort(&mut t.access));
+        self.functions.iter_mut().for_each(|t| sort(&mut t.access));
+        for t in &mut self.tables {
+            sort(&mut t.access);
+            for c in &mut t.columns {
+                c.grants.sort();
+            }
         }
     }
 }

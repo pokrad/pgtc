@@ -11,6 +11,7 @@ SELECT n.nspname AS schema,
         'indexes', CASE WHEN c.relkind = 'm' THEN {{ m.indexes("c.oid") }} END,
         'triggers', {{ m.triggers("c.oid", has("TriggerParentId")) }},
         'rules', {{ m.rules("c.oid") }},
+        'access', {{ m.access("c.relacl", "r", "c.relowner") }},
         'comment', pg_catalog.obj_description(c.oid, 'pg_class')))::text AS data
 FROM pg_catalog.pg_class c
     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace

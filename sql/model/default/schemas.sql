@@ -10,6 +10,7 @@ UNION ALL
 SELECT n.nspname, 'schema',
     pg_catalog.json_strip_nulls(pg_catalog.json_build_object(
         'name', n.nspname,
+        'access', {{ m.access("n.nspacl", "n", "n.nspowner") }},
         'comment', pg_catalog.obj_description(n.oid, 'pg_namespace')))::text
 FROM pg_catalog.pg_namespace n
 WHERE {{ m.user_schema("n") }}

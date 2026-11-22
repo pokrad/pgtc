@@ -38,6 +38,7 @@ SELECT n.nspname AS schema, 'type' AS kind,
                                 THEN pg_catalog.quote_ident(ocn.nspname) || '.' || pg_catalog.quote_ident(oc.opcname) END,
         'canonical', CASE WHEN r.rngcanonical <> 0 THEN r.rngcanonical::pg_catalog.regproc::text END,
         'subtype_diff', CASE WHEN r.rngsubdiff <> 0 THEN r.rngsubdiff::pg_catalog.regproc::text END,
+        'access', {{ m.access("t.typacl", "T", "t.typowner") }},
         'comment', pg_catalog.obj_description(t.oid, 'pg_type')))::text AS data
 FROM pg_catalog.pg_type t
     JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace

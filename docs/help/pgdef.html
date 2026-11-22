@@ -68,7 +68,7 @@ control (stable order, clean diffs), and comparing two states. For data, use <co
 }</code></pre>
 <ul>
   <li><b>Deterministic:</b> objects sorted by name, columns in <code>attnum</code> order; no timestamp, server
-      version, OIDs, owners or privileges. The same definition gives the same bytes.</li>
+      version or OIDs. The same definition gives the same bytes.</li>
   <li><b>Server-deparsed:</b> constraint, index, view and function definitions, defaults and partition bounds are
       stored as <code>pg_get_constraintdef()</code>, <code>pg_get_indexdef()</code>, <code>pg_get_viewdef()</code>,
       <code>pg_get_functiondef()</code> and <code>pg_get_expr()</code> print them, and compared as text.</li>
@@ -88,11 +88,12 @@ control (stable order, clean diffs), and comparing two states. For data, use <co
 <tr><td>Views, materialized views</td><td>Query, options; indexes of materialized views.</td></tr>
 <tr><td>Functions, procedures</td><td>Identity arguments, argument types, number of defaults, result type, <code>pg_get_functiondef()</code> text.</td></tr>
 <tr><td>Comments</td><td>On all of the above.</td></tr>
+<tr><td>Owners and privileges</td><td>Owner and ACL (from <code>aclexplode()</code>; a NULL ACL as <code>acldefault()</code>) of every schema, type, sequence, table, view, materialized view and function; column privileges; <code>CONNECT</code> / <code>TEMPORARY</code> / <code>CREATE</code> on the database; <code>pg_default_acl</code>. The owner's own privileges are not listed.</td></tr>
+<tr><td>Roles</td><td>Only those the database needs: owners, grantees, policy and default-privilege roles, and the roles they are members of. <code>LOGIN</code>, <code>INHERIT</code>, <code>CREATEDB</code>, <code>CREATEROLE</code>, <code>REPLICATION</code>, <code>BYPASSRLS</code>, <code>SUPERUSER</code>, connection limit, <code>VALID UNTIL</code>, memberships, comment — from <code>pg_roles</code>; <b>never a password</b>. No <code>pg_*</code> roles.</td></tr>
 </table></div>
 <div class="tablewrap"><table>
 <tr><th>Not included</th><th>Consequence</th></tr>
-<tr><td>Owners and privileges</td><td>A load never emits <code>OWNER TO</code>, <code>GRANT</code> or <code>REVOKE</code>; new objects belong to the executing role.</td></tr>
-<tr><td>Roles, tablespaces</td><td>Cluster-wide.</td></tr>
+<tr><td>Tablespaces</td><td>Cluster-wide.</td></tr>
 <tr><td>Foreign data wrappers and foreign tables, publications, subscriptions, event triggers, casts, operators, aggregates, collations, full-text search objects</td><td>Not covered yet; create them by hand.</td></tr>
 </table></div>
 
@@ -138,6 +139,19 @@ ALTER TABLE sales.customernote ADD CONSTRAINT customernote_customerid_fkey
   <li><b>Names</b> are schema-qualified and quoted; the script does not depend on <code>search_path</code>.</li>
 </ul>
 
+<h3 id="roles">Roles, owners and privileges</h3>
+<p>The script starts with the roles and ends with owners and privileges, each section under its own heading:</p>
+<div class="tablewrap"><table>
+<tr><th>Situation</th><th>What the script does</th></tr>
+<tr><td>A role of the file is not in the target's cluster</td><td><code>CREATE ROLE</code> with its attributes, then the missing memberships (<code>GRANT role TO role</code>). A <code>LOGIN</code> role gets no password: a <code>-- NOTE:</code> says to set one. <code>SUPERUSER</code> is never written; a note says so.</td></tr>
+<tr><td>The role exists with other attributes</td><td>Left as it is (roles are cluster-wide); a <code>-- NOTE:</code> names the attributes.</td></tr>
+<tr><td>An object's owner differs</td><td><code>ALTER … OWNER TO</code>. A sequence owned by a column follows its table. An object the script creates counts as owned by the role that read the target, so a clone run by that role needs no owner statements.</td></tr>
+<tr><td>A privilege of the file is missing</td><td><code>GRANT</code> (columns: <code>GRANT p (col)</code>); default privileges: <code>ALTER DEFAULT PRIVILEGES FOR ROLE … GRANT</code>; the database's own: a <code>DO</code> block with <code>current_database()</code>.</td></tr>
+<tr><td>A privilege exists only in the target</td><td><b>Never revoked</b>: a <code>-- NOTE:</code> for each, to <code>REVOKE</code> by hand if it is not wanted.</td></tr>
+</table></div>
+<p>Run the script as a superuser, or as a role with <code>CREATEROLE</code> that is a member of each new owner role
+(PostgreSQL 16+: <code>ALTER … OWNER TO</code> needs that); otherwise the server stops it with its error.</p>
+
 <h3 id="rules">The rules of a load</h3>
 <p><b>A load creates and alters. It never drops an object that exists only in the database.</b></p>
 <div class="tablewrap"><table>
@@ -147,7 +161,7 @@ ALTER TABLE sales.customernote ADD CONSTRAINT customernote_customerid_fkey
 <tr><td>A column is missing; its type, default or <code>NOT NULL</code> differs</td><td><code>ADD COLUMN</code> / <code>ALTER COLUMN … TYPE … USING column::type</code> (a default is dropped before and set after), <code>SET</code> / <code>DROP DEFAULT</code>, <code>SET</code> / <code>DROP NOT NULL</code>.</td></tr>
 <tr><td>A property of an existing object is absent in the file (a default, a comment)</td><td>Removed: <code>DROP DEFAULT</code>, <code>COMMENT ON … IS NULL</code>. Properties follow the file; only whole objects and parts are kept.</td></tr>
 <tr><td>An enum lacks labels; a composite type lacks or has different attributes</td><td><code>ALTER TYPE … ADD VALUE IF NOT EXISTS</code>, at the start of the script — a label cannot be used in the transaction that adds it: when the script fails with <i>unsafe use of new value</i>, run these statements on their own first; <code>ADD ATTRIBUTE</code> / <code>ALTER ATTRIBUTE … TYPE</code>.</td></tr>
-<tr><td>A view or materialized view differs</td><td><code>DROP</code> and <code>CREATE</code> — together with every view that depends on it, also one that exists only in the database (created again as it is there, with its indexes, triggers and rules). Privileges on the dropped views are not restored.</td></tr>
+<tr><td>A view or materialized view differs</td><td><code>DROP</code> and <code>CREATE</code> — together with every view that depends on it, also one that exists only in the database (created again as it is there, with its indexes, triggers and rules). Their owners and privileges come from the file.</td></tr>
 <tr><td>A function differs</td><td><code>CREATE OR REPLACE</code>; <code>DROP</code> and <code>CREATE</code> when the result type, a parameter's name or mode differs or a default is gone. The views that use it are replaced with it; table parts that use it (default, generated column, constraint, index, trigger, rule, policy) are dropped before and created again after — the tables and rows stay. Functions are matched by name and argument types.</td></tr>
 <tr><td>A table inherits (<code>INHERITS</code>)</td><td>Created with <code>INHERITS</code>; an existing table gets <code>ALTER TABLE … INHERIT</code>.</td></tr>
 <tr><td>An identity column's sequence options differ; a column becomes an identity</td><td><code>ALTER COLUMN … SET …</code>; <code>ADD GENERATED … AS IDENTITY</code> and a <code>setval</code> after the rows that are there.</td></tr>

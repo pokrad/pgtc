@@ -269,3 +269,161 @@ async fn sync_makes_the_changes_alter_cannot() {
     // what only the target has
     assert_eq!(kept, "5,2,6,4,calc(3),calc(2)", "{script}");
 }
+
+/// Roles, owners and privileges travel with the definition (D-048): the roles are
+/// dropped after the export, and the script on an empty database creates them again,
+/// sets the owners and grants what the source granted. A second load finds nothing.
+#[tokio::test]
+#[ignore]
+async fn roles_and_privileges_come_with_the_definition() {
+    if std::env::var("PGTC_TEST_PASSWORD").is_err() {
+        return;
+    }
+    const ROLES: [&str; 3] = ["pgtc_t_reader", "pgtc_t_group", "pgtc_t_owner"];
+    // its own databases: the other test of this file runs at the same time
+    const SRC: &str = "pgtc_test_roles_src";
+    const DST: &str = "pgtc_test_roles_dst";
+    let admin = connect("postgres").await;
+    let clean = || {
+        let admin = &admin;
+        async move {
+            for db in [SRC, DST] {
+                admin
+                    .batch_execute(&format!("DROP DATABASE IF EXISTS {db} WITH (FORCE)"))
+                    .await
+                    .unwrap();
+            }
+            for r in ROLES {
+                admin
+                    .batch_execute(&format!("DROP ROLE IF EXISTS {r}"))
+                    .await
+                    .unwrap();
+            }
+        }
+    };
+    clean().await;
+    let result = async {
+        admin
+            .batch_execute(
+                "CREATE ROLE pgtc_t_group;
+                 CREATE ROLE pgtc_t_reader LOGIN CONNECTION LIMIT 3 IN ROLE pgtc_t_group;
+                 CREATE ROLE pgtc_t_owner CREATEDB;
+                 COMMENT ON ROLE pgtc_t_owner IS 'owns the app';",
+            )
+            .await
+            .map_err(|e| pgc_db::describe(&e))?;
+        admin
+            .batch_execute(&format!("CREATE DATABASE {SRC}"))
+            .await
+            .unwrap();
+        let src = connect(SRC).await;
+        src.batch_execute(&format!(
+            "CREATE SCHEMA app AUTHORIZATION pgtc_t_owner;
+             CREATE TABLE app.t (id int, secret text);
+             ALTER TABLE app.t OWNER TO pgtc_t_owner;
+             GRANT SELECT ON app.t TO pgtc_t_group;
+             GRANT SELECT (id) ON app.t TO pgtc_t_reader;
+             GRANT CREATE ON DATABASE {SRC} TO pgtc_t_owner;
+             ALTER DEFAULT PRIVILEGES FOR ROLE pgtc_t_owner IN SCHEMA app
+                 GRANT SELECT ON TABLES TO pgtc_t_group;"
+        ))
+        .await
+        .map_err(|e| pgc_db::describe(&e))?;
+        let want = model_of(&src).await;
+        let names: Vec<&str> = want.roles.iter().map(|r| r.name.as_str()).collect();
+        if names != ["pgtc_t_group", "pgtc_t_owner", "pgtc_t_reader"]
+            && !ROLES.iter().all(|r| names.contains(r))
+        {
+            return Err(format!("roles of the file: {names:?}"));
+        }
+        drop(src);
+        // the target's cluster without them
+        admin
+            .batch_execute(&format!("DROP DATABASE {SRC} WITH (FORCE)"))
+            .await
+            .unwrap();
+        for r in ROLES {
+            admin
+                .batch_execute(&format!("DROP ROLE {r}"))
+                .await
+                .map_err(|e| format!("drop {r}: {}", pgc_db::describe(&e)))?;
+        }
+        admin
+            .batch_execute(&format!("CREATE DATABASE {DST}"))
+            .await
+            .unwrap();
+        let dst = connect(DST).await;
+        let script = pgc_model::sync::sync_script(&want, &model_of(&dst).await)
+            .ok_or("an empty database differs")?;
+        println!("{script}");
+        dst.batch_execute(&script)
+            .await
+            .map_err(|e| format!("{}\n{script}", pgc_db::describe(&e)))?;
+        let check = |sql: &'static str| {
+            let dst = &dst;
+            async move {
+                dst.query_one(sql, &[])
+                    .await
+                    .map_err(|e| format!("{sql}: {}", pgc_db::describe(&e)))
+                    .map(|r| r.get::<_, bool>(0))
+            }
+        };
+        for (what, sql) in [
+            (
+                "reader can log in, limit 3",
+                "SELECT rolcanlogin AND rolconnlimit = 3 FROM pg_roles WHERE rolname = 'pgtc_t_reader'",
+            ),
+            (
+                "reader is in the group",
+                "SELECT pg_has_role('pgtc_t_reader', 'pgtc_t_group', 'MEMBER')",
+            ),
+            (
+                "owner may create databases, with its comment",
+                "SELECT rolcreatedb AND shobj_description(oid, 'pg_authid') = 'owns the app'
+                 FROM pg_roles WHERE rolname = 'pgtc_t_owner'",
+            ),
+            (
+                "schema and table owner",
+                "SELECT n.nspowner = 'pgtc_t_owner'::regrole AND c.relowner = 'pgtc_t_owner'::regrole
+                 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+                 WHERE c.oid = 'app.t'::regclass",
+            ),
+            (
+                "group may read the table",
+                "SELECT has_table_privilege('pgtc_t_group', 'app.t', 'SELECT')",
+            ),
+            (
+                "reader may read the column",
+                "SELECT has_column_privilege('pgtc_t_reader', 'app.t', 'id', 'SELECT')",
+            ),
+            (
+                "owner may create in the database",
+                "SELECT has_database_privilege('pgtc_t_owner', current_database(), 'CREATE')",
+            ),
+            (
+                "default privileges",
+                "SELECT EXISTS (SELECT FROM pg_default_acl
+                     WHERE defaclrole = 'pgtc_t_owner'::regrole)",
+            ),
+        ] {
+            if !check(sql).await? {
+                return Err(format!("not so: {what}\n{script}"));
+            }
+        }
+        if let Some(rest) = pgc_model::sync::sync_script(&want, &model_of(&dst).await) {
+            return Err(format!("still differs after the script:\n{rest}"));
+        }
+        Ok(script)
+    }
+    .await;
+    clean().await;
+    let script = result.unwrap_or_else(|e| panic!("{e}"));
+    assert!(script.contains("CREATE ROLE pgtc_t_reader WITH LOGIN CONNECTION LIMIT 3;"));
+    // a note says how to set one; no statement sets a password
+    assert!(
+        !script
+            .lines()
+            .any(|l| !l.starts_with("--") && l.contains("PASSWORD")),
+        "no password is ever written"
+    );
+}

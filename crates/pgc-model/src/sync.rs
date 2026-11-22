@@ -48,7 +48,12 @@ struct Step {
 struct Script {
     steps: Vec<Step>,
     index: HashMap<(u8, Key), usize>,
+    /// The first section (roles) and the last one before the copies (owners and
+    /// privileges), D-048.
+    access: access::Sections,
 }
+
+mod access;
 
 impl Script {
     fn push(&mut self, phase: u8, key: Key, deps: &[ObjRef], sql: impl Into<String>) {
@@ -287,6 +292,13 @@ pub fn sync_script(want: &Database, live: &Database) -> Option<String> {
             );
         }
     }
+    // roles first, owners and privileges last — of what the script made as well
+    let tables: BTreeSet<TableKey> = rebuilt.union(&dropped).cloned().collect();
+    let recreated = access::Recreated {
+        tables: &tables,
+        views: &replaced,
+    };
+    out.access = access::sections(want, live, &recreated);
     render(out)
 }
 
@@ -789,7 +801,7 @@ fn out_rebuild(out: &mut Script, schema: &str, t: &Table, plan: RebuildPlan) {
 }
 
 fn render(out: Script) -> Option<String> {
-    if out.steps.is_empty() {
+    if out.steps.is_empty() && out.access.roles.is_empty() && out.access.privileges.is_empty() {
         return None;
     }
     let mut ordered: Vec<&Step> = Vec::new();
@@ -812,9 +824,25 @@ fn render(out: Script) -> Option<String> {
     if functions {
         text.push_str("SET check_function_bodies = false;\n\n");
     }
+    if !out.access.roles.is_empty() {
+        text.push_str(
+            "-- Roles the definition needs (cluster-wide; roles that exist are left as\n\
+             -- they are):\n",
+        );
+        text.push_str(&out.access.roles.join("\n"));
+        text.push_str("\n\n");
+    }
+    let privileges = |text: &mut String| {
+        if !out.access.privileges.is_empty() {
+            text.push_str("-- Owners and privileges (none is revoked):\n");
+            text.push_str(&out.access.privileges.join("\n"));
+            text.push_str("\n\n");
+        }
+    };
     let mut copies = false;
     for s in ordered {
         if s.phase == 7 && !copies {
+            privileges(&mut text);
             copies = true;
             text.push_str(
                 "-- Copies of the re-created tables. Drop them once you are sure the\n\
@@ -823,6 +851,9 @@ fn render(out: Script) -> Option<String> {
         }
         text.push_str(&s.sql.join("\n"));
         text.push_str(if s.phase == 7 { "\n" } else { "\n\n" });
+    }
+    if !copies {
+        privileges(&mut text);
     }
     let len = text.trim_end().len();
     text.truncate(len);
@@ -1772,6 +1803,7 @@ mod tests {
         Database {
             extensions: vec![],
             schemas,
+            ..Default::default()
         }
     }
 
@@ -1853,6 +1885,7 @@ mod tests {
             },
             comment: None,
             depends_on: vec![],
+            access: None,
         });
         let text = sync_script(&db(vec![s]), &db(vec![])).unwrap();
         let at = |needle: &str| {
@@ -1878,6 +1911,7 @@ mod tests {
             },
             comment: None,
             depends_on: vec![],
+            access: None,
         });
         live.tables.push(Table {
             name: "t".into(),
@@ -2200,6 +2234,7 @@ mod tests {
                 schema: "public".into(),
             }],
             schemas: vec![],
+            ..Default::default()
         };
         assert_eq!(
             sync_script(&want, &db(vec![])).unwrap(),

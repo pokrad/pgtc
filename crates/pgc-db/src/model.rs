@@ -7,7 +7,8 @@ use std::collections::BTreeMap;
 
 use pgc_core::ServerVersion;
 use pgc_model::{
-    Database, Extension, Function, ObjKind, ObjRef, Schema, Sequence, Table, Type, View,
+    Database, DefaultPrivilege, Extension, Function, Grant, ObjKind, ObjRef, Role, Schema,
+    Sequence, Table, Type, View,
 };
 use pgc_sql::{RenderContext, SqlCatalog, SqlError};
 use serde::de::DeserializeOwned;
@@ -29,7 +30,21 @@ const OBJECT_FILES: &[&str] = &[
     "tables.sql",
     "views.sql",
     "functions.sql",
+    "access.sql",
 ];
+
+/// The `database` row of `access.sql`: the privileges on the database itself.
+#[derive(serde::Deserialize)]
+struct DatabaseAccess {
+    #[serde(default)]
+    grants: Vec<Grant>,
+}
+
+/// The `reader` row of `access.sql`: the role that reads.
+#[derive(serde::Deserialize)]
+struct Reader {
+    name: String,
+}
 
 impl ModelQueries {
     pub fn render(catalog: &SqlCatalog, version: ServerVersion) -> Result<Self, SqlError> {
@@ -94,6 +109,13 @@ async fn read_in_transaction(
     for (file, schema, kind, data) in &rows_of {
         match kind.as_str() {
             "extension" => db.extensions.push(parse::<Extension>(file, data)?),
+            "role" => db.roles.push(parse::<Role>(file, data)?),
+            "database" => db.database_grants = parse::<DatabaseAccess>(file, data)?.grants,
+            "default_privilege" => {
+                db.default_privileges
+                    .push(parse::<DefaultPrivilege>(file, data)?);
+            }
+            "reader" => db.reader = parse::<Reader>(file, data)?.name,
             "schema" => {
                 schemas.insert(schema.clone(), parse(file, data)?);
             }

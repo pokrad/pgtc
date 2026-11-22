@@ -51,6 +51,8 @@ fn first_format() -> u32 {
 /// The file text: normalised, pretty-printed, ending with a newline.
 pub fn to_text(db: &Database) -> String {
     let mut db = db.clone();
+    // of the roles of the cluster, those the database needs (D-048)
+    db.keep_needed_roles();
     db.normalize();
     let file = Output {
         format: FORMAT,
@@ -145,9 +147,11 @@ mod tests {
                     },
                     comment: None,
                     depends_on: vec![],
+                    access: None,
                 }],
                 ..Default::default()
             }],
+            ..Default::default()
         }
     }
 

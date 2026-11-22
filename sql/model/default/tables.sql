@@ -35,6 +35,7 @@ SELECT n.nspname AS schema, 'table' AS kind,
                         LIMIT 1) END,
                     'collation', CASE WHEN a.attcollation <> 0 AND a.attcollation <> ty.typcollation
                                       THEN {{ m.collation("co", "cn") }} END,
+                    'grants', {{ m.grants("a.attacl", "c.relowner") }},
                     'comment', pg_catalog.col_description(a.attrelid, a.attnum)))
                 ORDER BY a.attnum)
             FROM pg_catalog.pg_attribute a
@@ -95,6 +96,7 @@ SELECT n.nspname AS schema, 'table' AS kind,
                     'with_check', pg_catalog.pg_get_expr(po.polwithcheck, po.polrelid)))
                 ORDER BY po.polname)
             FROM pg_catalog.pg_policy po WHERE po.polrelid = c.oid),
+        'access', {{ m.access("c.relacl", "r", "c.relowner") }},
         'comment', pg_catalog.obj_description(c.oid, 'pg_class')))::text AS data
 FROM pg_catalog.pg_class c
     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
