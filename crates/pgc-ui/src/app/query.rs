@@ -148,6 +148,13 @@ impl App {
             return;
         };
         let after = q.after_run.take();
+        // the run has ended: "the server did not react to the cancel request" is not
+        // a question any more (its Close session would end an idle session)
+        self.dialogs
+            .retain(|d| d.kind != DialogKind::CancelWait { tab });
+        let Some(q) = self.tabs[i].query_mut() else {
+            return;
+        };
         // the window status line replaces "Executing…" with how the run ended (D-043)
         if i == self.active_tab {
             self.status = match q.finished {
@@ -178,7 +185,9 @@ impl App {
                 self.active_tab = i;
                 self.status = "The transaction was not committed — see Messages".to_owned();
             }
-            None => {}
+            // quitting / disconnecting may have waited for this run (a tab that was
+            // busy when the COMMITs were sent)
+            None => self.maybe_finish_bulk(),
         }
     }
 
@@ -375,6 +384,11 @@ impl App {
             self.connections.remove(&conn.id);
             q.connection_gone();
             q.info("Session closed (the server did not react to the cancel request)");
+            // what waited for this run will not come (as when the session is lost):
+            // a later run must not close the tab or go on quitting
+            if q.after_run.take() == Some(AfterRun::Bulk) {
+                self.closing.bulk_pending = None;
+            }
         }
         self.drop_tab_lookups(tab);
     }

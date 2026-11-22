@@ -360,6 +360,18 @@ impl App {
         self.save_tab(tab, path);
     }
 
+    /// The path chosen in the Save as dialog: written from the tab the dialog was
+    /// opened for.
+    pub(super) fn save_chosen(&mut self, path: PathBuf) {
+        let tab = self
+            .files
+            .save_tab
+            .take()
+            .filter(|&t| self.tab_index(t).is_some())
+            .unwrap_or(self.tabs[self.active_tab].id);
+        self.save_tab(tab, path);
+    }
+
     /// Writes the text tab `tab` has now to `path`. While an earlier save of the tab
     /// is still being written, this one waits for it.
     fn save_tab(&mut self, tab: u64, path: PathBuf) {
@@ -529,16 +541,19 @@ impl App {
 
     /// Tab `tab` was saved: closing it, or quitting, that waited for the save goes on.
     pub(super) fn after_save(&mut self, tab: u64) {
-        match self.closing.after_save.take() {
+        match self.closing.after_save {
             Some(AfterSave::Close(closing)) if closing == tab => {
+                self.closing.after_save = None;
                 self.request_close_tab(tab, false);
             }
+            // another tab's save: the close that waits for its own save stays
+            Some(AfterSave::Close(_)) | None => {}
             Some(AfterSave::Bulk) => {
+                self.closing.after_save = None;
                 if let Some((b, _)) = self.closing.bulk {
                     self.request_bulk(b);
                 }
             }
-            _ => {}
         }
     }
 }

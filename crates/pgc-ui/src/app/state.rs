@@ -58,6 +58,9 @@ pub(super) struct FileDialogState {
     /// Height of the open dialog's listing (a resize while it shows *Reading…* would
     /// otherwise leave it one row high).
     pub(super) list_rows: u16,
+    /// The tab the open Save as dialog was opened for: its file is written, whichever
+    /// tab is the active one when the dialog is done (a tab may open behind it).
+    pub(super) save_tab: Option<u64>,
 }
 
 /// Closing tabs, quitting, disconnecting (D-019, D-043): the questions on their way

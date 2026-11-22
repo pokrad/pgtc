@@ -465,14 +465,16 @@ impl App {
         for sub in &param.fields {
             let v = match sub.kind {
                 ParamType::Bool => ParamValue::Bool(dialog.checked(&sub.name)),
-                ParamType::Choice => match self.row_items(&param.name, sub) {
-                    Some(items) => match dialog.selected(&sub.name) {
-                        Some(i) if i > 0 => items[i - 1].value.clone(),
+                // by what the dialog has: a text field when the choices had not been
+                // read as it opened — they may have arrived since, what was typed counts
+                ParamType::Choice => match dialog.text(&sub.name) {
+                    Some(typed) => ParamValue::Text(typed.trim().to_owned()),
+                    None => match (self.row_items(&param.name, sub), dialog.selected(&sub.name)) {
+                        (Some(items), Some(i)) if i > 0 => items
+                            .get(i - 1)
+                            .map_or_else(|| ParamValue::Text(String::new()), |c| c.value.clone()),
                         _ => ParamValue::Text(String::new()),
                     },
-                    None => {
-                        ParamValue::Text(dialog.text(&sub.name).unwrap_or("").trim().to_owned())
-                    }
                 },
                 _ => ParamValue::Text(dialog.text(&sub.name).unwrap_or("").trim().to_owned()),
             };

@@ -602,6 +602,7 @@ impl App {
                 listing: None,
                 probing: None,
                 list_rows: 0,
+                save_tab: None,
             },
             closing: Closing::default(),
             esc: EscState::default(),
@@ -1743,7 +1744,7 @@ impl App {
                     (DialogKind::ConfirmExportOverwrite { path, options }, Button::Yes) => {
                         self.start_export(path, options);
                     }
-                    (DialogKind::ConfirmOverwrite { path }, Button::Yes) => self.save_to(path),
+                    (DialogKind::ConfirmOverwrite { path }, Button::Yes) => self.save_chosen(path),
                     // No: the other setup steps still run (templates are kept)
                     (DialogKind::ConfirmTemplatesOverwrite { all_steps }, b) => {
                         self.finish_setup(all_steps, b == Button::Yes);

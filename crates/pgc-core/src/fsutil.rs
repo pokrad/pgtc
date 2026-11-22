@@ -13,10 +13,12 @@ pub enum Access {
     Private,
 }
 
-/// The temporary file of `path`: the same name with `.tmp` added.
+/// The temporary file of `path`: the same name with this process's id and `.tmp`
+/// added — two pgtc that save the same file (`settings.toml`, `.pgpass`) at the same
+/// moment do not write into one temporary file.
 fn tmp_path(path: &Path) -> PathBuf {
     let mut name = path.file_name().unwrap_or_default().to_owned();
-    name.push(".tmp");
+    name.push(format!(".{}.tmp", std::process::id()));
     path.with_file_name(name)
 }
 

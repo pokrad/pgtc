@@ -240,6 +240,9 @@ impl App {
         } else {
             String::new()
         };
+        if save {
+            self.files.save_tab = Some(self.tabs[self.active_tab].id);
+        }
         self.open_file_dialog_named(save, &name);
     }
 
@@ -357,7 +360,7 @@ impl App {
                     &overwrite,
                 ));
             }
-            DialogKind::SaveFile => self.save_to(path),
+            DialogKind::SaveFile => self.save_chosen(path),
             DialogKind::OpenFile => self.open_path(path),
             DialogKind::SaveDefinition { server, database } if exists => {
                 self.dialogs.push(Dialog::confirm(

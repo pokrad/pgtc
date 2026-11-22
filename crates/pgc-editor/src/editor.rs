@@ -660,7 +660,9 @@ impl Editor {
     }
 
     /// Runs `f` as one undo group.
-    fn edit_group(&mut self, f: impl FnOnce(&mut Self)) {
+    /// One undo step of the edits `f` makes. Returns the step's id: the step is in the
+    /// history only when `f` edited something ([`Self::fix_group_after`]).
+    fn edit_group(&mut self, f: impl FnOnce(&mut Self)) -> u64 {
         self.close_typing();
         let id = self.new_step();
         self.undo.push(Group {
@@ -682,6 +684,7 @@ impl Editor {
         }
         self.anchor = None;
         self.finish_group();
+        id
     }
 
     fn finish_group(&mut self) {
@@ -766,12 +769,10 @@ impl Editor {
             start = start.saturating_sub(usize::from(first > 0));
             self.rope.len_chars()
         };
-        self.edit_group(|ed| ed.replace(start, end, ""));
+        let step = self.edit_group(|ed| ed.replace(start, end, ""));
         let line = first.min(self.rope.len_lines() - 1);
         self.cursor = self.pos_at_col(line, col);
-        if let Some(g) = self.undo.last_mut() {
-            g.after = (self.cursor, None);
-        }
+        self.fix_group_after(step);
     }
 
     /// Tab: a tab character, or indent all selected lines (D-038).
@@ -781,14 +782,14 @@ impl Editor {
             return;
         }
         let (first, last) = self.selected_lines();
-        self.edit_group(|ed| {
+        let step = self.edit_group(|ed| {
             for line in first..=last {
                 let at = ed.rope.line_to_char(line);
                 ed.replace(at, at, "\t");
             }
         });
         self.select_lines(first, last);
-        self.fix_group_after();
+        self.fix_group_after(step);
     }
 
     /// Shift+Tab: unindent the selected lines or the cursor line (D-038).
@@ -799,7 +800,7 @@ impl Editor {
         let cursor_line = self.rope.char_to_line(cursor);
         let mut removed_on_cursor_line = 0;
         let tab_width = self.tab_width;
-        self.edit_group(|ed| {
+        let step = self.edit_group(|ed| {
             for line in first..=last {
                 let at = ed.rope.line_to_char(line);
                 let text: String = ed.rope.line(line).chars().take(tab_width).collect();
@@ -823,12 +824,14 @@ impl Editor {
             self.cursor = cursor.saturating_sub(removed_on_cursor_line).max(start);
             self.anchor = None;
         }
-        self.fix_group_after();
+        self.fix_group_after(step);
     }
 
-    fn fix_group_after(&mut self) {
+    /// The cursor and selection after step `step` are those of now — if the step is
+    /// there: one that changed nothing is not, and the step before it is not its.
+    fn fix_group_after(&mut self, step: u64) {
         let (cursor, anchor) = (self.cursor, self.anchor);
-        if let Some(g) = self.undo.last_mut() {
+        if let Some(g) = self.undo.last_mut().filter(|g| g.id == step) {
             g.after = (cursor, anchor);
         }
     }
@@ -1079,6 +1082,19 @@ mod tests {
 
     fn ed(text: &str) -> Editor {
         Editor::new(text, false, 4)
+    }
+
+    /// Shift+Tab or Ctrl+Y that changes nothing leaves the step before it alone.
+    #[test]
+    fn an_edit_that_changes_nothing_keeps_the_step_before() {
+        let mut e = ed("");
+        type_str(&mut e, "abc");
+        e.apply(Action::Move(Motion::DocStart, false));
+        e.apply(Action::Unindent);
+        e.apply(Action::Undo);
+        assert_eq!(e.text(), "");
+        e.apply(Action::Redo);
+        assert_eq!((e.text().as_str(), e.cursor()), ("abc", 3));
     }
 
     /// The text has LF line ends only (D-064): CR LF and CR are no part of it, and

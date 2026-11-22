@@ -3653,6 +3653,67 @@ async fn closing_with_commit_needs_a_real_commit() {
     assert!(a.tab_index(tab).is_none());
 }
 
+/// "Commit all" when quitting while another tab still runs a statement: quitting
+/// goes on when that run has ended, it does not wait for ever.
+#[tokio::test]
+async fn quitting_with_commit_all_waits_for_a_running_tab() {
+    let (mut a, _d) = app();
+    a.settings.query.ask_save = false;
+    let committing = connected_tab(&mut a, 99);
+    let running = connected_tab(&mut a, 98);
+    typing(&mut a, "select pg_sleep(60)");
+    key(&mut a, "F5");
+    let run = a.next_run;
+    assert!(a.query().unwrap().busy());
+    let i = a.tab_index(committing).unwrap();
+    a.tabs[i].query_mut().unwrap().tx = TxStatus::InTransaction;
+    key(&mut a, "F10");
+    assert_eq!(a.dialogs.last().unwrap().kind, DialogKind::QuitTransactions);
+    key(&mut a, "m");
+    end_run(&mut a, 99, committing, Ok("COMMIT"));
+    assert!(!a.should_quit(), "the other tab is still running");
+    a.on_query_event(
+        98,
+        running,
+        DbEvent::Query {
+            id: 98,
+            run,
+            event: pgc_db::QueryEvent::Finished {
+                elapsed: std::time::Duration::from_millis(1),
+                status: TxStatus::Idle,
+            },
+        },
+    );
+    assert!(a.should_quit());
+}
+
+/// Save as writes the tab its dialog was opened for, also when another tab has
+/// become the active one behind the dialog.
+#[test]
+fn save_as_writes_the_tab_it_was_opened_for() {
+    let (mut a, dir) = app();
+    a.files.dir = dir.path().to_path_buf();
+    a.new_query_tab(None);
+    let first = a.tabs[a.active_tab].id;
+    typing(&mut a, "select 1;");
+    a.run(Command::SaveFileAs);
+    // a tab opens behind the dialog (a file that was being read, a sync script)
+    a.new_query_tab(None);
+    let other = a.tabs[a.active_tab].id;
+    assert_ne!(first, other);
+    key(&mut a, "Enter");
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("query.sql")).unwrap(),
+        "select 1;"
+    );
+    let file = |a: &App, id: u64| {
+        let i = a.tab_index(id).unwrap();
+        a.tabs[i].query().unwrap().file.clone()
+    };
+    assert_eq!(file(&a, first), Some(dir.path().join("query.sql")));
+    assert_eq!(file(&a, other), None);
+}
+
 /// "Commit all" when quitting (D-043): a transaction that was not committed stops
 /// the quit; so does a connection lost before the COMMIT was answered.
 #[tokio::test]
