@@ -61,10 +61,6 @@ right, function keys, menus and dialogs.
 |---|---|
 | ![Developer template: Create table](docs/screenshots/template.svg) | ![Developer templates](docs/screenshots/templates.svg) |
 
-| Developer template editor (Tools → Developer templates…) |
-|---|
-| ![Developer template editor](docs/screenshots/template-editor.svg) |
-
 | Autocomplete | psql commands (`F4`) |
 |---|---|
 | ![Autocomplete](docs/screenshots/autocomplete.svg) | ![psql commands](docs/screenshots/psql.svg) |
