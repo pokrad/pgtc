@@ -76,7 +76,9 @@ right, function keys, menus and dialogs.
 Prebuilt binaries for Windows (x64), Linux (x64, ARM64 — static, no glibc dependency)
 and macOS (Apple Silicon, Intel) are on the
 [Releases](https://github.com/pokrad/pgtc/releases) page, with a `SHA256SUMS` file.
-Unpack the archive and run `pgtc`; there is nothing to install.
+Unpack the archive and run `pgtc`; there is nothing to install. Only the developer
+templates (`F7`) are copied into your user folder once: `pgtc --setup` (or
+`pgtc --install-templates`), or *Settings → Install templates* in the app.
 
 The binaries are not signed. Windows SmartScreen asks once (*More info → Run anyway*);
 on macOS remove the quarantine flag first: `xattr -d com.apple.quarantine pgtc`.

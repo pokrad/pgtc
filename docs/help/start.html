@@ -9,11 +9,18 @@
 <body>
 <main>
 <h1>Getting started</h1>
-<p class="lead">Build, set up, connect, run a statement.</p>
+<p class="lead">Install, set up, connect, run a statement.</p>
 
-<h2 id="build">1. Build</h2>
-<p>Source only. Needs <a href="https://rustup.rs/">Rust</a> (the toolchain is pinned in
-<code>rust-toolchain.toml</code>); no C compiler, no libpq.</p>
+<h2 id="install">1. Install</h2>
+<p>Prebuilt binaries on the <a href="https://github.com/pokrad/pgtc/releases">Releases</a> page, with a
+<code>SHA256SUMS</code> file: Windows x64, Linux x64 / ARM64 (static musl, no glibc dependency), macOS Apple
+Silicon / Intel. A single file, no installer, no libpq: unpack and run <code>pgtc</code>.</p>
+<p>The binaries are not signed. Windows SmartScreen asks once (<i>More info → Run anyway</i>); on macOS remove the
+quarantine flag first: <code>xattr -d com.apple.quarantine pgtc</code>.</p>
+
+<h3 id="build">Build from source</h3>
+<p>Needs <a href="https://rustup.rs/">Rust</a> (the toolchain is pinned in <code>rust-toolchain.toml</code>); no
+C compiler, no libpq.</p>
 <pre><code>git clone https://github.com/pokrad/pgtc.git
 cd pgtc
 cargo build --release          # target/release/pgtc, a single file
