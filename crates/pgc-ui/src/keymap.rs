@@ -233,6 +233,7 @@ commands! {
     ProfilerPause = "profiler_pause", "Pause / resume reading the server log", Actions;
     ProfilerFilter = "profiler_filter", "Filter the profiler entries", Actions;
     ProfilerClear = "profiler_clear", "Clear the profiler entries", Actions;
+    ProfilerPlan = "profiler_plan", "Execution plan (EXPLAIN) of the entry's statement", Actions;
     // database statistics (D-062)
     DbStats = "db_stats", "Statistics of the selected database", Actions;
     DbStatsRefresh = "db_stats_refresh", "Read the database statistics again (connects again when needed)", Actions;
@@ -528,6 +529,7 @@ const DEFAULTS: &[(Context, Command, &[&str])] = &[
     (Context::Profiler, Command::ProfilerPause, &["Ctrl+P"]),
     (Context::Profiler, Command::ProfilerFilter, &["Ctrl+F"]),
     (Context::Profiler, Command::ProfilerClear, &["Ctrl+L"]),
+    (Context::Profiler, Command::ProfilerPlan, &["Ctrl+Q"]),
     (Context::Profiler, Command::ShowRow, &["Enter"]),
     (Context::Profiler, Command::ContextMenu, &["F2"]),
     (Context::Profiler, Command::Copy, &["Ctrl+C", "Ctrl+Insert"]),

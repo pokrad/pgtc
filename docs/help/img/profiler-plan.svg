@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="828" height="304" viewBox="0 0 828 304" font-family="Cascadia Mono, Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="15" shape-rendering="crispEdges" xml:space="preserve">
+<rect width="828" height="304" fill="#0037da"/>
+<rect x="0" y="0" width="810.5" height="19.5" fill="#cccccc"/>
+<rect x="810" y="8.75" width="18" height="1.5" fill="#cccccc"/>
+<rect x="0" y="19" width="810.5" height="19.5" fill="#cccccc"/>
+<rect x="810" y="19" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="12.75" y="27.75" width="5.25" height="1.5" fill="#0c0c0c"/>
+<rect x="12.75" y="27.75" width="1.5" height="10.25" fill="#0c0c0c"/>
+<rect x="18" y="27.75" width="315" height="1.5" fill="#0c0c0c"/>
+<text x="342 351 360 369 378 387 396 405 414" y="33.25" fill="#0037da">Execution</text>
+<text x="432 441 450 459" y="33.25" fill="#0037da">plan</text>
+<rect x="477" y="27.75" width="315" height="1.5" fill="#0c0c0c"/>
+<rect x="792" y="27.75" width="5.25" height="1.5" fill="#0c0c0c"/>
+<rect x="795.75" y="27.75" width="1.5" height="10.25" fill="#0c0c0c"/>
+<text x="810 819" y="33.25" fill="#767676">nt</text>
+<rect x="0" y="38" width="810.5" height="19.5" fill="#cccccc"/>
+<rect x="810" y="38" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="12.75" y="38" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="27 36 45 54 63 72 81" y="52.25" fill="#0c0c0c">EXPLAIN</text>
+<text x="99 108" y="52.25" fill="#0c0c0c">in</text>
+<text x="126 135 144 153 162 171 180 189" y="52.25" fill="#0c0c0c">database</text>
+<text x="207 216 225 234 243 252 261 270 279 288 297 306 315 324" y="52.25" fill="#0c0c0c">adventureworks</text>
+<text x="342 351" y="52.25" fill="#0c0c0c">as</text>
+<text x="369 378 387 396 405 414 423 432" y="52.25" fill="#0c0c0c">postgres</text>
+<rect x="795.75" y="38" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="810" y="52.25" fill="#767676">*</text>
+<rect x="0" y="57" width="810.5" height="19.5" fill="#cccccc"/>
+<rect x="810" y="57" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="12.75" y="57" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="795.75" y="57" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="810 819" y="71.25" fill="#767676">co</text>
+<rect x="0" y="76" width="810.5" height="19.5" fill="#cccccc"/>
+<rect x="810" y="76" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="12.75" y="76" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="27 36 45 54 63 72 81 90 99 108 117 126 135" y="90.25" fill="#0c0c0c">HashAggregate</text>
+<text x="162 171 180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342 351" y="90.25" fill="#0c0c0c">(cost=1189.93..1190.06</text>
+<text x="369 378 387 396 405 414 423" y="90.25" fill="#0c0c0c">rows=10</text>
+<text x="441 450 459 468 477 486 495 504 513" y="90.25" fill="#0c0c0c">width=64)</text>
+<rect x="795.75" y="76" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="810 819" y="90.25" fill="#767676">t.</text>
+<rect x="0" y="95" width="810.5" height="19.5" fill="#cccccc"/>
+<rect x="810" y="95" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="12.75" y="95" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="45 54 63 72 81" y="109.25" fill="#0c0c0c">Group</text>
+<text x="99 108 117 126" y="109.25" fill="#0c0c0c">Key:</text>
+<text x="144 153 162 171 180 189" y="109.25" fill="#0c0c0c">t.name</text>
+<rect x="795.75" y="95" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="810" y="109.25" fill="#767676">*</text>
+<rect x="0" y="114" width="810.5" height="19.5" fill="#cccccc"/>
+<rect x="810" y="114" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="12.75" y="114" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="45 54" y="128.25" fill="#0c0c0c">-&gt;</text>
+<text x="81 90 99 108" y="128.25" fill="#0c0c0c">Hash</text>
+<text x="126 135 144 153" y="128.25" fill="#0c0c0c">Join</text>
+<text x="180 189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324 333 342" y="128.25" fill="#0c0c0c">(cost=1.23..1032.60</text>
+<text x="360 369 378 387 396 405 414 423 432 441" y="128.25" fill="#0c0c0c">rows=31465</text>
+<text x="459 468 477 486 495 504 513 522 531" y="128.25" fill="#0c0c0c">width=40)</text>
+<rect x="795.75" y="114" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="810 819" y="128.25" fill="#767676">IN</text>
+<rect x="0" y="133" width="810.5" height="19.5" fill="#cccccc"/>
+<rect x="810" y="133" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="12.75" y="133" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="99 108 117 126" y="147.25" fill="#0c0c0c">Hash</text>
+<text x="144 153 162 171 180" y="147.25" fill="#0c0c0c">Cond:</text>
+<text x="198 207 216 225 234 243 252 261 270 279 288 297 306 315" y="147.25" fill="#0c0c0c">(h.territoryid</text>
+<text x="333" y="147.25" fill="#0c0c0c">=</text>
+<text x="351 360 369 378 387 396 405 414 423 432 441 450 459 468" y="147.25" fill="#0c0c0c">t.territoryid)</text>
+<rect x="795.75" y="133" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="0" y="152" width="810.5" height="19.5" fill="#cccccc"/>
+<rect x="810" y="152" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="12.75" y="152" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="99 108" y="166.25" fill="#0c0c0c">-&gt;</text>
+<text x="135 144 153" y="166.25" fill="#0c0c0c">Seq</text>
+<text x="171 180 189 198" y="166.25" fill="#0c0c0c">Scan</text>
+<text x="216 225" y="166.25" fill="#0c0c0c">on</text>
+<text x="243 252 261 270 279 288 297 306 315 324 333 342 351 360 369 378" y="166.25" fill="#0c0c0c">salesorderheader</text>
+<text x="396" y="166.25" fill="#0c0c0c">h</text>
+<text x="423 432 441 450 459 468 477 486 495 504 513 522 531 540 549 558 567 576" y="166.25" fill="#0c0c0c">(cost=0.00..845.65</text>
+<text x="594 603 612 621 630 639 648 657 666 675" y="166.25" fill="#0c0c0c">rows=31465</text>
+<text x="693 702 711 720 729 738 747 756 765" y="166.25" fill="#0c0c0c">width=12)</text>
+<rect x="795.75" y="152" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="810 819" y="166.25" fill="#767676">IN</text>
+<rect x="0" y="171" width="810.5" height="19.5" fill="#cccccc"/>
+<rect x="810" y="171" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="12.75" y="171" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="99 108" y="185.25" fill="#0c0c0c">-&gt;</text>
+<text x="135 144 153 162" y="185.25" fill="#0c0c0c">Hash</text>
+<text x="189 198 207 216 225 234 243 252 261 270 279 288 297 306 315 324" y="185.25" fill="#0c0c0c">(cost=1.10..1.10</text>
+<text x="342 351 360 369 378 387 396" y="185.25" fill="#0c0c0c">rows=10</text>
+<text x="414 423 432 441 450 459 468 477 486" y="185.25" fill="#0c0c0c">width=36)</text>
+<rect x="795.75" y="171" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="810" y="185.25" fill="#767676">*</text>
+<rect x="0" y="190" width="810.5" height="19.5" fill="#cccccc"/>
+<rect x="810" y="190" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="12.75" y="190" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="153 162" y="204.25" fill="#0c0c0c">-&gt;</text>
+<text x="189 198 207" y="204.25" fill="#0c0c0c">Seq</text>
+<text x="225 234 243 252" y="204.25" fill="#0c0c0c">Scan</text>
+<text x="270 279" y="204.25" fill="#0c0c0c">on</text>
+<text x="297 306 315 324 333 342 351 360 369 378 387 396 405 414" y="204.25" fill="#0c0c0c">salesterritory</text>
+<text x="432" y="204.25" fill="#0c0c0c">t</text>
+<text x="459 468 477 486 495 504 513 522 531 540 549 558 567 576 585 594" y="204.25" fill="#0c0c0c">(cost=0.00..1.10</text>
+<text x="612 621 630 639 648 657 666" y="204.25" fill="#0c0c0c">rows=10</text>
+<text x="684 693 702 711 720 729 738 747 756" y="204.25" fill="#0c0c0c">width=36)</text>
+<rect x="795.75" y="190" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="810 819" y="204.25" fill="#767676">da</text>
+<rect x="0" y="209" width="810.5" height="19.5" fill="#cccccc"/>
+<rect x="810" y="209" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="12.75" y="209" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="795.75" y="209" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="0" y="228" width="810.5" height="19.5" fill="#cccccc"/>
+<rect x="810" y="228" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="12.75" y="228" width="1.5" height="19" fill="#0c0c0c"/>
+<text x="315 324" y="242.25" fill="#0c0c0c">[&lt;</text>
+<text x="342" y="242.25" fill="#0037da" text-decoration="underline">C</text>
+<text x="351 360 369 378" y="242.25" fill="#0c0c0c">lose</text>
+<text x="396 405" y="242.25" fill="#0c0c0c">&gt;]</text>
+<text x="423" y="242.25" fill="#0c0c0c">[</text>
+<text x="441" y="242.25" fill="#0c0c0c">C</text>
+<text x="450" y="242.25" fill="#0037da" text-decoration="underline">o</text>
+<text x="459 468" y="242.25" fill="#0c0c0c">py</text>
+<text x="486" y="242.25" fill="#0c0c0c">]</text>
+<rect x="795.75" y="228" width="1.5" height="19" fill="#0c0c0c"/>
+<rect x="0" y="247" width="810.5" height="19.5" fill="#cccccc"/>
+<rect x="810" y="247" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="12.75" y="247" width="1.5" height="10.25" fill="#0c0c0c"/>
+<rect x="12.75" y="255.75" width="5.25" height="1.5" fill="#0c0c0c"/>
+<rect x="18" y="255.75" width="774" height="1.5" fill="#0c0c0c"/>
+<rect x="795.75" y="247" width="1.5" height="10.25" fill="#0c0c0c"/>
+<rect x="792" y="255.75" width="5.25" height="1.5" fill="#0c0c0c"/>
+<rect x="0" y="266" width="810.5" height="19.5" fill="#cccccc"/>
+<rect x="810" y="266" width="18.5" height="19.5" fill="#0c0c0c"/>
+<rect x="18" y="285" width="810.5" height="19.5" fill="#0c0c0c"/>
+<text x="0 9" y="299.25" fill="#cccccc">ri</text>
+<text x="18 27 36 45 54 63" y="299.25" fill="#767676">ptions</text>
+<rect x="91.9" y="285" width="1.199997" height="19" fill="#767676"/>
+<rect x="95.9" y="285" width="1.199997" height="19" fill="#767676"/>
+<rect x="100.9" y="285" width="1.199997" height="19" fill="#767676"/>
+<rect x="104.9" y="285" width="1.199997" height="19" fill="#767676"/>
+</svg>

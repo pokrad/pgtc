@@ -411,6 +411,8 @@ enum Target {
     Dashboard(u64),
     /// Profiler tab id (D-058).
     Profiler(u64),
+    /// The session that reads an execution plan for this profiler tab (D-075).
+    Plan(u64),
     /// Database statistics tab id (D-062).
     DbStats(u64),
 }
@@ -843,6 +845,7 @@ impl App {
             | Command::ProfilerPause
             | Command::ProfilerFilter
             | Command::ProfilerClear
+            | Command::ProfilerPlan
             | Command::ShowRow => self.profiler_enabled(cmd),
             _ => false,
         }
@@ -1701,6 +1704,7 @@ impl App {
                     (DialogKind::ConfirmProfilerSettings { tab }, button) => {
                         self.profiler_answer(tab, button == Button::Yes);
                     }
+                    (DialogKind::Plan { text }, Button::Copy) => self.copy_plan(dialog, &text),
                     (DialogKind::ProfilerFilter { tab }, Button::Ok) => {
                         self.apply_profiler_filter(&dialog, tab);
                     }

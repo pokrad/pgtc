@@ -233,6 +233,17 @@ pub(crate) fn viewer(title: &str, lines: Lines) -> Dialog {
     )
 }
 
+/// The execution plan window (D-075): scrolling text, Close and Copy; `text` is what
+/// Copy takes.
+pub(crate) fn plan_viewer(text: String, lines: Lines) -> Dialog {
+    let mut dialog = viewer("Execution plan", lines);
+    dialog.kind = DialogKind::Plan { text };
+    dialog
+        .widgets
+        .push(Widget::button(Button::Copy, "C&opy", false));
+    dialog
+}
+
 impl App {
     /// Help → Keyboard shortcuts: every key of the active keymap.
     pub(crate) fn open_shortcuts(&mut self) {

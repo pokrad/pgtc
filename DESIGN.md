@@ -2295,7 +2295,7 @@ pgtc (binary)
   by pgtc to the read entries, so changing them also filters what is already shown.
 - **Other keys** (`[profiler]` context, D-016): `F5` start / stop, `Ctrl+P` pause / resume
   the display (reading continues after the pause from where it stopped), `Ctrl+L` clear,
-  `F2` context menu, `Ctrl+C` / `Ctrl+A` copy, arrows / `PgUp` / `PgDn` / `Home` / `End`.
+  `Ctrl+Q` execution plan of the entry's statement (D-075), `F2` context menu, `Ctrl+C` / `Ctrl+A` copy, arrows / `PgUp` / `PgDn` / `Home` / `End`.
 - **Tab status:** `server · user@database`, then *Stopped* / *Running – jsonlog* /
   *Paused*, entries shown / read.
 - **SQL:** `sql/profiler/` (versioned, D-010), parts adapted from pgAdmin's dashboard log
@@ -2899,6 +2899,42 @@ pgtc (binary)
 - **Later:** Jinja highlighting on top of the SQL highlighting (touches the lexer of
   `pgc-editor`); autocomplete in the raw header.
 
+### D-075 — Execution plan of a profiler entry
+- **Status:** Accepted (refines D-058, D-011)
+- **What:** in the profiler list, `Ctrl+Q` (`profiler_plan`; context menu *Execution
+  plan…*) shows the execution plan of the statement of the entry under the cursor.
+  Profiler only: not in the dashboard, not in query tabs.
+- **Plain `EXPLAIN`, never `ANALYZE`:** the statement is planned, not executed — a
+  logged `INSERT` / `UPDATE` / `DELETE` or function call is not repeated. Fixed
+  options (the default output: costs, TEXT format); no options dialog. Who wants
+  `ANALYZE` uses `Ctrl+E` and writes it in the query tab.
+- **Session:** a short-lived connection to **the entry's database** (the profiler's
+  own is in the maintenance database), with the saved connection's role; opened for
+  the one plan and closed after it (D-011). The `EXPLAIN` runs in a `READ ONLY`
+  transaction that is rolled back, and is sent through the extended protocol, where
+  the server refuses a text with more than one statement. An entry without a
+  database is refused with a status-line hint.
+- **Not the original session's plan:** the role, `search_path` and planner settings
+  of the logged session are not in the log. The plan is the one this session gets
+  now; a statement that relied on a `search_path` fails with the server's error. The
+  window's first line names database and role.
+- **Prepared statements (`$1`, …):**
+  - with the parameter values in the log (the entry's detail), they are passed as
+    **bind parameters** in text form — the plan for those values;
+  - without them (an error entry, `log_parameter_max_length = 0`), or when a value
+    may be cut (it ends with `...` and `log_parameter_max_length` is not `-1`):
+    `EXPLAIN (GENERIC_PLAN)` on PostgreSQL 16+ (feature `ExplainGenericPlan`), a
+    message on older servers. The window says that the plan is the generic one.
+- **Result:** a scrolling window, as *Show entry*: database and role, then the plan
+  as `EXPLAIN` wrote it (long lines wrapped). **Copy** puts the unwrapped text on the
+  clipboard. What cannot be planned — utility statements, several statements in one
+  text, a missing relation — shows the server's error in the same window; pgtc does
+  not filter the entries beforehand.
+- **While it is read:** the status line says so; the UI is not blocked. Another
+  `Ctrl+Q`, closing the tab or disconnecting the server gives the session up.
+- **Later:** `ANALYZE`, options, `FORMAT JSON`, the dashboard's Sessions list, an
+  Explain command for query tabs — each a decision of its own.
+
 ---
 
 ## 3. Change log
@@ -3082,3 +3118,4 @@ pgtc (binary)
 | 2026-11-22 | D-019 updated: a run keeps its newest 10,000 messages (the first line says how many earlier ones were dropped; errors and the total time are never dropped). D-035 updated: a connection another pgtc saved to `settings.toml` meanwhile is taken over when this one saves, not written away. D-054 updated: in a pattern, regular expression syntax other than `*`, `?`, `.` and `$` keeps its meaning outside double quotes, as in psql. |
 | 2026-11-22 | D-011 updated: collapsing a database in the object tree closes its connection and drops what was loaded below it; expanding it again connects again. |
 | 2026-11-22 | D-011 updated: collapsing a server row closes the connections of all its databases the same way; the server connection stays. |
+| 2026-11-26 | D-075 added: `Ctrl+Q` in the profiler shows the execution plan of the entry's statement — plain `EXPLAIN`, never `ANALYZE`, fixed options, on a short-lived session in the entry's database; logged parameter values as bind parameters, else the generic plan (PostgreSQL 16+). Profiler only. D-058 updated: the key. |

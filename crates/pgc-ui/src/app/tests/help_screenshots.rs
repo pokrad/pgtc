@@ -2798,6 +2798,37 @@ async fn help_screenshots() {
     key(&mut a, "Ctrl+F");
     typing(&mut a, "reporting");
     out.shot("profiler-filter", &a, Crop::Dialog);
+    // the execution plan of an entry (D-075)
+    let (mut a, _d, _, _) = prof();
+    profiler_records(&mut a);
+    a.tabs[a.active_tab].profiler_mut().unwrap().grid.row = 2;
+    key(&mut a, "Ctrl+Q");
+    let conn = {
+        let p = a.tabs[a.active_tab].profiler_mut().unwrap();
+        let job = p.plan.as_mut().unwrap();
+        job.handle.abort();
+        job.handle = pgc_db::ConnectionHandle::detached(job.handle.id);
+        job.handle.id
+    };
+    a.on_db(pgc_db::DbEvent::Plan {
+        id: conn,
+        key: 0,
+        result: Ok(pgc_db::Plan {
+            lines: [
+                "HashAggregate  (cost=1189.93..1190.06 rows=10 width=64)",
+                "  Group Key: t.name",
+                "  ->  Hash Join  (cost=1.23..1032.60 rows=31465 width=40)",
+                "        Hash Cond: (h.territoryid = t.territoryid)",
+                "        ->  Seq Scan on salesorderheader h  (cost=0.00..845.65 rows=31465 width=12)",
+                "        ->  Hash  (cost=1.10..1.10 rows=10 width=36)",
+                "              ->  Seq Scan on salesterritory t  (cost=0.00..1.10 rows=10 width=36)",
+            ]
+            .map(str::to_owned)
+            .to_vec(),
+            generic: false,
+        }),
+    });
+    out.shot("profiler-plan", &a, Crop::Dialog);
 
     // ---- database statistics ----------------------------------------------------
     let (mut a, _d, ids2) = scene();

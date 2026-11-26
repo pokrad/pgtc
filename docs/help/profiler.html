@@ -95,6 +95,29 @@ something has to change, pgtc lists it and asks:</p>
 
 <h3>The whole entry</h3>
 
+<h2 id="plan">Execution plan</h2>
+<p><kbd>Ctrl+Q</kbd> (context menu <span class="menu">Execution plan…</span>): <code>EXPLAIN</code> of the selected
+entry's statement — never <code>ANALYZE</code>, so nothing is executed.</p>
+<figure class="small">
+  <img src="img/profiler-plan.svg" alt="The execution plan of a profiler entry" loading="lazy">
+</figure>
+<ul>
+  <li>Planned on a session of its own in the entry's database, with the saved connection's role, in a
+      <code>READ ONLY</code> transaction; the session ends with the plan. An entry without a database has no
+      plan.</li>
+  <li>It is the plan this session gets now, not the logged session's: role, <code>search_path</code> and planner
+      settings (<code>work_mem</code>, <code>enable_*</code>, …) are not in the log. A statement that relied on a
+      <code>search_path</code> fails with <i>relation … does not exist</i>.</li>
+  <li><b>Prepared statements:</b> the logged parameter values are bound, so the plan is the custom plan for them.
+      Without values in the log (<code>log_parameter_max_length = 0</code>, error entries), or with values the
+      server may have cut (<code>log_parameter_max_length</code> not <code>-1</code>, value ending in
+      <code>...</code>): <code>EXPLAIN (GENERIC_PLAN)</code> on PostgreSQL 16+, a message on older servers.</li>
+  <li>What <code>EXPLAIN</code> does not take (utility statements, several statements in one entry) shows the
+      server's error in the window.</li>
+  <li><span class="ui">Copy</span> takes the plan without the window's line wrapping. For
+      <code>EXPLAIN (ANALYZE, …)</code>: <kbd>Ctrl+E</kbd>, then write it in the query tab.</li>
+</ul>
+
 <h2 id="filter">Filtering</h2>
 <p><kbd>Ctrl+F</kbd>:</p>
 <figure class="small">
@@ -165,6 +188,7 @@ SELECT pg_reload_conf();</code></pre>
 <tr><td class="k"><kbd>Ctrl+F</kbd></td><td>Filter.</td></tr>
 <tr><td class="k"><kbd>Ctrl+L</kbd></td><td>Clear the list.</td></tr>
 <tr><td class="k"><kbd>Enter</kbd></td><td>The whole entry.</td></tr>
+<tr><td class="k"><kbd>Ctrl+Q</kbd></td><td>Execution plan (<code>EXPLAIN</code>) of the statement.</td></tr>
 <tr><td class="k"><kbd>Ctrl+E</kbd></td><td>The statement in a new query tab.</td></tr>
 <tr><td class="k"><kbd>Ctrl+R</kbd></td><td>Statement pane.</td></tr>
 <tr><td class="k"><kbd>Alt+Down</kbd> / <kbd>Alt+Up</kbd></td><td>Statement pane / list.</td></tr>

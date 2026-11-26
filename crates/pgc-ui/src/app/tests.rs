@@ -5730,3 +5730,147 @@ async fn collapsing_a_database_closes_its_connection() {
     assert!(!s.expanded);
     assert_eq!(s.state, ConnState::Connected);
 }
+
+/// Execution plan of a profiler entry (D-075): `Ctrl+Q` opens a session in the
+/// entry's database for a plain EXPLAIN; the plan, or the server's error, is shown in
+/// a window with Copy. An entry without a database is refused.
+#[tokio::test]
+async fn profiler_shows_the_plan_of_an_entry() {
+    use crate::dialog::{Button, DialogEvent};
+    use crate::profiler::Record;
+    let (mut a, _d) = app();
+    let uid = add_server(&mut a, "a");
+    fake_connecting(&mut a, uid);
+    a.server_connected(uid, pgc_core::ServerVersion(170002));
+    key(&mut a, "Home");
+    a.run(Command::SqlProfiler);
+    let tab = a.tabs[1].id;
+    let record = |database: &str, message: &str, detail: &str| Record {
+        database: database.into(),
+        pid: "4242".into(),
+        severity: "LOG".into(),
+        sqlstate: "00000".into(),
+        message: message.into(),
+        detail: detail.into(),
+        ..Record::default()
+    };
+    a.tabs[1].profiler_mut().unwrap().add_records(vec![
+        record("", "duration: 0.1 ms  statement: SELECT 1", ""),
+        record(
+            "shop",
+            "duration: 1.5 ms  execute <unnamed>: SELECT * FROM orders WHERE id = $1",
+            "parameters: $1 = '5'",
+        ),
+    ]);
+    fn prof(a: &App) -> &crate::profiler::Profiler {
+        a.tabs[1].profiler().unwrap()
+    }
+
+    // an entry without a database: refused, no session
+    a.tabs[1].profiler_mut().unwrap().grid.row = 0;
+    assert!(!a.is_enabled(Command::ProfilerPlan));
+    key(&mut a, "Ctrl+Q");
+    assert!(prof(&a).plan.is_none());
+    assert!(a.status.contains("no database"), "{}", a.status);
+
+    // the execute entry: a session in its database, with the logged values
+    a.tabs[1].profiler_mut().unwrap().grid.row = 1;
+    assert!(a.is_enabled(Command::ProfilerPlan));
+    key(&mut a, "Ctrl+Q");
+    let conn = {
+        let job = a.tabs[1].profiler_mut().unwrap().plan.as_mut().unwrap();
+        assert_eq!(job.source.database, "shop");
+        assert_eq!(job.source.statement, "SELECT * FROM orders WHERE id = $1");
+        assert_eq!(job.source.params, vec![Some("5".to_owned())]);
+        job.handle.abort();
+        job.handle = pgc_db::ConnectionHandle::detached(job.handle.id);
+        job.handle.id
+    };
+    assert_eq!(a.connections.get(&conn), Some(&Target::Plan(tab)));
+    assert!(a.status.contains("shop"), "{}", a.status);
+
+    // the plan arrives: the window, the session is given up
+    a.on_db(DbEvent::Plan {
+        id: conn,
+        key: 0,
+        result: Ok(pgc_db::Plan {
+            lines: vec![
+                "Index Scan using orders_pkey on orders  (cost=0.29..8.30 rows=1 width=40)".into(),
+                "  Index Cond: (id = 5)".into(),
+            ],
+            generic: false,
+        }),
+    });
+    assert!(prof(&a).plan.is_none());
+    assert!(!a.connections.contains_key(&conn));
+    let d = a.dialogs.last().unwrap();
+    let DialogKind::Plan { text } = d.kind.clone() else {
+        panic!("{:?}", d.kind);
+    };
+    assert_eq!(
+        text,
+        "EXPLAIN in database shop as postgres\n\
+         With the logged parameter values.\n\
+         \n\
+         Index Scan using orders_pkey on orders  (cost=0.29..8.30 rows=1 width=40)\n\
+         \x20 Index Cond: (id = 5)"
+    );
+    // Copy keeps the window
+    a.dialog_event(DialogEvent::Button(Button::Copy));
+    assert!(matches!(
+        a.dialogs.last().map(|d| &d.kind),
+        Some(DialogKind::Plan { .. })
+    ));
+    assert_eq!(a.clipboard.paste(), text);
+    a.dialog_event(DialogEvent::Button(Button::Ok));
+    assert!(a.dialogs.is_empty());
+
+    // a generic plan says so; a statement that cannot be planned shows the error
+    key(&mut a, "Ctrl+Q");
+    let conn = prof(&a).plan.as_ref().unwrap().handle.id;
+    a.on_db(DbEvent::Plan {
+        id: conn,
+        key: 0,
+        result: Ok(pgc_db::Plan {
+            lines: vec!["Seq Scan on orders".into()],
+            generic: true,
+        }),
+    });
+    let DialogKind::Plan { text } = a.dialogs.pop().unwrap().kind else {
+        panic!();
+    };
+    assert!(text.contains("Generic plan"), "{text}");
+    key(&mut a, "Ctrl+Q");
+    let conn = prof(&a).plan.as_ref().unwrap().handle.id;
+    a.on_db(DbEvent::Plan {
+        id: conn,
+        key: 0,
+        result: Err(DbError::Other("syntax error at or near \"SET\"".into())),
+    });
+    let DialogKind::Plan { text } = a.dialogs.pop().unwrap().kind else {
+        panic!();
+    };
+    assert!(text.ends_with("syntax error at or near \"SET\""), "{text}");
+
+    // a second Ctrl+Q gives up the first session; its late answer is ignored
+    key(&mut a, "Ctrl+Q");
+    let first = prof(&a).plan.as_ref().unwrap().handle.id;
+    key(&mut a, "Ctrl+Q");
+    let second = prof(&a).plan.as_ref().unwrap().handle.id;
+    assert_ne!(first, second);
+    assert!(!a.connections.contains_key(&first));
+    a.on_db(DbEvent::Plan {
+        id: first,
+        key: 0,
+        result: Ok(pgc_db::Plan {
+            lines: vec![],
+            generic: false,
+        }),
+    });
+    assert!(a.dialogs.is_empty());
+    assert!(prof(&a).plan.is_some());
+
+    // closing the tab gives up the session
+    a.run(Command::CloseTab);
+    assert!(!a.connections.contains_key(&second));
+}

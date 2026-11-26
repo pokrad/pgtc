@@ -106,6 +106,8 @@ pub(crate) enum Request {
         key: u64,
         queries: Box<crate::model::ModelQueries>,
     },
+    /// The execution plan of a statement (D-075).
+    Explain(crate::explain::ExplainRequest),
     Close,
 }
 
@@ -161,6 +163,12 @@ pub enum DbEvent {
         id: ConnId,
         key: u64,
         result: Result<Box<pgc_model::Database>, DbError>,
+    },
+    /// Answer to [`ConnectionHandle::explain`] (D-075).
+    Plan {
+        id: ConnId,
+        key: u64,
+        result: Result<crate::explain::Plan, DbError>,
     },
     /// A notice from the server (`RAISE NOTICE`, warnings, ...).
     Notice {
@@ -275,6 +283,12 @@ impl ConnectionHandle {
             key,
             queries: Box::new(queries),
         });
+    }
+
+    /// Plans a statement with plain `EXPLAIN` — it is not executed (D-075); answered
+    /// with [`DbEvent::Plan`] carrying the request's `key`.
+    pub fn explain(&self, request: crate::explain::ExplainRequest) {
+        let _ = self.tx.send(Request::Explain(request));
     }
 
     /// Ends a paused result without reading its remaining rows into the UI: the
@@ -634,6 +648,14 @@ async fn run(
             Some(Request::ReadModel { key, queries }) => {
                 let result = crate::model::read(&client, &queries).await.map(Box::new);
                 sink(DbEvent::Model { id, key, result });
+            }
+            Some(Request::Explain(req)) => {
+                let result = crate::explain::explain(&client, &req).await;
+                sink(DbEvent::Plan {
+                    id,
+                    key: req.key,
+                    result,
+                });
             }
             Some(Request::Catalog(req)) => {
                 let run = req.run;

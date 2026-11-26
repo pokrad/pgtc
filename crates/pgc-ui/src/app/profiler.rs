@@ -11,7 +11,9 @@ use super::{App, Effect, Focus, TabBody, Target, TextView};
 use crate::dialog::{Button, Dialog, DialogKind, Widget};
 use crate::keymap::Command;
 use crate::menu::{self, MenuEntry, Popup};
-use crate::profiler::{AfterRestore, Check, LogReader, Phase, Profiler, READ_CHUNK};
+use crate::profiler::{AfterRestore, Check, LogReader, Phase, PlanJob, Profiler, READ_CHUNK};
+use crate::tree::ConnState;
+use pgc_core::Feature;
 
 const SQL_FOLDER: &str = "profiler";
 /// Pause between log reads.
@@ -579,6 +581,7 @@ impl App {
                 self.status = "Profiler entries cleared".to_owned();
             }
             Command::ShowRow | Command::Accept => self.show_profiler_row(),
+            Command::ProfilerPlan => self.profiler_plan(tab),
             Command::ContextMenu => {
                 let a = self.frame.grid_area;
                 self.open_profiler_menu((a.x + 2, a.y + 1));
@@ -599,6 +602,159 @@ impl App {
         let headers = vec![false; lines.len()];
         let mut dialog = crate::help::viewer("Statement", crate::help::Lines { lines, headers });
         dialog.fit_text(self.frame.screen);
+        self.dialogs.push(dialog);
+    }
+
+    /// `Ctrl+Q` (D-075): the execution plan of the entry's statement — plain
+    /// `EXPLAIN`, so the statement is not executed — read on a session of its own in
+    /// the entry's database and shown in a window.
+    fn profiler_plan(&mut self, tab: u64) {
+        let Some(p) = self.profiler_of(tab) else {
+            return;
+        };
+        let uid = p.own.uid;
+        let Some(source) = p.plan_source() else {
+            self.status = "Select an entry first".to_owned();
+            return;
+        };
+        if source.statement.trim().is_empty() {
+            self.status = "The entry has no statement".to_owned();
+            return;
+        }
+        if source.database.is_empty() {
+            self.status = "This entry has no database — its statement cannot be planned".to_owned();
+            return;
+        }
+        let server = self
+            .tree
+            .servers
+            .iter()
+            .position(|s| s.uid == uid && s.state == ConnState::Connected);
+        let Some(si) = server else {
+            self.status = "Connect the server first".to_owned();
+            return;
+        };
+        // a plan still being read is not waited for any more
+        self.end_plan(tab);
+        let handle = self.open_connection(si, &source.database, Target::Plan(tab));
+        self.status = format!("Reading the execution plan in {}…", source.database);
+        if let Some(p) = self.profiler_of(tab) {
+            p.plan = Some(PlanJob { handle, source });
+        }
+    }
+
+    /// Ends the session of the plan that tab `tab` is reading, if any.
+    fn end_plan(&mut self, tab: u64) -> Option<PlanJob> {
+        let job = self.profiler_of(tab)?.plan.take()?;
+        self.connections.remove(&job.handle.id);
+        job.handle.end(pgc_db::END_GRACE);
+        Some(job)
+    }
+
+    /// An event of the session that reads a plan for tab `tab` (D-075).
+    pub(super) fn on_plan_event(&mut self, conn: ConnId, tab: u64, event: DbEvent) {
+        let current = self
+            .profiler_of(tab)
+            .and_then(|p| p.plan.as_ref())
+            .is_some_and(|job| job.handle.id == conn);
+        if !current {
+            // the tab is closed, or it reads another plan by now
+            self.connections.remove(&conn);
+            return;
+        }
+        match event {
+            DbEvent::Connected { version, .. } => {
+                if let Some(job) = self.profiler_of(tab).and_then(|p| p.plan.as_ref()) {
+                    job.handle.explain(pgc_db::ExplainRequest {
+                        key: 0,
+                        statement: job.source.statement.clone(),
+                        params: job.source.params.clone(),
+                        generic: version.has(Feature::ExplainGenericPlan),
+                    });
+                }
+            }
+            DbEvent::ConnectFailed { error, .. } => {
+                if let Some(job) = self.end_plan(tab) {
+                    self.status.clear();
+                    self.error(&format!(
+                        "Cannot connect to database {}:\n{error}",
+                        job.source.database
+                    ));
+                }
+            }
+            DbEvent::Closed { error, .. } => {
+                if let Some(job) = self.end_plan(tab) {
+                    self.status.clear();
+                    let why = error.map_or("the session was closed".to_owned(), |e| e.to_string());
+                    self.error(&format!(
+                        "Reading the execution plan in {} failed:\n{why}",
+                        job.source.database
+                    ));
+                }
+            }
+            DbEvent::Plan { result, .. } => {
+                if let Some(job) = self.end_plan(tab) {
+                    self.status.clear();
+                    self.show_plan(tab, &job, result);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// The plan window: where the statement was planned, then the plan — or what the
+    /// server said instead (a statement that cannot be planned). *Copy* takes the
+    /// text as it came, without the window's line wrapping.
+    fn show_plan(&mut self, tab: u64, job: &PlanJob, result: Result<pgc_db::Plan, DbError>) {
+        let uid = self.profiler_of(tab).map(|p| p.own.uid);
+        let role = self
+            .tree
+            .servers
+            .iter()
+            .find(|s| Some(s.uid) == uid)
+            .map(|s| s.conn.username.clone())
+            .unwrap_or_default();
+        let mut text = vec![format!(
+            "EXPLAIN in database {} as {role}",
+            job.source.database
+        )];
+        match result {
+            Ok(plan) => {
+                if plan.generic {
+                    text.push(
+                        "Generic plan: the log does not have the parameter values.".to_owned(),
+                    );
+                } else if !job.source.params.is_empty() {
+                    text.push("With the logged parameter values.".to_owned());
+                }
+                text.push(String::new());
+                text.extend(plan.lines);
+            }
+            Err(e) => {
+                text.push(String::new());
+                text.extend(e.to_string().lines().map(str::to_owned));
+            }
+        }
+        let width = usize::from(self.frame.screen.width)
+            .saturating_sub(10)
+            .max(40);
+        let lines: Vec<String> = text
+            .iter()
+            .flat_map(|l| crate::help::wrap(l, width))
+            .collect();
+        let headers = vec![false; lines.len()];
+        let mut dialog =
+            crate::help::plan_viewer(text.join("\n"), crate::help::Lines { lines, headers });
+        dialog.fit_text(self.frame.screen);
+        self.dialogs.push(dialog);
+    }
+
+    /// *Copy* in the plan window: the plan to the clipboard; the window stays.
+    pub(super) fn copy_plan(&mut self, dialog: Dialog, text: &str) {
+        if self.clipboard.copy(text) {
+            self.effects.push(Effect::Osc52(text.to_owned()));
+        }
+        self.status = "Execution plan copied".to_owned();
         self.dialogs.push(dialog);
     }
 
@@ -648,6 +804,7 @@ impl App {
             menu::item("&Filter…", Command::ProfilerFilter),
             menu::item("&Clear", Command::ProfilerClear),
             menu::item("Show &entry…", Command::ShowRow),
+            menu::item("E&xecution plan…", Command::ProfilerPlan),
         ];
         self.popup = Some(Popup::new(entries, anchor, &|c| self.is_enabled(c)));
     }
@@ -659,13 +816,21 @@ impl App {
         match cmd {
             Command::ProfilerPause => p.phase == Phase::Running,
             Command::ShowRow => !p.grid.rows.is_empty(),
+            Command::ProfilerPlan => p
+                .plan_source()
+                .is_some_and(|s| !s.statement.trim().is_empty() && !s.database.is_empty()),
             _ => true,
         }
     }
 
     /// Closing a profiler tab: changed settings are put back on its connection, which
     /// then closes (the answers are not waited for).
-    pub(super) fn close_profiler_conn(&mut self, p: Profiler) {
+    pub(super) fn close_profiler_conn(&mut self, mut p: Profiler) {
+        // a plan being read is not waited for (D-075)
+        if let Some(job) = p.plan.take() {
+            self.connections.remove(&job.handle.id);
+            job.handle.end(pgc_db::END_GRACE);
+        }
         let Some(conn) = p.own.conn else {
             return;
         };

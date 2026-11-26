@@ -95,6 +95,10 @@ pub enum DialogKind {
     },
     /// Help windows: scrolling text with a Close button (D-014).
     Viewer,
+    /// The execution plan of a profiler entry (D-075); `text` is what Copy takes.
+    Plan {
+        text: String,
+    },
     /// psql-style command line (D-054).
     PsqlCommand,
     /// Settings → AI… (D-073).

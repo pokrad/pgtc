@@ -91,6 +91,8 @@ features! {
     ProgressCopy = 140000;
     // F4 generate command gtm (D-054)
     Merge = 150000;
+    // profiler: EXPLAIN (GENERIC_PLAN) (D-075)
+    ExplainGenericPlan = 160000;
 }
 
 impl Feature {

@@ -145,7 +145,10 @@ impl App {
                 self.drop_tab_lookups(tab);
             }
             DbEvent::Lookup { key, result, .. } => self.lookup_loaded(key, result),
-            DbEvent::Nodes { .. } | DbEvent::Definition { .. } | DbEvent::Model { .. } => {}
+            DbEvent::Nodes { .. }
+            | DbEvent::Definition { .. }
+            | DbEvent::Model { .. }
+            | DbEvent::Plan { .. } => {}
         }
     }
 

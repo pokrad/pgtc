@@ -241,6 +241,7 @@ impl App {
             | DbEvent::Notice { id, .. }
             | DbEvent::Lookup { id, .. }
             | DbEvent::Model { id, .. }
+            | DbEvent::Plan { id, .. }
             | DbEvent::Closed { id, .. } => *id,
         };
         // Events of connections closed on request are no longer interesting.
@@ -252,6 +253,7 @@ impl App {
             (Target::Structure, event) => self.on_job_event(id, event),
             (Target::Dashboard(tab), event) => self.on_dashboard_event(id, tab, event),
             (Target::Profiler(tab), event) => self.on_profiler_event(id, tab, event),
+            (Target::Plan(tab), event) => self.on_plan_event(id, tab, event),
             (Target::DbStats(tab), event) => self.on_db_stats_event(id, tab, event),
             // a server's configuration settings (D-037)
             (Target::Server(uid), DbEvent::Lookup { key, result, .. })
@@ -266,7 +268,13 @@ impl App {
             }
             // Find object searches run on tree connections (D-055)
             (_, DbEvent::Lookup { key, result, .. }) => self.find_loaded(key, result),
-            (_, DbEvent::Query { .. } | DbEvent::Notice { .. } | DbEvent::Model { .. }) => {}
+            (
+                _,
+                DbEvent::Query { .. }
+                | DbEvent::Notice { .. }
+                | DbEvent::Model { .. }
+                | DbEvent::Plan { .. },
+            ) => {}
             (_, DbEvent::Nodes { key, result, .. }) => {
                 let Some(nid) = self.pending.remove(&key) else {
                     return;
@@ -350,7 +358,8 @@ impl App {
                     | DbEvent::Query { .. }
                     | DbEvent::Notice { .. }
                     | DbEvent::Lookup { .. }
-                    | DbEvent::Model { .. } => {}
+                    | DbEvent::Model { .. }
+                    | DbEvent::Plan { .. } => {}
                 }
             }
         }

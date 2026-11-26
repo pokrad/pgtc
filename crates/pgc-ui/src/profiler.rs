@@ -352,6 +352,74 @@ pub fn statement_text(statement: &str, detail: &str, error: bool) -> String {
     out
 }
 
+/// The values of a logged parameter list — `parameters: $1 = '5', $2 = NULL, $3 =
+/// 'it''s'` — in the order `$1`, `$2`, … (`None` = NULL). Empty when `detail` is not
+/// such a list (no parameters, an error message, a text the server wrote otherwise).
+pub fn parameter_values(detail: &str) -> Vec<Option<String>> {
+    let Some(start) = detail.find("$1 = ") else {
+        return Vec::new();
+    };
+    let mut rest = &detail[start..];
+    let mut values = Vec::new();
+    loop {
+        let name = format!("${} = ", values.len() + 1);
+        let Some(after) = rest.strip_prefix(name.as_str()) else {
+            return Vec::new();
+        };
+        rest = if let Some(after) = after.strip_prefix("NULL") {
+            values.push(None);
+            after
+        } else if let Some(quoted) = after.strip_prefix('\'') {
+            // up to the quote that is not doubled
+            let mut value = String::new();
+            let mut chars = quoted.char_indices().peekable();
+            let mut end = None;
+            while let Some((i, c)) = chars.next() {
+                if c != '\'' {
+                    value.push(c);
+                } else if chars.peek().is_some_and(|(_, next)| *next == '\'') {
+                    value.push('\'');
+                    chars.next();
+                } else {
+                    end = Some(i + 1);
+                    break;
+                }
+            }
+            let Some(end) = end else {
+                return Vec::new();
+            };
+            values.push(Some(value));
+            &quoted[end..]
+        } else {
+            return Vec::new();
+        };
+        if rest.is_empty() {
+            return values;
+        }
+        let Some(next) = rest.strip_prefix(", ") else {
+            return Vec::new();
+        };
+        rest = next;
+    }
+}
+
+/// What the execution plan of an entry is made from (D-075).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlanSource {
+    pub statement: String,
+    pub database: String,
+    /// The logged parameter values; empty when the log has none.
+    pub params: Vec<Option<String>>,
+}
+
+/// The plan of an entry that is being read: its session in the entry's database
+/// (D-075).
+#[derive(Debug)]
+pub struct PlanJob {
+    pub handle: pgc_db::ConnectionHandle,
+    pub source: PlanSource,
+}
+
 fn empty_grid() -> ResultSet {
     ResultSet::new(
         COLUMNS
@@ -557,6 +625,8 @@ pub struct Profiler {
     pub after_restore: AfterRestore,
     pub timer_seq: u64,
     pub error: Option<String>,
+    /// The execution plan that is being read (D-075).
+    pub plan: Option<PlanJob>,
 }
 
 impl Profiler {
@@ -588,6 +658,7 @@ impl Profiler {
             after_restore: AfterRestore::Stop,
             timer_seq: 0,
             error: None,
+            plan: None,
             pane: crate::dashboard::Pane::default(),
         }
     }
@@ -659,6 +730,23 @@ impl Profiler {
             ),
             col(COL_DATABASE).to_owned(),
         ))
+    }
+
+    /// Statement, database and logged parameter values of the entry under the cursor
+    /// (D-075). An error entry's detail is its message, not parameters.
+    pub fn plan_source(&self) -> Option<PlanSource> {
+        let row = self.grid.rows.get(self.grid.row)?;
+        let col = |i: usize| row.get(i).and_then(|v| v.as_deref()).unwrap_or("");
+        let params = if col(COL_KIND) == "error" {
+            Vec::new()
+        } else {
+            parameter_values(col(COL_DETAIL))
+        };
+        Some(PlanSource {
+            statement: col(COL_STATEMENT).to_owned(),
+            database: col(COL_DATABASE).to_owned(),
+            params,
+        })
     }
 
     pub fn clear(&mut self) {
@@ -973,6 +1061,41 @@ mod tests {
         assert_eq!(p.filter.text(), "text b");
         p.clear();
         assert!(p.grid.rows.is_empty());
+    }
+
+    #[test]
+    fn logged_parameter_values() {
+        let some = |s: &str| Some(s.to_owned());
+        assert_eq!(parameter_values("parameters: $1 = '5'"), vec![some("5")]);
+        assert_eq!(
+            parameter_values("parameters: $1 = '5', $2 = NULL, $3 = 'it''s, $4 = ''x'''"),
+            vec![some("5"), None, some("it's, $4 = 'x'")]
+        );
+        assert_eq!(
+            parameter_values(
+                "Parameter: $1 = '', $2 = 'a
+b'"
+            ),
+            vec![
+                some(""),
+                some(
+                    "a
+b"
+                )
+            ],
+            "the word before the list may be translated"
+        );
+        // not a parameter list, or not one that can be read to its end
+        for detail in [
+            "",
+            "division by zero",
+            "parameters: $1 = '5",
+            "parameters: $1 = '5' and more",
+            "parameters: $1 = '5', $3 = '6'",
+            "parameters: $1 = 5",
+        ] {
+            assert!(parameter_values(detail).is_empty(), "{detail}");
+        }
     }
 
     #[test]
